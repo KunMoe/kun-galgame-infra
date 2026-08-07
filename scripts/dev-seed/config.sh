@@ -25,8 +25,8 @@ source "${DEV_SEED_CONFIG_DIR}/../dev-snapshot/config.sh"
 # prune step reads those lists to keep the matching platform-side rows).
 SEED_DBS=(
   kungalgame          # exports kept user / topic / galgame / resource id lists
-  kungalgame_patch    # exports kept patch-local user ids
-  kun_catalog
+  kungalgame_patch    # exports kept patch-local user + patch (= wiki gid) ids
+  kun_catalog         # imports both sites' gid lists (curated work anchors)
   kun_community       # imports forum content ids; exports kept platform uids
   kun_galgame_infra   # imports all kept-user lists (accounts + site mappings)
   kun_images

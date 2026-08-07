@@ -8,7 +8,9 @@
 -- Invocation (orchestrator):
 --   psql -v ON_ERROR_STOP=1 -q -d kun_catalog_seedbuild \
 --     -v seed_works=300 -f prune/kun_catalog.sql
--- (export_dir / seed_topics / seed_users are accepted but unused here.)
+-- (seed_topics / seed_users are accepted but unused here. Reads the kept-id
+--  CSVs exported by prune/kungalgame.sql and prune/kungalgame_patch.sql from
+--  the CWD, which the orchestrator sets to the shared export dir.)
 --
 -- Technique: FK constraints stay enforced throughout. Keep-sets are built in
 -- TEMP tables first, then children are deleted before parents so any ordering
@@ -44,6 +46,30 @@ ORDER BY max(value) DESC, work_id DESC
 LIMIT (:seed_works - 50);
 INSERT INTO keep_work
 SELECT id FROM (SELECT id FROM catalog_work ORDER BY id DESC LIMIT 50) newest
+ON CONFLICT DO NOTHING;
+
+-- Cross-DB consistency: the kungal forum and moyu patch site hydrate their
+-- lists by bridging their local galgame ids (both are wiki-gid-native) to
+-- catalog works through catalog_external_ref rows on the `curated` source
+-- (`galgame_wiki` during the rename window), entity_type 5 = work. An
+-- independently sampled keep_work shares almost nothing with the sites'
+-- newest-N samples (measured: 1/300 overlap), which makes every seeded list
+-- page render empty. So the works anchored to the sites' kept ids are part
+-- of the root set. CSV paths are CWD-relative: \copy does not interpolate
+-- psql variables, so build-seed.sh runs this file with CWD = the export dir.
+CREATE TEMP TABLE site_gid (id bigint PRIMARY KEY) ON COMMIT DROP;
+\copy site_gid FROM 'kungalgame_galgames.csv'
+CREATE TEMP TABLE site_pid (id bigint) ON COMMIT DROP;
+\copy site_pid FROM 'kungalgame_patch_patches.csv'
+INSERT INTO site_gid SELECT id FROM site_pid ON CONFLICT DO NOTHING;
+
+INSERT INTO keep_work
+SELECT DISTINCT r.entity_id
+FROM catalog_external_ref r
+JOIN catalog_source s ON s.id = r.source_id
+  AND s.key IN ('curated', 'galgame_wiki')
+JOIN site_gid g ON r.external_id = g.id::text
+WHERE r.entity_type = 5
 ON CONFLICT DO NOTHING;
 
 -- Releases of kept works.

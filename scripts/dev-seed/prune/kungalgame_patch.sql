@@ -317,3 +317,14 @@ COPY (SELECT id FROM "user" ORDER BY id) TO STDOUT WITH (FORMAT csv);
 \o
 \echo '=== exported kept user ids ==='
 \echo :filepath
+
+-- Kept patch ids too: moyu is gid-native (patch.id IS the wiki galgame id),
+-- so the catalog prune must keep the works these ids anchor to via the
+-- `curated` external-ref source, or every moyu card's catalog hydration
+-- misses in the seed.
+\set filepath :export_dir '/kungalgame_patch_patches.csv'
+\o :filepath
+COPY (SELECT id FROM patch ORDER BY id) TO STDOUT WITH (FORMAT csv);
+\o
+\echo '=== exported kept patch ids ==='
+\echo :filepath
