@@ -64,16 +64,52 @@ func TestMain(m *testing.M) {
 }
 
 // provision mirrors cmd/migrate's order for the developer-platform schema:
-// ensure the oauth_clients table exists, add the dev_* columns via raw SQL, then
-// AutoMigrate the two new tables.
+// safely pre-migrate an existing oauth_clients table, then AutoMigrate the
+// complete OAuth client and developer-platform models. On a fresh database the
+// pre-migration is a no-op and AutoMigrate creates every column.
 func provision(db *gorm.DB) error {
-	if err := db.AutoMigrate(&siteModel.Site{}, &siteModel.OAuthClient{}); err != nil {
-		return err
-	}
 	if err := AddOAuthClientDevColumns(db); err != nil {
 		return err
 	}
-	return db.AutoMigrate(Models()...)
+	models := []any{&siteModel.Site{}, &siteModel.OAuthClient{}}
+	models = append(models, Models()...)
+	return db.AutoMigrate(models...)
+}
+
+func TestFreshDatabaseMigrationOrder(t *testing.T) {
+	tx := testDB.Begin()
+	if tx.Error != nil {
+		t.Fatalf("begin fresh-schema transaction: %v", tx.Error)
+	}
+	defer tx.Rollback()
+
+	const schema = "devapi_fresh_migration_test"
+	if err := tx.Exec(`CREATE SCHEMA devapi_fresh_migration_test`).Error; err != nil {
+		t.Fatalf("create fresh schema: %v", err)
+	}
+	if err := tx.Exec(`SET LOCAL search_path TO devapi_fresh_migration_test`).Error; err != nil {
+		t.Fatalf("select fresh schema: %v", err)
+	}
+
+	if tx.Migrator().HasTable("oauth_clients") {
+		t.Fatal("fresh schema unexpectedly contains oauth_clients")
+	}
+	if err := AddOAuthClientDevColumns(tx); err != nil {
+		t.Fatalf("pre-migrate fresh schema: %v", err)
+	}
+	if tx.Migrator().HasTable("oauth_clients") {
+		t.Fatal("pre-migration must leave fresh table creation to AutoMigrate")
+	}
+
+	if err := tx.AutoMigrate(&siteModel.Site{}, &siteModel.OAuthClient{}); err != nil {
+		t.Fatalf("auto-migrate fresh schema: %v", err)
+	}
+	if !tx.Migrator().HasColumn(&siteModel.OAuthClient{}, "dev_enabled") {
+		t.Fatal("fresh oauth_clients table is missing dev_enabled")
+	}
+	if err := AddOAuthClientDevColumns(tx); err != nil {
+		t.Fatalf("re-run pre-migration on created table: %v", err)
+	}
 }
 
 func acquireSuiteLock(db *sql.DB) func() {

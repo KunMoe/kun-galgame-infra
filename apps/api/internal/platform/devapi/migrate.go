@@ -12,10 +12,12 @@ func Models() []any {
 	return []any{&DeveloperAPIKey{}, &DeveloperAPIUsage{}}
 }
 
-// AddOAuthClientDevColumns adds the developer-platform columns to the EXISTING
-// oauth_clients table using raw SQL (裁定 8). The NOT NULL intent columns are
-// added WITH a temporary DEFAULT so existing rows backfill, then the DEFAULT is
-// dropped so the GORM zero-value INSERT trap can't reintroduce a silent default.
+// AddOAuthClientDevColumns adds the developer-platform columns to an existing
+// oauth_clients table using raw SQL (裁定 8). A fresh database is a no-op here:
+// the later AutoMigrate call creates the table with every column already
+// present. For an existing table, the NOT NULL intent columns are added WITH a
+// temporary DEFAULT so existing rows backfill, then the DEFAULT is dropped so
+// the GORM zero-value INSERT trap can't reintroduce a silent default.
 // owner_user_id is nullable (third-party app owner; NULL for first-party site
 // clients) and gets a plain index.
 //
@@ -26,6 +28,10 @@ func Models() []any {
 // mapping for the model fields (Go int → bigint, string size:20 → varchar(20)),
 // so AutoMigrate reconciles to a no-op afterward.
 func AddOAuthClientDevColumns(db *gorm.DB) error {
+	if !db.Migrator().HasTable("oauth_clients") {
+		return nil
+	}
+
 	stmts := []string{
 		`ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS owner_user_id bigint`,
 		`CREATE INDEX IF NOT EXISTS idx_oauth_clients_owner_user_id ON oauth_clients (owner_user_id)`,
