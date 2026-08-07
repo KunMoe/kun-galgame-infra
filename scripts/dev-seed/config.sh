@@ -46,8 +46,10 @@ SEED_USERS=400        # per-site sampled users (content authors are always kept)
 SEED_OUT_ROOT="${HOME}/.cache/kungal-dev-seed"
 
 # Publishing target: a rolling release on a fixed tag, assets replaced in
-# place. A dedicated PRIVATE repo — kun-galgame-infra itself is public, and
-# the seed (scrubbed, but sampled from real data) is distributed by invite:
-# access control = that repo's collaborator list.
-SEED_REPO="KunMoe/kungal-dev-seed"
+# place. Lives on the infra repo itself (PUBLIC, so the seed is world-
+# downloadable) — ruled acceptable 2026-08-06: the seed is fully desensitised
+# (scrubbed content, dev-only credentials, private-submission tables shipped
+# empty), and reusing the repo the collaborators already have beats
+# maintaining a separate invite list.
+SEED_REPO="KunMoe/kun-galgame-infra"
 SEED_TAG="dev-seed"

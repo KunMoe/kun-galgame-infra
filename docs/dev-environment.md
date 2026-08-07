@@ -283,7 +283,7 @@ need *something realistic to develop against* use the **dev-seed**: a few
 hundred entities per database (full FK closure, all seven core DBs), sampled
 from the desensitised snapshot and published as a rolling GitHub Release
 (`dev-seed` tag on this repo, a few MB total). All it needs is an
-authenticated `gh` with read access to the repo, plus `psql`/`pg_restore`:
+authenticated `gh`, plus `psql`/`pg_restore`:
 
 ```sh
 ./scripts/restore-dev-seed.sh --yes            # download + verify + drop/create/restore all 7 DBs
