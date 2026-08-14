@@ -44,6 +44,15 @@ var retiredCatalogTables = []string{
 	"galgame_stats",
 }
 
+// retiredTableReadAllowlist exempts a specific (tool directory, retired table)
+// read. These are one-shot migration reconciliation tools that must read a
+// retired wiki-era audit table to fix data the migration left inconsistent —
+// the table is kept solely for that purpose and has no runtime reader, so the
+// read is the tool's whole job rather than a new runtime dependency.
+var retiredTableReadAllowlist = map[string]map[string]bool{
+	"cmd/reclaim-foreign-claims": {"galgame_migrations": true},
+}
+
 func TestP0ARuntimeSQLDoesNotReferenceRetiredCatalogTables(t *testing.T) {
 	root := moduleRoot(t)
 	tablePattern := retiredTableReferencePattern()
@@ -110,6 +119,9 @@ func findRetiredTableReferences(
 					return true
 				}
 				for _, match := range tablePattern.FindAllStringSubmatch(value, -1) {
+					if allowedRetiredRead(rel, match[1]) {
+						continue
+					}
 					violations = append(violations, fmt.Sprintf("%s:%d SQL references %s",
 						rel, fset.Position(n.Pos()).Line, match[1]))
 				}
@@ -122,7 +134,7 @@ func findRetiredTableReferences(
 				if dot := strings.LastIndexByte(table, '.'); dot >= 0 {
 					table = strings.Trim(table[dot+1:], `"`)
 				}
-				if _, forbidden := retired[strings.ToLower(table)]; forbidden {
+				if _, forbidden := retired[strings.ToLower(table)]; forbidden && !allowedRetiredRead(rel, table) {
 					violations = append(violations, fmt.Sprintf("%s:%d GORM Table references %s",
 						rel, fset.Position(n.Pos()).Line, table))
 				}
@@ -152,4 +164,13 @@ func gormTableLiteral(call *ast.CallExpr) (string, bool) {
 		return "", false
 	}
 	return goStringLiteral(lit)
+}
+
+func allowedRetiredRead(rel, table string) bool {
+	for dir, tables := range retiredTableReadAllowlist {
+		if strings.HasPrefix(rel, dir+"/") && tables[strings.ToLower(table)] {
+			return true
+		}
+	}
+	return false
 }
