@@ -50,6 +50,36 @@ func TestEnsureIndexesResetsWorksLocalePins(t *testing.T) {
 	assert.Empty(t, got, "EnsureIndexes must clear pins it no longer declares")
 }
 
+func TestWorksEqualsDelimiterTitleRecall(t *testing.T) {
+	require.NoError(t, EnsureIndexes(testClient))
+	t.Cleanup(func() { _, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexWorks)) })
+
+	docs := []EntityDoc{
+		{ID: "w1", EntityType: "work", NameJa: "ココロネ＝ペンデュラム！"},
+		{ID: "w2", EntityType: "work", NameJa: "ココロネ=ペンデュラム！"},
+	}
+	task, err := testClient.Index(IndexWorks).AddDocuments(docs, nil)
+	require.NoError(t, err)
+	_, err = testClient.Svc().WaitForTask(task.TaskUID, 0)
+	require.NoError(t, err)
+
+	idx := NewIndexer(testClient)
+	for _, tc := range []struct{ name, q, want string }{
+		{"left of fullwidth equals", "ココロネ", "w1"},
+		{"right of fullwidth equals", "ペンデュラム", "w1"},
+		{"left of ascii equals", "ココロネ", "w2"},
+		{"right of ascii equals", "ペンデュラム", "w2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := idx.SearchWorks(t.Context(), WorksQuery{Q: tc.q, Limit: 12})
+			require.NoError(t, err)
+			id, ok := WorkDocIDToWorkID(tc.want)
+			require.True(t, ok)
+			assert.Contains(t, res.IDs, id, "%q must recall %s", tc.q, tc.want)
+		})
+	}
+}
+
 func TestWorksCJKTitleRecall(t *testing.T) {
 	require.NoError(t, EnsureIndexes(testClient))
 	t.Cleanup(func() { _, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexWorks)) })

@@ -68,6 +68,8 @@ func TestEnsureIndexesMatchesMatrix(t *testing.T) {
 		assert.Contains(t, s.TypoTolerance.DisableOnAttributes, "name_zh", uid)
 		assert.NotContains(t, s.TypoTolerance.DisableOnAttributes, "latin", uid)
 
+		assert.Equal(t, []string{"=", "＝"}, s.SeparatorTokens, uid)
+
 		if uid != IndexTags {
 			for _, f := range []string{"aliases_ja", "aliases_zh", "aliases_other"} {
 				assert.Contains(t, s.SearchableAttributes, f, uid)

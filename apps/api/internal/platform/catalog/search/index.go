@@ -41,6 +41,17 @@ var entityRankingRules = []string{
 	"words", "typo", "proximity", "attribute", "sort", "exactness", "popularity:desc",
 }
 
+// equalsSeparators pins '=' (U+003D) and '＝' (U+FF1D) as word separators.
+// charabia's default separator list covers the whole Sm math-symbol category but
+// skips these two: they live in Basic Latin and Halfwidth/Fullwidth Forms, not
+// the U+2200–U+22FF operators block. Galgame titles use '＝' as the
+// main-title/subtitle delimiter, so without this the split is left to the
+// Japanese segmenter's dictionary version — and on the version that attaches
+// '＝' to the left token, a bare "ココロネ" query missed "ココロネ＝ペンデュラム！"
+// while "ココロネ＝" still matched. Declaring them here makes the boundary
+// deterministic regardless of segmenter version.
+var equalsSeparators = []string{"=", "＝"}
+
 func creditNamesSettings() *meilisearch.Settings {
 	return &meilisearch.Settings{
 		SearchableAttributes: entityNameSearchable(),
@@ -48,6 +59,7 @@ func creditNamesSettings() *meilisearch.Settings {
 		SortableAttributes:   []string{"popularity"},
 		RankingRules:         entityRankingRules,
 		LocalizedAttributes:  localizedAttributes(),
+		SeparatorTokens:      equalsSeparators,
 		TypoTolerance: &meilisearch.TypoTolerance{
 			Enabled:             true,
 			DisableOnAttributes: cjkTypoDisabled(),
@@ -69,6 +81,7 @@ func charactersSettings() *meilisearch.Settings {
 		SortableAttributes:   []string{"popularity"},
 		RankingRules:         entityRankingRules,
 		LocalizedAttributes:  localizedAttributes(),
+		SeparatorTokens:      equalsSeparators,
 		TypoTolerance:        &meilisearch.TypoTolerance{Enabled: true, DisableOnAttributes: cjkTypoDisabled()},
 	}
 }
@@ -80,6 +93,7 @@ func labelsSettings() *meilisearch.Settings {
 		SortableAttributes:   []string{"popularity"},
 		RankingRules:         entityRankingRules,
 		LocalizedAttributes:  localizedAttributes(),
+		SeparatorTokens:      equalsSeparators,
 		TypoTolerance:        &meilisearch.TypoTolerance{Enabled: true, DisableOnAttributes: cjkTypoDisabled()},
 	}
 }
@@ -111,6 +125,7 @@ func worksSettings() *meilisearch.Settings {
 		FilterableAttributes: WorksFilterableAttributes,
 		SortableAttributes:   WorksSortableAttributes,
 		RankingRules:         entityRankingRules,
+		SeparatorTokens:      equalsSeparators,
 		TypoTolerance: &meilisearch.TypoTolerance{
 			Enabled: true, DisableOnAttributes: cjkTypoDisabled(worksIntroSearchable...),
 		},
@@ -125,6 +140,7 @@ func tagsSettings() *meilisearch.Settings {
 		SortableAttributes:   []string{"popularity"},
 		RankingRules:         entityRankingRules,
 		LocalizedAttributes:  localizedAttributes(),
+		SeparatorTokens:      equalsSeparators,
 		TypoTolerance:        &meilisearch.TypoTolerance{Enabled: true, DisableOnAttributes: cjkTypoDisabled()},
 	}
 }
