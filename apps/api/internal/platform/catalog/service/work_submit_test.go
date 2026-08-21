@@ -120,6 +120,43 @@ func TestSubmitWorkMintsPendingClaim(t *testing.T) {
 	}
 }
 
+func TestSubmitWorkTrustedMintsLiveClaim(t *testing.T) {
+	s := newLifecycle(t)
+	ctx := t.Context()
+
+	res, err := s.SubmitWork(ctx, SubmitWorkParams{
+		Site: submitSite, ProductWorkID: 90010, ActorUID: 7,
+		Fields: submitFields("直接公開ゲーム"), Trusted: true,
+	})
+	if err != nil {
+		t.Fatalf("submit: %v", err)
+	}
+	if res.ClaimState != model.ClaimStateKeyLive || res.WorkID == 0 || res.EventID == 0 {
+		t.Fatalf("result: %+v", res)
+	}
+
+	var work model.CatalogWork
+	if err := testDB.First(&work, res.WorkID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if work.ClaimState == nil || *work.ClaimState != model.ClaimStateLive {
+		t.Fatalf("claim_state: %v", work.ClaimState)
+	}
+
+	events, err := s.EventsSince(ctx, 0, 10, "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("events: %+v", events)
+	}
+	e := events[0]
+	if e.FromState != nil || e.ToState != model.ClaimStateKeyLive ||
+		e.WorkID != res.WorkID || e.ActorUID != 7 || e.Site != submitSite {
+		t.Fatalf("birth event: %+v", e)
+	}
+}
+
 func TestSubmitWorkStampsReleaseDateAsUser(t *testing.T) {
 	s := newLifecycle(t)
 	res, err := s.SubmitWork(t.Context(), SubmitWorkParams{
