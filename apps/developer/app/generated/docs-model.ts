@@ -728,7 +728,7 @@ export const docsModel: DocsModel = {
                                       {
                                         "name": "distribution",
                                         "nullable": true,
-                                        "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
+                                        "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only (works/{id} and works/{id}/ratings) — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
                                         "type": "array",
                                         "itemsOf": {
                                           "type": "object",
@@ -4426,7 +4426,7 @@ export const docsModel: DocsModel = {
                                       {
                                         "name": "distribution",
                                         "nullable": true,
-                                        "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
+                                        "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only (works/{id} and works/{id}/ratings) — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
                                         "type": "array",
                                         "itemsOf": {
                                           "type": "object",
@@ -5413,7 +5413,7 @@ export const docsModel: DocsModel = {
                                 {
                                   "name": "distribution",
                                   "nullable": true,
-                                  "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
+                                  "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only (works/{id} and works/{id}/ratings) — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
                                   "type": "array",
                                   "itemsOf": {
                                     "type": "object",
@@ -6096,6 +6096,2104 @@ export const docsModel: DocsModel = {
           ]
         },
         {
+          "key": "work-blocks",
+          "label": "作品子资源",
+          "operations": [
+            {
+              "id": "getCatalogWorkCoversPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/covers",
+              "summary": "Cover images of one work, paged — the block a store card or a shelf needs on its own",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Rows the CDN cannot render are dropped before paging rather than after, so a page is short only when the block is exhausted. Need just the two display slots instead of every stored image? works/{id}.cover_slots and works?include=covers pick them for you.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Cover images of this work, in the same order and the same shape as works/{id}.covers[] — one row per stored image, width/height/thumbhash filled from the image service. Rows with no renderable bytes are dropped before paging, so a page is never short of its limit while rows remain",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "height",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "kind",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "portrait_pinned",
+                                  "required": true,
+                                  "type": "boolean"
+                                },
+                                {
+                                  "name": "sexual",
+                                  "required": true,
+                                  "format": "int32",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "thumbhash",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "url",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "violence",
+                                  "required": true,
+                                  "format": "int32",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "width",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page. ABSENT on the last page — this face knows the block's true size, so its absence means \"no more rows\", never \"maybe\"",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/covers\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkScreenshotsPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/screenshots",
+              "summary": "Screenshots of one work, paged, with dimensions and thumbhash",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Each row carries its own sexual and violence level: this face reports them, it does not filter on them.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Screenshots of this work, same order and shape as works/{id}.screenshots[]. Rows with no renderable bytes are dropped before paging",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "caption",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "height",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "sexual",
+                                  "required": true,
+                                  "format": "int32",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "thumbhash",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "url",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "violence",
+                                  "required": true,
+                                  "format": "int32",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "width",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/screenshots\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkTagsPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/tags",
+              "summary": "Source tags of one work, paged, with the canonical mapping and the safety axis",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Ordered count DESC, then name in BYTE order, then source — the parent's order exactly. Rows that map to the canonical vocabulary carry canonical_id/tier/kind plus an nsfw-aware work_count; unmapped rows omit them.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404). It also decides work_count: an sfw caller's count excludes the r18 works it can never fetch"
+                },
+                {
+                  "name": "spoilers",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int32",
+                  "doc": "Max tag spoiler level 0-2 (default 0 = safe) — the works/{id} parameter verbatim. Rows above the ceiling are omitted entirely and consume no page slot, so raising the ceiling can change what a given offset points at"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Source tags carried by this work, same order and shape as works/{id}.tags[] (count DESC, name, source). work_count is the nsfw-aware population of works?tag_id=<canonical_id>, resolved for THIS page only",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "canonical_id",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "count",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "kind",
+                                  "doc": "content|meta",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "name",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "sexual",
+                                  "required": true,
+                                  "type": "boolean"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "spoiler",
+                                  "required": true,
+                                  "doc": "0=none 1=minor 2=major",
+                                  "format": "int32",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "tier",
+                                  "doc": "core|longtail|hidden",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "work_count",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/tags\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkCharactersPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/characters",
+              "summary": "The character roster of one work, paged, with voice credits",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Order is main, secondary, appears, then the credit-only entries. Like the parent block this face applies NO spoiler ceiling — every row publishes its own spoiler level for the caller to gate on, which is why there is no spoilers parameter here.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "The character roster, same order and shape as works/{id}.characters[] (main before secondary before appears, credit-only last). Rows carry spoiler for the CALLER to gate on — this face applies no spoiler ceiling, exactly like the parent block",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "display_name",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "figure",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "id",
+                                  "required": true,
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "identity",
+                                  "doc": "Opaque row identity for catalog.work.roster.suppressed; echo it back, never rebuild it. Present when the character is on the roster; ABSENT when it appears only through a voice credit, in which case kind is unknown and spoiler is 0",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "image",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "kind",
+                                  "required": true,
+                                  "doc": "main|secondary|appears|unknown",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "latin",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "localized",
+                                  "required": true,
+                                  "doc": "preferred name per locale, same election as the character detail face (machine fill-ins flagged); {} when none — render localized[yourLocale] ?? display_name ?? latin",
+                                  "type": "map",
+                                  "itemsOf": {
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "kind",
+                                        "required": true,
+                                        "doc": "which vocabulary the elected row was drawn from, and they do not overlap: an ENTITY name (character, label, credit name, and every projection of them) is translation|spelling_variant, taken from the alias tables; a WORK title is official|alias|abbreviation, taken from catalog_work_title. Read it per entity type — a works localized{} never says translation",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "machine",
+                                        "doc": "true = machine-translated fill-in, present only when this locale has no source-provenance name (a source name always wins the slot); render it like any name but do not treat it as authoritative",
+                                        "type": "boolean"
+                                      },
+                                      {
+                                        "name": "value",
+                                        "required": true,
+                                        "type": "string"
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "spoiler",
+                                  "required": true,
+                                  "doc": "0=none 1=minor 2=major",
+                                  "format": "int32",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "voices",
+                                  "required": true,
+                                  "nullable": true,
+                                  "type": "array",
+                                  "itemsOf": {
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "display_name",
+                                        "required": true,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "id",
+                                        "required": true,
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "lang",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "latin",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "localized",
+                                        "required": true,
+                                        "doc": "preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name ?? latin",
+                                        "type": "map",
+                                        "itemsOf": {
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "kind",
+                                              "required": true,
+                                              "doc": "which vocabulary the elected row was drawn from, and they do not overlap: an ENTITY name (character, label, credit name, and every projection of them) is translation|spelling_variant, taken from the alias tables; a WORK title is official|alias|abbreviation, taken from catalog_work_title. Read it per entity type — a works localized{} never says translation",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "machine",
+                                              "doc": "true = machine-translated fill-in, present only when this locale has no source-provenance name (a source name always wins the slot); render it like any name but do not treat it as authoritative",
+                                              "type": "boolean"
+                                            },
+                                            {
+                                              "name": "value",
+                                              "required": true,
+                                              "type": "string"
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/characters\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkCreditsPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/credits",
+              "summary": "Staff credits of one work grouped by role, paged over credit rows",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. PAGING IS OVER CREDIT ROWS, NOT GROUPS: limit and offset count individual credits, so a role whose credits straddle a page boundary appears in both pages as its own group carrying that page's slice. Concatenating pages means merging the groups that share a role_key. Counting groups instead would leave one page unbounded, which is the thing this face exists to stop.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Credits grouped by role, same shape as works/{id}.credits[]. PAGING IS OVER CREDIT ROWS, not groups: limit/offset count individual credits, and a role whose credits straddle a page boundary appears in BOTH pages as its own group carrying that page's slice. Concatenating pages therefore means merging the groups that share a role_key",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "credits",
+                                  "required": true,
+                                  "nullable": true,
+                                  "type": "array",
+                                  "itemsOf": {
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "character",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "character_id",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "display_name",
+                                        "required": true,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "id",
+                                        "required": true,
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "identity",
+                                        "required": true,
+                                        "doc": "Opaque row identity for catalog.work.credits.suppressed; echo it back, never rebuild it",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "label",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "label_id",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "lang",
+                                        "required": true,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "latin",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "localized",
+                                        "required": true,
+                                        "doc": "preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name ?? latin",
+                                        "type": "map",
+                                        "itemsOf": {
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "kind",
+                                              "required": true,
+                                              "doc": "which vocabulary the elected row was drawn from, and they do not overlap: an ENTITY name (character, label, credit name, and every projection of them) is translation|spelling_variant, taken from the alias tables; a WORK title is official|alias|abbreviation, taken from catalog_work_title. Read it per entity type — a works localized{} never says translation",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "machine",
+                                              "doc": "true = machine-translated fill-in, present only when this locale has no source-provenance name (a source name always wins the slot); render it like any name but do not treat it as authoritative",
+                                              "type": "boolean"
+                                            },
+                                            {
+                                              "name": "value",
+                                              "required": true,
+                                              "type": "string"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
+                                        "name": "source",
+                                        "type": "string"
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "role_key",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "role_name",
+                                  "required": true,
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page, counted in credit rows rather than groups; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/credits\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkReleasesPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/releases",
+              "summary": "Release rows of one work, paged, each with its exact anchors and its own companies",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Ordered by release id ASC. labels[] is THIS version's companies (who developed it, who published it) — the Switch port's publisher and the English edition's publisher are two releases' facts, and this is where each of them lives. For a cross-work release timeline use GET /v1/catalog/releases instead.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Release rows of this work, same order (id ASC) and shape as works/{id}.releases[], each with its exact refs[] and its own labels[]",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "date",
+                                  "required": true,
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "id",
+                                  "required": true,
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "kind",
+                                  "required": true,
+                                  "doc": "default|digital|physical|trial|patch",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "labels",
+                                  "required": true,
+                                  "nullable": true,
+                                  "type": "array",
+                                  "itemsOf": {
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "display_name",
+                                        "required": true,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "id",
+                                        "required": true,
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "kind",
+                                        "required": true,
+                                        "doc": "primary attribution nature: circle|publisher|developer|brand. When the company acted in several capacities this is the most identifying one (brand, circle, developer, publisher in that order) and kinds[] carries them all.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "kinds",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "every capacity this company acted in, sorted; always at least one",
+                                        "type": "array",
+                                        "itemsOf": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      {
+                                        "name": "label_kind",
+                                        "required": true,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "lang",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "localized",
+                                        "required": true,
+                                        "doc": "preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name",
+                                        "type": "map",
+                                        "itemsOf": {
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "kind",
+                                              "required": true,
+                                              "doc": "which vocabulary the elected row was drawn from, and they do not overlap: an ENTITY name (character, label, credit name, and every projection of them) is translation|spelling_variant, taken from the alias tables; a WORK title is official|alias|abbreviation, taken from catalog_work_title. Read it per entity type — a works localized{} never says translation",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "machine",
+                                              "doc": "true = machine-translated fill-in, present only when this locale has no source-provenance name (a source name always wins the slot); render it like any name but do not treat it as authoritative",
+                                              "type": "boolean"
+                                            },
+                                            {
+                                              "name": "value",
+                                              "required": true,
+                                              "type": "string"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
+                                        "name": "logo_hash",
+                                        "required": true,
+                                        "doc": "brand logo content hash in the image service; \"\" = this label has no logo",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "work_count",
+                                        "required": true,
+                                        "format": "int64",
+                                        "type": "integer"
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "lang",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "platform",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "platforms",
+                                  "nullable": true,
+                                  "type": "array",
+                                  "itemsOf": {
+                                    "type": "string"
+                                  }
+                                },
+                                {
+                                  "name": "refs",
+                                  "required": true,
+                                  "nullable": true,
+                                  "type": "array",
+                                  "itemsOf": {
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "external_id",
+                                        "required": true,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "source",
+                                        "required": true,
+                                        "type": "string"
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "title",
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/releases\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkIntrosPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/intros",
+              "summary": "Synopses of one work, one per language, paged",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. One row per language, elected the parent's way: a source-written synopsis beats a machine-translated one, and machine rows are flagged rather than hidden.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "One synopsis per language, same election and shape as works/{id}.intros[] — a source-written row beats a machine-translated one for the same language",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "intro",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "lang",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "machine",
+                                  "type": "boolean"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/intros\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkRatingsPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/ratings",
+              "summary": "Per-source ratings of one work, paged, with the vote histogram and the spread",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. This is the work-DETAIL projection, so distribution and stats are carried in full — unlike the works-list ratings block, which drops them. Scores stay on each source's native scale and are never blended into one number.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Per-source ratings, same order and shape as works/{id}.ratings[] — distribution and stats included, because this IS the work-detail projection of that block",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "distribution",
+                                  "nullable": true,
+                                  "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only (works/{id} and works/{id}/ratings) — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
+                                  "type": "array",
+                                  "itemsOf": {
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "count",
+                                        "required": true,
+                                        "doc": "votes cast at this value",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "score",
+                                        "required": true,
+                                        "doc": "bucket value on the source-native scale",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "rank",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "score",
+                                  "required": true,
+                                  "format": "double",
+                                  "type": "number"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "stats",
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "average",
+                                      "doc": "mean on the source-native scale (score itself is the median for erogamescape)",
+                                      "format": "double",
+                                      "type": "number"
+                                    },
+                                    {
+                                      "name": "max",
+                                      "format": "double",
+                                      "type": "number"
+                                    },
+                                    {
+                                      "name": "min",
+                                      "format": "double",
+                                      "type": "number"
+                                    },
+                                    {
+                                      "name": "stdev",
+                                      "format": "double",
+                                      "type": "number"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "name": "vote_count",
+                                  "required": true,
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/ratings\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkRelationsPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/relations",
+              "summary": "Related works of one work, paged — the block works/{id} only serves under include=relations",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. With nsfw absent or 0 an r18 relation end is dropped WHOLE, not emptied, and next_offset counts what survived that drop. Sequels and fandiscs also reach you through works/{id}.series_siblings, which is the transitive series component rather than the one-hop relation set.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Related works, same order and shape as works/{id}.relations[] under include=relations — one edge rendered per direction. With nsfw absent or 0 an r18 relation end is dropped whole rather than emptied",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "phrase",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "relation_type",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "work",
+                                  "required": true,
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "claimed_by",
+                                      "required": true,
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "content_limit",
+                                          "required": true,
+                                          "doc": "sfw|nsfw",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "site",
+                                          "required": true,
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "state",
+                                          "required": true,
+                                          "doc": "live|draft|pending|declined|hidden",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "work_id",
+                                          "required": true,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "name": "content_rating",
+                                      "required": true,
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "display_name",
+                                      "required": true,
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "id",
+                                      "required": true,
+                                      "format": "int64",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "latin",
+                                      "doc": "romanisation of display_name, from the title row display_name was taken from; absent when that row records none",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "localized",
+                                      "required": true,
+                                      "doc": "preferred title per locale, keyed by canonically-cased BCP-47 tag; {} when none. SPARSE by design — render localized[yourLocale] ?? display_name ?? latin, never a blank",
+                                      "type": "map",
+                                      "itemsOf": {
+                                        "type": "object",
+                                        "children": [
+                                          {
+                                            "name": "kind",
+                                            "required": true,
+                                            "doc": "which vocabulary the elected row was drawn from, and they do not overlap: an ENTITY name (character, label, credit name, and every projection of them) is translation|spelling_variant, taken from the alias tables; a WORK title is official|alias|abbreviation, taken from catalog_work_title. Read it per entity type — a works localized{} never says translation",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "machine",
+                                            "doc": "true = machine-translated fill-in, present only when this locale has no source-provenance name (a source name always wins the slot); render it like any name but do not treat it as authoritative",
+                                            "type": "boolean"
+                                          },
+                                          {
+                                            "name": "value",
+                                            "required": true,
+                                            "type": "string"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "name": "medium",
+                                      "required": true,
+                                      "type": "string"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page, counted AFTER the r18 ends were dropped; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/relations\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkSeriesPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/series",
+              "summary": "The series this work belongs to, paged",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. member_count is the series' whole membership, not this page — follow it with works?series_id=<id> or series/{id}?include=works.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Series this work belongs to, same order and shape as works/{id}.series[]; member_count is the series' full membership, not this page",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "id",
+                                  "required": true,
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "member_count",
+                                  "required": true,
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "name",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/series\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkLinksPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/links",
+              "summary": "Non-identity outbound links of one work (official site, Steam, X, …), paged",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. These are addresses, not anchors: the identity anchors are works/{id}.refs[]. Sources whose storefront URL cannot be reconstructed from the stored code (dlsite, dmm — the section is part of the address and the registry stores only the bare code) are absent here by design and stay reachable through refs[].",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Non-identity outbound links of this work, same order and shape as works/{id}.links[]. Sources whose storefront URL cannot be reconstructed from the stored code (dlsite, dmm) are absent by design — they stay reachable as anchors through refs[]",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "url",
+                                  "required": true,
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/links\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            },
+            {
+              "id": "getCatalogWorkEnginesPublic",
+              "method": "get",
+              "path": "/v1/catalog/works/{id}/engines",
+              "summary": "Engines one work is built with, paged, each with an nsfw-aware work_count",
+              "description": "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. work_count is the number of works this caller would page through via works?engine_id=<id>, so it always matches the list it can actually fetch.",
+              "scope": "catalog:read",
+              "params": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Catalog work id — the very id works/{id} answers on"
+                },
+                {
+                  "name": "limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                },
+                {
+                  "name": "offset",
+                  "in": "query",
+                  "required": false,
+                  "type": "integer",
+                  "format": "int64",
+                  "doc": "Rows to skip"
+                },
+                {
+                  "name": "nsfw",
+                  "in": "query",
+                  "required": false,
+                  "type": "boolean",
+                  "doc": "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "items",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Engines this work is built with, same order and shape as works/{id}.engines[]; work_count is the nsfw-aware population of works?engine_id=<id>, resolved for THIS page only",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "id",
+                                  "required": true,
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "name",
+                                  "required": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "work_count",
+                                  "required": true,
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "next_offset",
+                            "doc": "Pass back as offset= for the next page; absent on the last page",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/engines\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            }
+          ]
+        },
+        {
           "key": "releases",
           "label": "发售与日历",
           "operations": [
@@ -6702,7 +8800,7 @@ export const docsModel: DocsModel = {
                                           {
                                             "name": "distribution",
                                             "nullable": true,
-                                            "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
+                                            "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only (works/{id} and works/{id}/ratings) — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
                                             "type": "array",
                                             "itemsOf": {
                                               "type": "object",
@@ -7297,7 +9395,7 @@ export const docsModel: DocsModel = {
                                       {
                                         "name": "distribution",
                                         "nullable": true,
-                                        "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
+                                        "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only (works/{id} and works/{id}/ratings) — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
                                         "type": "array",
                                         "itemsOf": {
                                           "type": "object",
@@ -7928,7 +10026,7 @@ export const docsModel: DocsModel = {
                                       {
                                         "name": "distribution",
                                         "nullable": true,
-                                        "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
+                                        "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only (works/{id} and works/{id}/ratings) — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
                                         "type": "array",
                                         "itemsOf": {
                                           "type": "object",
@@ -8552,7 +10650,7 @@ export const docsModel: DocsModel = {
                                       {
                                         "name": "distribution",
                                         "nullable": true,
-                                        "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
+                                        "doc": "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only (works/{id} and works/{id}/ratings) — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count",
                                         "type": "array",
                                         "itemsOf": {
                                           "type": "object",

@@ -54,8 +54,14 @@ type SeriesSiblingRow struct {
 	ClaimState    *int16  `gorm:"column:claim_state"`
 }
 
+// The closure walk and the row fetch are ONE statement on purpose, and there is
+// no `EXISTS(series edge?)` pre-probe in front of them. The probe looks like it
+// should skip the walk for the ~98% of works with no series edge; measured on
+// the prod snapshot it does not, because the recursive term for an edgeless
+// work is the same two index-only scans the probe would run (CTE 0.064 ms,
+// probe 0.059 ms). It is a round-trip that saves no work.
 func (s *ReadService) loadSeriesSiblings(ctx context.Context, workID int64) ([]SeriesSiblingRow, error) {
-	var nodes []int64
+	var rows []SeriesSiblingRow
 	if err := s.db.WithContext(ctx).Raw(`
 		WITH RECURSIVE reach(node) AS (
 			SELECT ?::bigint
@@ -68,19 +74,11 @@ func (s *ReadService) loadSeriesSiblings(ctx context.Context, workID int64) ([]S
 				WHERE r.relation_type_id = ? AND r.b_work_id = rc.node
 			) x
 		)
-		SELECT node FROM reach WHERE node <> ?`,
-		workID, seriesRelationTypeID, seriesRelationTypeID, workID).Scan(&nodes).Error; err != nil {
-		return nil, err
-	}
-	if len(nodes) == 0 {
-		return nil, nil
-	}
-	var rows []SeriesSiblingRow
-	if err := s.db.WithContext(ctx).Raw(`
 		SELECT w.id AS work_id, w.display_name, w.medium_id, w.content_rating, w.status, w.site, w.product_work_id, w.claim_state
 		FROM catalog_work w
-		WHERE w.id IN (?) AND w.deleted_at IS NULL
-		ORDER BY w.id`, nodes).Scan(&rows).Error; err != nil {
+		WHERE w.id IN (SELECT node FROM reach WHERE node <> ?) AND w.deleted_at IS NULL
+		ORDER BY w.id`,
+		workID, seriesRelationTypeID, seriesRelationTypeID, workID).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	return rows, nil

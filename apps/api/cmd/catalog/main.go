@@ -296,7 +296,7 @@ func setupPublicCatalog(
 	recordUsage := func(c fiber.Ctx) error {
 		err := c.Next()
 		if cred := devapi.CredentialFrom(c); cred != nil {
-			usageRec.Record(cred, "catalog", c.Response().StatusCode())
+			usageRec.Record(cred, "catalog", c.Route().Path, c.Response().StatusCode())
 			go usageRec.TouchLastUsed(context.Background(), cred)
 		}
 		return err
@@ -315,6 +315,7 @@ func setupPublicCatalog(
 		mw.RateLimit,
 		mw.Quota,
 		devapi.RequireScope(devapi.ScopeCatalogRead),
+		middleware.ETag(),
 	)
 
 	v1.Get("/lookup", publicH.Lookup)
@@ -334,6 +335,18 @@ func setupPublicCatalog(
 	v1.Get("/engines", publicH.EnginesList)
 	v1.Get("/series", publicH.SeriesList)
 	v1.Get("/works/:id", publicH.WorkDetail)
+	v1.Get("/works/:id/covers", publicH.WorkCovers)
+	v1.Get("/works/:id/screenshots", publicH.WorkScreenshots)
+	v1.Get("/works/:id/tags", publicH.WorkTags)
+	v1.Get("/works/:id/characters", publicH.WorkCharacters)
+	v1.Get("/works/:id/credits", publicH.WorkCredits)
+	v1.Get("/works/:id/releases", publicH.WorkReleases)
+	v1.Get("/works/:id/intros", publicH.WorkIntros)
+	v1.Get("/works/:id/ratings", publicH.WorkRatings)
+	v1.Get("/works/:id/relations", publicH.WorkRelations)
+	v1.Get("/works/:id/series", publicH.WorkSeries)
+	v1.Get("/works/:id/links", publicH.WorkLinks)
+	v1.Get("/works/:id/engines", publicH.WorkEngines)
 	v1.Get("/names/:id", publicH.Name)
 	v1.Get("/characters/:id", publicH.Character)
 	v1.Get("/labels/:id", publicH.Label)

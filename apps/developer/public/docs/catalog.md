@@ -11,7 +11,7 @@
 
 - 路径前缀：`/v1/catalog`
 - 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,服务端持有）
-- 端点数：25
+- 端点数：37
 
 ## 端点
 
@@ -28,6 +28,21 @@
 
 - `GET /v1/catalog/works` — Keyset works browse lane: the LIVE galgame registry set (claimed + bodyless) with conjunctive filters; sort=id|updated [详情](https://developer.nextmoe.dev/docs/catalog/listCatalogWorksPublic.md)
 - `GET /v1/catalog/works/{id}` — Frozen work record: identity + titles + exact cross-source refs + claim pointer; include=relations,credits [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkPublic.md)
+
+### 作品子资源
+
+- `GET /v1/catalog/works/{id}/covers` — Cover images of one work, paged — the block a store card or a shelf needs on its own [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkCoversPublic.md)
+- `GET /v1/catalog/works/{id}/screenshots` — Screenshots of one work, paged, with dimensions and thumbhash [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkScreenshotsPublic.md)
+- `GET /v1/catalog/works/{id}/tags` — Source tags of one work, paged, with the canonical mapping and the safety axis [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkTagsPublic.md)
+- `GET /v1/catalog/works/{id}/characters` — The character roster of one work, paged, with voice credits [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkCharactersPublic.md)
+- `GET /v1/catalog/works/{id}/credits` — Staff credits of one work grouped by role, paged over credit rows [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkCreditsPublic.md)
+- `GET /v1/catalog/works/{id}/releases` — Release rows of one work, paged, each with its exact anchors and its own companies [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkReleasesPublic.md)
+- `GET /v1/catalog/works/{id}/intros` — Synopses of one work, one per language, paged [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkIntrosPublic.md)
+- `GET /v1/catalog/works/{id}/ratings` — Per-source ratings of one work, paged, with the vote histogram and the spread [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkRatingsPublic.md)
+- `GET /v1/catalog/works/{id}/relations` — Related works of one work, paged — the block works/{id} only serves under include=relations [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkRelationsPublic.md)
+- `GET /v1/catalog/works/{id}/series` — The series this work belongs to, paged [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkSeriesPublic.md)
+- `GET /v1/catalog/works/{id}/links` — Non-identity outbound links of one work (official site, Steam, X, …), paged [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkLinksPublic.md)
+- `GET /v1/catalog/works/{id}/engines` — Engines one work is built with, paged, each with an nsfw-aware work_count [详情](https://developer.nextmoe.dev/docs/catalog/getCatalogWorkEnginesPublic.md)
 
 ### 发售与日历
 

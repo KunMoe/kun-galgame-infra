@@ -221,7 +221,7 @@ func (s *PublicService) lookupBrief(ctx context.Context, source, externalID stri
 }
 
 func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicInclude, nsfw bool, spoilers int16) (dto.PublicCatalogWork, bool, error) {
-	detail, err := s.read.WorkByID(ctx, id, spoilers)
+	detail, err := s.read.WorkByIDPublic(ctx, id, spoilers, inc.Relations)
 	if err != nil {
 		if stderrors.Is(err, ErrWorkNotFound) {
 			return dto.PublicCatalogWork{}, false, nil
@@ -367,124 +367,32 @@ func (s *PublicService) publicRelations(rels []WorkRelationRow, nsfw bool, limit
 }
 
 func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCatalogWork, detail *WorkDetail, nsfw, displayNSFW bool, spoilers int16) {
-	rec.Releases = make([]dto.PublicRelease, 0, len(detail.Releases))
-	for _, rd := range detail.Releases {
-		r := rd.Release
-		pr := dto.PublicRelease{
-			ID: r.ID, Kind: releaseKindKey(r.Kind), Date: releaseDate(r),
-			Title: derefStrPub(r.Title), Lang: derefStrPub(r.Lang),
-			Platform: derefStrPub(r.Platform), Platforms: publicPlatformsFromExtra(r.Extra),
-			Refs: make([]dto.PublicCatalogRef, 0, len(rd.Anchors)),
-		}
-		for _, a := range rd.Anchors {
-			if a.LinkKind != model.LinkKindExact {
-				continue
-			}
-			pr.Refs = append(pr.Refs, dto.PublicCatalogRef{Source: a.Source, ExternalID: a.ExternalID})
-		}
-		rec.Releases = append(rec.Releases, pr)
-	}
+	rec.Releases = s.publicWorkReleases(detail.Releases)
 	rec.Popularity = make([]dto.PublicPopularity, 0, len(detail.Popularity))
 	for _, p := range detail.Popularity {
 		rec.Popularity = append(rec.Popularity, dto.PublicPopularity{
 			Source: s.sourceKey(p.SourceID), Metric: popularityMetricKey(p.Metric), Value: p.Value,
 		})
 	}
-	rec.Ratings = make([]dto.PublicRating, 0, len(detail.Ratings))
-	for _, r := range detail.Ratings {
-		rec.Ratings = append(rec.Ratings, dto.PublicRating{
-			Source: s.sourceKey(r.SourceID), Score: r.Score, VoteCount: r.VoteCount, Rank: r.Rank,
-			Distribution: r.Distribution, Stats: r.Stats,
-		})
-	}
-	rec.Tags = make([]dto.PublicTag, 0, len(detail.Tags))
-	for _, t := range detail.Tags {
-		if t.Spoiler > spoilers {
-			continue
-		}
-		pt := dto.PublicTag{
-			Name: t.Name, Count: t.Count, Source: s.sourceKey(t.SourceID),
-			Spoiler: t.Spoiler, Sexual: t.Sexual,
-		}
-		if t.CanonicalID != nil {
-			pt.CanonicalID = *t.CanonicalID
-		}
-		if t.Tier != nil {
-			pt.Tier = tagTierKey(*t.Tier)
-		}
-		if t.Kind != nil {
-			pt.Kind = tagKindKey(*t.Kind)
-		}
-		rec.Tags = append(rec.Tags, pt)
-	}
+	rec.Ratings = s.publicDetailRatings(detail.Ratings)
+	rec.Tags = s.publicWorkTags(detail.Tags, spoilers)
 	rec.Playtimes = make([]dto.PublicPlaytime, 0, len(detail.Playtimes))
 	for _, p := range detail.Playtimes {
 		rec.Playtimes = append(rec.Playtimes, dto.PublicPlaytime{
 			Source: s.sourceKey(p.SourceID), Minutes: p.Minutes, VoteCount: p.VoteCount,
 		})
 	}
-	rec.Series = make([]dto.PublicSeries, 0, len(detail.Series))
-	for _, se := range detail.Series {
-		rec.Series = append(rec.Series, dto.PublicSeries{
-			ID: se.ID, Name: se.Name, Source: s.sourceKey(se.SourceID), MemberCount: se.MemberCount,
-		})
-	}
+	rec.Series = s.publicWorkSeries(detail.Series)
 	rec.Platforms = make([]dto.PublicPlatform, 0, len(detail.Platforms))
 	for _, p := range detail.Platforms {
 		rec.Platforms = append(rec.Platforms, dto.PublicPlatform{Platform: p.Platform, Source: s.sourceKey(p.SourceID)})
 	}
 	rec.Intros = s.workIntros(detail.Intros)
-	rec.Covers = make([]dto.PublicCover, 0, len(detail.Covers))
 	imgMeta := s.workMediaMetaFor(ctx, detail.Covers, detail.Screenshots)
-	for _, c := range detail.Covers {
-		url := s.imageURL(c.ImageHash)
-		if url == "" {
-			continue
-		}
-		pc := dto.PublicCover{
-			URL: url, Kind: c.Kind, PortraitPinned: c.PortraitPinned,
-			Sexual: c.Sexual, Violence: c.Violence, Source: s.sourceKey(c.SourceID),
-		}
-		if m, ok := imgMeta[c.ImageHash]; ok {
-			pc.Width, pc.Height, pc.Thumbhash = m.Width, m.Height, m.Thumbhash
-		}
-		rec.Covers = append(rec.Covers, pc)
-	}
+	rec.Covers = s.publicCovers(detail.Covers, imgMeta)
 	rec.CoverSlots = s.pickCoverSlots(detail.Covers, imgMeta, nsfw && displayNSFW)
-	rec.Screenshots = make([]dto.PublicScreenshot, 0, len(detail.Screenshots))
-	for _, sc := range detail.Screenshots {
-		url := s.imageURL(sc.ImageHash)
-		if url == "" {
-			continue
-		}
-		ps := dto.PublicScreenshot{
-			URL: url, Caption: sc.Caption, Sexual: sc.Sexual, Violence: sc.Violence, Source: s.sourceKey(sc.SourceID),
-		}
-		if m, ok := imgMeta[sc.ImageHash]; ok {
-			ps.Width, ps.Height, ps.Thumbhash = m.Width, m.Height, m.Thumbhash
-		}
-		rec.Screenshots = append(rec.Screenshots, ps)
-	}
-	rec.Characters = make([]dto.PublicRosterCharacter, 0, len(detail.Characters))
-	for _, ch := range detail.Characters {
-		pc := dto.PublicRosterCharacter{
-			ID: ch.CharacterID, DisplayName: ch.DisplayName, Latin: derefStrPub(ch.Latin),
-			Kind: rosterKindKey(ch.Kind), Spoiler: ch.Spoiler, Identity: ch.Identity,
-			Voices: make([]dto.PublicRosterVoice, 0, len(ch.Va)),
-		}
-		if ch.ImageHash != nil {
-			pc.Image = s.imageURL(*ch.ImageHash)
-		}
-		if ch.FigureHash != nil {
-			pc.Figure = s.imageURL(*ch.FigureHash)
-		}
-		for _, v := range ch.Va {
-			pc.Voices = append(pc.Voices, dto.PublicRosterVoice{
-				ID: v.CreditNameID, DisplayName: v.Name, Lang: v.Lang, Latin: derefStrPub(v.Latin),
-			})
-		}
-		rec.Characters = append(rec.Characters, pc)
-	}
+	rec.Screenshots = s.publicScreenshots(detail.Screenshots, imgMeta)
+	rec.Characters = s.publicRoster(detail.Characters)
 	rec.Labels = publicWorkLabels(detail.Labels)
 	if rec.Labels == nil {
 		rec.Labels = []dto.PublicWorkLabel{}
@@ -608,38 +516,7 @@ func (s *PublicService) workCredits(ctx context.Context, workID int64) ([]dto.Pu
 	if err != nil {
 		return nil, err
 	}
-	groups := make([]dto.PublicCreditGroup, 0)
-	var cur *dto.PublicCreditGroup
-	for _, r := range rows {
-		if cur == nil || cur.RoleKey != r.RoleKey {
-			groups = append(groups, dto.PublicCreditGroup{
-				RoleKey:  r.RoleKey,
-				RoleName: firstNonEmptyPub(r.RoleNameCN, r.RoleNameJA, r.RoleKey),
-			})
-			cur = &groups[len(groups)-1]
-		}
-		item := dto.PublicCreditItem{ID: r.CreditNameID, DisplayName: r.Name, Lang: r.Lang, Identity: r.Identity}
-		if r.Latin != nil {
-			item.Latin = *r.Latin
-		}
-		if r.CharacterID != nil {
-			item.CharacterID = *r.CharacterID
-		}
-		if r.CharacterNM != nil {
-			item.Character = *r.CharacterNM
-		}
-		if r.LabelID != nil {
-			item.LabelID = *r.LabelID
-		}
-		if r.LabelNM != nil {
-			item.Label = *r.LabelNM
-		}
-		if r.SourceKey != nil {
-			item.Source = *r.SourceKey
-		}
-		cur.Credits = append(cur.Credits, item)
-	}
-	return groups, nil
+	return s.publicCreditGroups(rows), nil
 }
 
 func (s *PublicService) Name(ctx context.Context, id int64, withCredits, nsfw bool, limit, offset int) (dto.PublicName, bool, error) {

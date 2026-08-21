@@ -29,7 +29,7 @@
 
 ## 四个 API
 
-- [目录数据 API（只读）](https://developer.nextmoe.dev/docs/catalog.md)：`/v1/catalog`，25 个端点，凭据 Authorization: Bearer nm_live_…。
+- [目录数据 API（只读）](https://developer.nextmoe.dev/docs/catalog.md)：`/v1/catalog`，37 个端点，凭据 Authorization: Bearer nm_live_…。
 - [游玩时长 API](https://developer.nextmoe.dev/docs/playtime.md)：`/v1/playtime`，5 个端点，凭据 Authorization: Bearer <用户访问令牌>。
 - [编辑提案 API](https://developer.nextmoe.dev/docs/edit.md)：`/api/v1/user/catalog/edit`，6 个端点，凭据 Authorization: Bearer <用户访问令牌>。
 - [资讯 API（授权制）](https://developer.nextmoe.dev/docs/news.md)：`/v1/news`，3 个端点，凭据 Authorization: Bearer nm_live_…。

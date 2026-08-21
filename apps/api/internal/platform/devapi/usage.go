@@ -11,6 +11,7 @@ type usageKey struct {
 	clientID string
 	keyID    uint
 	face     string
+	path     string
 	day      string
 }
 
@@ -29,9 +30,9 @@ func NewUsageRecorder(repo *Repository, store Store) *UsageRecorder {
 	return &UsageRecorder{deltas: make(map[usageKey]*usageDelta), repo: repo, store: store}
 }
 
-func (u *UsageRecorder) Record(cred *Credential, face string, status int) {
+func (u *UsageRecorder) Record(cred *Credential, face, path string, status int) {
 	day := time.Now().UTC().Format("2006-01-02")
-	k := usageKey{clientID: cred.ClientID, keyID: cred.KeyID, face: face, day: day}
+	k := usageKey{clientID: cred.ClientID, keyID: cred.KeyID, face: face, path: path, day: day}
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	d := u.deltas[k]
@@ -64,6 +65,7 @@ func (u *UsageRecorder) Flush(ctx context.Context) error {
 			ClientID:  k.clientID,
 			KeyID:     k.keyID,
 			Face:      k.face,
+			Path:      k.path,
 			Day:       k.day,
 			Count:     d.count,
 			Status4xx: d.s4xx,

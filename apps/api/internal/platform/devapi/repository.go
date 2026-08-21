@@ -391,7 +391,13 @@ func (r *Repository) UpsertUsage(ctx context.Context, rows []DeveloperAPIUsage) 
 		return nil
 	}
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "client_id"}, {Name: "key_id"}, {Name: "face"}, {Name: "day"}},
+		// Every column of idx_usage_day belongs here. A conflict target narrower
+		// than the unique index makes the upsert judge "already counted this" on
+		// the wrong tuple: correct-looking, and then 23505 rolls back the whole
+		// batched INSERT — and Flush re-merges on error, so the stall repeats.
+		Columns: []clause.Column{
+			{Name: "client_id"}, {Name: "key_id"}, {Name: "face"}, {Name: "day"}, {Name: "path"},
+		},
 		DoUpdates: clause.Assignments(map[string]any{
 			"count":      gorm.Expr("developer_api_usage.count + excluded.count"),
 			"status_4xx": gorm.Expr("developer_api_usage.status_4xx + excluded.status_4xx"),

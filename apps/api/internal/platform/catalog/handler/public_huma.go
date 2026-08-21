@@ -547,6 +547,8 @@ func SetupCatalogPublicSpec(app *fiber.App) huma.API {
 		return &publicCalendarTBAOutput{}, nil
 	})
 
+	registerWorkSubresourceSpecs(api, tags)
+
 	RegisterPlaytimeOps(api, nil)
 	return api
 }

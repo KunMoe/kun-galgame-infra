@@ -102,6 +102,16 @@ func runPlatform(cfg *config.Config, args []string) {
 		os.Exit(1)
 	}
 
+	// developer_api_usage.path (the matched route pattern) + the 4→5 column
+	// rebuild of idx_usage_day, for the same reason and one more: AutoMigrate
+	// never alters an index that already exists, so the widened unique key has
+	// to be dropped in raw SQL here or the first two route patterns of a face
+	// collide. Idempotent. See devapi.AddUsagePathColumn.
+	if err := devapi.AddUsagePathColumn(gormDB); err != nil {
+		slog.Error("failed to add the developer usage path column", "error", err)
+		os.Exit(1)
+	}
+
 	// role_permission_overrides.effect, for the same reason: the overlay gained
 	// its deny half on 2026-08-04 and the column is NOT NULL, so a table that
 	// already holds (necessarily grant) rows must be backfilled in raw SQL

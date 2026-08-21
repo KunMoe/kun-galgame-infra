@@ -55,6 +55,13 @@ func (s *PublicService) fillWorkLabelCounts(ctx context.Context, blocks [][]dto.
 			ids = append(ids, l.ID)
 		}
 	}
+	// A NIL id list means "every label" to workCountsLive, not "none": without
+	// this guard a work with no labels and no releases pays for a full aggregate
+	// over catalog_work_label. works/{id}/releases reaches it on any work that
+	// has no release rows at all.
+	if len(ids) == 0 {
+		return nil
+	}
 	counts, err := s.workCountsFor(ctx, labelWorkEdge, ids, nsfw)
 	if err != nil {
 		return err
