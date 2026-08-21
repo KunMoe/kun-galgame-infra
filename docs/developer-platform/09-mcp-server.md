@@ -42,7 +42,7 @@ MCP server 是公开 /v1 契约前面的一层**协议适配**,不是第二个 A
 
 ## 4. 工具面(25 个 = catalog 面 22 + news 面 3;catalog 22 = M1 五个幸存 + `catalog_name_get` + canonical-W1 三件 + A2 八件 + wave-189 三件 + wave-196 两件,2026-08-08 与 canonical 轨 spec 同步)
 
-> **wave 207 口径澄清**:本节所有**覆盖率分数**(下文的 22/25)的分母**始终是 catalog 面**,与工具总数不是一回事。平台的公开 spec 现共 **33 op = catalog 面 25 + playtime 面 5 + news 面 3**;playtime 面**刻意不在 MCP 范围内**,理由见本节末尾那条。
+> **wave 207 口径澄清**:本节所有**覆盖率分数**(下文的 22/37)的分母**始终是 catalog 面**,与工具总数不是一回事。平台的公开 spec 现共 **45 op = catalog 面 37 + playtime 面 5 + news 面 3**(catalog 面 25→37 是 wave 213 波 1 的十二条作品子资源);playtime 面**刻意不在 MCP 范围内**,理由见本节末尾那条。
 
 > **2026-08-18**:news 面三条**全部进面**(下表末三行)。它们与 catalog 工具**不共用凭据前提**——`news:read` 不在 devapi 自助 scope 集内(`TestScopeNewsReadSelfServiceExcluded` 钉死),合作方只授权了索引;故三条工具的描述里各自写明授权制,不然模型只会稳定地拿到 403 而不知道为什么。**同日改动**:授予路径从"平台人工签发"改为**门户申请 + 平台审批**(见 [02 §3.9](./02-public-api.md)),`NewServer` 的 `instructions` 串同步改口(不再说 grants by hand,改说 apply in the developer portal),并加一句署名建议的英文等价表述——instructions 是模型在**任何工具调用之前**唯一读得到的说明,漏改会让它照着旧路径去建议用户联系平台。
 
@@ -76,9 +76,12 @@ MCP server 是公开 /v1 契约前面的一层**协议适配**,不是第二个 A
 | `news_sources` | `GET /v1/news/sources` | 来源注册表(key / 名称 / 主页 / 专栏入口 / publisher uid / 归属文案),无参数。**需 `news:read`(授权制)** |
 | `news_get` | `GET /v1/news/{id}` | 单条资讯;撤回或上游消失后 404 是契约而非查不到。**需 `news:read`(授权制)** |
 
-- **catalog 覆盖面(22/25:三条「有意留白」,待裁定已清零;分母是 catalog 面,平台另
+- **catalog 覆盖面(22/37:三条「有意留白」+ 十二条待裁定;分母是 catalog 面,平台另
   5 op 属 playtime 面,见下条)**:公开 catalog 面
-  现共 25 op,上表覆盖 22。上一波记为「待裁定」的 `stats` 与 `series` 已由 owner
+  现共 37 op,上表覆盖 22。**新增待裁定十二条**:wave 213 波 1 的作品子资源
+  (`works/{id}/covers` 等,见 [02 §3.2](./02-public-api.md))分页的正是
+  `catalog_work_get` 已经整块返回的东西,是否值得各自成工具由 MCP owner 裁,
+  本波只把它们计入分母、不动工具面。上一波记为「待裁定」的 `stats` 与 `series` 已由 owner
   裁定收进工具面(wave 189,2026-08-07),且 `series` 实收**两条**而非一条——
   系列不进任何搜索索引,只有 `series/{id}` 详情道的话调用方**永远拿不到 id**,
   浏览道是它的唯一发现入口,两条必须成对进面。上一波记为「待裁定」的

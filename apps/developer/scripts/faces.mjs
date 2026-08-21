@@ -136,6 +136,24 @@ export const FACE_GROUPS = {
       ops: ['GET /v1/catalog/works', 'GET /v1/catalog/works/{id}']
     },
     {
+      key: 'work-blocks',
+      label: '作品子资源',
+      ops: [
+        'GET /v1/catalog/works/{id}/covers',
+        'GET /v1/catalog/works/{id}/screenshots',
+        'GET /v1/catalog/works/{id}/tags',
+        'GET /v1/catalog/works/{id}/characters',
+        'GET /v1/catalog/works/{id}/credits',
+        'GET /v1/catalog/works/{id}/releases',
+        'GET /v1/catalog/works/{id}/intros',
+        'GET /v1/catalog/works/{id}/ratings',
+        'GET /v1/catalog/works/{id}/relations',
+        'GET /v1/catalog/works/{id}/series',
+        'GET /v1/catalog/works/{id}/links',
+        'GET /v1/catalog/works/{id}/engines'
+      ]
+    },
+    {
       key: 'releases',
       label: '发售与日历',
       ops: [
@@ -233,4 +251,4 @@ export const NO_AUTH = {
 }
 export const OPERATION_AUTH_OVERRIDES = { getCatalogStatsPublic: NO_AUTH }
 
-export const EXPECTED_OPERATION_COUNTS = { catalog: 25, playtime: 5, edit: 6, news: 3 }
+export const EXPECTED_OPERATION_COUNTS = { catalog: 37, playtime: 5, edit: 6, news: 3 }
