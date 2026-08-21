@@ -65,3 +65,55 @@ func AddOAuthClientDevColumns(db *gorm.DB) error {
 	}
 	return nil
 }
+
+// AddUsagePathColumn widens developer_api_usage from one row per
+// (client, key, face, day) to one row per (client, key, face, day, ROUTE
+// PATTERN), so "which public endpoints do third-party keys actually call" is
+// answerable — before this the table only knew face=catalog|galgame|…, which
+// makes any deprecation decision blind.
+//
+// Existing rows are backfilled to the empty string rather than dropped or
+// guessed: they were recorded when the process did not know the route, and
+// empty is the only honest value for "counted before per-path telemetry
+// existed". Every reader aggregates with SUM()/GROUP BY over columns that are
+// not path, so their numbers are unchanged by the split; only row COUNTS grow.
+//
+// The unique index has to be dropped here rather than just extended in the GORM
+// tag: AutoMigrate creates an index when the name is absent and otherwise
+// leaves it alone, so the 4-column idx_usage_day would survive untouched and
+// the first two route patterns of one face and day would collide on 23505 —
+// which fails the whole batched INSERT, not one row.
+//
+// Idempotent: ADD COLUMN IF NOT EXISTS, and the drop is guarded on the index
+// not already covering path, so a re-run does not churn the index. cmd/migrate
+// MUST call this BEFORE AutoMigrate — the column is NOT NULL and the table is
+// populated, and AutoMigrate then recreates idx_usage_day in its 5-column shape.
+//
+// Migrate FIRST, then deploy: code that writes path against a table without the
+// column fails every flush.
+func AddUsagePathColumn(db *gorm.DB) error {
+	if !db.Migrator().HasTable("developer_api_usage") {
+		return nil
+	}
+	for _, s := range []string{
+		`ALTER TABLE developer_api_usage ADD COLUMN IF NOT EXISTS path text NOT NULL DEFAULT ''`,
+		`ALTER TABLE developer_api_usage ALTER COLUMN path DROP DEFAULT`,
+	} {
+		if err := db.Exec(s).Error; err != nil {
+			return fmt.Errorf("devapi migrate %q: %w", s, err)
+		}
+	}
+	var stale bool
+	if err := db.Raw(`SELECT EXISTS (
+		SELECT 1 FROM pg_indexes
+		WHERE schemaname = current_schema() AND tablename = 'developer_api_usage'
+		  AND indexname = 'idx_usage_day' AND indexdef NOT LIKE '%path%')`).Scan(&stale).Error; err != nil {
+		return fmt.Errorf("devapi migrate: inspect idx_usage_day: %w", err)
+	}
+	if stale {
+		if err := db.Exec(`DROP INDEX idx_usage_day`).Error; err != nil {
+			return fmt.Errorf("devapi migrate: drop the pre-path idx_usage_day: %w", err)
+		}
+	}
+	return nil
+}

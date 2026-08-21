@@ -221,7 +221,7 @@ func (s *PublicService) lookupBrief(ctx context.Context, source, externalID stri
 }
 
 func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicInclude, nsfw bool, spoilers int16) (dto.PublicCatalogWork, bool, error) {
-	detail, err := s.read.WorkByID(ctx, id, spoilers)
+	detail, err := s.read.WorkByIDPublic(ctx, id, spoilers, inc.Relations)
 	if err != nil {
 		if stderrors.Is(err, ErrWorkNotFound) {
 			return dto.PublicCatalogWork{}, false, nil

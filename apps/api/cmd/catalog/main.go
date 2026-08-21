@@ -296,7 +296,7 @@ func setupPublicCatalog(
 	recordUsage := func(c fiber.Ctx) error {
 		err := c.Next()
 		if cred := devapi.CredentialFrom(c); cred != nil {
-			usageRec.Record(cred, "catalog", c.Response().StatusCode())
+			usageRec.Record(cred, "catalog", c.Route().Path, c.Response().StatusCode())
 			go usageRec.TouchLastUsed(context.Background(), cred)
 		}
 		return err
@@ -315,6 +315,7 @@ func setupPublicCatalog(
 		mw.RateLimit,
 		mw.Quota,
 		devapi.RequireScope(devapi.ScopeCatalogRead),
+		middleware.ETag(),
 	)
 
 	v1.Get("/lookup", publicH.Lookup)

@@ -55,6 +55,9 @@ func provision(db *gorm.DB) error {
 	if err := AddOAuthClientDevColumns(db); err != nil {
 		return err
 	}
+	if err := AddUsagePathColumn(db); err != nil {
+		return err
+	}
 	models := []any{&siteModel.Site{}, &siteModel.OAuthClient{}}
 	models = append(models, Models()...)
 	return db.AutoMigrate(models...)
@@ -176,7 +179,10 @@ func TestUsageUniqueIndex(t *testing.T) {
 	if !strings.Contains(def, "UNIQUE") {
 		t.Errorf("idx_usage_day is not unique: %s", def)
 	}
-	if !strings.Contains(def, "(client_id, key_id, face, day)") {
+	// The upsert's conflict target in UpsertUsage must be exactly this tuple.
+	// A narrower target is not a compile error and not a wrong-looking query —
+	// it is a 23505 that rolls back the whole batched INSERT at runtime.
+	if !strings.Contains(def, "(client_id, key_id, face, day, path)") {
 		t.Errorf("idx_usage_day columns/order wrong: %s", def)
 	}
 }
@@ -289,38 +295,79 @@ func TestUsageFlushIdempotent(t *testing.T) {
 	ctx := context.Background()
 	cred := &Credential{KeyID: 100, ClientID: "devapitest_usage"}
 
-	rec.Record(cred, "catalog", 200)
-	rec.Record(cred, "catalog", 200)
-	rec.Record(cred, "catalog", 404)
+	const path = "/v1/catalog/works/:id"
+	rec.Record(cred, "catalog", path, 200)
+	rec.Record(cred, "catalog", path, 200)
+	rec.Record(cred, "catalog", path, 404)
 	if err := rec.Flush(ctx); err != nil {
 		t.Fatalf("flush: %v", err)
 	}
-	assertUsage(t, cred.ClientID, cred.KeyID, "catalog", 3, 1, 0)
+	assertUsage(t, cred.ClientID, cred.KeyID, "catalog", path, 3, 1, 0)
 
 	if err := rec.Flush(ctx); err != nil {
 		t.Fatalf("re-flush: %v", err)
 	}
-	assertUsage(t, cred.ClientID, cred.KeyID, "catalog", 3, 1, 0)
+	assertUsage(t, cred.ClientID, cred.KeyID, "catalog", path, 3, 1, 0)
 
-	rec.Record(cred, "catalog", 500)
-	rec.Record(cred, "catalog", 200)
+	rec.Record(cred, "catalog", path, 500)
+	rec.Record(cred, "catalog", path, 200)
 	if err := rec.Flush(ctx); err != nil {
 		t.Fatalf("flush 2: %v", err)
 	}
-	assertUsage(t, cred.ClientID, cred.KeyID, "catalog", 5, 1, 1)
+	assertUsage(t, cred.ClientID, cred.KeyID, "catalog", path, 5, 1, 1)
 }
 
-func assertUsage(t *testing.T, clientID string, keyID uint, face string, count, s4xx, s5xx int64) {
+// Two route patterns of the same face, key and day are two rows, and the batch
+// that writes them both must survive: a conflict target narrower than
+// idx_usage_day would take the second row for a duplicate and abort the INSERT.
+func TestUsageSplitsByRoutePattern(t *testing.T) {
+	cleanup(t)
+	repo := NewRepository(testDB)
+	rec := NewUsageRecorder(repo, newMemStore())
+	ctx := context.Background()
+	cred := &Credential{KeyID: 101, ClientID: "devapitest_usage_path"}
+
+	rec.Record(cred, "catalog", "/v1/catalog/works/:id", 200)
+	rec.Record(cred, "catalog", "/v1/catalog/works/:id", 200)
+	rec.Record(cred, "catalog", "/v1/catalog/search", 200)
+	rec.Record(cred, "catalog", "/v1/catalog/search", 404)
+	if err := rec.Flush(ctx); err != nil {
+		t.Fatalf("flush two patterns in one batch: %v", err)
+	}
+	assertUsage(t, cred.ClientID, cred.KeyID, "catalog", "/v1/catalog/works/:id", 2, 0, 0)
+	assertUsage(t, cred.ClientID, cred.KeyID, "catalog", "/v1/catalog/search", 2, 1, 0)
+
+	// A second batch on both patterns must accumulate, not collide.
+	rec.Record(cred, "catalog", "/v1/catalog/works/:id", 500)
+	rec.Record(cred, "catalog", "/v1/catalog/search", 200)
+	if err := rec.Flush(ctx); err != nil {
+		t.Fatalf("second flush: %v", err)
+	}
+	assertUsage(t, cred.ClientID, cred.KeyID, "catalog", "/v1/catalog/works/:id", 3, 0, 1)
+	assertUsage(t, cred.ClientID, cred.KeyID, "catalog", "/v1/catalog/search", 3, 1, 0)
+
+	// The face-level rollup the developer portal reads must still see one
+	// catalog total, summed across the patterns.
+	faces, err := repo.SumUsageByFace(ctx, []string{cred.ClientID}, "1970-01-01")
+	if err != nil {
+		t.Fatalf("SumUsageByFace: %v", err)
+	}
+	if len(faces) != 1 || faces[0].Face != "catalog" || faces[0].Count != 6 || faces[0].Status4xx != 1 || faces[0].Status5xx != 1 {
+		t.Fatalf("by-face rollup = %+v (want one catalog row, count 6, 4xx 1, 5xx 1)", faces)
+	}
+}
+
+func assertUsage(t *testing.T, clientID string, keyID uint, face, path string, count, s4xx, s5xx int64) {
 	t.Helper()
 	var row DeveloperAPIUsage
-	err := testDB.Where("client_id = ? AND key_id = ? AND face = ?", clientID, keyID, face).
+	err := testDB.Where("client_id = ? AND key_id = ? AND face = ? AND path = ?", clientID, keyID, face, path).
 		Take(&row).Error
 	if err != nil {
 		t.Fatalf("read usage: %v", err)
 	}
 	if row.Count != count || row.Status4xx != s4xx || row.Status5xx != s5xx {
-		t.Errorf("usage = (count %d, 4xx %d, 5xx %d), want (%d, %d, %d)",
-			row.Count, row.Status4xx, row.Status5xx, count, s4xx, s5xx)
+		t.Errorf("usage[%s] = (count %d, 4xx %d, 5xx %d), want (%d, %d, %d)",
+			path, row.Count, row.Status4xx, row.Status5xx, count, s4xx, s5xx)
 	}
 }
 
@@ -384,6 +431,76 @@ func TestAddDevColumnsBackfillsExisting(t *testing.T) {
 	}
 	if def != nil {
 		t.Errorf("dev_enabled default must be dropped, got %q", *def)
+	}
+}
+
+// Rebuilds the pre-path shape (no path column, 4-column idx_usage_day) with a
+// row in it, then runs the migration the way cmd/migrate does — raw SQL first,
+// AutoMigrate second — and checks the three things that can go wrong: the
+// populated table takes a NOT NULL column, the existing row backfills to the
+// empty string, and the unique index really widened (otherwise the two patterns
+// of one face collide on 23505 and take the whole batch down).
+func TestAddUsagePathColumnWidensExisting(t *testing.T) {
+	cleanup(t)
+	if err := testDB.Exec(`DROP INDEX IF EXISTS idx_usage_day`).Error; err != nil {
+		t.Fatalf("drop index: %v", err)
+	}
+	if err := testDB.Exec(`ALTER TABLE developer_api_usage DROP COLUMN IF EXISTS path`).Error; err != nil {
+		t.Fatalf("drop path: %v", err)
+	}
+	if err := testDB.Exec(`CREATE UNIQUE INDEX idx_usage_day
+		ON developer_api_usage (client_id, key_id, face, day)`).Error; err != nil {
+		t.Fatalf("recreate the pre-path index: %v", err)
+	}
+	if err := testDB.Exec(`INSERT INTO developer_api_usage
+		(client_id, key_id, face, day, count, status_4xx, status_5xx, updated_at)
+		VALUES ('devapitest_prepath', 9, 'catalog', '2026-08-01', 7, 1, 0, now())`).Error; err != nil {
+		t.Fatalf("insert pre-path row: %v", err)
+	}
+
+	if err := provision(testDB); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := provision(testDB); err != nil {
+		t.Fatalf("migration is not idempotent: %v", err)
+	}
+
+	var row DeveloperAPIUsage
+	if err := testDB.Where("client_id = ?", "devapitest_prepath").Take(&row).Error; err != nil {
+		t.Fatalf("read backfilled row: %v", err)
+	}
+	if row.Path != "" || row.Count != 7 {
+		t.Errorf("pre-path row = (path %q, count %d), want ('', 7)", row.Path, row.Count)
+	}
+
+	var def *string
+	if err := testDB.Raw(`SELECT column_default FROM information_schema.columns
+		WHERE table_schema = current_schema() AND table_name = 'developer_api_usage' AND column_name = 'path'`).
+		Scan(&def).Error; err != nil {
+		t.Fatalf("read default: %v", err)
+	}
+	if def != nil {
+		t.Errorf("path default must be dropped, got %q", *def)
+	}
+
+	var indexdef string
+	if err := testDB.Raw(`SELECT indexdef FROM pg_indexes
+		WHERE schemaname = current_schema() AND tablename = 'developer_api_usage' AND indexname = 'idx_usage_day'`).
+		Scan(&indexdef).Error; err != nil {
+		t.Fatalf("read indexdef: %v", err)
+	}
+	if !strings.Contains(indexdef, "path") {
+		t.Fatalf("idx_usage_day = %q, want the path column in it", indexdef)
+	}
+
+	// The proof the widened index is what the DB enforces, not just what the
+	// tag says: same client/key/face/day, two patterns, both must land.
+	for _, p := range []string{"/v1/catalog/works/:id", "/v1/catalog/search"} {
+		if err := testDB.Exec(`INSERT INTO developer_api_usage
+			(client_id, key_id, face, day, path, count, status_4xx, status_5xx, updated_at)
+			VALUES ('devapitest_prepath', 9, 'catalog', '2026-08-02', ?, 1, 0, 0, now())`, p).Error; err != nil {
+			t.Fatalf("insert %s: %v", p, err)
+		}
 	}
 }
 

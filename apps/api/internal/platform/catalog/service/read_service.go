@@ -214,18 +214,32 @@ func (s *ReadService) WorkByAnchor(ctx context.Context, sourceKey, externalID st
 			return nil, err
 		}
 	}
-	return s.loadWorkDetail(ctx, workID, 0, false)
+	return s.loadWorkDetail(ctx, workID, workDetailOpts{withRelations: true})
 }
 
 func (s *ReadService) WorkByID(ctx context.Context, workID int64, spoilers int16) (*WorkDetail, error) {
-	return s.loadWorkDetail(ctx, workID, spoilers, false)
+	return s.loadWorkDetail(ctx, workID, workDetailOpts{spoilers: spoilers, withRelations: true})
 }
 
 func (s *ReadService) WorkByIDIncludeHidden(ctx context.Context, workID int64, spoilers int16) (*WorkDetail, error) {
-	return s.loadWorkDetail(ctx, workID, spoilers, true)
+	return s.loadWorkDetail(ctx, workID, workDetailOpts{spoilers: spoilers, includeHidden: true, withRelations: true})
 }
 
-func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, spoilers int16, includeHidden bool) (*WorkDetail, error) {
+// WorkByIDPublic is the only entry point that may leave Relations unloaded: the
+// public face is the only caller whose response omits the block unless the
+// caller spent an ?include= token on it. Every other face renders relations
+// unconditionally and must keep passing withRelations.
+func (s *ReadService) WorkByIDPublic(ctx context.Context, workID int64, spoilers int16, withRelations bool) (*WorkDetail, error) {
+	return s.loadWorkDetail(ctx, workID, workDetailOpts{spoilers: spoilers, withRelations: withRelations})
+}
+
+type workDetailOpts struct {
+	spoilers      int16
+	includeHidden bool
+	withRelations bool
+}
+
+func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, opts workDetailOpts) (*WorkDetail, error) {
 	db := s.db.WithContext(ctx)
 	var work model.CatalogWork
 	if err := db.First(&work, workID).Error; err != nil {
@@ -243,7 +257,7 @@ func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, spoilers
 	}
 	detail.Titles = titles[work.ID]
 
-	rels, err := s.loadWorkReleases(ctx, workID, includeHidden)
+	rels, err := s.loadWorkReleases(ctx, workID, opts.includeHidden)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +323,7 @@ func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, spoilers
 	}
 	detail.Ratings = ratings[work.ID]
 
-	tags, err := s.loadWorkTags(ctx, []claimSubject{subj}, spoilers)
+	tags, err := s.loadWorkTags(ctx, []claimSubject{subj}, opts.spoilers)
 	if err != nil {
 		return nil, err
 	}
@@ -339,11 +353,13 @@ func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, spoilers
 	}
 	detail.Platforms = platforms[work.ID]
 
-	relations, err := s.loadWorkRelations(ctx, workID)
-	if err != nil {
-		return nil, err
+	if opts.withRelations {
+		relations, err := s.loadWorkRelations(ctx, workID)
+		if err != nil {
+			return nil, err
+		}
+		detail.Relations = relations
 	}
-	detail.Relations = relations
 
 	siblings, err := s.loadSeriesSiblings(ctx, workID)
 	if err != nil {
