@@ -177,7 +177,7 @@ func TestWorksListIncludeNamesAndIntros(t *testing.T) {
 		t.Fatalf("intros = %+v, want %+v", it.Intros, wantIntros)
 	}
 
-	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail: found=%v err=%v", found, err)
 	}
@@ -334,7 +334,7 @@ func TestWorkDetailCoversCarryImageMeta(t *testing.T) {
 	addWorkCover(t, w.ID, known, 0, "main", false, 0, srcVNDB)
 	addWorkCover(t, w.ID, unknown, 1, "main", false, 0, srcVNDB)
 
-	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail: found=%v err=%v", found, err)
 	}
@@ -423,7 +423,7 @@ func TestWorkLabelsExcludeSoftDeleted(t *testing.T) {
 		t.Fatalf("create redirect: %v", err)
 	}
 
-	detail, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	detail, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail: found=%v err=%v", found, err)
 	}

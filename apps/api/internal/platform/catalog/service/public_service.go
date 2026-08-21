@@ -220,8 +220,10 @@ func (s *PublicService) lookupBrief(ctx context.Context, source, externalID stri
 	return briefs[workID], nil
 }
 
-func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicInclude, nsfw bool, spoilers int16) (dto.PublicCatalogWork, bool, error) {
-	detail, err := s.read.WorkByIDPublic(ctx, id, spoilers, inc.Relations)
+func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicInclude, nsfw bool, spoilers int16, sel PublicFields) (dto.PublicCatalogWork, bool, error) {
+	withRelations := inc.Relations && sel.Wants("relations")
+	withCredits := inc.Credits && sel.Wants("credits")
+	detail, err := s.read.WorkByIDPublic(ctx, id, spoilers, withRelations, sel)
 	if err != nil {
 		if stderrors.Is(err, ErrWorkNotFound) {
 			return dto.PublicCatalogWork{}, false, nil
@@ -236,13 +238,16 @@ func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicIncl
 		return dto.PublicCatalogWork{}, false, nil
 	}
 
-	subjects := []claimSubject{{WorkID: w.ID}}
-	for _, sb := range detail.SeriesSiblings {
-		subjects = append(subjects, claimSubject{WorkID: sb.WorkID})
-	}
-	if inc.Relations {
-		for _, r := range detail.Relations {
-			subjects = append(subjects, claimSubject{WorkID: r.OtherID})
+	var subjects []claimSubject
+	if sel.Wants("claimed_by", "cover_slots", "series_siblings", "relations") {
+		subjects = append(subjects, claimSubject{WorkID: w.ID})
+		for _, sb := range detail.SeriesSiblings {
+			subjects = append(subjects, claimSubject{WorkID: sb.WorkID})
+		}
+		if withRelations {
+			for _, r := range detail.Relations {
+				subjects = append(subjects, claimSubject{WorkID: r.OtherID})
+			}
 		}
 	}
 	limits, err := s.read.loadDisplayNSFW(ctx, subjects)
@@ -266,23 +271,33 @@ func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicIncl
 		Updated:       w.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 	s.attachWorkFacets(ctx, &rec, detail, nsfw, limits[w.ID], spoilers)
-	if err = s.attachReleaseLabels(ctx, rec.Releases); err != nil {
-		return dto.PublicCatalogWork{}, false, err
+	if sel.Wants("releases") {
+		if err = s.attachReleaseLabels(ctx, rec.Releases); err != nil {
+			return dto.PublicCatalogWork{}, false, err
+		}
 	}
-	if rec.Engines, err = s.workEngines(ctx, id); err != nil {
-		return dto.PublicCatalogWork{}, false, err
+	if sel.Wants("engines") {
+		if rec.Engines, err = s.workEngines(ctx, id); err != nil {
+			return dto.PublicCatalogWork{}, false, err
+		}
 	}
+	// Deliberately NOT gated on ?fields=: it is the filler for work_count
+	// INSIDE tags[]/labels[]/engines[], and fields= is trim-only — a selected
+	// key's bytes must equal the unprojected ones. Its own three queries are
+	// already skipped by the empty-id guards when those blocks went unloaded.
 	if err = s.attachWorkChipCounts(ctx, &rec, nsfw); err != nil {
 		return dto.PublicCatalogWork{}, false, err
 	}
-	if rec.Links, err = s.workLinks(ctx, id); err != nil {
-		return dto.PublicCatalogWork{}, false, err
+	if sel.Wants("links") {
+		if rec.Links, err = s.workLinks(ctx, id); err != nil {
+			return dto.PublicCatalogWork{}, false, err
+		}
 	}
 	rec.SeriesSiblings = s.publicSeriesSiblings(detail.SeriesSiblings, nsfw, limits)
-	if inc.Relations {
+	if withRelations {
 		rec.Relations = s.publicRelations(detail.Relations, nsfw, limits)
 	}
-	if inc.Credits {
+	if withCredits {
 		groups, err := s.workCredits(ctx, id)
 		if err != nil {
 			return dto.PublicCatalogWork{}, false, err

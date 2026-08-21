@@ -22,6 +22,20 @@ func (i WorksListInclude) any() bool {
 	return i.Names || i.Intros || i.Labels || i.Ratings || i.Covers || i.Refs
 }
 
+// intersect is the "fields acts AFTER include" rule: a block is loaded only
+// when the caller asked for it AND its keys can still reach the wire. names
+// carries two keys, so either one keeps it.
+func (i WorksListInclude) intersect(sel PublicFields) WorksListInclude {
+	return WorksListInclude{
+		Names:   i.Names && sel.Wants("latin", "localized"),
+		Intros:  i.Intros && sel.Wants("intros"),
+		Labels:  i.Labels && sel.Wants("labels"),
+		Ratings: i.Ratings && sel.Wants("ratings"),
+		Covers:  i.Covers && sel.Wants("covers"),
+		Refs:    i.Refs && sel.Wants("refs"),
+	}
+}
+
 func ParseWorksListInclude(raw string) WorksListInclude {
 	var inc WorksListInclude
 	for _, tok := range strings.Split(raw, ",") {

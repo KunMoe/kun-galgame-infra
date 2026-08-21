@@ -118,7 +118,7 @@ func TestTagRollupServesTheChipAndAgreesWithTheList(t *testing.T) {
 	}
 
 	for _, nsfw := range []bool{false, true} {
-		rec, found, err := svc.WorkDetail(ctx, safeID, PublicInclude{}, nsfw, 0)
+		rec, found, err := svc.WorkDetail(ctx, safeID, PublicInclude{}, nsfw, 0, PublicFields{})
 		if err != nil || !found {
 			t.Fatalf("nsfw=%v: WorkDetail = %v, %v", nsfw, found, err)
 		}

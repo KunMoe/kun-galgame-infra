@@ -72,7 +72,7 @@ func TestWorkDetailIncludeGatesTheRelationQuery(t *testing.T) {
 	svc := recordingPublicSvc(&stmts)
 
 	stmts = stmts[:0]
-	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("detail without include: found=%v err=%v", found, err)
 	}
@@ -88,7 +88,7 @@ func TestWorkDetailIncludeGatesTheRelationQuery(t *testing.T) {
 	}
 
 	stmts = stmts[:0]
-	rec, found, err = svc.WorkDetail(ctx, w.ID, PublicInclude{Relations: true}, false, 0)
+	rec, found, err = svc.WorkDetail(ctx, w.ID, PublicInclude{Relations: true}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("detail with include: found=%v err=%v", found, err)
 	}
@@ -129,7 +129,7 @@ func TestWorkByIDKeepsRelationsForTheNonPublicFaces(t *testing.T) {
 		{"WorkByID", func() (*WorkDetail, error) { return read.WorkByID(ctx, w.ID, 0) }},
 		{"WorkByIDIncludeHidden", func() (*WorkDetail, error) { return read.WorkByIDIncludeHidden(ctx, w.ID, 0) }},
 		{"WorkByIDPublic(withRelations)", func() (*WorkDetail, error) {
-			return read.WorkByIDPublic(ctx, w.ID, 0, true)
+			return read.WorkByIDPublic(ctx, w.ID, 0, true, PublicFields{})
 		}},
 	} {
 		detail, err := tc.load()

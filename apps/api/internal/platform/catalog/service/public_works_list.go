@@ -29,6 +29,7 @@ type WorksListFilter struct {
 	NSFW           bool
 	Sort           string
 	Include        WorksListInclude
+	Fields         PublicFields
 }
 
 func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor string, limit int) (dto.PublicWorksListData, error) {
@@ -172,11 +173,11 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 			ClaimState: r.ClaimState, UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 	}
-	items, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include)
+	items, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include, f.Fields)
 	if err != nil {
 		return dto.PublicWorksListData{}, err
 	}
-	if f.LabelID > 0 && f.LabelRollup {
+	if f.LabelID > 0 && f.LabelRollup && f.Fields.Wants("via_label") {
 		ids := make([]int64, len(items))
 		for i, it := range items {
 			ids[i] = it.ID
@@ -266,25 +267,39 @@ type workListSourceRow struct {
 	UpdatedAt     string
 }
 
-func (s *PublicService) enrichWorkListItems(ctx context.Context, rows []workListSourceRow, nsfw bool, inc WorksListInclude) ([]dto.PublicWorkListItem, error) {
+func (s *PublicService) enrichWorkListItems(ctx context.Context, rows []workListSourceRow, nsfw bool, inc WorksListInclude, sel PublicFields) ([]dto.PublicWorkListItem, error) {
 	if len(rows) == 0 {
 		return []dto.PublicWorkListItem{}, nil
 	}
+	inc = inc.intersect(sel)
 	ids := make([]int64, len(rows))
 	subjects := make([]claimSubject, len(rows))
 	for i, r := range rows {
 		ids[i] = r.ID
 		subjects[i] = claimSubject{WorkID: r.ID}
 	}
-	dates, err := s.earliestReleaseDatesFor(ctx, ids)
+	// The cover rows feed two different keys, and display_nsfw decides which
+	// cover each of them may show, so both loads follow either key.
+	wantCovers := sel.Wants("cover") || inc.Covers
+	var coverSubjects, limitSubjects []claimSubject
+	if wantCovers {
+		coverSubjects = subjects
+	}
+	if wantCovers || sel.Wants("claimed_by") {
+		limitSubjects = subjects
+	}
+	var dates map[int64]*string
+	if sel.Wants("release_date") {
+		var err error
+		if dates, err = s.earliestReleaseDatesFor(ctx, ids); err != nil {
+			return nil, err
+		}
+	}
+	covers, err := s.read.loadWorkCovers(ctx, coverSubjects)
 	if err != nil {
 		return nil, err
 	}
-	covers, err := s.read.loadWorkCovers(ctx, subjects)
-	if err != nil {
-		return nil, err
-	}
-	limits, err := s.read.loadDisplayNSFW(ctx, subjects)
+	limits, err := s.read.loadDisplayNSFW(ctx, limitSubjects)
 	if err != nil {
 		return nil, err
 	}

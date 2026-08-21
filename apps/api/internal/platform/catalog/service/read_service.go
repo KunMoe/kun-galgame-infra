@@ -229,14 +229,17 @@ func (s *ReadService) WorkByIDIncludeHidden(ctx context.Context, workID int64, s
 // public face is the only caller whose response omits the block unless the
 // caller spent an ?include= token on it. Every other face renders relations
 // unconditionally and must keep passing withRelations.
-func (s *ReadService) WorkByIDPublic(ctx context.Context, workID int64, spoilers int16, withRelations bool) (*WorkDetail, error) {
-	return s.loadWorkDetail(ctx, workID, workDetailOpts{spoilers: spoilers, withRelations: withRelations})
+func (s *ReadService) WorkByIDPublic(ctx context.Context, workID int64, spoilers int16, withRelations bool, fields PublicFields) (*WorkDetail, error) {
+	return s.loadWorkDetail(ctx, workID, workDetailOpts{spoilers: spoilers, withRelations: withRelations, fields: fields})
 }
 
 type workDetailOpts struct {
 	spoilers      int16
 	includeHidden bool
 	withRelations bool
+	// The zero PublicFields is inactive, so every face that does not offer
+	// ?fields= keeps loading all fifteen blocks.
+	fields PublicFields
 }
 
 func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, opts workDetailOpts) (*WorkDetail, error) {
@@ -251,107 +254,139 @@ func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, opts wor
 
 	detail := &WorkDetail{Work: work}
 	subj := claimSubject{WorkID: work.ID}
-	titles, err := s.loadWorkDetailTitles(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
-	}
-	detail.Titles = titles[work.ID]
+	want := opts.fields.Wants
 
-	rels, err := s.loadWorkReleases(ctx, workID, opts.includeHidden)
-	if err != nil {
-		return nil, err
-	}
-	detail.Releases = rels
-
-	if err := db.Raw(`SELECT wl.label_id, l.display_name, l.kind AS label_kind, wl.kind AS kind, l.lang, l.logo_hash
-		FROM catalog_work_label wl JOIN catalog_label l ON l.id = wl.label_id AND l.deleted_at IS NULL
-		WHERE wl.work_id = ? ORDER BY wl.kind, l.display_name`, workID).Scan(&detail.Labels).Error; err != nil {
-		return nil, err
+	if want("titles", "latin", "localized") {
+		titles, err := s.loadWorkDetailTitles(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Titles = titles[work.ID]
 	}
 
-	var workRefs []struct {
-		Source     string
-		ExternalID string
+	// release_date and the release-level half of refs are both derived from
+	// the release rows, so either of them alone still pays for this query.
+	if want("releases", "refs", "release_date") {
+		rels, err := s.loadWorkReleases(ctx, workID, opts.includeHidden)
+		if err != nil {
+			return nil, err
+		}
+		detail.Releases = rels
 	}
-	if err := db.Raw(`SELECT s.key AS source, r.external_id
-		FROM catalog_external_ref r JOIN catalog_source s ON s.id = r.source_id
-		WHERE r.entity_type = ? AND r.entity_id = ? AND r.link_kind = ? AND r.dead_at IS NULL
-		ORDER BY s.key`, model.EntityTypeWork, workID, model.LinkKindExact).Scan(&workRefs).Error; err != nil {
-		return nil, err
+
+	if want("labels") {
+		if err := db.Raw(`SELECT wl.label_id, l.display_name, l.kind AS label_kind, wl.kind AS kind, l.lang, l.logo_hash
+			FROM catalog_work_label wl JOIN catalog_label l ON l.id = wl.label_id AND l.deleted_at IS NULL
+			WHERE wl.work_id = ? ORDER BY wl.kind, l.display_name`, workID).Scan(&detail.Labels).Error; err != nil {
+			return nil, err
+		}
 	}
-	for _, wr := range workRefs {
-		detail.Refs = append(detail.Refs, RefDetail{Source: wr.Source, ExternalID: wr.ExternalID, EntityType: model.EntityTypeWork})
-	}
-	for _, rd := range detail.Releases {
-		for _, a := range rd.Anchors {
-			if a.LinkKind == model.LinkKindExact {
-				detail.Refs = append(detail.Refs, RefDetail{
-					Source: a.Source, ExternalID: a.ExternalID,
-					EntityType: model.EntityTypeRelease, ReleaseID: rd.Release.ID,
-				})
+
+	if want("refs") {
+		var workRefs []struct {
+			Source     string
+			ExternalID string
+		}
+		if err := db.Raw(`SELECT s.key AS source, r.external_id
+			FROM catalog_external_ref r JOIN catalog_source s ON s.id = r.source_id
+			WHERE r.entity_type = ? AND r.entity_id = ? AND r.link_kind = ? AND r.dead_at IS NULL
+			ORDER BY s.key`, model.EntityTypeWork, workID, model.LinkKindExact).Scan(&workRefs).Error; err != nil {
+			return nil, err
+		}
+		for _, wr := range workRefs {
+			detail.Refs = append(detail.Refs, RefDetail{Source: wr.Source, ExternalID: wr.ExternalID, EntityType: model.EntityTypeWork})
+		}
+		for _, rd := range detail.Releases {
+			for _, a := range rd.Anchors {
+				if a.LinkKind == model.LinkKindExact {
+					detail.Refs = append(detail.Refs, RefDetail{
+						Source: a.Source, ExternalID: a.ExternalID,
+						EntityType: model.EntityTypeRelease, ReleaseID: rd.Release.ID,
+					})
+				}
 			}
 		}
 	}
 
-	chars, err := s.loadWorkCharacters(ctx, workID)
-	if err != nil {
-		return nil, err
+	if want("characters") {
+		chars, err := s.loadWorkCharacters(ctx, workID)
+		if err != nil {
+			return nil, err
+		}
+		detail.Characters = chars
 	}
-	detail.Characters = chars
 
-	intros, err := s.loadWorkIntros(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
+	if want("intros") {
+		intros, err := s.loadWorkIntros(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Intros = intros[work.ID]
 	}
-	detail.Intros = intros[work.ID]
 
-	covers, err := s.loadWorkCovers(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
+	if want("covers", "cover_slots") {
+		covers, err := s.loadWorkCovers(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Covers = covers[work.ID]
 	}
-	detail.Covers = covers[work.ID]
 
-	shots, err := s.loadWorkScreenshots(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
+	if want("screenshots") {
+		shots, err := s.loadWorkScreenshots(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Screenshots = shots[work.ID]
 	}
-	detail.Screenshots = shots[work.ID]
 
-	ratings, err := s.loadWorkRatings(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
+	if want("ratings") {
+		ratings, err := s.loadWorkRatings(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Ratings = ratings[work.ID]
 	}
-	detail.Ratings = ratings[work.ID]
 
-	tags, err := s.loadWorkTags(ctx, []claimSubject{subj}, opts.spoilers)
-	if err != nil {
-		return nil, err
+	if want("tags") {
+		tags, err := s.loadWorkTags(ctx, []claimSubject{subj}, opts.spoilers)
+		if err != nil {
+			return nil, err
+		}
+		detail.Tags = tags[work.ID]
 	}
-	detail.Tags = tags[work.ID]
 
-	popularity, err := s.loadWorkPopularity(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
+	if want("popularity") {
+		popularity, err := s.loadWorkPopularity(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Popularity = popularity[work.ID]
 	}
-	detail.Popularity = popularity[work.ID]
 
-	playtimes, err := s.loadWorkPlaytimes(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
+	if want("playtimes") {
+		playtimes, err := s.loadWorkPlaytimes(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Playtimes = playtimes[work.ID]
 	}
-	detail.Playtimes = playtimes[work.ID]
 
-	series, err := s.loadWorkSeries(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
+	if want("series") {
+		series, err := s.loadWorkSeries(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Series = series[work.ID]
 	}
-	detail.Series = series[work.ID]
 
-	platforms, err := s.loadWorkPlatforms(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
+	if want("platforms") {
+		platforms, err := s.loadWorkPlatforms(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Platforms = platforms[work.ID]
 	}
-	detail.Platforms = platforms[work.ID]
 
 	if opts.withRelations {
 		relations, err := s.loadWorkRelations(ctx, workID)
@@ -361,11 +396,13 @@ func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, opts wor
 		detail.Relations = relations
 	}
 
-	siblings, err := s.loadSeriesSiblings(ctx, workID)
-	if err != nil {
-		return nil, err
+	if want("series_siblings") {
+		siblings, err := s.loadSeriesSiblings(ctx, workID)
+		if err != nil {
+			return nil, err
+		}
+		detail.SeriesSiblings = siblings
 	}
-	detail.SeriesSiblings = siblings
 	return detail, nil
 }
 

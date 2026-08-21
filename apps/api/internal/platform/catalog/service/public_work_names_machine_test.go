@@ -16,7 +16,7 @@ func TestPublicWorkDetailTitlesCarryMachine(t *testing.T) {
 	addWorkTitle(t, w.ID, "ja", "ひかり", model.WorkTitleKindOfficial)
 	addWorkTitleP(t, w.ID, "zh-Hans", "光", model.WorkTitleKindOfficial, model.WorkTitleProvenanceMachine)
 
-	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail: found=%v err=%v", found, err)
 	}

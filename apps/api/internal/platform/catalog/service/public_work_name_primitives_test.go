@@ -109,7 +109,7 @@ func TestPublicWorkDetailLocalizedEqualsListElection(t *testing.T) {
 	addWorkTitleP(t, w.ID, "zh-Hans", "心", model.WorkTitleKindOfficial, model.WorkTitleProvenanceMachine)
 	addWorkTitle(t, w.ID, "en", "Kokoro", model.WorkTitleKindAlias)
 
-	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail: found=%v err=%v", found, err)
 	}
@@ -134,7 +134,7 @@ func TestPublicWorkDetailLocalizedIsAlwaysEmitted(t *testing.T) {
 	svc := newPublicSvcCDN()
 
 	w := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "無題")
-	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail: found=%v err=%v", found, err)
 	}
@@ -161,7 +161,7 @@ func TestPublicWorkLatinComesFromTheDisplayTitleRow(t *testing.T) {
 	addWorkTitleLatin(t, w.ID, "ja", "こころ", "Kokoro", model.WorkTitleKindOfficial, model.WorkTitleProvenanceSource)
 	addWorkTitleLatin(t, w.ID, "en", "Heart", "Heart", model.WorkTitleKindAlias, model.WorkTitleProvenanceSource)
 
-	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail: found=%v err=%v", found, err)
 	}

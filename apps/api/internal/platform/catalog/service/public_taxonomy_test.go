@@ -400,7 +400,7 @@ func TestScreenshotMetaEnrichment(t *testing.T) {
 	}
 
 	bare := newPublicSvcCDN()
-	rec, found, err := bare.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0)
+	rec, found, err := bare.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail unwired: found=%v err=%v", found, err)
 	}
@@ -419,7 +419,7 @@ func TestScreenshotMetaEnrichment(t *testing.T) {
 	svc := newPublicSvcCDN().WithImageMeta(stubMeta(map[string]ImageMeta{
 		known: {Width: 1280, Height: 720, Thumbhash: "shot-hash"},
 	}))
-	rec, _, err = svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0)
+	rec, _, err = svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil {
 		t.Fatalf("WorkDetail wired: %v", err)
 	}
@@ -456,7 +456,7 @@ func TestWorkMediaMetaBatchesCoversAndScreenshots(t *testing.T) {
 		}
 		return out, nil
 	})
-	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail: found=%v err=%v", found, err)
 	}

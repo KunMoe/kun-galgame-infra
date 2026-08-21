@@ -102,7 +102,7 @@ func TestCreditsSuppressionExcludedOnEveryReadSite(t *testing.T) {
 	})
 
 	t.Run("PublicWorkCredits", func(t *testing.T) {
-		rec, found, err := pub.WorkDetail(ctx, f.work.ID, PublicInclude{Credits: true}, true, 0)
+		rec, found, err := pub.WorkDetail(ctx, f.work.ID, PublicInclude{Credits: true}, true, 0, PublicFields{})
 		require.NoError(t, err)
 		require.True(t, found)
 		total := 0
@@ -275,7 +275,7 @@ func TestIdentityRoundTripsToExactlyOneCreditRow(t *testing.T) {
 		assertOneRow(t, f.work.ID, r.Identity)
 	}
 
-	rec, _, err := pub.WorkDetail(ctx, f.work.ID, PublicInclude{Credits: true}, true, 0)
+	rec, _, err := pub.WorkDetail(ctx, f.work.ID, PublicInclude{Credits: true}, true, 0, PublicFields{})
 	require.NoError(t, err)
 	for _, g := range rec.Credits {
 		for _, c := range g.Credits {
