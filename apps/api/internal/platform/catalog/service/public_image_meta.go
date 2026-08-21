@@ -3,13 +3,22 @@ package service
 import (
 	"context"
 	"sync"
+
+	"api/internal/platform/catalog/dto"
 )
 
 type ImageMeta struct {
 	Width     int
 	Height    int
 	Thumbhash string
+	Sexual    *int16
 }
+
+// An entry is cacheable only once every field it can ever carry is in it. The
+// thumbhash backfill and the nightly grader both fill in behind a read, and a
+// partial entry pinned in this cache never self-heals: the face keeps serving
+// the gap for the process's lifetime.
+func (m ImageMeta) complete() bool { return m.Thumbhash != "" && m.Sexual != nil }
 
 type ImageMetaFunc func(ctx context.Context, hashes []string) (map[string]ImageMeta, error)
 
@@ -85,7 +94,7 @@ func (s *PublicService) resolveImageMeta(ctx context.Context, hashes []string) m
 		}
 		for h, m := range fetched {
 			out[h] = m
-			if s.metaCache != nil && m.Thumbhash != "" {
+			if s.metaCache != nil && m.complete() {
 				s.metaCache.put(h, m)
 			}
 		}
@@ -97,18 +106,62 @@ func (s *PublicService) coverMetaFor(ctx context.Context, rows []WorkCoverRow) m
 	return s.workMediaMetaFor(ctx, rows, nil)
 }
 
-func (s *PublicService) workMediaMetaFor(ctx context.Context, covers []WorkCoverRow, shots []WorkScreenshotRow) map[string]ImageMeta {
-	if s.imageMeta == nil || (len(covers) == 0 && len(shots) == 0) {
+func (s *PublicService) workMediaMetaFor(ctx context.Context, covers []WorkCoverRow, shots []WorkScreenshotRow, extra ...string) map[string]ImageMeta {
+	if s.imageMeta == nil || (len(covers) == 0 && len(shots) == 0 && len(extra) == 0) {
 		return nil
 	}
-	hashes := make([]string, 0, len(covers)+len(shots))
+	hashes := make([]string, 0, len(covers)+len(shots)+len(extra))
 	for _, c := range covers {
 		hashes = append(hashes, c.ImageHash)
 	}
 	for _, sc := range shots {
 		hashes = append(hashes, sc.ImageHash)
 	}
+	hashes = append(hashes, extra...)
 	return s.resolveImageMeta(ctx, hashes)
+}
+
+func (s *PublicService) entityMetaFor(ctx context.Context, hashes ...string) map[string]ImageMeta {
+	if s.imageMeta == nil || len(hashes) == 0 {
+		return nil
+	}
+	return s.resolveImageMeta(ctx, hashes)
+}
+
+func publicImageMeta(meta map[string]ImageMeta, hash string) *dto.PublicImageMeta {
+	if hash == "" {
+		return nil
+	}
+	m, ok := meta[hash]
+	if !ok {
+		return nil
+	}
+	return &dto.PublicImageMeta{
+		Width: m.Width, Height: m.Height, Thumbhash: m.Thumbhash, Sexual: m.Sexual,
+	}
+}
+
+func derefHashes(ptrs ...*string) []string {
+	out := make([]string, 0, len(ptrs))
+	for _, p := range ptrs {
+		if p != nil {
+			out = append(out, *p)
+		}
+	}
+	return out
+}
+
+func rosterImageHashes(rows []WorkCharacterRow) []string {
+	hashes := make([]string, 0, 2*len(rows))
+	for _, ch := range rows {
+		if ch.ImageHash != nil {
+			hashes = append(hashes, *ch.ImageHash)
+		}
+		if ch.FigureHash != nil {
+			hashes = append(hashes, *ch.FigureHash)
+		}
+	}
+	return hashes
 }
 
 func chunkHashes(s []string, size int) [][]string {

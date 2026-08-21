@@ -403,11 +403,11 @@ func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCat
 		rec.Platforms = append(rec.Platforms, dto.PublicPlatform{Platform: p.Platform, Source: s.sourceKey(p.SourceID)})
 	}
 	rec.Intros = s.workIntros(detail.Intros)
-	imgMeta := s.workMediaMetaFor(ctx, detail.Covers, detail.Screenshots)
+	imgMeta := s.workMediaMetaFor(ctx, detail.Covers, detail.Screenshots, rosterImageHashes(detail.Characters)...)
 	rec.Covers = s.publicCovers(detail.Covers, imgMeta)
 	rec.CoverSlots = s.pickCoverSlots(detail.Covers, imgMeta, nsfw && displayNSFW)
 	rec.Screenshots = s.publicScreenshots(detail.Screenshots, imgMeta)
-	rec.Characters = s.publicRoster(detail.Characters)
+	rec.Characters = s.publicRoster(detail.Characters, imgMeta)
 	rec.Labels = publicWorkLabels(detail.Labels)
 	if rec.Labels == nil {
 		rec.Labels = []dto.PublicWorkLabel{}
@@ -555,6 +555,7 @@ func (s *PublicService) Name(ctx context.Context, id int64, withCredits, nsfw bo
 		BirthD:      res.Head.BirthD,
 		Links:       []dto.PublicPersonLink{},
 	}
+	p.PhotoMeta = publicImageMeta(s.entityMetaFor(ctx, p.PhotoHash), p.PhotoHash)
 	if res.Head.PersonID != nil {
 		p.PersonID = *res.Head.PersonID
 		if p.Links, err = s.personLinks(ctx, p.PersonID); err != nil {
@@ -660,11 +661,16 @@ func (s *PublicService) Character(ctx context.Context, id int64, withWorks, nsfw
 		`SELECT image_hash, figure_hash FROM catalog_character WHERE id = ?`, id).Scan(&art).Error; err != nil {
 		return dto.PublicCharacter{}, false, err
 	}
+	artMeta := s.entityMetaFor(ctx, derefHashes(art.ImageHash, art.FigureHash)...)
 	if art.ImageHash != nil {
-		ch.Image = s.imageURL(*art.ImageHash)
+		if ch.Image = s.imageURL(*art.ImageHash); ch.Image != "" {
+			ch.ImageMeta = publicImageMeta(artMeta, *art.ImageHash)
+		}
 	}
 	if art.FigureHash != nil {
-		ch.Figure = s.imageURL(*art.FigureHash)
+		if ch.Figure = s.imageURL(*art.FigureHash); ch.Figure != "" {
+			ch.FigureMeta = publicImageMeta(artMeta, *art.FigureHash)
+		}
 	}
 	if withWorks {
 		briefs, err := s.claimEnrichCharacter(ctx, res.Works)
@@ -726,6 +732,7 @@ func (s *PublicService) Label(ctx context.Context, id int64, withWorks, nsfw boo
 		ID: head.ID, DisplayName: head.DisplayName, Kind: labelKindKey(head.Kind), Lang: head.Lang,
 		LogoHash: head.LogoHash,
 	}
+	l.LogoMeta = publicImageMeta(s.entityMetaFor(ctx, l.LogoHash), l.LogoHash)
 	counts, err := s.workCountsFor(ctx, labelWorkEdge, []int64{id}, nsfw)
 	if err != nil {
 		return dto.PublicLabel{}, false, err

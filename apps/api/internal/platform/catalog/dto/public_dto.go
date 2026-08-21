@@ -32,6 +32,14 @@ type PublicCatalogRef struct {
 	ExternalID string `json:"external_id"`
 }
 
+type PublicImageMeta struct {
+	Width     int    `json:"width,omitempty"`
+	Height    int    `json:"height,omitempty"`
+	Thumbhash string `json:"thumbhash,omitempty"`
+	Sexual    *int16 `json:"sexual,omitempty" doc:"0 safe / 1 suggestive / 2 explicit; absent = not yet assessed"`
+	Violence  *int16 `json:"violence,omitempty" doc:"0 tame / 1 violent / 2 brutal; absent = no known assessment"`
+}
+
 type PublicRelation struct {
 	RelationType string          `json:"relation_type"`
 	Phrase       string          `json:"phrase"`
@@ -204,6 +212,7 @@ type PublicName struct {
 	Siblings    []PublicSiblingName            `json:"siblings"`
 	Aliases     []PublicAlias                  `json:"aliases" doc:"alternate spellings of THIS credited name; deduplicated, the name itself excluded, [] when it has none"`
 	PhotoHash   string                         `json:"photo_hash" doc:"person photo content hash in the image service; \"\" = no photo (or the person link is hidden)"`
+	PhotoMeta   *PublicImageMeta               `json:"photo_meta,omitempty" doc:"dimensions, thumbhash and grading of photo_hash; absent when there is no photo or the image service did not answer"`
 	Gender      *int16                         `json:"gender,omitempty" doc:"person gender code; absent = unknown, orphan or hidden link"`
 	BirthY      *int16                         `json:"birth_y,omitempty" doc:"fuzzy birth date, year; absent = not recorded at this precision"`
 	BirthM      *int16                         `json:"birth_m,omitempty" doc:"fuzzy birth date, month"`
@@ -245,7 +254,9 @@ type PublicCharacter struct {
 	Traits      []PublicCharacterTrait         `json:"traits"`
 	Intros      []PublicIntro                  `json:"intros"`
 	Image       string                         `json:"image,omitempty"`
+	ImageMeta   *PublicImageMeta               `json:"image_meta,omitempty" doc:"dimensions, thumbhash and grading of image; absent when there is no image or the image service did not answer"`
 	Figure      string                         `json:"figure,omitempty"`
+	FigureMeta  *PublicImageMeta               `json:"figure_meta,omitempty" doc:"dimensions, thumbhash and grading of figure; absent when there is no figure or the image service did not answer"`
 }
 
 type PublicLabelWork struct {
@@ -286,6 +297,7 @@ type PublicLabel struct {
 	WorkCount        int                            `json:"work_count"`
 	ImprintWorkCount int                            `json:"imprint_work_count" doc:"works reachable one hop down through imprints/subsidiaries and NOT attributed to this label itself; follow it with works?label_id=<id>&label_rollup=1"`
 	LogoHash         string                         `json:"logo_hash" doc:"brand logo content hash in the image service; \"\" = this label has no logo"`
+	LogoMeta         *PublicImageMeta               `json:"logo_meta,omitempty" doc:"dimensions, thumbhash and grading of logo_hash; absent when there is no logo or the image service did not answer"`
 	Refs             []PublicCatalogRef             `json:"refs"`
 	Intros           []PublicIntro                  `json:"intros"`
 	Links            []PublicLabelLink              `json:"links"`
@@ -396,7 +408,9 @@ type PublicRosterCharacter struct {
 	Kind        string                         `json:"kind" doc:"main|secondary|appears|unknown"`
 	Spoiler     int16                          `json:"spoiler" doc:"0=none 1=minor 2=major"`
 	Image       string                         `json:"image,omitempty"`
+	ImageMeta   *PublicImageMeta               `json:"image_meta,omitempty" doc:"dimensions, thumbhash and grading of image; absent when there is no image or the image service did not answer"`
 	Figure      string                         `json:"figure,omitempty"`
+	FigureMeta  *PublicImageMeta               `json:"figure_meta,omitempty" doc:"dimensions, thumbhash and grading of figure; absent when there is no figure or the image service did not answer"`
 	Identity    string                         `json:"identity,omitempty" doc:"Opaque row identity for catalog.work.roster.suppressed; echo it back, never rebuild it. Present when the character is on the roster; ABSENT when it appears only through a voice credit, in which case kind is unknown and spoiler is 0"`
 	Voices      []PublicRosterVoice            `json:"voices"`
 }
@@ -520,6 +534,7 @@ type PublicLabelListItem struct {
 	Kind         string                         `json:"kind" doc:"game_brand|bunko|publisher|anime_studio|doujin_circle|group|other"`
 	WorkCount    int                            `json:"work_count"`
 	LogoHash     string                         `json:"logo_hash" doc:"brand logo content hash in the image service; \"\" = this label has no logo"`
+	LogoMeta     *PublicImageMeta               `json:"logo_meta,omitempty" doc:"dimensions, thumbhash and grading of logo_hash; absent when there is no logo or the image service did not answer"`
 	HasRelations bool                           `json:"has_relations" doc:"true = this label has corporate-family edges; follow labels/{id}/relation-graph. False rows need no such call"`
 }
 

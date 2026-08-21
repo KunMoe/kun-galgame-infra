@@ -263,7 +263,9 @@ func setupPublicCatalog(
 			}
 			out := make(map[string]service.ImageMeta, len(raw))
 			for h, m := range raw {
-				out[h] = service.ImageMeta{Width: m.Width, Height: m.Height, Thumbhash: m.Thumbhash}
+				out[h] = service.ImageMeta{
+					Width: m.Width, Height: m.Height, Thumbhash: m.Thumbhash, Sexual: m.Sexual,
+				}
 			}
 			return out, nil
 		})
