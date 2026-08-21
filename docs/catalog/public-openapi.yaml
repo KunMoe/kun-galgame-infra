@@ -1364,11 +1364,17 @@ components:
           type: string
         figure:
           type: string
+        figure_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of figure; absent when there is no figure or the image service did not answer
         id:
           format: int64
           type: integer
         image:
           type: string
+        image_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of image; absent when there is no image or the image service did not answer
         intros:
           items:
             $ref: "#/components/schemas/PublicIntro"
@@ -1746,6 +1752,26 @@ components:
         - items
         - total
       type: object
+    PublicImageMeta:
+      additionalProperties: false
+      properties:
+        height:
+          format: int64
+          type: integer
+        sexual:
+          description: 0 safe / 1 suggestive / 2 explicit; absent = not yet assessed
+          format: int32
+          type: integer
+        thumbhash:
+          type: string
+        violence:
+          description: 0 tame / 1 violent / 2 brutal; absent = no known assessment
+          format: int32
+          type: integer
+        width:
+          format: int64
+          type: integer
+      type: object
     PublicIntro:
       additionalProperties: false
       properties:
@@ -1804,6 +1830,9 @@ components:
         logo_hash:
           description: brand logo content hash in the image service; "" = this label has no logo
           type: string
+        logo_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of logo_hash; absent when there is no logo or the image service did not answer
         next_offset:
           format: int64
           type: integer
@@ -1899,6 +1928,9 @@ components:
         logo_hash:
           description: brand logo content hash in the image service; "" = this label has no logo
           type: string
+        logo_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of logo_hash; absent when there is no logo or the image service did not answer
         work_count:
           description: nsfw-aware work count, identical to labels/{id}.work_count for the same nsfw setting
           format: int64
@@ -1950,6 +1982,9 @@ components:
         logo_hash:
           description: brand logo content hash in the image service; "" = this label has no logo
           type: string
+        logo_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of logo_hash; absent when there is no logo or the image service did not answer
         work_count:
           format: int64
           type: integer
@@ -2205,6 +2240,9 @@ components:
         photo_hash:
           description: person photo content hash in the image service; "" = no photo (or the person link is hidden)
           type: string
+        photo_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of photo_hash; absent when there is no photo or the image service did not answer
         refs:
           items:
             $ref: "#/components/schemas/PublicCatalogRef"
@@ -2561,6 +2599,9 @@ components:
           type: string
         figure:
           type: string
+        figure_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of figure; absent when there is no figure or the image service did not answer
         id:
           format: int64
           type: integer
@@ -2569,6 +2610,9 @@ components:
           type: string
         image:
           type: string
+        image_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of image; absent when there is no image or the image service did not answer
         kind:
           description: main|secondary|appears|unknown
           type: string

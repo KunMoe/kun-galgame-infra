@@ -257,6 +257,20 @@ catalog 的 release 日期是**部分 ISO**:`YYYY` / `YYYY-MM` / `YYYY-MM-DD`,�
 - `width` / `height` / `thumbhash` 来自 image_service 的按需批量查询,**未知即三键一并省略**(消费端退回骨架屏);详情面 `covers[]` **与 `screenshots[]`** 每行同样带这三个可选键(A2-1a 加法,A2-1b 补齐 screenshots——两个粒度共用**同一次**批量查询,详情面对 image_service 仍只发一趟)。
 - sfw 调用方在**两槽**都永不见 `sexual≠0` 的封面(与列表单图 `cover` 同一规则;`violence` 同样不入门槛)。
 
+**⑤ 实体图的 `*_meta`(加法)**
+
+作品媒体(`covers` / `screenshots` / `cover_slots`)一直带 `width`/`height`/`thumbhash` + `sexual`/`violence`,**实体图此前只有一个 hash 或 URL**。现每个实体图槽旁并置一个可选对象,形状 `{width?, height?, thumbhash?, sexual?, violence?}`:
+
+| 面 | 既有键(不变) | 新增对象 |
+|---|---|---|
+| `characters/{id}`、`works/{id}` 的 `characters[]` 花名册行、`works/{id}/characters` | `image` / `figure` | `image_meta` / `figure_meta` |
+| `names/{id}` | `photo_hash` | `photo_meta` |
+| `labels/{id}`、`labels` 列表行、`labels/{id}/relation-graph` 的节点 | `logo_hash` | `logo_meta` |
+
+- **既有字符串键一字未动**,对象纯属加法;值同样取自 image_service 的按需批量查询(每个响应一趟,与封面/截图共用同一次),**查不到即整个对象缺席**,面照常作答。
+- **`sexual`** = 该图的机器分级 `0 安全 / 1 性暗示 / 2 露骨`,与作品媒体轴同一把尺(图床 `0→0, 1→1, 2→2, 3→2`)。**缺席 ≠ 0**:缺席 = 尚未评级(刚上传、夜间 grader 未跑到),`0` = 已评级且判为安全。把两者混同就是把未审图当安全图渲染。
+- **`violence`** = `0 无 / 1 暴力 / 2 血腥`,**目前恒缺席**:逐图暴力判定只有 VNDB 社区投票一处供给,那批图走的是作品媒体面;自动暴力分级实测不可用,实体图上没有可断言的值。字段先立,语义钉死为「**缺席 = 无已知判定**」——与作品媒体面 `violence` 的 `0` = 「该源没有这个轴」是同一句诚实话的两种写法。
+
 ### 3.2.2 作品级 `links[]`(2026-07-29 A2-1e 落账)
 
 `GET /v1/catalog/works/{id}` 的 `links[]` 是该作品的**非身份外部网页链接**——商店页 / 官网 / 社交页,形状 `{source, url}`,恒在(无供给为 `[]`)。

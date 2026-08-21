@@ -216,6 +216,7 @@ func buildTestApp(svc *service.Service, statsRepo *repository.StatsRepository, c
 	img.Post("/upload", h.Upload)
 	img.Get("/stats", h.Stats)
 	img.Get("/:hash", h.Meta)
+	img.Post("/meta-batch", h.MetaBatch)
 	img.Post("/reference-ping", h.Ping)
 	img.Delete("/:hash", h.SoftDelete)
 	return app

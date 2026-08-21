@@ -116,7 +116,7 @@ func (s *PublicService) publicScreenshots(rows []WorkScreenshotRow, meta map[str
 	return out
 }
 
-func (s *PublicService) publicRoster(rows []WorkCharacterRow) []dto.PublicRosterCharacter {
+func (s *PublicService) publicRoster(rows []WorkCharacterRow, meta map[string]ImageMeta) []dto.PublicRosterCharacter {
 	out := make([]dto.PublicRosterCharacter, 0, len(rows))
 	for _, ch := range rows {
 		pc := dto.PublicRosterCharacter{
@@ -125,10 +125,14 @@ func (s *PublicService) publicRoster(rows []WorkCharacterRow) []dto.PublicRoster
 			Voices: make([]dto.PublicRosterVoice, 0, len(ch.Va)),
 		}
 		if ch.ImageHash != nil {
-			pc.Image = s.imageURL(*ch.ImageHash)
+			if pc.Image = s.imageURL(*ch.ImageHash); pc.Image != "" {
+				pc.ImageMeta = publicImageMeta(meta, *ch.ImageHash)
+			}
 		}
 		if ch.FigureHash != nil {
-			pc.Figure = s.imageURL(*ch.FigureHash)
+			if pc.Figure = s.imageURL(*ch.FigureHash); pc.Figure != "" {
+				pc.FigureMeta = publicImageMeta(meta, *ch.FigureHash)
+			}
 		}
 		for _, v := range ch.Va {
 			pc.Voices = append(pc.Voices, dto.PublicRosterVoice{

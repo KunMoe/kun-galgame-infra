@@ -89,13 +89,20 @@ func (s *PublicService) LabelsList(ctx context.Context, f LabelsListFilter, curs
 	if err != nil {
 		return dto.PublicLabelsListData{}, err
 	}
+	logoHashes := make([]string, 0, len(rows))
+	for _, r := range rows {
+		logoHashes = append(logoHashes, r.LogoHash)
+	}
+	logoMeta := s.entityMetaFor(ctx, logoHashes...)
+
 	out := dto.PublicLabelsListData{Items: make([]dto.PublicLabelListItem, len(rows))}
 	for i, r := range rows {
 		out.Items[i] = dto.PublicLabelListItem{
 			ID: r.ID, DisplayName: r.DisplayName, Localized: localizedNames(aliases[r.ID]),
 			Aliases: richAliases(aliases[r.ID]),
 			Kind:    labelKindKey(r.Kind), WorkCount: counts[r.ID],
-			LogoHash: r.LogoHash, HasRelations: related[r.ID],
+			LogoHash: r.LogoHash, LogoMeta: publicImageMeta(logoMeta, r.LogoHash),
+			HasRelations: related[r.ID],
 		}
 	}
 	if out.Total, err = s.taxonomyTotal(ctx, "catalog_label", filterWhere, filterArgs); err != nil {

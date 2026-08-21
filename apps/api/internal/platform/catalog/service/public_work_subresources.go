@@ -122,7 +122,8 @@ func (s *PublicService) WorkCharacters(ctx context.Context, id int64, nsfw bool,
 	if err != nil {
 		return dto.PublicWorkCharactersData{}, false, err
 	}
-	page, next := pageOf(s.publicRoster(rows), limit, offset)
+	pageRows, next := pageOf(rows, limit, offset)
+	page := s.publicRoster(pageRows, s.entityMetaFor(ctx, rosterImageHashes(pageRows)...))
 	charIDs := make([]int64, 0, len(page))
 	var nameIDs []int64
 	for i := range page {

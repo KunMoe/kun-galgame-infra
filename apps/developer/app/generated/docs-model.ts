@@ -1047,6 +1047,38 @@ export const docsModel: DocsModel = {
                                 "type": "string"
                               },
                               {
+                                "name": "figure_meta",
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "height",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "sexual",
+                                    "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "thumbhash",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "violence",
+                                    "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "width",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  }
+                                ]
+                              },
+                              {
                                 "name": "id",
                                 "required": true,
                                 "format": "int64",
@@ -1055,6 +1087,38 @@ export const docsModel: DocsModel = {
                               {
                                 "name": "image",
                                 "type": "string"
+                              },
+                              {
+                                "name": "image_meta",
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "height",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "sexual",
+                                    "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "thumbhash",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "violence",
+                                    "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "width",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  }
+                                ]
                               },
                               {
                                 "name": "intros",
@@ -1600,6 +1664,38 @@ export const docsModel: DocsModel = {
                                 "type": "string"
                               },
                               {
+                                "name": "logo_meta",
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "height",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "sexual",
+                                    "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "thumbhash",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "violence",
+                                    "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "width",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  }
+                                ]
+                              },
+                              {
                                 "name": "next_offset",
                                 "format": "int64",
                                 "type": "integer"
@@ -2104,6 +2200,38 @@ export const docsModel: DocsModel = {
                                 "type": "string"
                               },
                               {
+                                "name": "photo_meta",
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "height",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "sexual",
+                                    "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "thumbhash",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "violence",
+                                    "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "width",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  }
+                                ]
+                              },
+                              {
                                 "name": "refs",
                                 "required": true,
                                 "nullable": true,
@@ -2419,6 +2547,38 @@ export const docsModel: DocsModel = {
                                       "type": "string"
                                     },
                                     {
+                                      "name": "figure_meta",
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "height",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "sexual",
+                                          "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                          "format": "int32",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "thumbhash",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "violence",
+                                          "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                          "format": "int32",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "width",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        }
+                                      ]
+                                    },
+                                    {
                                       "name": "id",
                                       "required": true,
                                       "format": "int64",
@@ -2427,6 +2587,38 @@ export const docsModel: DocsModel = {
                                     {
                                       "name": "image",
                                       "type": "string"
+                                    },
+                                    {
+                                      "name": "image_meta",
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "height",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "sexual",
+                                          "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                          "format": "int32",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "thumbhash",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "violence",
+                                          "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                          "format": "int32",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "width",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        }
+                                      ]
                                     },
                                     {
                                       "name": "intros",
@@ -2977,6 +3169,38 @@ export const docsModel: DocsModel = {
                                       "type": "string"
                                     },
                                     {
+                                      "name": "logo_meta",
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "height",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "sexual",
+                                          "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                          "format": "int32",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "thumbhash",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "violence",
+                                          "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                          "format": "int32",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "width",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        }
+                                      ]
+                                    },
+                                    {
                                       "name": "next_offset",
                                       "format": "int64",
                                       "type": "integer"
@@ -3479,6 +3703,38 @@ export const docsModel: DocsModel = {
                                       "required": true,
                                       "doc": "person photo content hash in the image service; \"\" = no photo (or the person link is hidden)",
                                       "type": "string"
+                                    },
+                                    {
+                                      "name": "photo_meta",
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "height",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "sexual",
+                                          "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                          "format": "int32",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "thumbhash",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "violence",
+                                          "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                          "format": "int32",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "width",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        }
+                                      ]
                                     },
                                     {
                                       "name": "refs",
@@ -4715,6 +4971,38 @@ export const docsModel: DocsModel = {
                                   "type": "string"
                                 },
                                 {
+                                  "name": "figure_meta",
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "height",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "sexual",
+                                      "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "thumbhash",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "violence",
+                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "width",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    }
+                                  ]
+                                },
+                                {
                                   "name": "id",
                                   "required": true,
                                   "format": "int64",
@@ -4728,6 +5016,38 @@ export const docsModel: DocsModel = {
                                 {
                                   "name": "image",
                                   "type": "string"
+                                },
+                                {
+                                  "name": "image_meta",
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "height",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "sexual",
+                                      "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "thumbhash",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "violence",
+                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "width",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    }
+                                  ]
                                 },
                                 {
                                   "name": "kind",
@@ -6672,6 +6992,38 @@ export const docsModel: DocsModel = {
                                   "type": "string"
                                 },
                                 {
+                                  "name": "figure_meta",
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "height",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "sexual",
+                                      "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "thumbhash",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "violence",
+                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "width",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    }
+                                  ]
+                                },
+                                {
                                   "name": "id",
                                   "required": true,
                                   "format": "int64",
@@ -6685,6 +7037,38 @@ export const docsModel: DocsModel = {
                                 {
                                   "name": "image",
                                   "type": "string"
+                                },
+                                {
+                                  "name": "image_meta",
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "height",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "sexual",
+                                      "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "thumbhash",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "violence",
+                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "width",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    }
+                                  ]
                                 },
                                 {
                                   "name": "kind",
@@ -11023,6 +11407,38 @@ export const docsModel: DocsModel = {
                             "type": "string"
                           },
                           {
+                            "name": "figure_meta",
+                            "type": "object",
+                            "children": [
+                              {
+                                "name": "height",
+                                "format": "int64",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "sexual",
+                                "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "thumbhash",
+                                "type": "string"
+                              },
+                              {
+                                "name": "violence",
+                                "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "width",
+                                "format": "int64",
+                                "type": "integer"
+                              }
+                            ]
+                          },
+                          {
                             "name": "id",
                             "required": true,
                             "format": "int64",
@@ -11031,6 +11447,38 @@ export const docsModel: DocsModel = {
                           {
                             "name": "image",
                             "type": "string"
+                          },
+                          {
+                            "name": "image_meta",
+                            "type": "object",
+                            "children": [
+                              {
+                                "name": "height",
+                                "format": "int64",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "sexual",
+                                "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "thumbhash",
+                                "type": "string"
+                              },
+                              {
+                                "name": "violence",
+                                "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "width",
+                                "format": "int64",
+                                "type": "integer"
+                              }
+                            ]
                           },
                           {
                             "name": "intros",
@@ -11804,6 +12252,38 @@ export const docsModel: DocsModel = {
                             "type": "string"
                           },
                           {
+                            "name": "photo_meta",
+                            "type": "object",
+                            "children": [
+                              {
+                                "name": "height",
+                                "format": "int64",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "sexual",
+                                "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "thumbhash",
+                                "type": "string"
+                              },
+                              {
+                                "name": "violence",
+                                "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "width",
+                                "format": "int64",
+                                "type": "integer"
+                              }
+                            ]
+                          },
+                          {
                             "name": "refs",
                             "required": true,
                             "nullable": true,
@@ -12092,6 +12572,38 @@ export const docsModel: DocsModel = {
                                   "type": "string"
                                 },
                                 {
+                                  "name": "logo_meta",
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "height",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "sexual",
+                                      "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "thumbhash",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "violence",
+                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "width",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    }
+                                  ]
+                                },
+                                {
                                   "name": "work_count",
                                   "required": true,
                                   "format": "int64",
@@ -12353,6 +12865,38 @@ export const docsModel: DocsModel = {
                             "required": true,
                             "doc": "brand logo content hash in the image service; \"\" = this label has no logo",
                             "type": "string"
+                          },
+                          {
+                            "name": "logo_meta",
+                            "type": "object",
+                            "children": [
+                              {
+                                "name": "height",
+                                "format": "int64",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "sexual",
+                                "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "thumbhash",
+                                "type": "string"
+                              },
+                              {
+                                "name": "violence",
+                                "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "width",
+                                "format": "int64",
+                                "type": "integer"
+                              }
+                            ]
                           },
                           {
                             "name": "next_offset",
@@ -12710,6 +13254,38 @@ export const docsModel: DocsModel = {
                                   "required": true,
                                   "doc": "brand logo content hash in the image service; \"\" = this label has no logo",
                                   "type": "string"
+                                },
+                                {
+                                  "name": "logo_meta",
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "height",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "sexual",
+                                      "doc": "0 safe / 1 suggestive / 2 explicit; absent = not yet assessed",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "thumbhash",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "violence",
+                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "name": "width",
+                                      "format": "int64",
+                                      "type": "integer"
+                                    }
+                                  ]
                                 },
                                 {
                                   "name": "work_count",
