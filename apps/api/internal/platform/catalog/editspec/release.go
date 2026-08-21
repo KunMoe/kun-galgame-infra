@@ -94,6 +94,7 @@ func RegisterRelease(reg *editing.Registry, db *gorm.DB) error {
 		},
 		SiteOverlays: overlays,
 		Fields:       fields,
+		OnMerge:      buildReleaseOnMerge(db),
 	})
 }
 
