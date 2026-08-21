@@ -98,7 +98,7 @@ func TestRosterIdentityRoundTrips(t *testing.T) {
 	}
 	assert.Equal(t, 1, seen, "exactly the roster half of the union carries an identity")
 
-	rec, _, err := pub.WorkDetail(ctx, f.work.ID, PublicInclude{}, true, 0)
+	rec, _, err := pub.WorkDetail(ctx, f.work.ID, PublicInclude{}, true, 0, PublicFields{})
 	require.NoError(t, err)
 	require.Len(t, rec.Characters, 2)
 	for _, c := range rec.Characters {

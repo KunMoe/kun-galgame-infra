@@ -147,7 +147,7 @@ func TestPublicLookupExactOnly(t *testing.T) {
 			t.Fatalf("lookup via %q: found=%v err=%v", src, found, err)
 		}
 	}
-	detail, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0)
+	detail, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("work detail: found=%v err=%v", found, err)
 	}
@@ -416,7 +416,7 @@ func TestPublicWorkDetailFetchableSet(t *testing.T) {
 		{99999, false},
 	}
 	for _, c := range cases {
-		_, found, err := svc.WorkDetail(ctx, c.id, PublicInclude{}, false, 0)
+		_, found, err := svc.WorkDetail(ctx, c.id, PublicInclude{}, false, 0, PublicFields{})
 		if err != nil {
 			t.Fatalf("work %d: %v", c.id, err)
 		}
@@ -440,7 +440,7 @@ func TestPublicWorkRefsExactOnlyAndRelations(t *testing.T) {
 	createWorkRelation(t, w.ID, sfwOther.ID)
 	createWorkRelation(t, w.ID, r18Other.ID)
 
-	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{Relations: true}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{Relations: true}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("detail: found=%v err=%v", found, err)
 	}
@@ -461,7 +461,7 @@ func TestPublicWorkCreditsInclude(t *testing.T) {
 	name := createCreditName(t, nil, "麻枝准")
 	createCredit(t, w.ID, name.ID, seededRoleID(t), nil)
 
-	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{Credits: true}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{Credits: true}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("detail: found=%v err=%v", found, err)
 	}
@@ -475,7 +475,7 @@ func TestPublicWorkCreditsInclude(t *testing.T) {
 		t.Fatalf("sourceless credit must omit source: %+v", rec.Credits[0].Credits[0])
 	}
 
-	bare, _, _ := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0)
+	bare, _, _ := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if bare.Credits != nil {
 		t.Fatalf("bare record must omit credits: %+v", bare.Credits)
 	}
@@ -507,7 +507,7 @@ func TestPublicWorkCreditsLabelSigner(t *testing.T) {
 		t.Fatalf("set signer: %v", err)
 	}
 
-	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{Credits: true}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{Credits: true}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("detail: found=%v err=%v", found, err)
 	}
@@ -722,14 +722,14 @@ func TestPublicNSFWGate(t *testing.T) {
 		t.Fatalf("tag fixture: %v", err)
 	}
 
-	if _, found, err := svc.WorkDetail(ctx, r18.ID, PublicInclude{}, false, 0); err != nil || found {
+	if _, found, err := svc.WorkDetail(ctx, r18.ID, PublicInclude{}, false, 0, PublicFields{}); err != nil || found {
 		t.Fatalf("default r18 detail: found=%v err=%v (want hidden)", found, err)
 	}
 	if _, found, _ := svc.Lookup(ctx, "vndb", "v104", false); found {
 		t.Fatal("default r18 lookup resolved (want miss)")
 	}
 
-	rec, found, err := svc.WorkDetail(ctx, r18.ID, PublicInclude{Relations: true}, true, 0)
+	rec, found, err := svc.WorkDetail(ctx, r18.ID, PublicInclude{Relations: true}, true, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("nsfw r18 detail: found=%v err=%v", found, err)
 	}
@@ -749,14 +749,14 @@ func TestPublicNSFWGate(t *testing.T) {
 		t.Fatal("nsfw r18 lookup missed (want hit)")
 	}
 
-	recSafe, _, err := svc.WorkDetail(ctx, safe.ID, PublicInclude{Relations: true}, false, 0)
+	recSafe, _, err := svc.WorkDetail(ctx, safe.ID, PublicInclude{Relations: true}, false, 0, PublicFields{})
 	if err != nil {
 		t.Fatalf("safe detail: %v", err)
 	}
 	if len(recSafe.Relations) != 0 {
 		t.Fatalf("safe relations nsfw-off = %+v (want r18 end dropped)", recSafe.Relations)
 	}
-	recSafe, _, _ = svc.WorkDetail(ctx, safe.ID, PublicInclude{Relations: true}, true, 0)
+	recSafe, _, _ = svc.WorkDetail(ctx, safe.ID, PublicInclude{Relations: true}, true, 0, PublicFields{})
 	if len(recSafe.Relations) != 1 || recSafe.Relations[0].Work.ID != r18.ID {
 		t.Fatalf("safe relations nsfw-on = %+v", recSafe.Relations)
 	}
@@ -1058,7 +1058,7 @@ func TestSeriesSiblingsTransitiveClosure(t *testing.T) {
 		return m
 	}
 
-	rec, found, err := svc.WorkDetail(ctx, l1.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, l1.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("leaf detail: found=%v err=%v", found, err)
 	}
@@ -1067,7 +1067,7 @@ func TestSeriesSiblingsTransitiveClosure(t *testing.T) {
 		t.Fatalf("leaf l1 siblings = %v (want hub,l2,l3; not self)", got)
 	}
 
-	recH, _, err := svc.WorkDetail(ctx, hub.ID, PublicInclude{}, false, 0)
+	recH, _, err := svc.WorkDetail(ctx, hub.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil {
 		t.Fatalf("hub detail: %v", err)
 	}
@@ -1075,7 +1075,7 @@ func TestSeriesSiblingsTransitiveClosure(t *testing.T) {
 		t.Fatalf("hub siblings = %v (want l1,l2,l3)", gh)
 	}
 
-	recL, _, err := svc.WorkDetail(ctx, lone.ID, PublicInclude{}, false, 0)
+	recL, _, err := svc.WorkDetail(ctx, lone.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil {
 		t.Fatalf("lone detail: %v", err)
 	}

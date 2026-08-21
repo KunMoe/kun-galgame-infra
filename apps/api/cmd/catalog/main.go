@@ -315,6 +315,7 @@ func setupPublicCatalog(
 		mw.RateLimit,
 		mw.Quota,
 		devapi.RequireScope(devapi.ScopeCatalogRead),
+		catHandler.RequireNSFWCapability,
 		middleware.ETag(),
 	)
 

@@ -261,7 +261,7 @@ func TestClaimedByContentLimitOnEveryFace(t *testing.T) {
 	}
 
 	for id, limit := range want {
-		rec, found, err := svc.WorkDetail(ctx, id, PublicInclude{}, true, 0)
+		rec, found, err := svc.WorkDetail(ctx, id, PublicInclude{}, true, 0, PublicFields{})
 		if err != nil || !found {
 			t.Fatalf("WorkDetail %d: found=%v err=%v", id, found, err)
 		}

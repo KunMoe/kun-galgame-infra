@@ -112,13 +112,17 @@ Cloudflare(TLS,可能命中边缘缓存→直接返回)
        1. resolveCredential:  Bearer key/JWT → app + scopes + tier + nsfw_allowed
                               (JWT 本地验;API key 经 introspection + Redis 缓存)
                               失败 → 401
-       2. rateLimit(Redis,滑动窗口,key=app/key,跨面共享计数) → 超 → 429 + Retry-After + X-RateLimit-*
-       3. quota(Redis 当日计数器,跨面共享) → 超 → 429 + X-Quota-*
-       4. requireScope(端点所需 scope ⊆ 凭证 scope) → 缺 → 403
-       5. content_limit 闸:默认 sfw;请求 nsfw 需 galgame:nsfw scope + nsfw_allowed,否则降级为 sfw 或 403
-       6. handler(命中 ETag → 304;否则查询 + 设缓存头)
-       7. async:Redis incr 用量 + last_used_at;(周期 flush 落库)
+       2. recordUsage:包住其后的整条链,响应回来时按(面, 路由模板, 状态码)记一次
+                      + 异步 last_used_at;周期 flush 落 developer_api_usage
+       3. rateLimit(Redis,滑动窗口,key=app/key,跨面共享计数) → 超 → 429 + Retry-After + X-RateLimit-*
+       4. quota(Redis 当日计数器,跨面共享) → 超 → 429 + X-Quota-*
+       5. requireScope(端点所需 scope ⊆ 凭证 scope) → 缺 → 403
+       6. nsfw 能力闸:请求不带 nsfw= 真值即原样放行;带真值而凭证无 nsfw_allowed → 403
+       7. ETag(If-None-Match 命中 → 304)
+       8. handler(查询 + 设缓存头)
 ```
+
+> **第 6 步只看能力位,不看 scope,也绝不降级。** 旧稿这里写的是「content_limit 闸:请求 nsfw 需 `galgame:nsfw` scope + `nsfw_allowed`,否则降级为 sfw 或 403」——那描述的是已退役的 galgame 面的形状,catalog 面上**从来没有存在过**这样一道闸(在此波之前 `nsfw=1` 对任何 `catalog:read` key 都直接生效)。现在这道闸是:`nsfw` 参数的真值集与 handler 完全同一个解析器,凭证的 `nsfw_allowed` = key 的 `nsfw_allowed` **AND** client 的 `dev_nsfw_allowed`,不满足即 **403 + 可执行提示**(去门户申请)。**不降级为 sfw** 是刻意的:被悄悄收窄的一页会被调用方当成全部真相读走。`/v1/catalog/stats`(挂在 group 之上)与 `/v1/news` 不在这条链上。
 
 伪代码(中间件):
 ```go
@@ -130,7 +134,7 @@ func OpenAPIAuth(c fiber.Ctx) error {
     c.Locals("cred", cred)
     return c.Next()
 }
-// handler 内:requireScope("catalog:read"); content_limit = gate(c.Query("content_limit"), cred)
+// group 上:requireScope("catalog:read"); requireNSFWCapability(c) // nsfw=1 且无 nsfw_allowed → 403
 ```
 
 ---

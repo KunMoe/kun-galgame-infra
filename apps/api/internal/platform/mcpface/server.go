@@ -22,7 +22,11 @@ const instructions = "NextMoe catalog: read-only tools over the public galgame a
 	"Send `Authorization: Bearer nm_<api-key>` on the MCP endpoint; get a key at " + devPortalURL + ". " +
 	"Use *_lookup / *_get when you already hold an id or external id, and *_search for natural language. " +
 	"catalog_works_list browses/filters the works registry in bulk; catalog_changes is the incremental-sync feed. " +
-	"R18 content is hidden by default: opt in with nsfw=true. " +
+	"The catalog_work_* family pages ONE block of a work each (covers, screenshots, tags, characters, credits, " +
+	"releases, intros, ratings, relations, series, links, engines) — reach for them instead of catalog_work_get " +
+	"when a single block is all you need. " +
+	"R18 content is hidden by default: opt in with nsfw=true, which requires an API key carrying the NSFW " +
+	"capability and is refused with 403 without it. " +
 	"The news_* tools are a separate face over partner-republished galgame news and need the news:read scope, " +
 	"which no key carries by default — apply for it in the developer portal and the platform decides. " +
 	"Attribution: while this stage of the NextMoe API is in use, credit the API as 鲲 Galgame 论坛 " +

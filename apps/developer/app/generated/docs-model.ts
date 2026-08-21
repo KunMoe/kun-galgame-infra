@@ -367,7 +367,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "boolean",
-                  "doc": "true/1 = include r18 works (default false = dropped from items, total AND facets alike)"
+                  "doc": "true/1 = include r18 works (default false = dropped from items, total AND facets alike). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded"
                 },
                 {
                   "name": "include",
@@ -375,6 +375,13 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs — the works-list vocabulary verbatim (unknown tokens ignored)"
+                },
+                {
+                  "name": "fields",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — total/page/limit/items/facets — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"
                 },
                 {
                   "name": "search_intro",
@@ -4083,7 +4090,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "boolean",
-                  "doc": "true/1 = include r18 works (default false = dropped)"
+                  "doc": "true/1 = include r18 works (default false = dropped). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded"
                 },
                 {
                   "name": "include",
@@ -4091,6 +4098,13 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs (default: none — the response is then byte-identical to the base contract). Unknown tokens are ignored. names carries latin + localized{}; intros carries one intro per language, detail-face shape; covers carries the portrait + banner slots with width/height/thumbhash; refs carries the work exact identity anchors, detail-face shape"
+                },
+                {
+                  "name": "fields",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — items/next_cursor — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"
                 }
               ],
               "responses": [
@@ -4648,7 +4662,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "boolean",
-                  "doc": "true/1 = serve r18 works and r18 relation ends (caller-controlled; default false = hidden)"
+                  "doc": "true/1 = serve r18 works and r18 relation ends (default false = hidden). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded, so it can never read an sfw page as the whole truth"
                 },
                 {
                   "name": "spoilers",
@@ -4657,6 +4671,13 @@ export const docsModel: DocsModel = {
                   "type": "integer",
                   "format": "int32",
                   "doc": "Max tag spoiler level 0-2 (default 0 = safe): tags[] carries per-edge spoiler + per-tag sexual flags, and rows above this ceiling are omitted entirely. The axis is populated for the VNDB-derived vocabulary only — Bangumi/DLsite folksonomy publishes no spoiler or category concept, so those rows read 0/false"
+                },
+                {
+                  "name": "fields",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Comma-separated TOP-LEVEL keys of this response to keep (default absent = every key, byte-identical to the base contract). id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response, never reshaped. Applied AFTER include=, so fields=relations WITHOUT include=relations does not expand the block — the key is simply absent. Selecting a derived key loads what it needs (release_date and refs both read the release rows) but the dependency's own key still only appears if you named it. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"
                 }
               ],
               "responses": [

@@ -220,7 +220,7 @@ func (s *PublicService) buildReleaseFeedItems(ctx context.Context, rows []releas
 	if err != nil {
 		return nil, err
 	}
-	works, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include)
+	works, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include, PublicFields{})
 	if err != nil {
 		return nil, err
 	}

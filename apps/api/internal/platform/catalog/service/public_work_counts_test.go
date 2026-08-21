@@ -55,7 +55,7 @@ func TestWorkChipCountsMatchTheirLandingPages(t *testing.T) {
 		nsfw bool
 		want int
 	}{{false, 1}, {true, 2}} {
-		rec, found, err := svc.WorkDetail(ctx, safe.ID, PublicInclude{}, tc.nsfw, 0)
+		rec, found, err := svc.WorkDetail(ctx, safe.ID, PublicInclude{}, tc.nsfw, 0, PublicFields{})
 		if err != nil || !found {
 			t.Fatalf("nsfw=%v: WorkDetail = %v, %v", tc.nsfw, found, err)
 		}
@@ -229,7 +229,7 @@ func TestWorkCountCountsOnlyLiveClaims(t *testing.T) {
 		t.Fatalf("engines/{id}.work_count = %d, want 1", engRec.WorkCount)
 	}
 
-	rec, found, err := svc.WorkDetail(ctx, draft.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, draft.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail = %v, %v", found, err)
 	}

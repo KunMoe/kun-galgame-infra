@@ -165,6 +165,7 @@ func registerTools(s *mcp.Server, up *Upstream) {
 		Annotations: readOnly,
 	}, t.catalogReleases)
 
+	registerWorkSubresourceTools(s, t)
 	registerNewsTools(s, t)
 }
 
@@ -179,7 +180,7 @@ type catalogSearchInput struct {
 	Q      string `json:"q,omitempty" jsonschema:"Relevance query over the entity's names."`
 	Limit  int    `json:"limit,omitempty" jsonschema:"Max hits (default 20, hard cap 20)."`
 	Locale string `json:"locale,omitempty" jsonschema:"UI locale pinning the query language: zh, ja, or en."`
-	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"works only: true = include r18 hits (default false = excluded server-side)."`
+	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"works only: true = include r18 hits (requires an API key with the NSFW capability; default false = excluded server-side)."`
 }
 
 func (t *tools) catalogSearch(ctx context.Context, req *mcp.CallToolRequest, in catalogSearchInput) (*mcp.CallToolResult, any, error) {
@@ -199,7 +200,7 @@ const descCatalogWorkGet = "Fetch one catalog work's registry row by its numeric
 type catalogWorkGetInput struct {
 	ID      int    `json:"id" jsonschema:"The catalog work id (required)."`
 	Include string `json:"include,omitempty" jsonschema:"Comma-separated extra blocks: credits and/or relations. Omit for the bare registry row."`
-	Nsfw    bool   `json:"nsfw,omitempty" jsonschema:"true = serve r18 works and r18 relation ends (caller-controlled; default false = hidden)."`
+	Nsfw    bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works and r18 relation ends (requires an API key with the NSFW capability; default false = hidden)."`
 }
 
 func (t *tools) catalogWorkGet(ctx context.Context, req *mcp.CallToolRequest, in catalogWorkGetInput) (*mcp.CallToolResult, any, error) {
@@ -216,7 +217,7 @@ const descCatalogLookup = "Reverse-look up a catalog work by an EXTERNAL id — 
 type catalogLookupInput struct {
 	Source     string `json:"source" jsonschema:"External source key (required): vndb, bangumi, dlsite, or erogamescape."`
 	ExternalID string `json:"external_id" jsonschema:"The id within that source (required), e.g. v19658 for VNDB."`
-	Nsfw       bool   `json:"nsfw,omitempty" jsonschema:"true = resolve r18 works too (default false = 404 on an r18 hit)."`
+	Nsfw       bool   `json:"nsfw,omitempty" jsonschema:"true = resolve r18 works too (requires an API key with the NSFW capability; default false = 404 on an r18 hit)."`
 }
 
 func (t *tools) catalogLookupExternal(ctx context.Context, req *mcp.CallToolRequest, in catalogLookupInput) (*mcp.CallToolResult, any, error) {
@@ -234,7 +235,7 @@ const descCatalogNameGet = "Fetch one credited name (creator identity) by its nu
 type catalogNameGetInput struct {
 	ID      int    `json:"id" jsonschema:"The name id (required). Find one with catalog_search type=names."`
 	Include string `json:"include,omitempty" jsonschema:"Set to credits to attach the works this name is credited on."`
-	Nsfw    bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works among the credits (default false = dropped)."`
+	Nsfw    bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works among the credits (requires an API key with the NSFW capability; default false = hidden)."`
 	Limit   int    `json:"limit,omitempty" jsonschema:"Max attached credits (default 50, cap 50)."`
 	Offset  int    `json:"offset,omitempty" jsonschema:"Offset into the attached credits list."`
 }
@@ -254,7 +255,7 @@ const descCatalogLabelGet = "Fetch one label (brand / doujin circle) by its nume
 type catalogLabelGetInput struct {
 	ID      int    `json:"id" jsonschema:"The label id (required)."`
 	Include string `json:"include,omitempty" jsonschema:"Set to works to attach the works attributed to this label."`
-	Nsfw    bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works among the attributions (default false = dropped)."`
+	Nsfw    bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works among the attributions (requires an API key with the NSFW capability; default false = hidden)."`
 	Limit   int    `json:"limit,omitempty" jsonschema:"Max attached works (default 50, cap 50)."`
 	Offset  int    `json:"offset,omitempty" jsonschema:"Offset into the attached works list."`
 }
@@ -275,7 +276,7 @@ const descCatalogCharacterGet = "Fetch one character by its numeric id: localize
 type catalogCharacterGetInput struct {
 	ID       int    `json:"id" jsonschema:"The character id (required)."`
 	Include  string `json:"include,omitempty" jsonschema:"Set to works to attach the works the character appears in."`
-	Nsfw     bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works and sexual-family traits (default false = both dropped)."`
+	Nsfw     bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works and sexual-family traits (requires an API key with the NSFW capability; default false = both hidden)."`
 	Spoilers int    `json:"spoilers,omitempty" jsonschema:"Max trait spoiler level 0-2 (default 0 = safe)."`
 	Limit    int    `json:"limit,omitempty" jsonschema:"Max attached works (default 50, cap 50)."`
 	Offset   int    `json:"offset,omitempty" jsonschema:"Offset into the attached works list."`
@@ -313,7 +314,7 @@ type catalogWorksListInput struct {
 	Sort           string `json:"sort,omitempty" jsonschema:"id = ascending browse order (default); updated = newest-updated first."`
 	Cursor         string `json:"cursor,omitempty" jsonschema:"Opaque keyset cursor from a prior next_cursor; omit for the first page."`
 	Limit          int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20)."`
-	Nsfw           bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works (default false = dropped server-side)."`
+	Nsfw           bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works (requires an API key with the NSFW capability; default false = hidden)."`
 	Status         string `json:"status,omitempty" jsonschema:"live (default) = the public live registry set; pending = the moderator review queue, which needs a second end-user credential this MCP transport cannot carry and therefore always 403s here."`
 }
 
@@ -360,7 +361,7 @@ const descCatalogTagGet = "Fetch one canonical tag (the cross-source tag vocabul
 type catalogTagGetInput struct {
 	ID      int    `json:"id" jsonschema:"The canonical tag id (required)."`
 	Include string `json:"include,omitempty" jsonschema:"Set to works to attach works carrying any mapped source tag."`
-	Nsfw    bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works among the attachments (default false = dropped)."`
+	Nsfw    bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works among the attachments (requires an API key with the NSFW capability; default false = hidden)."`
 	Limit   int    `json:"limit,omitempty" jsonschema:"Works per page 1-50 (default 50)."`
 	Offset  int    `json:"offset,omitempty" jsonschema:"Rows to skip."`
 }
@@ -397,7 +398,7 @@ type catalogWorksSearchInput struct {
 	Facets         string `json:"facets,omitempty" jsonschema:"Comma-separated CLOSED vocabulary: content_rating,olang,claimed,tag_id,label_id,engine_id,series_id,source. Counted over the same filtered set as total."`
 	Page           int    `json:"page,omitempty" jsonschema:"1-based page number (default 1); a page past the end is empty."`
 	Limit          int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20)."`
-	Nsfw           bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works in items, total AND facets (default false = dropped)."`
+	Nsfw           bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works in items, total AND facets (requires an API key with the NSFW capability; default false = hidden)."`
 	Include        string `json:"include,omitempty" jsonschema:"Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs."`
 	SearchIntro    bool   `json:"search_intro,omitempty" jsonschema:"true = also match q against the work synopsis, not just titles/aliases (default false)."`
 }
@@ -437,7 +438,7 @@ type catalogCalendarInput struct {
 	ContentLimit string `json:"content_limit,omitempty" jsonschema:"Comma-separated CLOSED vocabulary sfw,nsfw — the editorial display axis, gating bucket membership and the count alike. Unknown token = 400."`
 	Cursor       string `json:"cursor,omitempty" jsonschema:"Opaque keyset cursor from a prior next_cursor; omit for the first page."`
 	Limit        int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20)."`
-	Nsfw         bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works (default false = dropped)."`
+	Nsfw         bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works (requires an API key with the NSFW capability; default false = hidden)."`
 	Include      string `json:"include,omitempty" jsonschema:"Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs."`
 }
 
@@ -462,7 +463,7 @@ type catalogCalendarPendingInput struct {
 	ContentLimit string `json:"content_limit,omitempty" jsonschema:"Comma-separated CLOSED vocabulary sfw,nsfw (editorial display axis). Unknown token = 400."`
 	Cursor       string `json:"cursor,omitempty" jsonschema:"Opaque keyset cursor from a prior next_cursor; omit for the first page."`
 	Limit        int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20)."`
-	Nsfw         bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works (default false = dropped)."`
+	Nsfw         bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works (requires an API key with the NSFW capability; default false = hidden)."`
 	Include      string `json:"include,omitempty" jsonschema:"Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs."`
 }
 
@@ -486,7 +487,7 @@ type catalogCalendarTBAInput struct {
 	ContentLimit string `json:"content_limit,omitempty" jsonschema:"Comma-separated CLOSED vocabulary sfw,nsfw (editorial display axis). Unknown token = 400."`
 	Cursor       string `json:"cursor,omitempty" jsonschema:"Opaque keyset cursor from a prior next_cursor; omit for the first page."`
 	Limit        int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20)."`
-	Nsfw         bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works (default false = dropped)."`
+	Nsfw         bool   `json:"nsfw,omitempty" jsonschema:"true = include r18 works (requires an API key with the NSFW capability; default false = hidden)."`
 	Include      string `json:"include,omitempty" jsonschema:"Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs."`
 }
 
@@ -510,7 +511,7 @@ type catalogLabelsListInput struct {
 	Kind   string `json:"kind,omitempty" jsonschema:"Filter by kind: game_brand, bunko, publisher, anime_studio, doujin_circle, or group. A token outside this closed set is a 400."`
 	Cursor string `json:"cursor,omitempty" jsonschema:"Opaque keyset cursor from a prior next_cursor; omit for the first page."`
 	Limit  int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20)."`
-	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (default false = excluded)."`
+	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (requires an API key with the NSFW capability; default false = excluded)."`
 }
 
 func (t *tools) catalogLabelsList(ctx context.Context, req *mcp.CallToolRequest, in catalogLabelsListInput) (*mcp.CallToolResult, any, error) {
@@ -531,7 +532,7 @@ type catalogTagsListInput struct {
 	Kind   string `json:"kind,omitempty" jsonschema:"Filter by kind: content or meta. A token outside this closed set is a 400."`
 	Cursor string `json:"cursor,omitempty" jsonschema:"Opaque keyset cursor from a prior next_cursor; omit for the first page."`
 	Limit  int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20)."`
-	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (default false = excluded)."`
+	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (requires an API key with the NSFW capability; default false = excluded)."`
 }
 
 func (t *tools) catalogTagsList(ctx context.Context, req *mcp.CallToolRequest, in catalogTagsListInput) (*mcp.CallToolResult, any, error) {
@@ -551,7 +552,7 @@ const descCatalogEnginesList = "Browse the engine vocabulary itself (the visual-
 type catalogEnginesListInput struct {
 	Cursor string `json:"cursor,omitempty" jsonschema:"Opaque keyset cursor from a prior next_cursor; omit for the first page."`
 	Limit  int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20)."`
-	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (default false = excluded)."`
+	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (requires an API key with the NSFW capability; default false = excluded)."`
 }
 
 func (t *tools) catalogEnginesList(ctx context.Context, req *mcp.CallToolRequest, in catalogEnginesListInput) (*mcp.CallToolResult, any, error) {
@@ -567,7 +568,7 @@ const descCatalogEngineGet = "Fetch one engine by its numeric id: name, an nsfw-
 
 type catalogEngineGetInput struct {
 	ID   int  `json:"id" jsonschema:"The catalog engine id (required)."`
-	Nsfw bool `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (default false = excluded)."`
+	Nsfw bool `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (requires an API key with the NSFW capability; default false = excluded)."`
 }
 
 func (t *tools) catalogEngineGet(ctx context.Context, req *mcp.CallToolRequest, in catalogEngineGetInput) (*mcp.CallToolResult, any, error) {
@@ -584,7 +585,7 @@ const descCatalogSeriesList = "Browse the series vocabulary itself (a series gro
 type catalogSeriesListInput struct {
 	Cursor string `json:"cursor,omitempty" jsonschema:"Opaque keyset cursor from a prior next_cursor; omit for the first page."`
 	Limit  int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20)."`
-	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (default false = excluded)."`
+	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (requires an API key with the NSFW capability; default false = excluded)."`
 	Source string `json:"source,omitempty" jsonschema:"Comma-separated filter on the same key each row prints in source: curated (hand-filed), derived (built by the automatic series lane), dlsite (filed by that importer). An OPEN vocabulary — an unrecognized token yields an empty page rather than an error."`
 }
 
@@ -604,7 +605,7 @@ const descCatalogSeriesGet = "Fetch one series by its numeric id: identity, the 
 type catalogSeriesGetInput struct {
 	ID           int  `json:"id" jsonschema:"The catalog series id (required)."`
 	IncludeWorks bool `json:"include_works,omitempty" jsonschema:"true = attach the series' member works in reading order (default false = identity only)."`
-	Nsfw         bool `json:"nsfw,omitempty" jsonschema:"true = keep r18 works among the members (default false = dropped)."`
+	Nsfw         bool `json:"nsfw,omitempty" jsonschema:"true = keep r18 works among the members (requires an API key with the NSFW capability; default false = hidden)."`
 	Limit        int  `json:"limit,omitempty" jsonschema:"Member works per page 1-50 (default 50)."`
 	Offset       int  `json:"offset,omitempty" jsonschema:"Member works to skip, for paging past the first page."`
 }
@@ -642,7 +643,7 @@ const descCatalogLabelRelationGraph = "Fetch the whole corporate family around o
 
 type catalogLabelRelationGraphInput struct {
 	ID   int  `json:"id" jsonschema:"The catalog label id to grow the graph from (required)."`
-	Nsfw bool `json:"nsfw,omitempty" jsonschema:"true = count r18 works in every node's work_count (default false = excluded, matching an sfw catalog_label_get)."`
+	Nsfw bool `json:"nsfw,omitempty" jsonschema:"true = count r18 works in every node's work_count (requires an API key with the NSFW capability; default false = excluded, matching an sfw catalog_label_get)."`
 }
 
 func (t *tools) catalogLabelRelationGraph(ctx context.Context, req *mcp.CallToolRequest, in catalogLabelRelationGraphInput) (*mcp.CallToolResult, any, error) {
@@ -675,7 +676,7 @@ type catalogReleasesInput struct {
 	ContentLimit string `json:"content_limit,omitempty" jsonschema:"Comma-separated CLOSED vocabulary sfw,nsfw — the editorial DISPLAY axis on the parent work (not the age rating). Unknown token = 400."`
 	Cursor       string `json:"cursor,omitempty" jsonschema:"Opaque keyset cursor from a prior next_cursor; omit for the first page."`
 	Limit        int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20); above 100 is clamped."`
-	Nsfw         bool   `json:"nsfw,omitempty" jsonschema:"true = include releases of r18 works (default false = dropped)."`
+	Nsfw         bool   `json:"nsfw,omitempty" jsonschema:"true = include releases of r18 works (requires an API key with the NSFW capability; default false = hidden)."`
 	Include      string `json:"include,omitempty" jsonschema:"Comma-separated rich-brief blocks applied to each item's attached WORK: names,intros,labels,ratings,covers,refs. The release's own refs[] are always present."`
 }
 
