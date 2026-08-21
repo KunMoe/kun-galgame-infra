@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"api/internal/platform/catalog/model"
+	"api/internal/platform/catalog/repository"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -61,20 +62,28 @@ func Run(ctx context.Context, db *gorm.DB, opts Opts) (*Stats, error) {
 		if !opts.Apply {
 			continue
 		}
-		res := db.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).
-			Create(&model.CatalogExternalRef{
-				EntityType: model.EntityTypeRelease,
-				EntityID:   c.ReleaseID,
-				SourceID:   getchuSource,
-				ExternalID: c.GetchuID,
-				LinkKind:   model.LinkKindExact,
-				MatchedBy:  matchedBy,
-			})
+		var wrote bool
+		err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			res := tx.Clauses(clause.OnConflict{DoNothing: true}).
+				Create(&model.CatalogExternalRef{
+					EntityType: model.EntityTypeRelease,
+					EntityID:   c.ReleaseID,
+					SourceID:   getchuSource,
+					ExternalID: c.GetchuID,
+					LinkKind:   model.LinkKindExact,
+					MatchedBy:  matchedBy,
+				})
+			if res.Error != nil || res.RowsAffected == 0 {
+				return res.Error
+			}
+			wrote = true
+			return repository.TouchReleaseWorks(ctx, tx, []int64{c.ReleaseID})
+		})
 		switch {
-		case res.Error != nil:
+		case err != nil:
 			st.Errors++
-			slog.Warn("write ref", "release", c.ReleaseID, "getchu", c.GetchuID, "err", res.Error)
-		case res.RowsAffected == 0:
+			slog.Warn("write ref", "release", c.ReleaseID, "getchu", c.GetchuID, "err", err)
+		case !wrote:
 			st.Conflict++
 		default:
 			st.Written++
