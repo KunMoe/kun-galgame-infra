@@ -421,7 +421,13 @@ func SetupCatalogPublicSpec(app *fiber.App) huma.API {
 			"consumer cursor and be skipped forever. " +
 			"DELETIONS DO NOT FLOW THROUGH THIS FEED — a row that leaves the LIVE set simply stops appearing; " +
 			"merge-style disappearances are covered by /v1/catalog/redirects, and mirror-style consumers should " +
-			"periodically reconcile the full id set via works?sort=id.",
+			"periodically reconcile the full id set via works?sort=id. " +
+			"WATERMARK GUARANTEE: any write that changes what a work's public face renders — its own columns and " +
+			"every works?include= block (names, intros, labels, ratings, covers, refs) plus release_date — moves " +
+			"that work's updated_at, so a full mirror can be driven from this feed alone. The guarantee covers " +
+			"sub-resource and fan-out writes (a cover detached, a label logo cleared, an anchor confirmed or " +
+			"killed, a release edited, a merge rehanging facets onto the survivor), and it is one-directional: " +
+			"updated_at moving does not promise the rendered bytes differ, so consumers must diff, not trust.",
 		Tags: tags,
 	}, func(context.Context, *publicChangesInput) (*publicChangesOutput, error) {
 		return &publicChangesOutput{}, nil
