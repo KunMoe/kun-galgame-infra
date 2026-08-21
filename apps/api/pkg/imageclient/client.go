@@ -178,6 +178,7 @@ type ImageMeta struct {
 	Width     int    `json:"width"`
 	Height    int    `json:"height"`
 	Thumbhash string `json:"thumbhash,omitempty"`
+	Sexual    *int16 `json:"sexual,omitempty"`
 }
 
 func (c *Client) MetaBatch(ctx context.Context, hashes []string) (map[string]ImageMeta, error) {

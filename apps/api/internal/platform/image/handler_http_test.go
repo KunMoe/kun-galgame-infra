@@ -249,6 +249,63 @@ func TestHTTP_Meta_BadHashFormat_400(t *testing.T) {
 	assert.Equal(t, 400, resp.StatusCode)
 }
 
+func metaBatch(t *testing.T, hashes ...string) map[string]map[string]any {
+	t.Helper()
+	body, err := json.Marshal(map[string]any{"hashes": hashes})
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/image/meta-batch", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", basicAuth(testClientID, testClientSecret))
+	resp, err := testApp.Test(req, fiber.TestConfig{Timeout: 10 * time.Second})
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, 200, resp.StatusCode)
+
+	env := decodeEnvelope(t, resp)
+	require.Equal(t, 0, env.Code)
+	var data struct {
+		Metas map[string]map[string]any `json:"metas"`
+	}
+	require.NoError(t, json.Unmarshal(env.Data, &data))
+	return data.Metas
+}
+
+func TestHTTP_MetaBatch_CarriesMachineSexualGrade(t *testing.T) {
+	_, graded, _ := callUpload(t, fixturePNG(240, 180, 3, 60, 90), "avatar", testClientID, testClientSecret)
+	require.NotNil(t, graded)
+	_, ungraded, _ := callUpload(t, fixturePNG(180, 240, 90, 60, 3), "avatar", testClientID, testClientSecret)
+	require.NotNil(t, ungraded)
+
+	require.NoError(t, testDB.Exec(
+		`UPDATE images SET review_labels = '{"grade": {"provider": "cloudflare-workers-ai", "level": 3}}'::jsonb
+		 WHERE hash = ?`, graded.Hash).Error)
+	require.NoError(t, testDB.Exec(
+		`UPDATE images SET review_labels = NULL WHERE hash = ?`, ungraded.Hash).Error)
+
+	metas := metaBatch(t, graded.Hash, ungraded.Hash)
+	require.Len(t, metas, 2)
+
+	assert.EqualValues(t, 240, metas[graded.Hash]["width"])
+	assert.EqualValues(t, 180, metas[graded.Hash]["height"])
+	assert.EqualValues(t, 2, metas[graded.Hash]["sexual"], "level 3 folds onto the top public value")
+
+	require.Contains(t, metas, ungraded.Hash)
+	assert.NotContains(t, metas[ungraded.Hash], "sexual",
+		"an ungraded image must not read as assessed-safe")
+}
+
+func TestHTTP_MetaBatch_SafeGradeIsZeroNotAbsent(t *testing.T) {
+	_, safe, _ := callUpload(t, fixturePNG(200, 200, 11, 22, 33), "avatar", testClientID, testClientSecret)
+	require.NotNil(t, safe)
+	require.NoError(t, testDB.Exec(
+		`UPDATE images SET review_labels = '{"grade": {"level": 0}}'::jsonb WHERE hash = ?`, safe.Hash).Error)
+
+	metas := metaBatch(t, safe.Hash)
+	require.Contains(t, metas[safe.Hash], "sexual")
+	assert.EqualValues(t, 0, metas[safe.Hash]["sexual"])
+}
+
 func softDelete(t *testing.T, hash, clientID, secret string) (int, envelope) {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodDelete, "/image/"+hash, nil)

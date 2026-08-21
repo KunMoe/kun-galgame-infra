@@ -90,10 +90,33 @@ func (r *ImageRepository) TouchReferenced(ctx context.Context, hashes []string) 
 }
 
 type ImageMeta struct {
-	Hash      string `gorm:"column:hash" json:"-"`
-	Width     int    `gorm:"column:width" json:"width"`
-	Height    int    `gorm:"column:height" json:"height"`
-	Thumbhash string `gorm:"column:thumbhash" json:"thumbhash,omitempty"`
+	Hash      string `json:"-"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
+	Thumbhash string `json:"thumbhash,omitempty"`
+	Sexual    *int16 `json:"sexual,omitempty"`
+}
+
+type imageMetaRow struct {
+	Hash       string `gorm:"column:hash"`
+	Width      int    `gorm:"column:width"`
+	Height     int    `gorm:"column:height"`
+	Thumbhash  string `gorm:"column:thumbhash"`
+	GradeLevel *int   `gorm:"column:grade_level"`
+}
+
+// The machine ladder tops out at an explicit sexual act (3), which the public
+// scale does not distinguish from nudity — both are "explicit", the strongest
+// value the wire carries. Same fold as internal/jobs/imagegradesync.
+func publicSexual(level int) (int16, bool) {
+	switch level {
+	case 0, 1, 2:
+		return int16(level), true
+	case 3:
+		return 2, true
+	default:
+		return 0, false
+	}
 }
 
 func (r *ImageRepository) MetaByHashes(ctx context.Context, hashes []string) (map[string]ImageMeta, error) {
@@ -101,15 +124,22 @@ func (r *ImageRepository) MetaByHashes(ctx context.Context, hashes []string) (ma
 	if len(hashes) == 0 {
 		return out, nil
 	}
-	var rows []ImageMeta
+	var rows []imageMetaRow
 	if err := r.db.WithContext(ctx).
 		Model(&model.Image{}).
-		Select("hash", "width", "height", "thumbhash").
+		Select("hash", "width", "height", "thumbhash",
+			"(review_labels->'grade'->>'level')::int AS grade_level").
 		Where("hash IN ? AND deleted_at IS NULL", hashes).
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
-	for _, m := range rows {
+	for _, row := range rows {
+		m := ImageMeta{Hash: row.Hash, Width: row.Width, Height: row.Height, Thumbhash: row.Thumbhash}
+		if row.GradeLevel != nil {
+			if sexual, ok := publicSexual(*row.GradeLevel); ok {
+				m.Sexual = &sexual
+			}
+		}
 		out[m.Hash] = m
 	}
 	return out, nil
