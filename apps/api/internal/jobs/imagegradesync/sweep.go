@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"sort"
 
+	"api/internal/platform/catalog/repository"
+
 	"gorm.io/gorm"
 )
 
@@ -25,6 +27,7 @@ func mapLevel(level int) (int16, bool) {
 
 type mediaRow struct {
 	ID       int64  `gorm:"column:id"`
+	WorkID   int64  `gorm:"column:work_id"`
 	Hash     string `gorm:"column:image_hash"`
 	Sexual   int16  `gorm:"column:sexual"`
 	SourceID int16  `gorm:"column:source_id"`
@@ -61,7 +64,7 @@ func sweep(ctx context.Context, db, idb *gorm.DB, table string, sc scope, opts O
 		}
 		var rows []mediaRow
 		if err := db.WithContext(ctx).Raw(`
-			SELECT id, image_hash, sexual, source_id
+			SELECT id, work_id, image_hash, sexual, source_id
 			  FROM `+table+`
 			 WHERE source_id IN ? AND id > ?
 			 ORDER BY id
@@ -79,6 +82,7 @@ func sweep(ctx context.Context, db, idb *gorm.DB, table string, sc scope, opts O
 			return err
 		}
 		plan := make(map[int16][]int64, 3)
+		works := make(map[int16][]int64, 3)
 		for _, r := range rows {
 			level, known := grades[r.Hash]
 			switch {
@@ -102,9 +106,10 @@ func sweep(ctx context.Context, db, idb *gorm.DB, table string, sc scope, opts O
 			st.Planned++
 			st.note(sc.names[r.SourceID], table, r.Sexual, want)
 			plan[want] = append(plan[want], r.ID)
+			works[want] = append(works[want], r.WorkID)
 		}
 		if opts.Apply {
-			applyPlan(ctx, db, table, plan, st)
+			applyPlan(ctx, db, table, plan, works, st)
 		}
 		if len(rows) < page {
 			break
@@ -147,7 +152,7 @@ func loadGrades(ctx context.Context, idb *gorm.DB, rows []mediaRow) (map[string]
 	return out, nil
 }
 
-func applyPlan(ctx context.Context, db *gorm.DB, table string, plan map[int16][]int64, st *Stats) {
+func applyPlan(ctx context.Context, db *gorm.DB, table string, plan, works map[int16][]int64, st *Stats) {
 	wants := make([]int, 0, len(plan))
 	for want := range plan {
 		wants = append(wants, int(want))
@@ -155,13 +160,23 @@ func applyPlan(ctx context.Context, db *gorm.DB, table string, plan map[int16][]
 	sort.Ints(wants)
 	for _, w := range wants {
 		ids := plan[int16(w)]
-		res := db.WithContext(ctx).Exec(
-			`UPDATE `+table+` SET sexual = ?, updated_at = now() WHERE id IN ?`, int16(w), ids)
-		if res.Error != nil {
+		err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			res := tx.Exec(`UPDATE `+table+` SET sexual = ?, updated_at = now() WHERE id IN ?`, int16(w), ids)
+			if res.Error != nil {
+				return res.Error
+			}
+			if res.RowsAffected == 0 {
+				return nil
+			}
+			if err := repository.TouchWorks(ctx, tx, works[int16(w)]); err != nil {
+				return err
+			}
+			st.Updated += int(res.RowsAffected)
+			return nil
+		})
+		if err != nil {
 			st.Errors += len(ids)
-			slog.Warn("update sexual", "table", table, "sexual", w, "rows", len(ids), "err", res.Error)
-			continue
+			slog.Warn("update sexual", "table", table, "sexual", w, "rows", len(ids), "err", err)
 		}
-		st.Updated += int(res.RowsAffected)
 	}
 }

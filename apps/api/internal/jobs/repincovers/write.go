@@ -267,6 +267,7 @@ func (r *runner) purge(ctx context.Context, opts Opts) error {
 		return fmt.Errorf("load bad upscales: %w", err)
 	}
 	ids := make([]int64, 0, len(rows))
+	works := make([]int64, 0, len(rows))
 	held := 0
 	for _, row := range rows {
 		slog.Info("bad upscale", "cover_id", row.ID, "work", row.WorkID, "kind", row.Kind,
@@ -276,17 +277,23 @@ func (r *runner) purge(ctx context.Context, opts Opts) error {
 			continue
 		}
 		ids = append(ids, row.ID)
+		works = append(works, row.WorkID)
 	}
 	r.stats.Skipped = held
 	if len(ids) == 0 || !opts.Apply {
 		return nil
 	}
-	res := r.db.WithContext(ctx).Exec(`DELETE FROM catalog_work_cover WHERE id IN ?`, ids)
-	if res.Error != nil {
-		return res.Error
-	}
-	r.stats.Purged = int(res.RowsAffected)
-	return nil
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.Exec(`DELETE FROM catalog_work_cover WHERE id IN ?`, ids)
+		if res.Error != nil {
+			return res.Error
+		}
+		r.stats.Purged = int(res.RowsAffected)
+		if res.RowsAffected == 0 {
+			return nil
+		}
+		return repository.TouchWorks(ctx, tx, works)
+	})
 }
 
 func (r *runner) urlFor(hash string) string {

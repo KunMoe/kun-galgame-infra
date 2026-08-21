@@ -8,6 +8,7 @@ import (
 
 	"api/internal/infrastructure/database"
 	"api/internal/platform/catalog/model"
+	"api/internal/platform/catalog/repository"
 
 	"gorm.io/gorm"
 )
@@ -92,17 +93,19 @@ func audit(ctx context.Context, db *gorm.DB, apply bool, minMirrorRows int64) (s
 	}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		res := tx.Exec(`UPDATE catalog_external_ref SET dead_at = now() WHERE `+markPredicate, args...)
-		if res.Error != nil {
-			return fmt.Errorf("mark dead: %w", res.Error)
+		var marked []int64
+		if err := tx.Raw(`UPDATE catalog_external_ref SET dead_at = now() WHERE `+markPredicate+
+			` RETURNING entity_id`, args...).Scan(&marked).Error; err != nil {
+			return fmt.Errorf("mark dead: %w", err)
 		}
-		st.Marked = res.RowsAffected
-		res = tx.Exec(`UPDATE catalog_external_ref SET dead_at = NULL WHERE `+clearPredicate, args...)
-		if res.Error != nil {
-			return fmt.Errorf("clear revived: %w", res.Error)
+		st.Marked = int64(len(marked))
+		var cleared []int64
+		if err := tx.Raw(`UPDATE catalog_external_ref SET dead_at = NULL WHERE `+clearPredicate+
+			` RETURNING entity_id`, args...).Scan(&cleared).Error; err != nil {
+			return fmt.Errorf("clear revived: %w", err)
 		}
-		st.Cleared = res.RowsAffected
-		return nil
+		st.Cleared = int64(len(cleared))
+		return repository.TouchWorks(ctx, tx, append(marked, cleared...))
 	})
 	return st, err
 }

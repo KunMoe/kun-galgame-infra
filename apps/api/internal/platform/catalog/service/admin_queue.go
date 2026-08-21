@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"api/internal/platform/catalog/model"
+	"api/internal/platform/catalog/repository"
 
 	"gorm.io/gorm"
 )
@@ -367,10 +368,14 @@ func (s *AdminQueueService) ConfirmRef(ctx context.Context, key RefKey, verified
 			return fmt.Errorf("%w: ref is not probable (kind %d)", ErrProposalState, ref.LinkKind)
 		}
 		now := time.Now()
-		return tx.Model(&model.CatalogExternalRef{}).
+		res := tx.Model(&model.CatalogExternalRef{}).
 			Where("entity_type = ? AND entity_id = ? AND source_id = ? AND external_id = ?",
 				key.EntityType, key.EntityID, key.SourceID, key.ExternalID).
-			Updates(map[string]any{"link_kind": model.LinkKindExact, "verified_by": verifiedBy, "verified_at": now}).Error
+			Updates(map[string]any{"link_kind": model.LinkKindExact, "verified_by": verifiedBy, "verified_at": now})
+		if res.Error != nil || res.RowsAffected == 0 {
+			return res.Error
+		}
+		return repository.TouchRefHosts(ctx, tx, key.EntityType, key.EntityID)
 	})
 	if isUniqueViolation(err, "uq_catalog_external_ref_exact") {
 		var holder int64
@@ -409,14 +414,17 @@ func (s *AdminQueueService) RejectRef(ctx context.Context, key RefKey, reason st
 		if res.RowsAffected == 0 {
 			return fmt.Errorf("%w: external ref", ErrNotFound)
 		}
-		return tx.Create(&model.CatalogMatchRejection{
+		if err := tx.Create(&model.CatalogMatchRejection{
 			EntityType: key.EntityType,
 			EntityID:   key.EntityID,
 			SourceID:   key.SourceID,
 			ExternalID: key.ExternalID,
 			Reason:     reason,
 			RejectedBy: &rejectedBy,
-		}).Error
+		}).Error; err != nil {
+			return err
+		}
+		return repository.TouchRefHosts(ctx, tx, key.EntityType, key.EntityID)
 	})
 }
 
