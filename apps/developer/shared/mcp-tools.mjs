@@ -95,6 +95,54 @@ export const MCP_TOOLS = [
     desc: '发售动态的 release 粒度：每一条发售行各自成项，移植版 / 复刻 / 中文化都看得见（calendar 只把作品放在最早发售月且只显示一次）。可按日期区间、平台、发行语言、版本类型、官方性过滤；is_first 分辨首发与再版。'
   },
   {
+    name: 'catalog_work_covers',
+    desc: '作品的封面块（单块分页，只要这一块时优先于 catalog_work_get）。CDN 渲染不了的行在分页前就被丢掉，所以短页 = 块取完了，不是被过滤了。只要两个展示位用 catalog_work_get 的 cover_slots。'
+  },
+  {
+    name: 'catalog_work_screenshots',
+    desc: '作品的截图块（单块分页，带尺寸与 thumbhash）。每行各自带 sexual / violence 等级——此面只报告不过滤，渲染门由调用方自己把。'
+  },
+  {
+    name: 'catalog_work_tags',
+    desc: '作品的源标签块（单块分页，count DESC → name → source）。命中正典映射的行带 canonical_id / tier / kind 与 nsfw 感知 work_count，未映射的行不带；`spoilers=0-2` 设标签剧透上限（超限行整行剔除、不占页位）。'
+  },
+  {
+    name: 'catalog_work_characters',
+    desc: '作品的角色花名册块（单块分页，main → secondary → appears → 仅署名项，带配音署名）。此面**不设**剧透上限、也**没有** spoilers 参数——每行自带 spoiler 等级，由调用方分级。'
+  },
+  {
+    name: 'catalog_work_credits',
+    desc: '作品的职员署名块，按 role 分组。**分页按署名行不按组**：跨页的 role 会在两页各出现一次、各带该页的切片，拼页时要按 role_key 合并组。'
+  },
+  {
+    name: 'catalog_work_releases',
+    desc: '作品的发售行块（单块分页，release id 升序，各带源锚与自己的 labels[]——移植版 / 英文版各自的发行商在这里）。跨作品的发售时间线用 catalog_releases。'
+  },
+  {
+    name: 'catalog_work_intros',
+    desc: '作品的简介块（单块分页，一语言一行）。选举同母面：源写的胜过机翻的，机翻行是**打标**不是隐藏——引用成「官方说法」前先看标。'
+  },
+  {
+    name: 'catalog_work_ratings',
+    desc: '作品的分源评分块（单块分页，带完整投票直方图与离散度——works-list 的 ratings 块会把这些丢掉）。分数留在各源原生标尺，永不混算成一个数。'
+  },
+  {
+    name: 'catalog_work_relations',
+    desc: '作品的关联作品块（单块分页）——catalog_work_get 只在 `include=relations` 时才给。不带 nsfw 时 r18 关联端是**整条丢弃**而非置空，next_offset 数的是幸存行。续作 / FD 也能经 catalog_work_get 的 series_siblings（传递闭包）拿到。'
+  },
+  {
+    name: 'catalog_work_series',
+    desc: '作品所属系列块（单块分页）。member_count 是系列的**全部**成员数而非本页——顺着它用 catalog_works_list series_id= 或 catalog_series_get include_works（后者才给阅读顺序）。'
+  },
+  {
+    name: 'catalog_work_links',
+    desc: '作品的非身份外链块（官网 / Steam / X 等，单块分页）。这些是**地址不是锚**，身份锚在 catalog_work_get 的 refs[]；dlsite / dmm 这类无法由裸 code 还原商店 URL 的源按设计不在此面，仍从 refs[] 走。'
+  },
+  {
+    name: 'catalog_work_engines',
+    desc: '作品的引擎块（单块分页，每行带 nsfw 感知 work_count = 该调用方用 catalog_works_search engine_id= 真能翻到的作品数）。'
+  },
+  {
     name: 'news_list',
     grant: true,
     desc: '合作媒体的 Galgame 资讯索引（按来源 / 泳道 / 关联作品 / 发布时间窗过滤，keyset 分页）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。'

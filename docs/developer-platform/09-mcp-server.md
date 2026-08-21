@@ -40,9 +40,9 @@ MCP server 是公开 /v1 契约前面的一层**协议适配**,不是第二个 A
 - MCP 规范的 OAuth 2.1 授权流 = M2(第三方实际开放后,与 `dev:manage`
   同期评估);M1 的静态 key 模式对 agent 场景已充分。
 
-## 4. 工具面(25 个 = catalog 面 22 + news 面 3;catalog 22 = M1 五个幸存 + `catalog_name_get` + canonical-W1 三件 + A2 八件 + wave-189 三件 + wave-196 两件,2026-08-08 与 canonical 轨 spec 同步)
+## 4. 工具面(37 个 = catalog 面 34 + news 面 3;catalog 34 = M1 五个幸存 + `catalog_name_get` + canonical-W1 三件 + A2 八件 + wave-189 三件 + wave-196 两件 + wave-213 波 2 的作品子资源十二件,2026-08-21 与 canonical 轨 spec 同步)
 
-> **wave 207 口径澄清**:本节所有**覆盖率分数**(下文的 22/37)的分母**始终是 catalog 面**,与工具总数不是一回事。平台的公开 spec 现共 **45 op = catalog 面 37 + playtime 面 5 + news 面 3**(catalog 面 25→37 是 wave 213 波 1 的十二条作品子资源);playtime 面**刻意不在 MCP 范围内**,理由见本节末尾那条。
+> **wave 207 口径澄清**:本节所有**覆盖率分数**(下文的 34/37)的分母**始终是 catalog 面**,与工具总数不是一回事。平台的公开 spec 现共 **45 op = catalog 面 37 + playtime 面 5 + news 面 3**(catalog 面 25→37 是 wave 213 波 1 的十二条作品子资源);playtime 面**刻意不在 MCP 范围内**,理由见本节末尾那条。
 
 > **2026-08-18**:news 面三条**全部进面**(下表末三行)。它们与 catalog 工具**不共用凭据前提**——`news:read` 不在 devapi 自助 scope 集内(`TestScopeNewsReadSelfServiceExcluded` 钉死),合作方只授权了索引;故三条工具的描述里各自写明授权制,不然模型只会稳定地拿到 403 而不知道为什么。**同日改动**:授予路径从"平台人工签发"改为**门户申请 + 平台审批**(见 [02 §3.9](./02-public-api.md)),`NewServer` 的 `instructions` 串同步改口(不再说 grants by hand,改说 apply in the developer portal),并加一句署名建议的英文等价表述——instructions 是模型在**任何工具调用之前**唯一读得到的说明,漏改会让它照着旧路径去建议用户联系平台。
 
@@ -72,16 +72,35 @@ MCP server 是公开 /v1 契约前面的一层**协议适配**,不是第二个 A
 | `catalog_stats` | `GET /v1/catalog/stats` | 全库计数(各媒介 LIVE 作品数 + 身份家族总量;无参数) |
 | `catalog_label_relation_graph` | `GET /v1/catalog/labels/{id}/relation-graph` | 会社家族整图(nodes[]+edges[];服务端封顶 depth 4 / 60 节点,广度优先,无分页;`catalog_label_get.relations[]` 只有一跳) |
 | `catalog_releases` | `GET /v1/catalog/releases` | 发售动态 release 粒度(date keyset;`date_from`/`date_to`/`platform`/`lang`/`olang`/`kind`/`official`/`content_limit`;`is_first` 分辨首发与再版) |
+| `catalog_work_covers` | `GET /v1/catalog/works/{id}/covers` | 作品封面块单块分页(`limit`/`offset`/`nsfw`)。CDN 渲染不了的行**在分页前**丢弃,故短页 = 块取完;只要两个展示位走 `catalog_work_get.cover_slots` |
+| `catalog_work_screenshots` | `GET /v1/catalog/works/{id}/screenshots` | 截图块(带尺寸 + thumbhash);每行自带 sexual/violence 等级,**只报告不过滤** |
+| `catalog_work_tags` | `GET /v1/catalog/works/{id}/tags` | 源标签块(count DESC → name → source);映射行带 canonical_id/tier/kind + nsfw 感知 `work_count`。**十二条里唯一带 `spoilers` 的**(0-2,超限行整行剔除、不占页位) |
+| `catalog_work_characters` | `GET /v1/catalog/works/{id}/characters` | 角色花名册块(main → secondary → appears → 仅署名项,带配音署名)。**无 `spoilers` 参数**——每行自带 spoiler 等级,由调用方分级 |
+| `catalog_work_credits` | `GET /v1/catalog/works/{id}/credits` | 职员署名块按 role 分组,但**分页按署名行不按组**:跨页的 role 在两页各出现一次、各带该页切片,拼页须按 `role_key` 合并 |
+| `catalog_work_releases` | `GET /v1/catalog/works/{id}/releases` | 该作品的发售行块(release id 升序,各带源锚与自己的 `labels[]`);跨作品时间线走 `catalog_releases` |
+| `catalog_work_intros` | `GET /v1/catalog/works/{id}/intros` | 简介块(一语言一行,选举同母面:源写胜过机翻,机翻行**打标**不隐藏) |
+| `catalog_work_ratings` | `GET /v1/catalog/works/{id}/ratings` | 分源评分块(**work-detail 投影**,带完整直方图与离散度——works-list 的 ratings 块会丢掉);分数留各源原生标尺 |
+| `catalog_work_relations` | `GET /v1/catalog/works/{id}/relations` | 关联作品块(母面只在 `include=relations` 时给);无 `nsfw` 时 r18 关联端**整条丢弃**而非置空,`next_offset` 数幸存行 |
+| `catalog_work_series` | `GET /v1/catalog/works/{id}/series` | 所属系列块;`member_count` 是系列**全部**成员数而非本页 |
+| `catalog_work_links` | `GET /v1/catalog/works/{id}/links` | 非身份外链块(官网/Steam/X 等)。**地址不是锚**,身份锚在 `refs[]`;dlsite/dmm 无法由裸 code 还原商店 URL,按设计不在此面 |
+| `catalog_work_engines` | `GET /v1/catalog/works/{id}/engines` | 引擎块,每行带 nsfw 感知 `work_count`(= 该调用方用 `catalog_works_search engine_id=` 真能翻到的作品数) |
 | `news_list` | `GET /v1/news` | 合作方资讯索引(keyset;`source`/`lane`/`work_id`/`published_after`/`published_before`)。**索引非镜像**:只有 preview + banner + `source_url`,正文永不出面。**需 `news:read`(授权制)** |
 | `news_sources` | `GET /v1/news/sources` | 来源注册表(key / 名称 / 主页 / 专栏入口 / publisher uid / 归属文案),无参数。**需 `news:read`(授权制)** |
 | `news_get` | `GET /v1/news/{id}` | 单条资讯;撤回或上游消失后 404 是契约而非查不到。**需 `news:read`(授权制)** |
 
-- **catalog 覆盖面(22/37:三条「有意留白」+ 十二条待裁定;分母是 catalog 面,平台另
+- **catalog 覆盖面(34/37:仅剩三条「有意留白」;分母是 catalog 面,平台另
   5 op 属 playtime 面,见下条)**:公开 catalog 面
-  现共 37 op,上表覆盖 22。**新增待裁定十二条**:wave 213 波 1 的作品子资源
-  (`works/{id}/covers` 等,见 [02 §3.2](./02-public-api.md))分页的正是
-  `catalog_work_get` 已经整块返回的东西,是否值得各自成工具由 MCP owner 裁,
-  本波只把它们计入分母、不动工具面。上一波记为「待裁定」的 `stats` 与 `series` 已由 owner
+  现共 37 op,上表覆盖 34——**没覆盖的恰好就是本条末尾那三条有意留白**,
+  再无「待裁定」项。上一波记为「待裁定」的**作品子资源十二条**
+  (`works/{id}/covers` 等,见 [02 §3.2](./02-public-api.md))已由 owner 裁定
+  **全部收进工具面**(wave 213 波 2,2026-08-21)。裁定理由:它们分页的确实是
+  `catalog_work_get` 已经整块返回的东西,但那正是收面的价值——一个数据丰富的作品
+  带 `include=relations,credits` 是 50 KB,身份核心不到十分之一,而模型多数时候
+  只要其中一块,十二条让它按块取而不必为一个封面吞下整个作品;十二条全是 GET,
+  参数与母面逐字一致(`limit`/`offset`/`nsfw`),合乎纯透传红线。**逐参对齐时踩到的一处**:
+  `characters` **没有** `spoilers` 参数(花名册每行自带 spoiler 等级由调用方分级),
+  十二条里只有 `tags` 带 `spoilers`——按「母面有的子面都有」想当然会造出一个上游
+  根本不认的参数。上一波记为「待裁定」的 `stats` 与 `series` 已由 owner
   裁定收进工具面(wave 189,2026-08-07),且 `series` 实收**两条**而非一条——
   系列不进任何搜索索引,只有 `series/{id}` 详情道的话调用方**永远拿不到 id**,
   浏览道是它的唯一发现入口,两条必须成对进面。上一波记为「待裁定」的
@@ -114,8 +133,13 @@ MCP server 是公开 /v1 契约前面的一层**协议适配**,不是第二个 A
   「让 agent 帮我同步游玩库」的外部需求时,连同写面工具一起评估,而不是先把面开了。
   在那之前,**覆盖率分数不把这 5 条算进分母**。
 
-- **r18 姿态(104 波,调用方自控)**:catalog 系工具 `nsfw=true` 显式开。
-  默认全部隐藏——LLM 消费者不显式要就永远看不到 r18。(旧 galgame 系工具的
+- **r18 姿态(104 波定的「调用方自控」已于 wave 213 波 2 改为能力位门控)**:catalog 系
+  工具仍是 `nsfw=true` 显式开、默认全部隐藏——LLM 消费者不显式要就永远看不到 r18;
+  但**开得成不成不再只取决于调用方**:上游面按 key 的 `nsfw_allowed` 能力位判,
+  没有该位的 key 带 `nsfw=true` 吃 **403**。MCP 层照旧零 authz,`mapUpstream` 把这个
+  403 原样转成 tool error。故每个工具的 `nsfw` 参数描述都写明
+  「requires an API key with the NSFW capability」,`instructions` 串同步改口——
+  漏改的话模型会把一个权限错误读成「这个作品不存在」,然后换个问法一直重试。(旧 galgame 系工具的
   `content_limit`+`galgame:nsfw` scope 姿态已随 /v1/galgame 摘牌一并退役;
   `catalog_works_search` 的 `content_limit` 是编辑展示轴,与 r18 轴无关。)
 
@@ -134,7 +158,7 @@ MCP server 是公开 /v1 契约前面的一层**协议适配**,不是第二个 A
   Deploy 姿态,`docker-compose.mcp.yml`);镜像走现有 CI 矩阵。
 - healthz 照平台惯例;结构化日志记 tool 名 + 上游状态码 + 时延,
   **永不记 key 明文**(fingerprint 前 8 hex)。
-- 冒烟:MCP `initialize` + `tools/list` + 一次 `catalog_search` 真调用。(2026-08-18 起 `tools/list` 应回 **25** 工具 = catalog 22 + news 3;playtime 面按 §4 裁定不进面,故这个数不随它变。冒烟调用仍走 `catalog_search`——早先写的 `galgame_search` 已随 `/v1/galgame` 面于 wave 146 退役;**不要拿 news 工具冒烟**,冒烟用的 key 没有 `news:read`,一个正确的 403 会被读成部署失败。)
+- 冒烟:MCP `initialize` + `tools/list` + 一次 `catalog_search` 真调用。(2026-08-21 起 `tools/list` 应回 **37** 工具 = catalog 34 + news 3;playtime 面按 §4 裁定不进面,故这个数不随它变。冒烟调用仍走 `catalog_search`——早先写的 `galgame_search` 已随 `/v1/galgame` 面于 wave 146 退役;**不要拿 news 工具冒烟**,冒烟用的 key 没有 `news:read`,一个正确的 403 会被读成部署失败。)
 
 ## 6. 阶段
 

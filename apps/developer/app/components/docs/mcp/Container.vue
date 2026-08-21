@@ -5,7 +5,7 @@ import { MCP_TOOLS } from '~~/shared/mcp-tools.mjs'
 useSeoMeta({
   title: 'AI / MCP 接入',
   description:
-    '把 NextMoe 开放 API 作为 MCP（Model Context Protocol）server 接入 AI 助手：端点、密钥配置，25 个只读工具，以及 Claude Code / Claude Desktop / 通用 MCP 客户端三段配置示例。'
+    '把 NextMoe 开放 API 作为 MCP（Model Context Protocol）server 接入 AI 助手：端点、密钥配置，37 个只读工具，以及 Claude Code / Claude Desktop / 通用 MCP 客户端三段配置示例。'
 })
 
 const tools = MCP_TOOLS

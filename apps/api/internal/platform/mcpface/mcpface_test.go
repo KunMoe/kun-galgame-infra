@@ -31,7 +31,19 @@ var expectedTools = []string{
 	"catalog_stats",
 	"catalog_tag_get",
 	"catalog_tags_list",
+	"catalog_work_characters",
+	"catalog_work_covers",
+	"catalog_work_credits",
+	"catalog_work_engines",
 	"catalog_work_get",
+	"catalog_work_intros",
+	"catalog_work_links",
+	"catalog_work_ratings",
+	"catalog_work_relations",
+	"catalog_work_releases",
+	"catalog_work_screenshots",
+	"catalog_work_series",
+	"catalog_work_tags",
 	"catalog_works_list",
 	"catalog_works_search",
 	"news_get",
@@ -255,6 +267,60 @@ func TestNewsToolsHitTheNewsFace(t *testing.T) {
 	}
 	if gotPath != "/v1/news/42" {
 		t.Errorf("news_get path = %q", gotPath)
+	}
+}
+
+func TestWorkSubresourceToolsHitTheirBlock(t *testing.T) {
+	var gotPath, gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
+		_, _ = w.Write([]byte(`{"data":{"items":[]}}`))
+	}))
+	defer srv.Close()
+
+	tl := &tools{up: NewUpstream(srv.URL)}
+	ctx := context.Background()
+	req := &mcp.CallToolRequest{Extra: &mcp.RequestExtra{
+		Header: http.Header{"Authorization": {"Bearer nm_test_smoke"}},
+	}}
+	in := workSubresourceInput{ID: 7, Limit: 5, Offset: 10, Nsfw: true}
+
+	blocks := map[string]func() error{
+		"covers":      func() error { _, _, err := tl.catalogWorkCovers(ctx, req, in); return err },
+		"screenshots": func() error { _, _, err := tl.catalogWorkScreenshots(ctx, req, in); return err },
+		"characters":  func() error { _, _, err := tl.catalogWorkCharacters(ctx, req, in); return err },
+		"credits":     func() error { _, _, err := tl.catalogWorkCredits(ctx, req, in); return err },
+		"releases":    func() error { _, _, err := tl.catalogWorkReleases(ctx, req, in); return err },
+		"intros":      func() error { _, _, err := tl.catalogWorkIntros(ctx, req, in); return err },
+		"ratings":     func() error { _, _, err := tl.catalogWorkRatings(ctx, req, in); return err },
+		"relations":   func() error { _, _, err := tl.catalogWorkRelations(ctx, req, in); return err },
+		"series":      func() error { _, _, err := tl.catalogWorkSeries(ctx, req, in); return err },
+		"links":       func() error { _, _, err := tl.catalogWorkLinks(ctx, req, in); return err },
+		"engines":     func() error { _, _, err := tl.catalogWorkEngines(ctx, req, in); return err },
+	}
+	for block, call := range blocks {
+		if err := call(); err != nil {
+			t.Fatalf("%s: %v", block, err)
+		}
+		if want := "/v1/catalog/works/7/" + block; gotPath != want {
+			t.Errorf("%s path = %q, want %q", block, gotPath, want)
+		}
+		if !contains(gotQuery, "limit=5") || !contains(gotQuery, "offset=10") || !contains(gotQuery, "nsfw=1") {
+			t.Errorf("%s query = %q", block, gotQuery)
+		}
+		if contains(gotQuery, "spoilers") {
+			t.Errorf("%s must not send spoilers, query = %q", block, gotQuery)
+		}
+	}
+
+	if _, _, err := tl.catalogWorkTags(ctx, req, workTagsInput{ID: 7, Limit: 5, Spoilers: 2}); err != nil {
+		t.Fatalf("tags: %v", err)
+	}
+	if gotPath != "/v1/catalog/works/7/tags" {
+		t.Errorf("tags path = %q", gotPath)
+	}
+	if !contains(gotQuery, "spoilers=2") {
+		t.Errorf("tags query = %q, want spoilers=2", gotQuery)
 	}
 }
 
