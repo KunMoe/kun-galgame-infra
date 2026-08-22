@@ -10,6 +10,7 @@ import (
 
 	"api/internal/infrastructure/cache"
 	"api/internal/infrastructure/database"
+	"api/internal/middleware"
 	"api/pkg/config"
 
 	"github.com/gofiber/fiber/v3"
@@ -72,6 +73,8 @@ func New(cfg *config.Config, opts Options) (*App, error) {
 			Private: true,
 		},
 	})
+	// First on purpose: a recover registered later still lets panics drop the connection with no 500.
+	a.Fiber.Use(middleware.Recover())
 
 	return a, nil
 }
