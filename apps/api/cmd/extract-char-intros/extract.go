@@ -129,24 +129,6 @@ const extractSystemPrompt = `你从视觉小说(galgame)的作品简介中摘录
 3. 输出严格的 JSON 对象:键 = 名单中给出的角色名(逐字使用名单写法),值 = 摘录的介绍文本。没有任何可摘录的角色介绍时输出 {}。
 4. 只输出 JSON,不要输出解释或代码块围栏。`
 
-func extractUserMessage(c candidateWork) string {
-	var sb strings.Builder
-	sb.WriteString("角色名单:\n")
-	for _, r := range c.Roster {
-		sb.WriteString("- ")
-		sb.WriteString(r.Name)
-		if r.ZhName != "" && r.ZhName != r.Name {
-			sb.WriteString("(中文名: ")
-			sb.WriteString(r.ZhName)
-			sb.WriteString(")")
-		}
-		sb.WriteString("\n")
-	}
-	sb.WriteString("\n作品简介:\n")
-	sb.WriteString(c.Intro)
-	return sb.String()
-}
-
 // extraction is one work's answer: the model's name→passage map, or the error
 // that kept it from arriving. A failed work writes nothing and stays a
 // candidate, so the next run retries it.
@@ -156,59 +138,64 @@ type extraction struct {
 	Err   error
 }
 
-// extractor answers a BATCH of works. The OpenAI-compatible gateway has no
-// batch face and its adapter just loops; Cursor's only face is a batch, and
-// there the batch is what makes the lane affordable.
+// extractor answers a BATCH of works. Both gateways run the same batched
+// envelope (batch.go); they differ only in how one prompt becomes one reply.
 type extractor interface {
 	ExtractBatch(ctx context.Context, batch []candidateWork) []extraction
-}
-
-func (t *httpExtractor) ExtractBatch(ctx context.Context, batch []candidateWork) []extraction {
-	out := make([]extraction, len(batch))
-	for i, c := range batch {
-		found, model, err := t.Extract(ctx, c)
-		out[i] = extraction{Found: found, Model: model, Err: err}
-	}
-	return out
 }
 
 type httpExtractor struct {
 	baseURL   string
 	token     string
 	model     string
+	effort    string
 	maxTokens int
 	http      *http.Client
 }
 
-func newHTTPExtractor(baseURL, token, model string, maxTokens int) *httpExtractor {
+func newHTTPExtractor(baseURL, token, model, effort string, maxTokens int) *httpExtractor {
 	return &httpExtractor{
 		baseURL:   strings.TrimRight(baseURL, "/"),
 		token:     token,
 		model:     model,
+		effort:    effort,
 		maxTokens: maxTokens,
-		http:      &http.Client{Timeout: 300 * time.Second},
+		http:      &http.Client{Timeout: 600 * time.Second},
 	}
 }
 
 func (t *httpExtractor) Configured() bool { return t.baseURL != "" && t.token != "" }
 
-func (t *httpExtractor) Extract(ctx context.Context, c candidateWork) (map[string]string, string, error) {
+func (t *httpExtractor) ExtractBatch(ctx context.Context, batch []candidateWork) []extraction {
+	return extractBatchVia(ctx, t, batch, 0)
+}
+
+func (t *httpExtractor) CompareBatch(ctx context.Context, batch []comparison) []comparisonResult {
+	return compareBatchVia(ctx, t, batch, 0)
+}
+
+// callBatch sends one batched prompt as a chat completion: the rules are the
+// system message, the JSON array is the user message.
+func (t *httpExtractor) callBatch(ctx context.Context, b batchCall) (string, string, error) {
 	body := map[string]any{
 		"model":       t.model,
 		"max_tokens":  t.maxTokens,
 		"temperature": 0,
 		"messages": []map[string]string{
-			{"role": "system", "content": extractSystemPrompt},
-			{"role": "user", "content": extractUserMessage(c)},
+			{"role": "system", "content": b.Rules},
+			{"role": "user", "content": b.Items},
 		},
+	}
+	if t.effort != "" {
+		body["reasoning_effort"] = t.effort
 	}
 	raw, err := json.Marshal(body)
 	if err != nil {
-		return nil, "", err
+		return "", "", err
 	}
 	data, err := t.postChat(ctx, raw)
 	if err != nil {
-		return nil, "", err
+		return "", "", err
 	}
 	var cr struct {
 		Model   string `json:"model"`
@@ -223,44 +210,24 @@ func (t *httpExtractor) Extract(ctx context.Context, c candidateWork) (map[strin
 		} `json:"error"`
 	}
 	if err := json.Unmarshal(data, &cr); err != nil {
-		return nil, "", fmt.Errorf("decode chat response: %w", err)
+		return "", "", fmt.Errorf("decode chat response: %w", err)
 	}
 	if cr.Error != nil {
-		return nil, "", fmt.Errorf("gateway error: %s", cr.Error.Message)
+		return "", "", fmt.Errorf("gateway error: %s", cr.Error.Message)
 	}
 	if len(cr.Choices) == 0 {
-		return nil, "", fmt.Errorf("gateway returned no choices")
-	}
-	if fr := cr.Choices[0].FinishReason; fr != "" && fr != "stop" {
-		return nil, "", fmt.Errorf("generation finished with finish_reason=%q — refusing partial output", fr)
-	}
-	found, err := parseExtraction(cr.Choices[0].Message.Content)
-	if err != nil {
-		return nil, "", err
+		return "", "", fmt.Errorf("gateway returned no choices")
 	}
 	model := cr.Model
 	if model == "" {
 		model = t.model
 	}
-	return found, model, nil
-}
-
-// parseExtraction decodes the model's JSON object, tolerating a stray code
-// fence. Anything that is not a flat string→string object is an error.
-func parseExtraction(s string) (map[string]string, error) {
-	s = strings.TrimSpace(s)
-	s = strings.TrimPrefix(s, "```json")
-	s = strings.TrimPrefix(s, "```")
-	s = strings.TrimSuffix(s, "```")
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return nil, fmt.Errorf("empty extraction output")
+	// A cut-off reply keeps its text: the caller halves the batch and retries,
+	// and the partial array would fail the integrity gate anyway.
+	if fr := cr.Choices[0].FinishReason; fr != "" && fr != "stop" {
+		return cr.Choices[0].Message.Content, model, fmt.Errorf("%w (finish_reason=%q)", errBatchOversize, fr)
 	}
-	var out map[string]string
-	if err := json.Unmarshal([]byte(s), &out); err != nil {
-		return nil, fmt.Errorf("extraction is not a flat JSON object: %w", err)
-	}
-	return out, nil
+	return cr.Choices[0].Message.Content, model, nil
 }
 
 func truncate(s string, n int) string {

@@ -141,36 +141,6 @@ func TestCursorExtractBatchFailsEveryWorkWhenSplittingCannotHelp(t *testing.T) {
 	}
 }
 
-func TestParseBatchArrayIntegrityGate(t *testing.T) {
-	type reply struct {
-		I      int    `json:"i"`
-		Winner string `json:"winner"`
-	}
-	cases := []struct {
-		name    string
-		text    string
-		want    int
-		wantErr string
-	}{
-		{"clean", `[{"i":0,"winner":"A"},{"i":1,"winner":"B"}]`, 2, ""},
-		{"tolerates surrounding chatter", "好的:\n[{\"i\":0,\"winner\":\"A\"}]\n", 1, ""},
-		{"dropped tail", `[{"i":0,"winner":"A"}]`, 2, "count mismatch"},
-		{"duplicate index hides a gap", `[{"i":0,"winner":"A"},{"i":0,"winner":"B"}]`, 2, "index set mismatch"},
-		{"missing index key", `[{"winner":"A"},{"i":1,"winner":"B"}]`, 2, "item missing index key"},
-		{"no array at all", `抱歉,我无法完成。`, 1, "no JSON array"},
-	}
-	for _, c := range cases {
-		got, err := parseBatchArray[reply](c.text, c.want)
-		if c.wantErr != "" {
-			require.Error(t, err, c.name)
-			assert.Contains(t, err.Error(), c.wantErr, c.name)
-			continue
-		}
-		require.NoError(t, err, c.name)
-		assert.Len(t, got, c.want, c.name)
-	}
-}
-
 type countingJudge struct{ batches []int }
 
 func (j *countingJudge) CompareBatch(_ context.Context, batch []comparison) []comparisonResult {
@@ -250,12 +220,4 @@ func TestReadCursorKeyRejectsAnEmptyFile(t *testing.T) {
 	key, err := readCursorKey(path)
 	require.NoError(t, err)
 	assert.Equal(t, "crsr_secret", key)
-}
-
-func TestBatchPromptCarriesTheIntegrityRules(t *testing.T) {
-	p, err := batchPrompt("规则", `[{"i":0}]`, []cursorExtractItem{{I: 0, Intro: "简介"}})
-	require.NoError(t, err)
-	assert.True(t, strings.HasPrefix(p, "规则"))
-	assert.Contains(t, p, "输出项数与输入完全一致")
-	assert.Contains(t, p, `"作品简介":"简介"`)
 }

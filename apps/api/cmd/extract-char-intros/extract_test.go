@@ -80,19 +80,6 @@ func TestNameAppears(t *testing.T) {
 	}
 }
 
-func TestParseExtraction(t *testing.T) {
-	got, err := parseExtraction("```json\n{\"沙耶\": \"青梅竹马。\"}\n```")
-	require.NoError(t, err)
-	assert.Equal(t, map[string]string{"沙耶": "青梅竹马。"}, got)
-
-	_, err = parseExtraction("[1,2]")
-	assert.Error(t, err, "a non-object payload must be refused")
-
-	got, err = parseExtraction("{}")
-	require.NoError(t, err)
-	assert.Empty(t, got)
-}
-
 type fakeExtractor struct {
 	out map[string]string
 }

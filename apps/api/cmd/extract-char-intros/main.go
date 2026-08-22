@@ -54,12 +54,12 @@ func main() {
 	llmBase := flag.String("llm-base", envOr("KUN_INTRO_MT_LLM_BASE", os.Getenv("KUN_AI_UPSTREAM_BASE_URL")), "OpenAI-compatible gateway base URL (…/v1)")
 	llmToken := flag.String("llm-token", envOr("KUN_INTRO_MT_LLM_TOKEN", os.Getenv("KUN_AI_UPSTREAM_TOKEN")), "gateway bearer token")
 	cursorKeyFile := flag.String("cursor-key-file", "", "file holding the Cursor API key (or set CURSOR_API_KEY) — never pass a key on the command line")
-	cursorEffort := flag.String("cursor-effort", "low", "Cursor reasoning effort: low | medium | high | xhigh")
+	effort := flag.String("effort", "", "reasoning effort: low | medium | high (empty = the gateway's own default; the cursor lane needs one and falls back to low)")
 	runTimeout := flag.Duration("run-timeout", 20*time.Minute, "how long one Cursor agent run may take")
-	batch := flag.Int("batch", 0, "works per extraction call (0 = 1 for openai, 20 for cursor)")
-	judgeBatch := flag.Int("judge-batch", 0, "comparisons per judge call (0 = 1 for openai, 40 for cursor)")
+	batch := flag.Int("batch", 0, "works per extraction call (0 = 20)")
+	judgeBatch := flag.Int("judge-batch", 0, "comparisons per judge call (0 = 40)")
 	workers := flag.Int("workers", 0, "concurrent calls in flight (0 = 1 for openai, 6 for cursor)")
-	maxTokens := flag.Int("max-tokens", 16384, "max_tokens per extraction call (openai gateway only)")
+	maxTokens := flag.Int("max-tokens", 16384, "max_tokens per call (openai gateway only)")
 	delayMS := flag.Int("delay-ms", 0, "delay before each gateway call (ms)")
 	samples := flag.Int("samples", 5, "how many extracted samples to print")
 	flag.Parse()
@@ -90,14 +90,15 @@ func main() {
 	var judge panelJudge
 	switch *gateway {
 	case "openai":
-		http := newHTTPExtractor(*llmBase, *llmToken, *model, *maxTokens)
+		http := newHTTPExtractor(*llmBase, *llmToken, *model, *effort, *maxTokens)
 		if !http.Configured() {
 			fmt.Println("BLOCKED: LLM gateway not configured (need --llm-base + --llm-token, or KUN_INTRO_MT_LLM_* / KUN_AI_UPSTREAM_*).")
 			os.Exit(3)
 		}
 		ex, judge = http, http
-		defaultTo(batch, 1)
-		defaultTo(judgeBatch, 1)
+		defaultTo(batch, 20)
+		defaultTo(judgeBatch, 40)
+		// The gateway serialises per account, so extra workers only buy 429s.
 		defaultTo(workers, 1)
 	case "cursor":
 		key, err := readCursorKey(*cursorKeyFile)
@@ -105,7 +106,7 @@ func main() {
 			fmt.Println("BLOCKED: " + err.Error())
 			os.Exit(3)
 		}
-		cur := newCursorClient(key, cursorModel(*model), *cursorEffort, *runTimeout)
+		cur := newCursorClient(key, cursorModel(*model), orDefault(*effort, "low"), *runTimeout)
 		ex, judge = cur, cur
 		defaultTo(batch, 20)
 		defaultTo(judgeBatch, 40)
@@ -334,6 +335,15 @@ func mode(apply bool) string {
 		return "APPLY"
 	}
 	return "DRY"
+}
+
+// orDefault fills in for a flag the cursor lane cannot leave empty: its agent
+// API requires an effort param, while the chat face is happy to omit one.
+func orDefault(v, fallback string) string {
+	if v == "" {
+		return fallback
+	}
+	return v
 }
 
 func envOr(key, fallback string) string {
