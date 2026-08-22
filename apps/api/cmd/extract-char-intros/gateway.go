@@ -9,7 +9,17 @@ import (
 	"time"
 )
 
-var retryBackoff = []time.Duration{5 * time.Second, 10 * time.Second, 20 * time.Second, 40 * time.Second, 60 * time.Second}
+// The ladder has to outlast ONE call, not one hiccup. A gateway that queues
+// answers 429 for as long as the call ahead is still running, and a batched
+// extraction runs ~100s: the old 5/10/20/40/60 ladder spent all five retries
+// inside a single legitimate wait and then failed, which cost the 2026-08-22
+// panel run 20% of its characters. Splitting cannot rescue this — the batch was
+// never too big — so patience is the only fix.
+var retryBackoff = []time.Duration{
+	5 * time.Second, 10 * time.Second, 20 * time.Second, 40 * time.Second,
+	60 * time.Second, 60 * time.Second, 60 * time.Second, 60 * time.Second,
+	60 * time.Second, 60 * time.Second,
+}
 
 // postChat retries throttled and transient gateway failures with backoff. Without
 // this a 429 turns the pacing from inference latency (~20s) into delay-only fast
