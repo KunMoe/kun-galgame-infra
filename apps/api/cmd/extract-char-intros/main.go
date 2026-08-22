@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -49,17 +50,18 @@ func main() {
 	since := flag.String("since", "", "only works whose elected zh intro changed at or after this RFC3339 time (a re-scan trigger, not a filter on the rows)")
 	limit := flag.Int("limit", 0, "max WORKS this run (0 = all) — ramp through a small limit first (the rehearsal rule)")
 	offset := flag.Int("offset", 0, "skip the first N candidate works (stable id order)")
+	workIDs := flag.String("work-ids", "", "comma-separated work ids to run instead of the whole bucket — the retry lane for works a batch failed on")
 	gateway := flag.String("gateway", "openai", "openai (chat/completions) or cursor (agent runs, batched)")
 	model := flag.String("model", envOr("KUN_INTRO_MT_LLM_MODEL", envOr("KUN_AI_UPSTREAM_MODEL", "glm-5.2")), "served model id")
 	llmBase := flag.String("llm-base", envOr("KUN_INTRO_MT_LLM_BASE", os.Getenv("KUN_AI_UPSTREAM_BASE_URL")), "OpenAI-compatible gateway base URL (…/v1)")
 	llmToken := flag.String("llm-token", envOr("KUN_INTRO_MT_LLM_TOKEN", os.Getenv("KUN_AI_UPSTREAM_TOKEN")), "gateway bearer token")
 	cursorKeyFile := flag.String("cursor-key-file", "", "file holding the Cursor API key (or set CURSOR_API_KEY) — never pass a key on the command line")
-	cursorEffort := flag.String("cursor-effort", "low", "Cursor reasoning effort: low | medium | high | xhigh")
+	effort := flag.String("effort", "", "reasoning effort: low | medium | high (empty = the gateway's own default; the cursor lane needs one and falls back to low)")
 	runTimeout := flag.Duration("run-timeout", 20*time.Minute, "how long one Cursor agent run may take")
-	batch := flag.Int("batch", 0, "works per extraction call (0 = 1 for openai, 20 for cursor)")
-	judgeBatch := flag.Int("judge-batch", 0, "comparisons per judge call (0 = 1 for openai, 40 for cursor)")
+	batch := flag.Int("batch", 0, "works per extraction call (0 = 20)")
+	judgeBatch := flag.Int("judge-batch", 0, "comparisons per judge call (0 = 40)")
 	workers := flag.Int("workers", 0, "concurrent calls in flight (0 = 1 for openai, 6 for cursor)")
-	maxTokens := flag.Int("max-tokens", 16384, "max_tokens per extraction call (openai gateway only)")
+	maxTokens := flag.Int("max-tokens", 16384, "max_tokens per call (openai gateway only)")
 	delayMS := flag.Int("delay-ms", 0, "delay before each gateway call (ms)")
 	samples := flag.Int("samples", 5, "how many extracted samples to print")
 	flag.Parse()
@@ -80,6 +82,11 @@ func main() {
 			os.Exit(2)
 		}
 	}
+	ids, err := parseWorkIDs(*workIDs)
+	if err != nil {
+		slog.Error("--work-ids", "error", err)
+		os.Exit(2)
+	}
 	db, err := database.OpenJob(*dsn)
 	if err != nil {
 		slog.Error("open database", "error", err)
@@ -90,14 +97,15 @@ func main() {
 	var judge panelJudge
 	switch *gateway {
 	case "openai":
-		http := newHTTPExtractor(*llmBase, *llmToken, *model, *maxTokens)
+		http := newHTTPExtractor(*llmBase, *llmToken, *model, *effort, *maxTokens)
 		if !http.Configured() {
 			fmt.Println("BLOCKED: LLM gateway not configured (need --llm-base + --llm-token, or KUN_INTRO_MT_LLM_* / KUN_AI_UPSTREAM_*).")
 			os.Exit(3)
 		}
 		ex, judge = http, http
-		defaultTo(batch, 1)
-		defaultTo(judgeBatch, 1)
+		defaultTo(batch, 20)
+		defaultTo(judgeBatch, 40)
+		// The gateway serialises per account, so extra workers only buy 429s.
 		defaultTo(workers, 1)
 	case "cursor":
 		key, err := readCursorKey(*cursorKeyFile)
@@ -105,7 +113,7 @@ func main() {
 			fmt.Println("BLOCKED: " + err.Error())
 			os.Exit(3)
 		}
-		cur := newCursorClient(key, cursorModel(*model), *cursorEffort, *runTimeout)
+		cur := newCursorClient(key, cursorModel(*model), orDefault(*effort, "low"), *runTimeout)
 		ex, judge = cur, cur
 		defaultTo(batch, 20)
 		defaultTo(judgeBatch, 40)
@@ -120,7 +128,7 @@ func main() {
 
 	if err := run(context.Background(), db, ex, judge, opts{
 		Apply: *apply, Panel: *panel, Refresh: *refresh,
-		Cand:  candidateOpts{Limit: *limit, Offset: *offset, Since: *since},
+		Cand:  candidateOpts{Limit: *limit, Offset: *offset, Since: *since, WorkIDs: ids},
 		Batch: *batch, JudgeBatch: *judgeBatch, Workers: *workers,
 		Delay: time.Duration(*delayMS) * time.Millisecond, Samples: *samples,
 	}); err != nil {
@@ -334,6 +342,35 @@ func mode(apply bool) string {
 		return "APPLY"
 	}
 	return "DRY"
+}
+
+func parseWorkIDs(csv string) ([]int64, error) {
+	csv = strings.TrimSpace(csv)
+	if csv == "" {
+		return nil, nil
+	}
+	var out []int64
+	for field := range strings.SplitSeq(csv, ",") {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(field, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%q is not a work id", field)
+		}
+		out = append(out, id)
+	}
+	return out, nil
+}
+
+// orDefault fills in for a flag the cursor lane cannot leave empty: its agent
+// API requires an effort param, while the chat face is happy to omit one.
+func orDefault(v, fallback string) string {
+	if v == "" {
+		return fallback
+	}
+	return v
 }
 
 func envOr(key, fallback string) string {

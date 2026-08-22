@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
 
 	"api/internal/platform/catalog/editspec"
 
@@ -104,15 +102,6 @@ type panelJudge interface {
 	CompareBatch(ctx context.Context, batch []comparison) []comparisonResult
 }
 
-func (t *httpExtractor) CompareBatch(ctx context.Context, batch []comparison) []comparisonResult {
-	out := make([]comparisonResult, len(batch))
-	for i, c := range batch {
-		v, err := t.Compare(ctx, c.Name, c.Incumbent, c.Challenger, c.ChallengerFirst)
-		out[i] = comparisonResult{Vote: v, Err: err}
-	}
-	return out
-}
-
 const panelVotes = 3
 
 // panelVerdict folds three votes by direction: equal votes are not opposing
@@ -131,68 +120,15 @@ func panelVerdict(votes []panelVote) bool {
 	return incumbent == 0 && challenger >= 2
 }
 
-const judgeSystemPrompt = `你在为视觉小说(galgame)数据库挑选更好的一段中文角色介绍。给你角色名和两段候选文本 A、B。
+const judgeSystemPrompt = `你在为视觉小说(galgame)数据库挑选更好的一段中文角色介绍。每个条目给出角色名和两段候选文本 A、B。
 判据(按重要性):
 1. 介绍性:说明角色的身份、性格、外貌或与他人的关系。纯剧情叙述、只在事件中顺带提到角色的文本不合格。
 2. 信息量:具体、有内容,不是空话。
 3. 通顺自然的中文;机翻腔、辞不达意、残缺句是硬伤。
-两段都合格且相当时输出 equal。只输出严格 JSON:{"winner":"A"} 或 {"winner":"B"} 或 {"winner":"equal"},不要解释。`
+两段都合格且相当时输出 equal。每项的 winner 取值只能是 "A"、"B"、"equal" 三者之一。`
 
-func (t *httpExtractor) Compare(ctx context.Context, name, incumbent, challenger string, challengerFirst bool) (panelVote, error) {
-	first, second := incumbent, challenger
-	if challengerFirst {
-		first, second = challenger, incumbent
-	}
-	user := fmt.Sprintf("角色:%s\n\nA:\n%s\n\nB:\n%s", name, first, second)
-	body := map[string]any{
-		"model":       t.model,
-		"max_tokens":  t.maxTokens,
-		"temperature": 0,
-		"messages": []map[string]string{
-			{"role": "system", "content": judgeSystemPrompt},
-			{"role": "user", "content": user},
-		},
-	}
-	raw, err := json.Marshal(body)
-	if err != nil {
-		return voteEqual, err
-	}
-	data, err := t.postChat(ctx, raw)
-	if err != nil {
-		return voteEqual, err
-	}
-	var cr struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-			FinishReason string `json:"finish_reason"`
-		} `json:"choices"`
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(data, &cr); err != nil {
-		return voteEqual, fmt.Errorf("decode judge response: %w", err)
-	}
-	if cr.Error != nil {
-		return voteEqual, fmt.Errorf("gateway error: %s", cr.Error.Message)
-	}
-	if len(cr.Choices) == 0 {
-		return voteEqual, fmt.Errorf("gateway returned no choices")
-	}
-	if fr := cr.Choices[0].FinishReason; fr != "" && fr != "stop" {
-		return voteEqual, fmt.Errorf("judge finished with finish_reason=%q", fr)
-	}
-	winner, err := parseJudgeWinner(cr.Choices[0].Message.Content)
-	if err != nil {
-		return voteEqual, err
-	}
-	return voteOf(winner, challengerFirst), nil
-}
-
-// voteOf maps the judge's answer back onto the two passages. parseJudgeWinner
-// (and the batch lane's own check) already rejected anything but A/B/equal.
+// voteOf maps the judge's answer back onto the two passages. Anything but
+// A/B/equal lands on equal, and the batch lane turns that into an error.
 func voteOf(winner string, challengerFirst bool) panelVote {
 	switch winner {
 	case "A":
@@ -207,22 +143,4 @@ func voteOf(winner string, challengerFirst bool) panelVote {
 		return voteChallenger
 	}
 	return voteEqual
-}
-
-func parseJudgeWinner(s string) (string, error) {
-	s = strings.TrimSpace(s)
-	s = strings.TrimPrefix(s, "```json")
-	s = strings.TrimPrefix(s, "```")
-	s = strings.TrimSuffix(s, "```")
-	var out struct {
-		Winner string `json:"winner"`
-	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(s)), &out); err != nil {
-		return "", fmt.Errorf("judge output is not the expected JSON: %w", err)
-	}
-	w := strings.TrimSpace(out.Winner)
-	if w != "A" && w != "B" && w != "equal" {
-		return "", fmt.Errorf("judge answered %q", w)
-	}
-	return w, nil
 }
