@@ -99,6 +99,21 @@ func workIDsOf(works []candidateWork) []int64 {
 	return out
 }
 
+func TestRosterIndexTakesTheSpacesOutButNotAmbiguously(t *testing.T) {
+	roster := []rosterChar{
+		{CharacterID: 1, Name: "河合 葉月"},
+		{CharacterID: 2, Name: "坂本 水葉"},
+		{CharacterID: 3, Name: "坂本水葉"},
+	}
+
+	idx := rosterIndex(roster)
+	assert.Equal(t, int64(1), idx["河合 葉月"].CharacterID)
+	assert.Equal(t, int64(1), idx["河合葉月"].CharacterID, "an unspaced answer still finds its character")
+	assert.Equal(t, int64(2), idx["坂本 水葉"].CharacterID, "an exact name always wins")
+	assert.Equal(t, int64(3), idx["坂本水葉"].CharacterID,
+		"two roster names collapsing to one key must not let the squashed lookup guess")
+}
+
 func TestParseWorkIDs(t *testing.T) {
 	got, err := parseWorkIDs(" 23427, 23449 ,")
 	require.NoError(t, err)
