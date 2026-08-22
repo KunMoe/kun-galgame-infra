@@ -29,10 +29,11 @@ type promptCaller interface {
 	callBatch(ctx context.Context, c batchCall) (text, model string, err error)
 }
 
-// errBatchOversize marks a reply the gateway cut short. It is the one call
-// failure that halving the batch can fix, so it reaches the split retry
-// instead of failing every item outright.
-var errBatchOversize = errors.New("reply truncated before it finished")
+// errBatchOversize marks a call that a SMALLER call might have survived: the
+// reply was cut off at max_tokens, or the gateway ran out of patience with one
+// that took too long. Only these reach the split retry; every other failure
+// fails its batch outright.
+var errBatchOversize = errors.New("batch too big for one call")
 
 const batchEnvelopeRules = `下面是一个 JSON 数组,每项是一个待处理条目,` + "`i`" + ` 是它的序号。
 逐项独立处理,输出 JSON 数组 %s。

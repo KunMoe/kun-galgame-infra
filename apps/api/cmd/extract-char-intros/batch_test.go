@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,8 +67,9 @@ type chatReq struct {
 }
 
 type chatProbe struct {
-	ex   *httpExtractor
-	reqs []chatReq
+	ex     *httpExtractor
+	reqs   []chatReq
+	status func(n int) int // HTTP status for the nth call; nil means 200
 }
 
 func fakeChat(t *testing.T, answer func(req chatReq, n int) (content, finish string)) *chatProbe {
@@ -80,6 +82,12 @@ func fakeChat(t *testing.T, answer func(req chatReq, n int) (content, finish str
 		var req chatReq
 		require.NoError(t, json.Unmarshal(body, &req))
 		p.reqs = append(p.reqs, req)
+		if p.status != nil {
+			if code := p.status(len(p.reqs)); code != http.StatusOK {
+				http.Error(w, "error code: "+http.StatusText(code), code)
+				return
+			}
+		}
 		content, finish := answer(req, len(p.reqs))
 		out, _ := json.Marshal(map[string]any{
 			"model": "grok-4.6",
@@ -174,4 +182,28 @@ func TestHTTPBatchOmitsEffortWhenUnset(t *testing.T) {
 	out := p.ex.ExtractBatch(context.Background(), twoWorks()[:1])
 	require.NoError(t, out[0].Err)
 	assert.Empty(t, p.reqs[0].ReasoningEffort, fmt.Sprintf("req: %+v", p.reqs[0]))
+}
+
+// Cloudflare answers 524 once the origin passes 100s, which a 40-work
+// extraction does. Failing the whole batch there costs 40 works at a time, so
+// an exhausted retryable status has to reach the split retry like a truncated
+// reply does.
+func TestHTTPBatchSplitsWhenTheGatewayGivesUp(t *testing.T) {
+	orig := retryBackoff
+	retryBackoff = []time.Duration{time.Millisecond}
+	t.Cleanup(func() { retryBackoff = orig })
+
+	p := fakeChat(t, func(chatReq, int) (string, string) { return `[{"i":0,"摘录":{}}]`, "stop" })
+	p.status = func(n int) int {
+		if n <= len(retryBackoff)+1 {
+			return 524 // the first call and every one of its retries
+		}
+		return http.StatusOK
+	}
+
+	out := p.ex.ExtractBatch(context.Background(), twoWorks())
+	require.Len(t, out, 2)
+	for i, e := range out {
+		require.NoError(t, e.Err, "work %d survived on a half-sized call", i)
+	}
 }
