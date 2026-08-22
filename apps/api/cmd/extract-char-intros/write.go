@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"api/internal/platform/catalog/model"
@@ -28,6 +30,7 @@ type stats struct {
 	Updated            int
 	Conflict           int
 	RefusedNotVerbatim int
+	RefusedNotChinese  int
 	RefusedShort       int
 	RefusedNameAbsent  int
 	UnmatchedName      int
@@ -92,6 +95,12 @@ func (w *writer) gate(cand candidateWork, found map[string]string, mtModel strin
 		if !verbatim(cand.Intro, passage) {
 			w.st.RefusedNotVerbatim++
 			slog.Warn("extraction failed the verbatim gate", "work", cand.WorkID,
+				"character", target.CharacterID, "name", name)
+			continue
+		}
+		if looksJapanese(passage) {
+			w.st.RefusedNotChinese++
+			slog.Warn("passage is Japanese prose, not a zh intro", "work", cand.WorkID,
 				"character", target.CharacterID, "name", name)
 			continue
 		}
@@ -298,6 +307,34 @@ func nameAppears(intro string, target rosterChar) bool {
 		}
 	}
 	return false
+}
+
+var parenSpan = regexp.MustCompile(`[（(][^）)]*[）)]`)
+
+// looksJapanese refuses a passage that is Japanese prose rather than Chinese.
+// A zh-Hans work intro can still carry untranslated Japanese, and the verbatim
+// gate is happy to quote it — the 2026-08-22 refresh rehearsal filed
+// 「一方、兄の虎鉄は無名……」 as a Chinese character intro.
+//
+// The hiragana ratio alone does NOT separate the two: measured over the whole
+// derived face, a Chinese intro carrying furigana readings reaches 29.7%
+// (主人公藤宫晴真（ふじみや はるま），是上奈木（かみなぎ）学园的…) while real
+// Japanese prose starts at 31.7%. Parenthesised readings are the whole
+// difference, so they come out first; what is left is Chinese with at most a
+// few kana names in it.
+func looksJapanese(passage string) bool {
+	s := parenSpan.ReplaceAllString(passage, "")
+	var hira, total int
+	for _, r := range s {
+		if unicode.IsSpace(r) {
+			continue
+		}
+		total++
+		if r >= 'ぁ' && r <= 'ゖ' {
+			hira++
+		}
+	}
+	return total > 0 && float64(hira)/float64(total) > 0.30
 }
 
 var matchStripper = strings.NewReplacer(

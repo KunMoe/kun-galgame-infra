@@ -193,8 +193,8 @@ func run(ctx context.Context, db *gorm.DB, ex extractor, judge panelJudge, o opt
 			return err
 		}
 	}
-	fmt.Printf("\nworks=%d extracted=%d inserted=%d updated=%d conflict=%d refused_not_verbatim=%d refused_short=%d refused_name_absent=%d unmatched_name=%d call_errors=%d touched_works=%d\n",
-		len(works), st.Extracted, st.Inserted, st.Updated, st.Conflict, st.RefusedNotVerbatim, st.RefusedShort, st.RefusedNameAbsent, st.UnmatchedName, st.CallErrors, st.Touched)
+	fmt.Printf("\nworks=%d extracted=%d inserted=%d updated=%d conflict=%d refused_not_verbatim=%d refused_not_chinese=%d refused_short=%d refused_name_absent=%d unmatched_name=%d call_errors=%d touched_works=%d\n",
+		len(works), st.Extracted, st.Inserted, st.Updated, st.Conflict, st.RefusedNotVerbatim, st.RefusedNotChinese, st.RefusedShort, st.RefusedNameAbsent, st.UnmatchedName, st.CallErrors, st.Touched)
 	if o.Panel {
 		fmt.Printf("panel: adopted=%d kept_incumbent=%d panel_errors=%d\n", st.PanelAdopted, st.PanelKept, st.PanelErrors)
 	}
