@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -159,7 +160,7 @@ func TestVoteDispatchChunksAndKeepsOrder(t *testing.T) {
 		cmps[i] = comparison{Name: fmt.Sprint(i), ChallengerFirst: i%2 == 1}
 	}
 
-	out := voteDispatch(j, 2, 1, 0)(context.Background(), cmps)
+	out := voteDispatch(j, 2, newCallSlots(1), 0)(context.Background(), cmps)
 	require.Len(t, out, 5)
 	assert.Equal(t, []int{2, 2, 1}, j.batches)
 	for i, r := range out {
@@ -182,10 +183,51 @@ func TestResolvePanelKeepsIncumbentWhenARoundFails(t *testing.T) {
 	w := &writer{st: &stats{}, judge: shortJudge{}}
 	contested := []gated{{WorkID: 1, Target: rosterChar{CharacterID: 1, Name: "沙耶", Incumbent: "既有"}, Passage: "提取"}}
 
-	adopted := w.resolvePanel(context.Background(), contested, voteDispatch(shortJudge{}, 10, 1, 0))
+	adopted := w.resolvePanel(context.Background(), contested, voteDispatch(shortJudge{}, 10, newCallSlots(1), 0))
 	assert.Empty(t, adopted)
 	assert.Equal(t, 1, w.st.PanelErrors)
 	assert.Zero(t, w.st.PanelKept, "an unjudged character is not a kept verdict — it is retryable")
+}
+
+type trackingExtractor struct{ enter func() func() }
+
+func (e trackingExtractor) ExtractBatch(_ context.Context, batch []candidateWork) []extraction {
+	defer e.enter()()
+	return make([]extraction, len(batch))
+}
+
+type trackingJudge struct{ enter func() func() }
+
+func (j trackingJudge) CompareBatch(_ context.Context, batch []comparison) []comparisonResult {
+	defer j.enter()()
+	return make([]comparisonResult, len(batch))
+}
+
+// --workers 1 has to mean one gateway call in flight, not one per stage. With a
+// semaphore each, extractBatches prefetches the next extraction while the
+// consumer is still judging the previous batch — two calls at once, which a
+// gateway that serialises per account answers with 429.
+func TestCallSlotsBoundBothStagesTogether(t *testing.T) {
+	var inFlight, peak atomic.Int32
+	enter := func() func() {
+		n := inFlight.Add(1)
+		for {
+			p := peak.Load()
+			if n <= p || peak.CompareAndSwap(p, n) {
+				break
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+		return func() { inFlight.Add(-1) }
+	}
+	slots := newCallSlots(1)
+	dispatch := voteDispatch(trackingJudge{enter}, 1, slots, 0)
+
+	batches := chunkWorks(make([]candidateWork, 6), 2)
+	for range extractBatches(context.Background(), trackingExtractor{enter}, batches, slots, 0) {
+		dispatch(context.Background(), make([]comparison, 2))
+	}
+	assert.Equal(t, int32(1), peak.Load())
 }
 
 func TestCursorModelFallsBackOffTheOpenAIDefault(t *testing.T) {

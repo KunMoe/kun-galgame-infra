@@ -171,10 +171,11 @@ func run(ctx context.Context, db *gorm.DB, ex extractor, judge panelJudge, o opt
 	fmt.Printf("\n=== extract-char-intros (%s) candidate_works=%d ===\n", modeStr, len(works))
 	st := &stats{}
 	w := &writer{db: db, apply: o.Apply, refresh: o.Refresh, st: st, samples: o.Samples, judge: judge}
-	dispatch := voteDispatch(judge, at(o.JudgeBatch, 1), at(o.Workers, 1), o.Delay)
+	slots := newCallSlots(at(o.Workers, 1))
+	dispatch := voteDispatch(judge, at(o.JudgeBatch, 1), slots, o.Delay)
 
 	done := 0
-	for res := range extractBatches(ctx, ex, chunkWorks(works, at(o.Batch, 1)), at(o.Workers, 1), o.Delay) {
+	for res := range extractBatches(ctx, ex, chunkWorks(works, at(o.Batch, 1)), slots, o.Delay) {
 		var contested []gated
 		for i, cand := range res.works {
 			e := res.out[i]
@@ -228,20 +229,32 @@ func chunkWorks(works []candidateWork, size int) [][]candidateWork {
 	return out
 }
 
+// callSlots caps how many gateway calls are in flight across BOTH stages. One
+// semaphore per stage is not enough: extractBatches starts the next extraction
+// the moment the previous one returns, so it overlaps the judge round the
+// consumer is still working through — two calls in flight even at --workers 1.
+// A gateway that serialises per account answers the second with 429, and after
+// the backoff ladder that costs a whole batch (2026-08-22: 40 works).
+type callSlots chan struct{}
+
+func newCallSlots(n int) callSlots { return make(callSlots, max(n, 1)) }
+
+func (s callSlots) acquire() { s <- struct{}{} }
+func (s callSlots) release() { <-s }
+
 // extractBatches runs the batches concurrently but delivers them in order, so
 // a rerun with the same window walks the same works in the same sequence and
 // the progress line means what it says.
-func extractBatches(ctx context.Context, ex extractor, batches [][]candidateWork, workers int, delay time.Duration) <-chan batchResult {
+func extractBatches(ctx context.Context, ex extractor, batches [][]candidateWork, slotsIn callSlots, delay time.Duration) <-chan batchResult {
 	slots := make([]chan batchResult, len(batches))
 	for i := range slots {
 		slots[i] = make(chan batchResult, 1)
 	}
 	go func() {
-		sem := make(chan struct{}, workers)
 		for i, b := range batches {
-			sem <- struct{}{}
+			slotsIn.acquire()
 			go func(i int, b []candidateWork) {
-				defer func() { <-sem }()
+				defer slotsIn.release()
 				if delay > 0 {
 					time.Sleep(delay)
 				}
@@ -264,18 +277,17 @@ func extractBatches(ctx context.Context, ex extractor, batches [][]candidateWork
 	return out
 }
 
-func voteDispatch(judge panelJudge, size, workers int, delay time.Duration) voteDispatcher {
+func voteDispatch(judge panelJudge, size int, slots callSlots, delay time.Duration) voteDispatcher {
 	return func(ctx context.Context, cmps []comparison) []comparisonResult {
 		out := make([]comparisonResult, len(cmps))
-		sem := make(chan struct{}, workers)
 		var wg sync.WaitGroup
 		for start := 0; start < len(cmps); start += size {
 			end := min(start+size, len(cmps))
 			wg.Add(1)
-			sem <- struct{}{}
+			slots.acquire()
 			go func(start, end int) {
 				defer wg.Done()
-				defer func() { <-sem }()
+				defer slots.release()
 				if delay > 0 {
 					time.Sleep(delay)
 				}
