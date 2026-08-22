@@ -69,16 +69,18 @@ type gated struct {
 // batched across works, so gate only sorts the survivors into those that can
 // be written straight away and those that need a verdict first.
 func (w *writer) gate(cand candidateWork, found map[string]string, mtModel string) (ready, contested []gated) {
-	byName := make(map[string]rosterChar, len(cand.Roster))
-	for _, r := range cand.Roster {
-		byName[r.Name] = r
-	}
+	byName := rosterIndex(cand.Roster)
 	srcHash := hashText(cand.Intro)
 	for name, passage := range found {
 		w.st.Extracted++
-		target, ok := byName[strings.TrimSpace(name)]
+		name = strings.TrimSpace(name)
+		target, ok := byName[name]
+		if !ok {
+			target, ok = byName[squashSpace(name)]
+		}
 		if !ok {
 			w.st.UnmatchedName++
+			slog.Warn("extraction key is not a roster name", "work", cand.WorkID, "name", name)
 			continue
 		}
 		passage = strings.TrimSpace(passage)
@@ -117,6 +119,34 @@ func (w *writer) gate(cand candidateWork, found map[string]string, mtModel strin
 	}
 	return ready, contested
 }
+
+// rosterIndex keys the roster by name and, where it is unambiguous, by the
+// name with its spaces taken out. Asked for 「河合 葉月」 a model answers
+// 「河合葉月」 often enough to matter, and an exact-key lookup files that good
+// passage in the unmatched bucket (6 of 10 extractions on the 2026-08-22 fill
+// retry). Two roster names that collapse to the same key get no squashed entry
+// at all: guessing there hangs the passage on the wrong character.
+func rosterIndex(roster []rosterChar) map[string]rosterChar {
+	byName := make(map[string]rosterChar, len(roster)*2)
+	for _, r := range roster {
+		byName[r.Name] = r
+	}
+	seen := make(map[string]int, len(roster))
+	for _, r := range roster {
+		seen[squashSpace(r.Name)]++
+	}
+	for _, r := range roster {
+		k := squashSpace(r.Name)
+		if _, taken := byName[k]; !taken && seen[k] == 1 {
+			byName[k] = r
+		}
+	}
+	return byName
+}
+
+var spaceStripper = strings.NewReplacer(" ", "", "\t", "", "\u3000", "")
+
+func squashSpace(s string) string { return spaceStripper.Replace(s) }
 
 // commit writes one gated passage: a fresh derived row, or a rewrite of the
 // stale one in the refresh bucket.
