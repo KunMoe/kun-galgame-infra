@@ -24,8 +24,15 @@ func (t *httpExtractor) postChat(ctx context.Context, raw []byte) ([]byte, error
 		}
 		retryable := status == 0 || status == http.StatusTooManyRequests ||
 			status == http.StatusRequestTimeout || status >= http.StatusInternalServerError
-		if !retryable || attempt >= len(retryBackoff) {
+		if !retryable {
 			return nil, err
+		}
+		// Out of retries on a failure a SMALLER call might survive, so hand it to
+		// the split retry rather than failing the whole batch. Cloudflare answers
+		// 524 once the origin passes 100s, which a 40-work extraction does often
+		// enough to cost 40 works at a time (2026-08-22 panel run).
+		if attempt >= len(retryBackoff) {
+			return nil, fmt.Errorf("%w: %v", errBatchOversize, err)
 		}
 		select {
 		case <-time.After(retryBackoff[attempt]):
