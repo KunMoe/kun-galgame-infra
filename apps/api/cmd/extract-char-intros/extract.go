@@ -35,9 +35,10 @@ type rosterChar struct {
 
 // candidateOpts is the window every bucket's loader applies identically.
 type candidateOpts struct {
-	Limit  int
-	Offset int
-	Since  string // RFC3339; keep only works whose elected zh intro changed since
+	Limit   int
+	Offset  int
+	Since   string  // RFC3339; keep only works whose elected zh intro changed since
+	WorkIDs []int64 // keep only these works — the retry lane for a failed batch
 }
 
 // sinceClause filters on the ELECTED intro's updated_at — the row the zhi CTE
@@ -59,6 +60,19 @@ func sinceArgs(since string) []any {
 }
 
 func window(works []candidateWork, o candidateOpts) []candidateWork {
+	if len(o.WorkIDs) > 0 {
+		want := make(map[int64]bool, len(o.WorkIDs))
+		for _, id := range o.WorkIDs {
+			want[id] = true
+		}
+		kept := works[:0:0]
+		for _, w := range works {
+			if want[w.WorkID] {
+				kept = append(kept, w)
+			}
+		}
+		works = kept
+	}
 	if o.Offset > 0 {
 		if o.Offset >= len(works) {
 			return nil

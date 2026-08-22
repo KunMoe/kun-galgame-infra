@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -49,6 +50,7 @@ func main() {
 	since := flag.String("since", "", "only works whose elected zh intro changed at or after this RFC3339 time (a re-scan trigger, not a filter on the rows)")
 	limit := flag.Int("limit", 0, "max WORKS this run (0 = all) — ramp through a small limit first (the rehearsal rule)")
 	offset := flag.Int("offset", 0, "skip the first N candidate works (stable id order)")
+	workIDs := flag.String("work-ids", "", "comma-separated work ids to run instead of the whole bucket — the retry lane for works a batch failed on")
 	gateway := flag.String("gateway", "openai", "openai (chat/completions) or cursor (agent runs, batched)")
 	model := flag.String("model", envOr("KUN_INTRO_MT_LLM_MODEL", envOr("KUN_AI_UPSTREAM_MODEL", "glm-5.2")), "served model id")
 	llmBase := flag.String("llm-base", envOr("KUN_INTRO_MT_LLM_BASE", os.Getenv("KUN_AI_UPSTREAM_BASE_URL")), "OpenAI-compatible gateway base URL (…/v1)")
@@ -79,6 +81,11 @@ func main() {
 			slog.Error("--since must be RFC3339", "value", *since, "error", err)
 			os.Exit(2)
 		}
+	}
+	ids, err := parseWorkIDs(*workIDs)
+	if err != nil {
+		slog.Error("--work-ids", "error", err)
+		os.Exit(2)
 	}
 	db, err := database.OpenJob(*dsn)
 	if err != nil {
@@ -121,7 +128,7 @@ func main() {
 
 	if err := run(context.Background(), db, ex, judge, opts{
 		Apply: *apply, Panel: *panel, Refresh: *refresh,
-		Cand:  candidateOpts{Limit: *limit, Offset: *offset, Since: *since},
+		Cand:  candidateOpts{Limit: *limit, Offset: *offset, Since: *since, WorkIDs: ids},
 		Batch: *batch, JudgeBatch: *judgeBatch, Workers: *workers,
 		Delay: time.Duration(*delayMS) * time.Millisecond, Samples: *samples,
 	}); err != nil {
@@ -335,6 +342,26 @@ func mode(apply bool) string {
 		return "APPLY"
 	}
 	return "DRY"
+}
+
+func parseWorkIDs(csv string) ([]int64, error) {
+	csv = strings.TrimSpace(csv)
+	if csv == "" {
+		return nil, nil
+	}
+	var out []int64
+	for field := range strings.SplitSeq(csv, ",") {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(field, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%q is not a work id", field)
+		}
+		out = append(out, id)
+	}
+	return out, nil
 }
 
 // orDefault fills in for a flag the cursor lane cannot leave empty: its agent
