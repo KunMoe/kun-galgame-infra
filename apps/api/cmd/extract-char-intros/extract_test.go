@@ -80,17 +80,36 @@ func TestNameAppears(t *testing.T) {
 	}
 }
 
-func TestParseExtraction(t *testing.T) {
-	got, err := parseExtraction("```json\n{\"沙耶\": \"青梅竹马。\"}\n```")
-	require.NoError(t, err)
-	assert.Equal(t, map[string]string{"沙耶": "青梅竹马。"}, got)
+func TestWorkIDsNarrowTheBucketToARetryList(t *testing.T) {
+	works := []candidateWork{{WorkID: 11}, {WorkID: 22}, {WorkID: 33}}
 
-	_, err = parseExtraction("[1,2]")
-	assert.Error(t, err, "a non-object payload must be refused")
+	got := window(works, candidateOpts{WorkIDs: []int64{33, 11, 99}})
+	assert.Equal(t, []int64{11, 33}, workIDsOf(got), "id order stays the candidate order, and an id off the bucket is silently absent")
+	assert.Equal(t, []int64{11, 22, 33}, workIDsOf(works), "the caller's slice is untouched")
 
-	got, err = parseExtraction("{}")
+	got = window(works, candidateOpts{WorkIDs: []int64{11, 22, 33}, Offset: 1, Limit: 1})
+	assert.Equal(t, []int64{22}, workIDsOf(got), "offset and limit still apply to what is left")
+}
+
+func workIDsOf(works []candidateWork) []int64 {
+	out := make([]int64, 0, len(works))
+	for _, w := range works {
+		out = append(out, w.WorkID)
+	}
+	return out
+}
+
+func TestParseWorkIDs(t *testing.T) {
+	got, err := parseWorkIDs(" 23427, 23449 ,")
 	require.NoError(t, err)
-	assert.Empty(t, got)
+	assert.Equal(t, []int64{23427, 23449}, got)
+
+	got, err = parseWorkIDs("")
+	require.NoError(t, err)
+	assert.Nil(t, got, "no list means the whole bucket, not an empty one")
+
+	_, err = parseWorkIDs("23427,oops")
+	assert.Error(t, err)
 }
 
 type fakeExtractor struct {
