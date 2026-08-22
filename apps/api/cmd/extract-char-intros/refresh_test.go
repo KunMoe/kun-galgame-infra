@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -93,6 +94,45 @@ func TestRunRefreshKeepsTheRowWhenNothingIsExtractable(t *testing.T) {
 			WHERE character_id = ?`, saya).Scan(&intro).Error)
 		assert.Equal(t, "旧的摘录。", intro, "a character never loses its intro to a failed refresh")
 	}
+}
+
+// Every string here is a real derived row from prod, picked off the
+// hiragana-ratio bands the 2026-08-22 rehearsal measured. The Chinese rows
+// around 30% are why the gate strips parenthesised readings first: by raw
+// ratio they sit ABOVE the Japanese prose it has to refuse.
+func TestLooksJapaneseSeparatesProseFromFurigana(t *testing.T) {
+	cases := []struct {
+		want bool
+		text string
+	}{
+		{true, "一方、兄の虎鉄は無名……どころか、一部には悪評がついて回る。\n大部分は誤解だが、しかし彼の金髪が威圧的なことは、言い逃れできない事実であり、"},
+		{true, "主人公の栂野 遥平は姉御肌でキャリアウーマンの母親——夏帆と、優しく家事万能である従姉の文香と三人で仲良く暮らしていた。"},
+		{true, "女子の比率が圧倒的に多い白鷺（しらさぎ）学園にて、騒がしいながらも平和に過ごしていた『加我見 和也』。"},
+		{false, "主人公藤宫晴真（ふじみや はるま），是上奈木（かみなぎ）学园的2年级学生。"},
+		{false, "幼年丧母的主人公『志賀海人（しが　かいと）』，像对待真正的母亲一样爱慕着身为继母的『志賀小夜』。"},
+		{false, "在高级美容按摩店工作的按摩师，安馬指男（あんまゆびお）25岁。"},
+		{false, "主人公“ターサ”是为了生存而进行盗窃的盗贼。与孤儿少女“秋秋(チュチュ)”穿越沙漠从一座城市旅行到另一座城市。"},
+		{false, "就这样，主人公いぶき一边借助青梅竹马あやめ的帮助，一边作为女学生开始了宿舍生活。"},
+		{false, "主人公的青梅竹马,性格开朗,总是照顾身边的每一个人。"},
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.want, looksJapanese(c.text), truncate(c.text, 30))
+	}
+}
+
+func TestRunRefusesJapaneseProse(t *testing.T) {
+	require.NoError(t, testDB.Exec(`TRUNCATE catalog_work, catalog_character RESTART IDENTITY CASCADE`).Error)
+	jaTail := "\n\n一方、兄の虎鉄は無名……どころか、一部には悪評がついて回る。大部分は誤解だが、しかし彼の金髪が威圧的なことは、言い逃れできない事実である。"
+	workID := seedWorkWithIntro(t, longIntro+jaTail)
+	kotetsu := seedRosterChar(t, workID, "虎鉄")
+
+	ex := fakeExtractor{out: map[string]string{"虎鉄": strings.TrimSpace(jaTail)}}
+	require.NoError(t, run(context.Background(), testDB, ex, nil, opts{Apply: true}))
+
+	var n int64
+	require.NoError(t, testDB.Raw(`SELECT count(*) FROM catalog_character_intro
+		WHERE character_id = ?`, kotetsu).Scan(&n).Error)
+	assert.Zero(t, n, "Japanese prose is verbatim in the intro and must still be refused")
 }
 
 func TestSinceFiltersOnTheElectedIntro(t *testing.T) {
