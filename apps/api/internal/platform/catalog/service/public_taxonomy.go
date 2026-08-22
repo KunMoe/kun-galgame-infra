@@ -29,6 +29,7 @@ type TagsListFilter struct {
 	Kind     *int16
 	NSFW     bool
 	HasWorks bool
+	IDs      []int64
 }
 
 type EnginesListFilter struct {
@@ -152,6 +153,10 @@ func (s *PublicService) TagsList(ctx context.Context, f TagsListFilter, cursor s
 		pred, pargs := workExistsClause(tagWorkEdge, "catalog_tag.id", f.NSFW)
 		where = append(where, pred)
 		args = append(args, pargs...)
+	}
+	if len(f.IDs) > 0 {
+		where = append(where, "id IN ?")
+		args = append(args, f.IDs)
 	}
 	filterWhere, filterArgs := append([]string(nil), where...), append([]any(nil), args...)
 	if cur.ID > 0 {

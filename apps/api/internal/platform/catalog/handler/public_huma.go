@@ -227,6 +227,7 @@ type publicTagsListInput struct {
 	Limit    int    `query:"limit" doc:"Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"`
 	NSFW     bool   `query:"nsfw" doc:"true/1 = count r18 works in work_count (default false = excluded, matching what an sfw works?tag_id= call returns)"`
 	HasWorks bool   `query:"has_works" doc:"true/1 = only tags whose work_count is > 0 under the same nsfw setting (default false = every tag); total converges with the filter"`
+	IDs      string `query:"ids" doc:"Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row"`
 }
 type publicTagsListOutput struct {
 	Body Envelope[dto.PublicTagsListData]

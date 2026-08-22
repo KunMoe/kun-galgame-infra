@@ -91,6 +91,43 @@ func TestPublicWorksListStrictIDFilters(t *testing.T) {
 	assert.Empty(t, body["data"].(map[string]any)["items"])
 }
 
+func TestPublicWorksListIDsFilter(t *testing.T) {
+	db := openCatalogTestDB(t)
+	ids := seedPublicWorks(t, db, 3)
+	app := publicApp(db)
+
+	listedIDs := func(t *testing.T, url string) (out []int64) {
+		t.Helper()
+		code, body := getJSON(t, app, url)
+		require.Equal(t, 200, code)
+		for _, it := range body["data"].(map[string]any)["items"].([]any) {
+			out = append(out, int64(it.(map[string]any)["id"].(float64)))
+		}
+		return out
+	}
+
+	assert.Equal(t, []int64{ids[0], ids[2]},
+		listedIDs(t, "/v1/catalog/works?ids="+itoa(ids[0])+","+itoa(ids[2])))
+	assert.Equal(t, []int64{ids[1]},
+		listedIDs(t, "/v1/catalog/works?ids="+itoa(ids[1])+",999999"),
+		"an unknown id matches nothing and is not an error")
+
+	for _, raw := range []string{"abc", "0", "-5", "1,,2"} {
+		t.Run("400 ids="+raw, func(t *testing.T) {
+			code, body := getJSON(t, app, "/v1/catalog/works?ids="+raw)
+			require.Equal(t, 400, code)
+			assert.Equal(t, "ids must be positive integers", body["message"])
+		})
+	}
+
+	code, body := getJSON(t, app, "/v1/catalog/works?ids="+repeatIDs(101))
+	require.Equal(t, 400, code)
+	assert.Equal(t, "at most 100 ids", body["message"])
+
+	code, _ = getJSON(t, app, "/v1/catalog/works?ids="+repeatIDs(100))
+	assert.Equal(t, 200, code, "100 ids is the ceiling, not one past it")
+}
+
 func TestWorksListClaimStateVocabulary(t *testing.T) {
 	db := openCatalogTestDB(t)
 	seedPublicWorks(t, db, 3)
