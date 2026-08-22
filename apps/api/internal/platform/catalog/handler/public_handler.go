@@ -45,6 +45,8 @@ const (
 
 	msgBadLimit = "limit must be a positive integer"
 
+	msgBadIDsCursor = "ids does not paginate; do not also pass cursor"
+
 	msgBadLookupType = "type must be one of work, name, character, label"
 )
 
@@ -686,6 +688,9 @@ func (h *PublicHandler) WorksList(c fiber.Ctx) error {
 	limit, ok := limitPub(c.Query("limit"), 20, 100)
 	if !ok {
 		return response.BadRequestMsg(c, errors.ErrInvalidParam, msgBadLimit)
+	}
+	if len(f.IDs) > 0 && c.Query("cursor") != "" {
+		return response.BadRequestMsg(c, errors.ErrInvalidParam, msgBadIDsCursor)
 	}
 	data, err := h.svc.WorksList(c.Context(), f, c.Query("cursor"), limit)
 	if err != nil {

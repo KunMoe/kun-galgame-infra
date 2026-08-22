@@ -163,7 +163,6 @@ func (s *PublicService) TagsList(ctx context.Context, f TagsListFilter, cursor s
 		where = append(where, "id > ?")
 		args = append(args, cur.ID)
 	}
-	args = append(args, limit+taxonomyOverFetch)
 
 	var rows []struct {
 		ID   int64
@@ -171,12 +170,16 @@ func (s *PublicService) TagsList(ctx context.Context, f TagsListFilter, cursor s
 		Tier int16
 		Kind int16
 	}
-	q := `SELECT id, name, tier, kind FROM catalog_tag ` + whereClause(where) + ` ORDER BY id ASC LIMIT ?`
+	q := `SELECT id, name, tier, kind FROM catalog_tag ` + whereClause(where) + ` ORDER BY id ASC`
+	q, args, paginated := applyBrowseLimit(q, args, limit+taxonomyOverFetch, f.IDs)
 	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
 		return dto.PublicTagsListData{}, err
 	}
 
-	rows, more := taxonomyTrim(rows, limit)
+	var more bool
+	if paginated {
+		rows, more = taxonomyTrim(rows, limit)
+	}
 	ids := make([]int64, len(rows))
 	for i, r := range rows {
 		ids[i] = r.ID
@@ -425,6 +428,13 @@ func clampBrowseLimit(limit int) int {
 		return 100
 	}
 	return limit
+}
+
+func applyBrowseLimit(q string, args []any, bound int, ids []int64) (string, []any, bool) {
+	if len(ids) > 0 {
+		return q, args, false
+	}
+	return q + " LIMIT ?", append(args, bound), true
 }
 
 const taxonomyOverFetch = 1

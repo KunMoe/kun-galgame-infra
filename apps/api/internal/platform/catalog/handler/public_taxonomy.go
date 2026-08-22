@@ -74,6 +74,9 @@ func (h *PublicHandler) TagsList(c fiber.Ctx) error {
 	if !ok {
 		return response.BadRequestMsg(c, errors.ErrInvalidParam, msgBadLimit)
 	}
+	if len(f.IDs) > 0 && c.Query("cursor") != "" {
+		return response.BadRequestMsg(c, errors.ErrInvalidParam, msgBadIDsCursor)
+	}
 	data, err := h.svc.TagsList(c.Context(), f, c.Query("cursor"), limit)
 	if err != nil {
 		return taxonomyListError(c, err)

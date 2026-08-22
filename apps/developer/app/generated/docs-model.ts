@@ -1066,12 +1066,6 @@ export const docsModel: DocsModel = {
                                     "type": "string"
                                   },
                                   {
-                                    "name": "violence",
-                                    "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                    "format": "int32",
-                                    "type": "integer"
-                                  },
-                                  {
                                     "name": "width",
                                     "format": "int64",
                                     "type": "integer"
@@ -1106,12 +1100,6 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "thumbhash",
                                     "type": "string"
-                                  },
-                                  {
-                                    "name": "violence",
-                                    "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                    "format": "int32",
-                                    "type": "integer"
                                   },
                                   {
                                     "name": "width",
@@ -1683,12 +1671,6 @@ export const docsModel: DocsModel = {
                                     "type": "string"
                                   },
                                   {
-                                    "name": "violence",
-                                    "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                    "format": "int32",
-                                    "type": "integer"
-                                  },
-                                  {
                                     "name": "width",
                                     "format": "int64",
                                     "type": "integer"
@@ -2219,12 +2201,6 @@ export const docsModel: DocsModel = {
                                     "type": "string"
                                   },
                                   {
-                                    "name": "violence",
-                                    "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                    "format": "int32",
-                                    "type": "integer"
-                                  },
-                                  {
                                     "name": "width",
                                     "format": "int64",
                                     "type": "integer"
@@ -2566,12 +2542,6 @@ export const docsModel: DocsModel = {
                                           "type": "string"
                                         },
                                         {
-                                          "name": "violence",
-                                          "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                          "format": "int32",
-                                          "type": "integer"
-                                        },
-                                        {
                                           "name": "width",
                                           "format": "int64",
                                           "type": "integer"
@@ -2606,12 +2576,6 @@ export const docsModel: DocsModel = {
                                         {
                                           "name": "thumbhash",
                                           "type": "string"
-                                        },
-                                        {
-                                          "name": "violence",
-                                          "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                          "format": "int32",
-                                          "type": "integer"
                                         },
                                         {
                                           "name": "width",
@@ -3188,12 +3152,6 @@ export const docsModel: DocsModel = {
                                           "type": "string"
                                         },
                                         {
-                                          "name": "violence",
-                                          "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                          "format": "int32",
-                                          "type": "integer"
-                                        },
-                                        {
                                           "name": "width",
                                           "format": "int64",
                                           "type": "integer"
@@ -3722,12 +3680,6 @@ export const docsModel: DocsModel = {
                                         {
                                           "name": "thumbhash",
                                           "type": "string"
-                                        },
-                                        {
-                                          "name": "violence",
-                                          "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                          "format": "int32",
-                                          "type": "integer"
                                         },
                                         {
                                           "name": "width",
@@ -4313,7 +4265,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "Comma-separated work ids (max 100) — the batch-hydrate lane"
+                  "doc": "Comma-separated work ids (max 100) — the batch-hydrate lane. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"
                 },
                 {
                   "name": "sort",
@@ -4331,7 +4283,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "Opaque keyset cursor from a prior next_cursor; omit for the first page"
+                  "doc": "Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"
                 },
                 {
                   "name": "limit",
@@ -4339,7 +4291,7 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "integer",
                   "format": "int64",
-                  "doc": "Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                  "doc": "Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400"
                 },
                 {
                   "name": "nsfw",
@@ -4990,12 +4942,6 @@ export const docsModel: DocsModel = {
                                       "type": "string"
                                     },
                                     {
-                                      "name": "violence",
-                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                      "format": "int32",
-                                      "type": "integer"
-                                    },
-                                    {
                                       "name": "width",
                                       "format": "int64",
                                       "type": "integer"
@@ -5035,12 +4981,6 @@ export const docsModel: DocsModel = {
                                     {
                                       "name": "thumbhash",
                                       "type": "string"
-                                    },
-                                    {
-                                      "name": "violence",
-                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                      "format": "int32",
-                                      "type": "integer"
                                     },
                                     {
                                       "name": "width",
@@ -7011,12 +6951,6 @@ export const docsModel: DocsModel = {
                                       "type": "string"
                                     },
                                     {
-                                      "name": "violence",
-                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                      "format": "int32",
-                                      "type": "integer"
-                                    },
-                                    {
                                       "name": "width",
                                       "format": "int64",
                                       "type": "integer"
@@ -7056,12 +6990,6 @@ export const docsModel: DocsModel = {
                                     {
                                       "name": "thumbhash",
                                       "type": "string"
-                                    },
-                                    {
-                                      "name": "violence",
-                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                      "format": "int32",
-                                      "type": "integer"
                                     },
                                     {
                                       "name": "width",
@@ -11426,12 +11354,6 @@ export const docsModel: DocsModel = {
                                 "type": "string"
                               },
                               {
-                                "name": "violence",
-                                "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                "format": "int32",
-                                "type": "integer"
-                              },
-                              {
                                 "name": "width",
                                 "format": "int64",
                                 "type": "integer"
@@ -11466,12 +11388,6 @@ export const docsModel: DocsModel = {
                               {
                                 "name": "thumbhash",
                                 "type": "string"
-                              },
-                              {
-                                "name": "violence",
-                                "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                "format": "int32",
-                                "type": "integer"
                               },
                               {
                                 "name": "width",
@@ -12271,12 +12187,6 @@ export const docsModel: DocsModel = {
                                 "type": "string"
                               },
                               {
-                                "name": "violence",
-                                "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                "format": "int32",
-                                "type": "integer"
-                              },
-                              {
                                 "name": "width",
                                 "format": "int64",
                                 "type": "integer"
@@ -12591,12 +12501,6 @@ export const docsModel: DocsModel = {
                                       "type": "string"
                                     },
                                     {
-                                      "name": "violence",
-                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                      "format": "int32",
-                                      "type": "integer"
-                                    },
-                                    {
                                       "name": "width",
                                       "format": "int64",
                                       "type": "integer"
@@ -12884,12 +12788,6 @@ export const docsModel: DocsModel = {
                               {
                                 "name": "thumbhash",
                                 "type": "string"
-                              },
-                              {
-                                "name": "violence",
-                                "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                "format": "int32",
-                                "type": "integer"
                               },
                               {
                                 "name": "width",
@@ -13275,12 +13173,6 @@ export const docsModel: DocsModel = {
                                       "type": "string"
                                     },
                                     {
-                                      "name": "violence",
-                                      "doc": "0 tame / 1 violent / 2 brutal; absent = no known assessment",
-                                      "format": "int32",
-                                      "type": "integer"
-                                    },
-                                    {
                                       "name": "width",
                                       "format": "int64",
                                       "type": "integer"
@@ -13370,7 +13262,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "Opaque keyset cursor from a prior next_cursor; omit for the first page"
+                  "doc": "Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"
                 },
                 {
                   "name": "limit",
@@ -13378,7 +13270,7 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "integer",
                   "format": "int64",
-                  "doc": "Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"
+                  "doc": "Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400"
                 },
                 {
                   "name": "nsfw",
@@ -13399,7 +13291,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row"
+                  "doc": "Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"
                 }
               ],
               "responses": [
