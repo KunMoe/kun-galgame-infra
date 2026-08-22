@@ -13393,6 +13393,13 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "boolean",
                   "doc": "true/1 = only tags whose work_count is > 0 under the same nsfw setting (default false = every tag); total converges with the filter"
+                },
+                {
+                  "name": "ids",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row"
                 }
               ],
               "responses": [

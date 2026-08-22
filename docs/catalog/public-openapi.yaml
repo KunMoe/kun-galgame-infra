@@ -4654,6 +4654,13 @@ paths:
           schema:
             description: true/1 = only tags whose work_count is > 0 under the same nsfw setting (default false = every tag); total converges with the filter
             type: boolean
+        - description: Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row
+          explode: false
+          in: query
+          name: ids
+          schema:
+            description: Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row
+            type: string
       responses:
         "200":
           content:

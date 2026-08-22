@@ -525,11 +525,14 @@ func (t *tools) catalogLabelsList(ctx context.Context, req *mcp.CallToolRequest,
 
 const descCatalogTagsList = "Browse the canonical tag vocabulary itself, id ascending and keyset paginated, " +
 	"optionally filtered by tier / kind; each row carries an nsfw-aware work_count. Use this to DISCOVER tag ids " +
-	"to feed catalog_works_list tag_id= or catalog_works_search; to fetch one tag with its works use catalog_tag_get."
+	"to feed catalog_works_list tag_id= or catalog_works_search; to fetch one tag with its works use catalog_tag_get. " +
+	"Pass ids= to BATCH-HYDRATE tag ids you already hold — e.g. naming the bare tag_id rows of a " +
+	"catalog_works_search facet block in one call rather than one catalog_tag_get per row."
 
 type catalogTagsListInput struct {
 	Tier   string `json:"tier,omitempty" jsonschema:"Filter by display tier: core, longtail, or hidden. A token outside this closed set is a 400."`
 	Kind   string `json:"kind,omitempty" jsonschema:"Filter by kind: content or meta. A token outside this closed set is a 400."`
+	IDs    string `json:"ids,omitempty" jsonschema:"Comma-separated tag ids (max 100) — batch-hydrate known ids in one call."`
 	Cursor string `json:"cursor,omitempty" jsonschema:"Opaque keyset cursor from a prior next_cursor; omit for the first page."`
 	Limit  int    `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 20)."`
 	Nsfw   bool   `json:"nsfw,omitempty" jsonschema:"true = count r18 works in work_count (requires an API key with the NSFW capability; default false = excluded)."`
@@ -539,6 +542,7 @@ func (t *tools) catalogTagsList(ctx context.Context, req *mcp.CallToolRequest, i
 	q := newQuery()
 	setStr(q, "tier", in.Tier)
 	setStr(q, "kind", in.Kind)
+	setStr(q, "ids", in.IDs)
 	setStr(q, "cursor", in.Cursor)
 	setInt(q, "limit", in.Limit)
 	setBool(q, "nsfw", in.Nsfw)
