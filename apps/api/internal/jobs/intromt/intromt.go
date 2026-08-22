@@ -78,7 +78,7 @@ func Run(ctx context.Context, tr Translator, opts Opts) (*Stats, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load candidates: %w", err)
 	}
-	if err := attachGlossaries(ctx, db, cands); err != nil {
+	if err := attachGlossaries(ctx, db, cands, src); err != nil {
 		return nil, fmt.Errorf("load glossaries: %w", err)
 	}
 	withGloss := 0
