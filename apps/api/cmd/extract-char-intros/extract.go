@@ -29,11 +29,51 @@ type rosterChar struct {
 	Name        string // display name — the key the model must answer with
 	ZhName      string // best zh alias, shown as an aid, may equal Name
 	Incumbent   string // panel bucket only: the elected translated machine intro
+	DerivedID   int64  // refresh bucket only: the stale derived row to rewrite
+	DerivedHash string // refresh bucket only: its src_hash, the update guard
+}
+
+// candidateOpts is the window every bucket's loader applies identically.
+type candidateOpts struct {
+	Limit  int
+	Offset int
+	Since  string // RFC3339; keep only works whose elected zh intro changed since
+}
+
+// sinceClause filters on the ELECTED intro's updated_at — the row the zhi CTE
+// already picked — so it narrows the work list without changing which intro
+// each work contributes.
+func sinceClause(since string) string {
+	if since == "" {
+		return ""
+	}
+	return `
+	  AND zhi.updated_at >= ?`
+}
+
+func sinceArgs(since string) []any {
+	if since == "" {
+		return nil
+	}
+	return []any{since}
+}
+
+func window(works []candidateWork, o candidateOpts) []candidateWork {
+	if o.Offset > 0 {
+		if o.Offset >= len(works) {
+			return nil
+		}
+		works = works[o.Offset:]
+	}
+	if o.Limit > 0 && len(works) > o.Limit {
+		works = works[:o.Limit]
+	}
+	return works
 }
 
 var candidateWorksSQL = `
 	WITH zhi AS (
-		SELECT DISTINCT ON (work_id) work_id, intro
+		SELECT DISTINCT ON (work_id) work_id, intro, updated_at
 		FROM catalog_work_intro
 		WHERE lang = 'zh-Hans' AND length(intro) >= 200
 		ORDER BY work_id, source_id
@@ -53,10 +93,11 @@ var candidateWorksSQL = `
 	  AND ` + editspec.NotSuppressedRosterSQL("wc") + `
 	  AND NOT EXISTS (
 	    SELECT 1 FROM catalog_character_intro ci
-	    WHERE ci.character_id = wc.character_id AND ci.lang = 'zh-Hans')
-	ORDER BY w.id, wc.character_id`
+	    WHERE ci.character_id = wc.character_id AND ci.lang = 'zh-Hans')`
 
-func loadCandidateWorks(ctx context.Context, db *gorm.DB, limit, offset int) ([]candidateWork, error) {
+func loadCandidateWorks(ctx context.Context, db *gorm.DB, o candidateOpts) ([]candidateWork, error) {
+	sql := candidateWorksSQL + sinceClause(o.Since) + `
+	ORDER BY w.id, wc.character_id`
 	var rows []struct {
 		WorkID      int64  `gorm:"column:work_id"`
 		Intro       string `gorm:"column:intro"`
@@ -64,7 +105,7 @@ func loadCandidateWorks(ctx context.Context, db *gorm.DB, limit, offset int) ([]
 		DisplayName string `gorm:"column:display_name"`
 		ZhName      string `gorm:"column:zh_name"`
 	}
-	if err := db.WithContext(ctx).Raw(candidateWorksSQL).Scan(&rows).Error; err != nil {
+	if err := db.WithContext(ctx).Raw(sql, sinceArgs(o.Since)...).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("load candidate works: %w", err)
 	}
 	var out []candidateWork
@@ -77,16 +118,7 @@ func loadCandidateWorks(ctx context.Context, db *gorm.DB, limit, offset int) ([]
 			CharacterID: r.CharacterID, Name: r.DisplayName, ZhName: r.ZhName,
 		})
 	}
-	if offset > 0 {
-		if offset >= len(out) {
-			return nil, nil
-		}
-		out = out[offset:]
-	}
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
-	}
-	return out, nil
+	return window(out, o), nil
 }
 
 const extractSystemPrompt = `你从视觉小说(galgame)的作品简介中摘录角色介绍。给你一段简介正文和一份角色名单。
@@ -115,9 +147,29 @@ func extractUserMessage(c candidateWork) string {
 	return sb.String()
 }
 
+// extraction is one work's answer: the model's name→passage map, or the error
+// that kept it from arriving. A failed work writes nothing and stays a
+// candidate, so the next run retries it.
+type extraction struct {
+	Found map[string]string
+	Model string
+	Err   error
+}
+
+// extractor answers a BATCH of works. The OpenAI-compatible gateway has no
+// batch face and its adapter just loops; Cursor's only face is a batch, and
+// there the batch is what makes the lane affordable.
 type extractor interface {
-	// Extract returns the model's name→passage map for one work.
-	Extract(ctx context.Context, c candidateWork) (map[string]string, string, error)
+	ExtractBatch(ctx context.Context, batch []candidateWork) []extraction
+}
+
+func (t *httpExtractor) ExtractBatch(ctx context.Context, batch []candidateWork) []extraction {
+	out := make([]extraction, len(batch))
+	for i, c := range batch {
+		found, model, err := t.Extract(ctx, c)
+		out[i] = extraction{Found: found, Model: model, Err: err}
+	}
+	return out
 }
 
 type httpExtractor struct {

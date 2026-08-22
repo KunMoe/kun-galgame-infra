@@ -17,7 +17,7 @@ import (
 // with source text. An existing derived row means the panel already ran.
 var candidatePanelWorksSQL = `
 	WITH zhi AS (
-		SELECT DISTINCT ON (work_id) work_id, intro
+		SELECT DISTINCT ON (work_id) work_id, intro, updated_at
 		FROM catalog_work_intro
 		WHERE lang = 'zh-Hans' AND length(intro) >= 200
 		ORDER BY work_id, source_id
@@ -47,10 +47,11 @@ var candidatePanelWorksSQL = `
 	    WHERE s.character_id = wc.character_id AND s.lang = 'zh-Hans' AND s.provenance = 0)
 	  AND NOT EXISTS (
 	    SELECT 1 FROM catalog_character_intro d
-	    WHERE d.character_id = wc.character_id AND d.lang = 'zh-Hans' AND d.source_id = 18)
-	ORDER BY w.id, wc.character_id`
+	    WHERE d.character_id = wc.character_id AND d.lang = 'zh-Hans' AND d.source_id = 18)`
 
-func loadPanelCandidateWorks(ctx context.Context, db *gorm.DB, limit, offset int) ([]candidateWork, error) {
+func loadPanelCandidateWorks(ctx context.Context, db *gorm.DB, o candidateOpts) ([]candidateWork, error) {
+	sql := candidatePanelWorksSQL + sinceClause(o.Since) + `
+	ORDER BY w.id, wc.character_id`
 	var rows []struct {
 		WorkID      int64  `gorm:"column:work_id"`
 		Intro       string `gorm:"column:intro"`
@@ -59,7 +60,7 @@ func loadPanelCandidateWorks(ctx context.Context, db *gorm.DB, limit, offset int
 		ZhName      string `gorm:"column:zh_name"`
 		Incumbent   string `gorm:"column:incumbent"`
 	}
-	if err := db.WithContext(ctx).Raw(candidatePanelWorksSQL).Scan(&rows).Error; err != nil {
+	if err := db.WithContext(ctx).Raw(sql, sinceArgs(o.Since)...).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("load panel candidate works: %w", err)
 	}
 	var out []candidateWork
@@ -72,16 +73,7 @@ func loadPanelCandidateWorks(ctx context.Context, db *gorm.DB, limit, offset int
 			CharacterID: r.CharacterID, Name: r.DisplayName, ZhName: r.ZhName, Incumbent: r.Incumbent,
 		})
 	}
-	if offset > 0 {
-		if offset >= len(out) {
-			return nil, nil
-		}
-		out = out[offset:]
-	}
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
-	}
-	return out, nil
+	return window(out, o), nil
 }
 
 type panelVote int
@@ -92,10 +84,33 @@ const (
 	voteEqual
 )
 
+// comparison is one vote to cast: which passage serves better as this
+// character's introduction. ChallengerFirst decides which one is shown as A,
+// so a position bias cannot decide the verdict.
+type comparison struct {
+	Name            string
+	Incumbent       string
+	Challenger      string
+	ChallengerFirst bool
+}
+
+type comparisonResult struct {
+	Vote panelVote
+	Err  error
+}
+
 type panelJudge interface {
-	// Compare returns which of the two zh passages serves better as the
-	// character's introduction.
-	Compare(ctx context.Context, name, incumbent, challenger string, challengerFirst bool) (panelVote, error)
+	// CompareBatch answers one vote per comparison, in order.
+	CompareBatch(ctx context.Context, batch []comparison) []comparisonResult
+}
+
+func (t *httpExtractor) CompareBatch(ctx context.Context, batch []comparison) []comparisonResult {
+	out := make([]comparisonResult, len(batch))
+	for i, c := range batch {
+		v, err := t.Compare(ctx, c.Name, c.Incumbent, c.Challenger, c.ChallengerFirst)
+		out[i] = comparisonResult{Vote: v, Err: err}
+	}
+	return out
 }
 
 const panelVotes = 3
@@ -173,21 +188,25 @@ func (t *httpExtractor) Compare(ctx context.Context, name, incumbent, challenger
 	if err != nil {
 		return voteEqual, err
 	}
+	return voteOf(winner, challengerFirst), nil
+}
+
+// voteOf maps the judge's answer back onto the two passages. parseJudgeWinner
+// (and the batch lane's own check) already rejected anything but A/B/equal.
+func voteOf(winner string, challengerFirst bool) panelVote {
 	switch winner {
-	case "equal":
-		return voteEqual, nil
 	case "A":
 		if challengerFirst {
-			return voteChallenger, nil
+			return voteChallenger
 		}
-		return voteIncumbent, nil
+		return voteIncumbent
 	case "B":
 		if challengerFirst {
-			return voteIncumbent, nil
+			return voteIncumbent
 		}
-		return voteChallenger, nil
+		return voteChallenger
 	}
-	return voteEqual, fmt.Errorf("judge answered %q", winner)
+	return voteEqual
 }
 
 func parseJudgeWinner(s string) (string, error) {

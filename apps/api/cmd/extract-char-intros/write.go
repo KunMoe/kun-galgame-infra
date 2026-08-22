@@ -25,6 +25,7 @@ const minIntroRunes = 20
 type stats struct {
 	Extracted          int
 	Inserted           int
+	Updated            int
 	Conflict           int
 	RefusedNotVerbatim int
 	RefusedShort       int
@@ -40,6 +41,7 @@ type stats struct {
 type writer struct {
 	db      *gorm.DB
 	apply   bool
+	refresh bool
 	st      *stats
 	samples int
 	shown   int
@@ -48,15 +50,27 @@ type writer struct {
 	delay   time.Duration
 }
 
-// write files one work's extraction results. Every passage passes the verbatim
-// gate against the work intro before anything else is considered.
-func (w *writer) write(ctx context.Context, cand candidateWork, found map[string]string, mtModel string) {
+// gated is one passage that survived every deterministic gate, ready to be
+// written — or, when the character holds an incumbent, to be put to the panel.
+type gated struct {
+	WorkID  int64
+	Target  rosterChar
+	Passage string
+	SrcHash string
+	MTModel string
+}
+
+// gate runs one work's extraction results through the deterministic gates.
+// Every passage passes the verbatim gate against the work intro before
+// anything else is considered. Judging is NOT done here: the panel votes are
+// batched across works, so gate only sorts the survivors into those that can
+// be written straight away and those that need a verdict first.
+func (w *writer) gate(cand candidateWork, found map[string]string, mtModel string) (ready, contested []gated) {
 	byName := make(map[string]rosterChar, len(cand.Roster))
 	for _, r := range cand.Roster {
 		byName[r.Name] = r
 	}
 	srcHash := hashText(cand.Intro)
-	wrote := false
 	for name, passage := range found {
 		w.st.Extracted++
 		target, ok := byName[strings.TrimSpace(name)]
@@ -81,79 +95,153 @@ func (w *writer) write(ctx context.Context, cand candidateWork, found map[string
 				"character", target.CharacterID, "name", name)
 			continue
 		}
+		g := gated{WorkID: cand.WorkID, Target: target, Passage: passage, SrcHash: srcHash, MTModel: mtModel}
 		if target.Incumbent != "" && w.judge != nil {
-			adopted, err := w.runPanel(ctx, cand.WorkID, target, passage)
-			if err != nil {
-				w.st.PanelErrors++
-				slog.Warn("panel failed — incumbent stays, retryable", "work", cand.WorkID,
-					"character", target.CharacterID, "err", err)
-				continue
-			}
-			if !adopted {
-				w.st.PanelKept++
-				continue
-			}
-			w.st.PanelAdopted++
+			contested = append(contested, g)
+			continue
 		}
 		if w.shown < w.samples {
 			fmt.Printf("  sample: work=%d %s → %s\n", cand.WorkID, name, truncate(passage, 80))
 			w.shown++
 		}
-		if !w.apply {
-			continue
-		}
-		res := w.db.WithContext(ctx).Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "character_id"}, {Name: "lang"}, {Name: "source_id"}},
-			DoNothing: true,
-		}).Create(&model.CatalogCharacterIntro{
-			CharacterID: target.CharacterID,
-			Lang:        "zh-Hans",
-			Intro:       passage,
-			SourceID:    sourceDerived,
-			Provenance:  model.IntroProvenanceMachine,
-			SrcHash:     srcHash,
-			MTModel:     mtModel,
-		})
-		if res.Error != nil {
-			w.st.CallErrors++
-			slog.Warn("insert extracted intro", "work", cand.WorkID, "character", target.CharacterID, "err", res.Error)
-			continue
-		}
-		if res.RowsAffected == 0 {
-			w.st.Conflict++
-			continue
-		}
-		w.st.Inserted++
-		wrote = true
+		ready = append(ready, g)
 	}
-	if wrote {
-		w.touched = append(w.touched, cand.WorkID)
-	}
+	return ready, contested
 }
 
-// runPanel takes one gated extraction through three judge votes, alternating
-// which passage is shown first so a position bias cannot decide the verdict.
-func (w *writer) runPanel(ctx context.Context, workID int64, target rosterChar, challenger string) (bool, error) {
-	votes := make([]panelVote, 0, panelVotes)
-	for i := range panelVotes {
-		if i > 0 && w.delay > 0 {
-			time.Sleep(w.delay)
-		}
-		v, err := w.judge.Compare(ctx, target.Name, target.Incumbent, challenger, i%2 == 1)
-		if err != nil {
-			return false, err
-		}
-		votes = append(votes, v)
+// commit writes one gated passage: a fresh derived row, or a rewrite of the
+// stale one in the refresh bucket.
+func (w *writer) commit(ctx context.Context, g gated) {
+	if !w.apply {
+		return
 	}
-	adopted := panelVerdict(votes)
-	slog.Info("panel verdict", "work", workID, "character", target.CharacterID,
-		"name", target.Name, "adopted", adopted, "votes", fmt.Sprintf("%v", votes))
-	if w.shown < w.samples {
-		fmt.Printf("  panel: work=%d %s adopted=%v\n    A(现有): %s\n    B(提取): %s\n",
-			workID, target.Name, adopted, truncate(target.Incumbent, 70), truncate(challenger, 70))
-		w.shown++
+	if w.refresh {
+		if w.rewrite(ctx, g.WorkID, g.Target, g.Passage, g.SrcHash, g.MTModel) {
+			w.touched = append(w.touched, g.WorkID)
+		}
+		return
 	}
-	return adopted, nil
+	res := w.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "character_id"}, {Name: "lang"}, {Name: "source_id"}},
+		DoNothing: true,
+	}).Create(&model.CatalogCharacterIntro{
+		CharacterID: g.Target.CharacterID,
+		Lang:        "zh-Hans",
+		Intro:       g.Passage,
+		SourceID:    sourceDerived,
+		Provenance:  model.IntroProvenanceMachine,
+		SrcHash:     g.SrcHash,
+		MTModel:     g.MTModel,
+	})
+	if res.Error != nil {
+		w.st.CallErrors++
+		slog.Warn("insert extracted intro", "work", g.WorkID, "character", g.Target.CharacterID, "err", res.Error)
+		return
+	}
+	if res.RowsAffected == 0 {
+		w.st.Conflict++
+		return
+	}
+	w.st.Inserted++
+	w.touched = append(w.touched, g.WorkID)
+}
+
+// rewrite replaces a stale derived row in place. The src_hash it was loaded
+// with is the update guard: a character on two candidate works is offered once
+// per work, and the first refresh moves the hash, so the second work's write
+// becomes a no-op instead of overwriting it with a different work's passage.
+// Nothing is deleted when the fresh intro yields no passage — the old excerpt
+// stays until a later run can replace it, so no character loses its intro.
+func (w *writer) rewrite(ctx context.Context, workID int64, target rosterChar, passage, srcHash, mtModel string) bool {
+	res := w.db.WithContext(ctx).Model(&model.CatalogCharacterIntro{}).
+		Where("id = ? AND src_hash = ?", target.DerivedID, target.DerivedHash).
+		Updates(map[string]any{"intro": passage, "src_hash": srcHash, "mt_model": mtModel})
+	if res.Error != nil {
+		w.st.CallErrors++
+		slog.Warn("refresh derived intro", "work", workID, "character", target.CharacterID, "err", res.Error)
+		return false
+	}
+	if res.RowsAffected == 0 {
+		w.st.Conflict++
+		return false
+	}
+	w.st.Updated++
+	return true
+}
+
+// voteDispatcher casts one round of votes and answers in the same order. It
+// owns the batching and the concurrency; resolvePanel owns the semantics.
+type voteDispatcher func(ctx context.Context, cmps []comparison) []comparisonResult
+
+// resolvePanel takes every contested passage through three votes, one round at
+// a time so a whole round can travel as one batch. Which passage is shown
+// first alternates by round, so a position bias cannot decide the verdict. A
+// vote that errors drops that character out of the round: the incumbent stays
+// and the character remains a candidate, so a later run re-judges it.
+func (w *writer) resolvePanel(ctx context.Context, contested []gated, dispatch voteDispatcher) []gated {
+	if len(contested) == 0 {
+		return nil
+	}
+	votes := make([][]panelVote, len(contested))
+	failed := make([]bool, len(contested))
+	for round := range panelVotes {
+		cmps := make([]comparison, 0, len(contested))
+		idx := make([]int, 0, len(contested))
+		for i, g := range contested {
+			if failed[i] {
+				continue
+			}
+			cmps = append(cmps, comparison{
+				Name: g.Target.Name, Incumbent: g.Target.Incumbent,
+				Challenger: g.Passage, ChallengerFirst: round%2 == 1,
+			})
+			idx = append(idx, i)
+		}
+		if len(cmps) == 0 {
+			break
+		}
+		res := dispatch(ctx, cmps)
+		if len(res) != len(cmps) {
+			for _, i := range idx {
+				failed[i] = true
+				w.st.PanelErrors++
+			}
+			slog.Warn("panel round answered the wrong number of votes", "want", len(cmps), "got", len(res))
+			continue
+		}
+		for j, r := range res {
+			i := idx[j]
+			if r.Err != nil {
+				failed[i] = true
+				w.st.PanelErrors++
+				slog.Warn("panel failed — incumbent stays, retryable", "work", contested[i].WorkID,
+					"character", contested[i].Target.CharacterID, "err", r.Err)
+				continue
+			}
+			votes[i] = append(votes[i], r.Vote)
+		}
+	}
+	var adopted []gated
+	for i, g := range contested {
+		if failed[i] {
+			continue
+		}
+		ok := panelVerdict(votes[i])
+		slog.Info("panel verdict", "work", g.WorkID, "character", g.Target.CharacterID,
+			"name", g.Target.Name, "adopted", ok, "votes", fmt.Sprintf("%v", votes[i]))
+		if w.shown < w.samples {
+			fmt.Printf("  panel: work=%d %s adopted=%v\n    A(现有): %s\n    B(提取): %s\n",
+				g.WorkID, g.Target.Name, ok, truncate(g.Target.Incumbent, 70), truncate(g.Passage, 70))
+			w.shown++
+		}
+		if !ok {
+			w.st.PanelKept++
+			continue
+		}
+		w.st.PanelAdopted++
+		adopted = append(adopted, g)
+	}
+	return adopted
 }
 
 func (w *writer) flushTouch(ctx context.Context) error {

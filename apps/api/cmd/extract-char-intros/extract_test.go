@@ -97,8 +97,12 @@ type fakeExtractor struct {
 	out map[string]string
 }
 
-func (f fakeExtractor) Extract(_ context.Context, _ candidateWork) (map[string]string, string, error) {
-	return f.out, "glm-5.2", nil
+func (f fakeExtractor) ExtractBatch(_ context.Context, batch []candidateWork) []extraction {
+	out := make([]extraction, len(batch))
+	for i := range batch {
+		out[i] = extraction{Found: f.out, Model: "glm-5.2"}
+	}
+	return out
 }
 
 func seedWorkWithIntro(t *testing.T, intro string) int64 {
@@ -139,7 +143,7 @@ func TestRunExtractsOnlyMissingAndVerbatim(t *testing.T) {
 		(character_id, lang, intro, source_id, provenance, created_at, updated_at)
 		VALUES (?, 'zh-Hans', '既有介绍', 3, 1, now(), now())`, rei).Error)
 
-	cands, err := loadCandidateWorks(context.Background(), testDB, 0, 0)
+	cands, err := loadCandidateWorks(context.Background(), testDB, candidateOpts{})
 	require.NoError(t, err)
 	require.Len(t, cands, 1)
 	require.Len(t, cands[0].Roster, 1, "only the intro-less character is a target")
@@ -193,10 +197,13 @@ type fakeJudge struct {
 	calls int
 }
 
-func (f *fakeJudge) Compare(_ context.Context, _, _, _ string, _ bool) (panelVote, error) {
-	v := f.votes[f.calls%len(f.votes)]
-	f.calls++
-	return v, nil
+func (f *fakeJudge) CompareBatch(_ context.Context, batch []comparison) []comparisonResult {
+	out := make([]comparisonResult, len(batch))
+	for i := range batch {
+		out[i] = comparisonResult{Vote: f.votes[f.calls%len(f.votes)]}
+		f.calls++
+	}
+	return out
 }
 
 func seedPanelFixture(t *testing.T) (workID, saya, rei int64) {
@@ -219,7 +226,7 @@ func seedPanelFixture(t *testing.T) (workID, saya, rei int64) {
 func TestRunPanelAdoptsUnanimousChallenger(t *testing.T) {
 	_, saya, _ := seedPanelFixture(t)
 
-	cands, err := loadPanelCandidateWorks(context.Background(), testDB, 0, 0)
+	cands, err := loadPanelCandidateWorks(context.Background(), testDB, candidateOpts{})
 	require.NoError(t, err)
 	require.Len(t, cands, 1)
 	require.Len(t, cands[0].Roster, 1, "only the translated-machine-row holder is a target")
@@ -242,7 +249,7 @@ func TestRunPanelAdoptsUnanimousChallenger(t *testing.T) {
 	assert.EqualValues(t, sourceDerived, rows[1].SourceID)
 	assert.Equal(t, "主人公的青梅竹马,性格开朗,总是照顾身边的每一个人。", rows[1].Intro)
 
-	cands, err = loadPanelCandidateWorks(context.Background(), testDB, 0, 0)
+	cands, err = loadPanelCandidateWorks(context.Background(), testDB, candidateOpts{})
 	require.NoError(t, err)
 	assert.Empty(t, cands, "a written derived row retires the character from the panel")
 }
