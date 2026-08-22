@@ -268,7 +268,9 @@ func (c *cursorClient) extractBatch(ctx context.Context, batch []candidateWork, 
 		}
 		items[i] = cursorExtractItem{I: i, Roster: names, Intro: w.Intro}
 	}
-	rules := extractSystemPrompt + "\n5. `摘录` 的键必须逐字使用「角色名单」里给出的写法(带中文名括注的,只用括注前的名字);没有可摘录的角色介绍时该项输出空对象 {}。"
+	rules := extractSystemPrompt + `
+5. ` + "`摘录`" + ` 的键必须逐字使用「角色名单」里给出的写法(带中文名括注的,只用括注前的名字);没有可摘录的角色介绍时该项输出空对象 {}。
+6. 摘录值必须是从简介正文里**原样复制**的连续文本:一个字都不能改、不能顺句、不能换标点、不能把相隔的句子拼起来。程序会逐字比对,改写过的一律丢弃——与其润色不如原样照抄。`
 	prompt, err := batchPrompt(rules, extractOutShape, items)
 	if err != nil {
 		return failAll(out, err)
