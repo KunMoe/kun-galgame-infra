@@ -64,6 +64,7 @@ jobs:
           go run ./cmd/gen-openapi -catalog -o ../../docs/catalog/openapi.yaml
           go run ./cmd/gen-openapi -catalog-admin -o ../../docs/catalog/admin-openapi.yaml
           go run ./cmd/gen-openapi -catalog-public -o ../../docs/catalog/public-openapi.yaml
+          go run ./cmd/gen-openapi -catalog-v2 -o ../../docs/catalog/v2-openapi.yaml
           go run ./cmd/gen-openapi -news-public -o ../../docs/news/public-openapi.yaml
           go run ./cmd/gen-openapi -community -o ../../docs/community/openapi.yaml
           go run ./cmd/gen-openapi -trust -o ../../docs/trust/openapi.yaml

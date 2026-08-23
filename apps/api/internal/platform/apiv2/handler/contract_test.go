@@ -1,0 +1,172 @@
+package handler
+
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"api/internal/platform/apiv2/problem"
+
+	"github.com/gofiber/fiber/v3"
+	"github.com/stretchr/testify/require"
+)
+
+func testApp(t *testing.T) *fiber.App {
+	t.Helper()
+	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
+	Setup(app)
+	return app
+}
+
+func do(t *testing.T, app *fiber.App, method, path string) (int, string, []byte) {
+	t.Helper()
+	req := httptest.NewRequest(method, path, nil)
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	return resp.StatusCode, resp.Header.Get("Content-Type"), body
+}
+
+func TestContractHitsEverySpecOperation(t *testing.T) {
+	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
+	doc := Setup(app).OpenAPI()
+	require.NotEmpty(t, doc.Paths)
+
+	for path, item := range doc.Paths {
+		for _, op := range pathOps(item) {
+			method := op.Method
+			if method == "" && item.Get == op {
+				method = http.MethodGet
+			}
+			url := path
+			url = strings.ReplaceAll(url, "{code}", problem.CodeRateLimited)
+			url = strings.ReplaceAll(url, "{name}", "medium")
+			if strings.Contains(url, "{") {
+				t.Fatalf("unsubstituted path param in %s", url)
+			}
+			status, ct, body := do(t, app, method, url)
+			declared := make([]string, 0, len(op.Responses))
+			for code := range op.Responses {
+				declared = append(declared, code)
+			}
+			if _, ok := op.Responses[itoa(status)]; !ok {
+				t.Errorf("%s %s returned %d which is not in the declared set %v body=%s", method, path, status, declared, body)
+			}
+			if status >= 400 {
+				if !strings.Contains(ct, "application/problem+json") {
+					t.Errorf("%s %s error content-type %q", method, path, ct)
+				}
+				var p problem.Problem
+				require.NoError(t, json.Unmarshal(body, &p), string(body))
+				if p.Code == "" || p.Type == "" || p.Status != status {
+					t.Errorf("%s %s problem %+v", method, path, p)
+				}
+			} else if !strings.Contains(ct, "json") {
+				t.Errorf("%s %s success content-type %q", method, path, ct)
+			}
+		}
+	}
+}
+
+func TestProblemsAndVocabularies(t *testing.T) {
+	app := testApp(t)
+
+	status, _, body := do(t, app, http.MethodGet, "/v2/problems")
+	require.Equal(t, 200, status)
+	var list struct {
+		Object string `json:"object"`
+		Items  []struct {
+			Code   string `json:"code"`
+			Type   string `json:"type"`
+			Status int    `json:"status"`
+			Domain string `json:"domain"`
+		} `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(body, &list))
+	require.Equal(t, "list", list.Object)
+	require.Len(t, list.Items, len(problem.Codes))
+
+	status, ct, body := do(t, app, http.MethodGet, "/v2/problems/"+problem.CodeRateLimited)
+	require.Equal(t, 200, status)
+	require.Contains(t, ct, "json")
+	var one struct {
+		Object string `json:"object"`
+		Code   string `json:"code"`
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+	}
+	require.NoError(t, json.Unmarshal(body, &one))
+	require.Equal(t, "problem_type", one.Object)
+	require.Equal(t, problem.CodeRateLimited, one.Code)
+	require.Equal(t, 429, one.Status)
+	require.True(t, strings.HasSuffix(one.Type, "/platform/rate-limited"))
+
+	status, ct, body = do(t, app, http.MethodGet, "/v2/problems/NOT_A_CODE")
+	require.Equal(t, 404, status)
+	require.Contains(t, ct, "application/problem+json")
+	var p problem.Problem
+	require.NoError(t, json.Unmarshal(body, &p), string(body))
+	require.Equal(t, problem.CodeNotFound, p.Code)
+	require.Equal(t, 404, p.Status)
+	require.True(t, strings.HasPrefix(p.RequestID, "req_"))
+	require.Len(t, strings.TrimPrefix(p.RequestID, "req_"), 26)
+
+	status, _, body = do(t, app, http.MethodGet, "/v2/problems/reasons")
+	require.Equal(t, 200, status)
+	var reasons struct {
+		Items []struct {
+			Reason string `json:"reason"`
+		} `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(body, &reasons))
+	require.Len(t, reasons.Items, len(problem.Reasons))
+
+	status, _, body = do(t, app, http.MethodGet, "/v2/vocabularies")
+	require.Equal(t, 200, status)
+	var vocabs struct {
+		Items []struct {
+			Name   string `json:"name"`
+			Closed bool   `json:"closed"`
+		} `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(body, &vocabs))
+	require.Greater(t, len(vocabs.Items), 0)
+
+	status, _, _ = do(t, app, http.MethodGet, "/v2/vocabularies/medium")
+	require.Equal(t, 200, status)
+	status, ct, body = do(t, app, http.MethodGet, "/v2/vocabularies/nope")
+	require.Equal(t, 404, status)
+	require.Contains(t, ct, "application/problem+json")
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeNotFound, p.Code)
+
+	status, ct, body = do(t, app, http.MethodPost, "/v2/problems")
+	require.Equal(t, 405, status)
+	require.Contains(t, ct, "application/problem+json")
+	require.NoError(t, json.Unmarshal(body, &p), string(body))
+	require.Equal(t, problem.CodeMethodNotAllowed, p.Code)
+
+	status, ct, body = do(t, app, http.MethodGet, "/v2/does-not-exist")
+	require.Equal(t, 404, status)
+	require.Contains(t, ct, "application/problem+json")
+	require.NoError(t, json.Unmarshal(body, &p), string(body))
+	require.Equal(t, problem.CodeNotFound, p.Code)
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var b [12]byte
+	i := len(b)
+	for n > 0 {
+		i--
+		b[i] = byte('0' + n%10)
+		n /= 10
+	}
+	return string(b[i:])
+}

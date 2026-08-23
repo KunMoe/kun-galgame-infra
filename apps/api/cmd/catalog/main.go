@@ -14,6 +14,7 @@ import (
 	"api/internal/infrastructure/database"
 	searchInfra "api/internal/infrastructure/search"
 	"api/internal/middleware"
+	v2handler "api/internal/platform/apiv2/handler"
 	"api/internal/platform/catalog/editspec"
 	catHandler "api/internal/platform/catalog/handler"
 	catalogPerm "api/internal/platform/catalog/perm"
@@ -137,6 +138,18 @@ func main() {
 	}, claimSvc, readSvc)
 
 	catHandler.SetupPlaytime(application.Fiber, service.NewUserPlaytimeService(catalogDB.DB()))
+
+	v2API := v2handler.Setup(application.Fiber)
+	v2spec, err := json.Marshal(v2API.OpenAPI())
+	if err != nil {
+		slog.Error("marshal catalog v2 spec", "error", err)
+		os.Exit(1)
+	}
+	application.Fiber.Get("/v2/catalog/openapi.json", func(c fiber.Ctx) error {
+		c.Set("Content-Type", "application/json")
+		c.Set("Cache-Control", "public, max-age=3600")
+		return c.Send(v2spec)
+	})
 
 	catalogSpec, err := json.Marshal(catHandler.SetupCatalogPublicSpec(fiber.New()).OpenAPI())
 	if err != nil {

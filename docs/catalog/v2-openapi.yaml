@@ -1,0 +1,431 @@
+components:
+  schemas:
+    FieldError:
+      additionalProperties: false
+      properties:
+        detail:
+          description: English, request-specific. Must not be used as a discriminant.
+          type: string
+        header:
+          description: Request header name. Exactly one of pointer, parameter, or header is set.
+          type: string
+        parameter:
+          description: Query or path parameter name. Exactly one of pointer, parameter, or header is set.
+          type: string
+        pointer:
+          description: JSON Pointer (RFC 6901) into the request body. Exactly one of pointer, parameter, or header is set.
+          type: string
+        reason:
+          description: Field-level reason from the closed reason registry.
+          type: string
+      required:
+        - reason
+        - detail
+      type: object
+    ListObjectProblemReason:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListObjectProblemReason.json
+          format: uri
+          readOnly: true
+          type: string
+        items:
+          description: The members of this list. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/ProblemReason"
+          type:
+            - array
+            - "null"
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - object
+        - items
+      type: object
+    ListObjectProblemType:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListObjectProblemType.json
+          format: uri
+          readOnly: true
+          type: string
+        items:
+          description: The members of this list. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/ProblemType"
+          type:
+            - array
+            - "null"
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - object
+        - items
+      type: object
+    ListObjectVocabulary:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListObjectVocabulary.json
+          format: uri
+          readOnly: true
+          type: string
+        items:
+          description: The members of this list. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Vocabulary"
+          type:
+            - array
+            - "null"
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - object
+        - items
+      type: object
+    Problem:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/Problem.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          description: Top-level error code from the closed registry. UPPER_SNAKE.
+          type: string
+        detail:
+          description: English, request-specific. Must not be used as a discriminant.
+          type: string
+        errors:
+          description: Field-level failures. Required and non-empty when code is VALIDATION_FAILED.
+          items:
+            $ref: "#/components/schemas/FieldError"
+          type:
+            - array
+            - "null"
+        instance:
+          description: Request path and query string that failed.
+          type: string
+        request_id:
+          description: Same value as X-Request-ID. Prefix req_ plus a 26-character ULID.
+          type: string
+        status:
+          description: HTTP status. Matches the response status line.
+          format: int64
+          type: integer
+        title:
+          description: Stable English phrase for this type. Does not vary per request.
+          type: string
+        type:
+          description: Stable problem type URI of the form https://developer.nextmoe.dev/problems/{domain}/{kebab-code}.
+          format: uri
+          type: string
+      required:
+        - type
+        - title
+        - status
+        - code
+        - request_id
+      type: object
+    ProblemReason:
+      additionalProperties: false
+      properties:
+        description:
+          description: English prose. Must not be used as a discriminant.
+          type: string
+        object:
+          description: Type discriminant. Always problem_reason.
+          enum:
+            - problem_reason
+          type: string
+          x-vocabulary-closed: true
+        reason:
+          description: Field-level reason. UPPER_SNAKE. Disjoint from top-level codes.
+          type: string
+        title:
+          description: Stable English phrase for this reason.
+          type: string
+      required:
+        - object
+        - reason
+        - title
+        - description
+      type: object
+    ProblemType:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ProblemType.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          description: Top-level error code. UPPER_SNAKE.
+          type: string
+        description:
+          description: English prose. Must not be used as a discriminant.
+          type: string
+        domain:
+          description: Type URI domain segment.
+          enum:
+            - platform
+            - catalog
+            - me
+            - moderation
+            - news
+          type: string
+          x-vocabulary-closed: true
+        object:
+          description: Type discriminant. Always problem_type.
+          enum:
+            - problem_type
+          type: string
+          x-vocabulary-closed: true
+        status:
+          description: HTTP status this code is bound to. One status per code.
+          format: int64
+          type: integer
+        title:
+          description: Stable English phrase for this type. Does not vary per request.
+          type: string
+        type:
+          description: Problem type URI. The last path segment is the kebab-case form of code.
+          format: uri
+          type: string
+      required:
+        - object
+        - code
+        - domain
+        - status
+        - type
+        - title
+        - description
+      type: object
+    Value:
+      additionalProperties: false
+      properties:
+        description:
+          description: English prose. Must not be used as a discriminant.
+          type: string
+        display_name:
+          description: English label for this token. Must not be used as a discriminant.
+          type: string
+        value:
+          description: Token as it appears on the wire.
+          type: string
+      required:
+        - value
+        - display_name
+      type: object
+    Vocabulary:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/Vocabulary.json
+          format: uri
+          readOnly: true
+          type: string
+        closed:
+          description: true if adding or removing a value is a breaking change.
+          type: boolean
+        name:
+          description: Vocabulary name. The path segment of /v2/vocabularies/{name}.
+          type: string
+        object:
+          description: Type discriminant. Always vocabulary.
+          enum:
+            - vocabulary
+          type: string
+          x-vocabulary-closed: true
+        values:
+          description: Every value currently published. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Value"
+          type:
+            - array
+            - "null"
+      required:
+        - object
+        - name
+        - closed
+        - values
+      type: object
+info:
+  description: "NextMoe public API v2. Preview: any change is allowed, including deletions and renames. Third parties are not issued /v2 credentials."
+  title: NextMoe Public API v2
+  version: 2.0.0-preview
+  x-stability: preview
+openapi: 3.1.0
+paths:
+  /v2/problems:
+    get:
+      description: The closed registry of top-level error codes. Unauthenticated. This list is the machine-readable form of the same registry the problem type URIs resolve against.
+      operationId: listProblemTypes
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListObjectProblemType"
+          description: OK
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+      summary: List every top-level error code
+      tags:
+        - meta
+  /v2/problems/reasons:
+    get:
+      description: The closed registry of field-level reasons. Unauthenticated. Values in this list never appear as top-level codes.
+      operationId: listProblemReasons
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListObjectProblemReason"
+          description: OK
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+      summary: List every field-level error reason
+      tags:
+        - meta
+  /v2/problems/{code}:
+    get:
+      description: Returns the registry entry for one code. Unknown codes are 404 NOT_FOUND, not 422 — the path parameter is a lookup key, not a closed enum.
+      operationId: getProblemType
+      parameters:
+        - description: Top-level error code from the registry (UPPER_SNAKE).
+          in: path
+          name: code
+          required: true
+          schema:
+            description: Top-level error code from the registry (UPPER_SNAKE).
+            maxLength: 63
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemType"
+          description: OK
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+      summary: Get one top-level error code
+      tags:
+        - meta
+  /v2/vocabularies:
+    get:
+      description: Closed vocabularies are part of the code. Open vocabularies currently publish their seed values; live distinct-from-data overlay arrives with the catalog resource wave.
+      operationId: listVocabularies
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListObjectVocabulary"
+          description: OK
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+      summary: List published vocabularies
+      tags:
+        - meta
+  /v2/vocabularies/{name}:
+    get:
+      description: Returns every published value of one vocabulary. Unknown names are 404 NOT_FOUND.
+      operationId: getVocabulary
+      parameters:
+        - description: Vocabulary name. The path segment of /v2/vocabularies/{name}.
+          in: path
+          name: name
+          required: true
+          schema:
+            description: Vocabulary name. The path segment of /v2/vocabularies/{name}.
+            maxLength: 63
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vocabulary"
+          description: OK
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+      summary: Get one vocabulary
+      tags:
+        - meta
+servers:
+  - description: Production. Paths in this document already include the /v2 prefix.
+    url: https://api.nextmoe.dev

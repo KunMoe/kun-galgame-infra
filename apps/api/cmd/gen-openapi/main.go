@@ -6,6 +6,7 @@ import (
 	"os"
 
 	aiHandler "api/internal/platform/ai/handler"
+	v2handler "api/internal/platform/apiv2/handler"
 	artHandler "api/internal/platform/artifact/handler"
 	"api/internal/platform/artifact/service"
 	catHandler "api/internal/platform/catalog/handler"
@@ -24,6 +25,7 @@ func main() {
 	catalog := flag.Bool("catalog", false, "emit the catalog S2S spec (/api/v1/catalog/*)")
 	catalogAdmin := flag.Bool("catalog-admin", false, "emit the catalog admin review-queue spec (/api/v1/admin/catalog/*)")
 	catalogPublic := flag.Bool("catalog-public", false, "emit the NextMoe open-API catalog public projection spec (/v1/catalog/*)")
+	catalogV2 := flag.Bool("catalog-v2", false, "emit the NextMoe public API v2 spec (/v2/problems, /v2/vocabularies, …)")
 	newsPublic := flag.Bool("news-public", false, "emit the NextMoe open-API news feed spec (/v1/news/*)")
 	community := flag.Bool("community", false, "emit the community S2S embed spec (/api/v1/community/*)")
 	trust := flag.Bool("trust", false, "emit the trust S2S intake spec (/api/v1/trust/*)")
@@ -47,6 +49,8 @@ func main() {
 		api = catHandler.SetupAdmin(app, nil, nil, nil, nil)
 	case *catalogPublic:
 		api = catHandler.SetupCatalogPublicSpec(app)
+	case *catalogV2:
+		api = v2handler.Setup(app)
 	case *newsPublic:
 		api = newsHandler.SetupNewsPublicSpec(app)
 	case *community:

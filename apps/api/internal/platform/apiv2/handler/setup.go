@@ -1,0 +1,188 @@
+package handler
+
+import (
+	"net/http"
+	"reflect"
+	"strings"
+	"sync"
+
+	"api/internal/platform/apiv2/problem"
+
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humafiber"
+	"github.com/gofiber/fiber/v3"
+)
+
+var installOnce sync.Once
+
+func Setup(app *fiber.App) huma.API {
+	installOnce.Do(func() {
+		prev := huma.NewErrorWithContext
+		huma.NewErrorWithContext = func(ctx huma.Context, status int, msg string, errs ...error) huma.StatusError {
+			if ctx != nil {
+				u := ctx.URL()
+				if strings.HasPrefix(u.Path, "/v2") {
+					return problem.FromHuma(ctx, status, msg, errs...)
+				}
+			}
+			return prev(ctx, status, msg, errs...)
+		}
+	})
+
+	app.Use(v2Middleware)
+
+	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0-preview")
+	cfg.OpenAPIPath = ""
+	cfg.DocsPath = ""
+	cfg.SchemasPath = ""
+	cfg.Info.Description = "NextMoe public API v2. Preview: any change is allowed, including deletions and renames. Third parties are not issued /v2 credentials."
+	cfg.Info.Extensions = map[string]any{"x-stability": "preview"}
+
+	api := humafiber.New(app, cfg)
+	api.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
+		fc := humafiber.Unwrap(ctx)
+		id := problem.RequestID(fc)
+		ctx = huma.WithValue(ctx, "request_id", id)
+		ctx = huma.WithValue(ctx, "instance", problem.Instance(fc))
+		next(ctx)
+	})
+	prevErr := huma.NewError
+	huma.NewError = func(status int, msg string, errs ...error) huma.StatusError {
+		return problem.FromHuma(nil, status, msg, errs...)
+	}
+	registerMeta(api)
+	huma.NewError = prevErr
+	annotateSpec(api.OpenAPI())
+	return api
+}
+
+func v2Middleware(c fiber.Ctx) error {
+	if strings.HasPrefix(c.Path(), "/v2") {
+		_ = problem.RequestID(c)
+	}
+	err := c.Next()
+	if !strings.HasPrefix(c.Path(), "/v2") {
+		return err
+	}
+	status := c.Response().StatusCode()
+	if err != nil && status < 400 {
+		return err
+	}
+	if status < 400 {
+		return err
+	}
+	if strings.Contains(string(c.Response().Header.ContentType()), "application/problem+json") {
+		return err
+	}
+	msg := http.StatusText(status)
+	c.Response().ResetBody()
+	return problem.WriteFiberError(c, fiber.NewError(status, msg))
+}
+
+func annotateSpec(doc *huma.OpenAPI) {
+	if doc.Info != nil {
+		if doc.Info.Extensions == nil {
+			doc.Info.Extensions = map[string]any{}
+		}
+		doc.Info.Extensions["x-stability"] = "preview"
+	}
+	if len(doc.Servers) == 0 {
+		doc.Servers = []*huma.Server{{
+			URL:         "https://api.nextmoe.dev",
+			Description: "Production. Paths in this document already include the /v2 prefix.",
+		}}
+	}
+	var problemRef *huma.Schema
+	if doc.Components != nil && doc.Components.Schemas != nil {
+		problemRef = doc.Components.Schemas.Schema(reflect.TypeOf(problem.Problem{}), true, "Problem")
+		for _, schema := range doc.Components.Schemas.Map() {
+			markClosedEnums(schema)
+		}
+	}
+	for path, item := range doc.Paths {
+		for _, op := range pathOps(item) {
+			rewriteErrorResponses(path, op, problemRef)
+			for _, p := range op.Parameters {
+				if p != nil && p.Schema != nil {
+					markClosedEnums(p.Schema)
+				}
+			}
+		}
+	}
+}
+
+func pathOps(item *huma.PathItem) []*huma.Operation {
+	if item == nil {
+		return nil
+	}
+	ops := make([]*huma.Operation, 0, 8)
+	for _, op := range []*huma.Operation{
+		item.Get, item.Put, item.Post, item.Delete, item.Options, item.Head, item.Patch, item.Trace,
+	} {
+		if op != nil {
+			ops = append(ops, op)
+		}
+	}
+	return ops
+}
+
+func rewriteErrorResponses(path string, op *huma.Operation, problemRef *huma.Schema) {
+	if op.Responses == nil {
+		op.Responses = map[string]*huma.Response{}
+	}
+	delete(op.Responses, "default")
+	for status, resp := range op.Responses {
+		if status == "200" || status == "201" || status == "204" {
+			continue
+		}
+		if resp == nil {
+			resp = &huma.Response{}
+			op.Responses[status] = resp
+		}
+		if resp.Description == "" {
+			resp.Description = http.StatusText(atoiStatus(status))
+		}
+		resp.Content = map[string]*huma.MediaType{
+			"application/problem+json": {Schema: problemRef},
+		}
+	}
+}
+
+func markClosedEnums(s *huma.Schema) {
+	if s == nil {
+		return
+	}
+	if len(s.Enum) > 0 {
+		if s.Extensions == nil {
+			s.Extensions = map[string]any{}
+		}
+		if _, ok := s.Extensions["x-vocabulary-closed"]; !ok {
+			s.Extensions["x-vocabulary-closed"] = true
+		}
+	}
+	for _, p := range s.Properties {
+		markClosedEnums(p)
+	}
+	markClosedEnums(s.Items)
+	for _, x := range s.OneOf {
+		markClosedEnums(x)
+	}
+	for _, x := range s.AnyOf {
+		markClosedEnums(x)
+	}
+	for _, x := range s.AllOf {
+		markClosedEnums(x)
+	}
+	markClosedEnums(s.Not)
+}
+
+func atoiStatus(s string) int {
+	n := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return 0
+		}
+		n = n*10 + int(s[i]-'0')
+	}
+	return n
+}
