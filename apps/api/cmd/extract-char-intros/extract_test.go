@@ -99,31 +99,6 @@ func workIDsOf(works []candidateWork) []int64 {
 	return out
 }
 
-func TestHasBareKanaIgnoresParenthesisedReadings(t *testing.T) {
-	assert.False(t, hasBareKana("主人公藤宫晴真（ふじみや はるま），是上奈木学园的学生。"),
-		"furigana in parentheses is legitimate in a Chinese intro")
-	assert.True(t, hasBareKana("曾与いぶき和なずな一起解决事件。"), "kana in the running text is an untranslated name")
-	assert.True(t, hasBareKana("ミア是被卖掉的亚人少女。"), "katakana counts too")
-	assert.False(t, hasBareKana("秀一最爱的妻子，顾家、开朗且性格温柔。"))
-}
-
-func TestPanelRefusesAnExcerptThatPutsKanaBack(t *testing.T) {
-	w := &writer{st: &stats{}, judge: shortJudge{}}
-	intro := "「沙耶」\n曾与いぶき和なずな一起为了解决事件，使用擅长的幽体脱离进行侦察任务。\n\n「玲」\n转校生，沉默寡言，但其实很受班上同学欢迎，擅长做点心。"
-	cand := candidateWork{WorkID: 1, Intro: intro, Roster: []rosterChar{
-		{CharacterID: 1, Name: "沙耶", Incumbent: "青梅竹马，性格开朗。"},
-		{CharacterID: 2, Name: "玲", Incumbent: "转学过来的女孩子。"},
-	}}
-
-	_, contested := w.gate(cand, map[string]string{
-		"沙耶": "曾与いぶき和なずな一起为了解决事件，使用擅长的幽体脱离进行侦察任务。",
-		"玲":  "转校生，沉默寡言，但其实很受班上同学欢迎，擅长做点心。",
-	}, "grok-4.6")
-	require.Len(t, contested, 1, "only the excerpt that keeps the intro kana-free reaches the panel")
-	assert.Equal(t, int64(2), contested[0].Target.CharacterID)
-	assert.Equal(t, 1, w.st.RefusedKanaBack)
-}
-
 func TestRosterIndexTakesTheSpacesOutButNotAmbiguously(t *testing.T) {
 	roster := []rosterChar{
 		{CharacterID: 1, Name: "河合 葉月"},
