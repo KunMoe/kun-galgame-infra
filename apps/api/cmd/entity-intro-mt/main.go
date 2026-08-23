@@ -25,6 +25,7 @@ func main() {
 	delayMS := flag.Int("delay-ms", 0, "rate-limit delay between real gateway calls (ms)")
 	mock := flag.Bool("mock", false, "REHEARSAL ONLY: offline deterministic mock translator (no network; obvious marker output)")
 	workers := flag.Int("workers", 1, "apply-mode concurrency (per-request latency dominates)")
+	force := flag.Bool("force", false, "retranslate rows whose src_hash already matches — the prompt is not in the hash, so a prompt change needs this")
 	flag.Parse()
 
 	logger.Init("development")
@@ -55,6 +56,7 @@ func main() {
 		DSN: *dsn, Apply: *apply, Lane: *lane, Limit: *limit, Offset: *offset,
 		Delay:   time.Duration(*delayMS) * time.Millisecond,
 		Workers: *workers,
+		Force:   *force,
 	})
 	if err != nil {
 		slog.Error("run failed", "error", err)

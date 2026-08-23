@@ -38,6 +38,7 @@ type Opts struct {
 	Offset  int
 	Delay   time.Duration
 	Workers int
+	Force   bool
 }
 
 type Sample struct {
@@ -113,7 +114,7 @@ func Run(ctx context.Context, tr Translator, opts Opts) ([]*LaneStats, error) {
 			"with_glossary", st.WithGlossary,
 			"apply", opts.Apply, "limit", opts.Limit, "offset", opts.Offset)
 
-		r := &runner{db: db, tr: tr, lane: lane, stats: st}
+		r := &runner{db: db, tr: tr, lane: lane, force: opts.Force, stats: st}
 		r.process(ctx, cands, opts.Apply, opts.Delay, opts.Workers)
 		if err := r.touch(ctx); err != nil {
 			return nil, fmt.Errorf("touch %s entities: %w", lane.key, err)
