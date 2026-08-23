@@ -10,10 +10,12 @@ import (
 )
 
 var g8Exceptions = map[string]bool{
-	"object": true,
-	"state":  true,
-	"value":  true,
-	"source": true, // news_item.source is a news_source object; Image/Ref/Intro.source is the open sources key
+	"object":     true,
+	"state":      true,
+	"value":      true,
+	"source":     true, // news_item.source is a news_source object; Image/Ref/Intro.source is the open sources key
+	"companies":  true, // catalog_stats.companies is a count; work.companies is the include block
+	"characters": true, // catalog_stats.characters is a count; work.characters is the include block
 }
 
 func CheckG7toG16(doc *huma.OpenAPI) []string {

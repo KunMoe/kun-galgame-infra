@@ -56,6 +56,24 @@ type Work struct {
 	Claim                *Claim                   `json:"claim" doc:"null if unclaimed. Never omitted on view=basic."`
 	CreatedAt            string                   `json:"created_at" format:"date-time" maxLength:"32" doc:"RFC 3339 UTC."`
 	UpdatedAt            string                   `json:"updated_at" format:"date-time" maxLength:"32" doc:"RFC 3339 UTC."`
+	Titles               *[]WorkTitle             `json:"titles,omitempty" doc:"Present when include=titles. Empty array if none."`
+	Refs                 *[]Ref                   `json:"refs,omitempty" doc:"Present when include=refs. Empty array if none."`
+	Relations            *[]Relation              `json:"relations,omitempty" doc:"Present when include=relations. Empty array if none."`
+	Credits              *[]CreditGroup           `json:"credits,omitempty" doc:"Present when include=credits. Empty array if none."`
+	Releases             *[]Release               `json:"releases,omitempty" doc:"Present when include=releases. Empty array if none."`
+	Popularity           *[]Popularity            `json:"popularity,omitempty" doc:"Present when include=popularity. Empty array if none."`
+	Ratings              *[]Rating                `json:"ratings,omitempty" doc:"Present when include=ratings. Empty array if none."`
+	Tags                 *[]WorkTag               `json:"tags,omitempty" doc:"Present when include=tags. Empty array if none."`
+	Playtimes            *[]Playtime              `json:"playtimes,omitempty" doc:"Present when include=playtimes. Empty array if none."`
+	Series               *[]WorkSeriesRef         `json:"series,omitempty" doc:"Present when include=series. Empty array if none."`
+	Platforms            *[]WorkPlatform          `json:"platforms,omitempty" doc:"Present when include=platforms. Empty array if none."`
+	Intros               *[]Intro                 `json:"intros,omitempty" doc:"Present when include=intros. Empty array if none."`
+	Covers               *[]Cover                 `json:"covers,omitempty" doc:"Present when include=covers. Empty array if none."`
+	Screenshots          *[]Screenshot            `json:"screenshots,omitempty" doc:"Present when include=screenshots. Empty array if none."`
+	Characters           *[]WorkCharacter         `json:"characters,omitempty" doc:"Present when include=characters. Empty array if none."`
+	Companies            *[]WorkCompany           `json:"companies,omitempty" doc:"Present when include=companies. Empty array if none."`
+	Engines              *[]Engine                `json:"engines,omitempty" doc:"Present when include=engines. Empty array if none."`
+	Links                *[]WorkLink              `json:"links,omitempty" doc:"Present when include=links. Empty array if none."`
 }
 
 func NewWork(id int64, medium, display, olang, rating, releaseStatus, created, updated string, latin *string, localized map[string]LocalizedText, releaseDate, releasePrecision *string, cover, banner *Image, claim *Claim) (Work, bool) {

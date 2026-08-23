@@ -102,18 +102,38 @@ func (c *Catalog) batchWorkIDs(ctx context.Context, q collect.Query) ([]int64, [
 	return ids, missing, nil
 }
 
-func (c *Catalog) GetWork(ctx context.Context, id int64, nsfw bool) (repr.Work, error) {
+func (c *Catalog) GetWork(ctx context.Context, id int64, nsfw bool, include []string) (repr.Work, error) {
 	if c == nil || c.Public == nil {
 		return repr.Work{}, problem.New(problem.CodeServiceUnavailable, "", "", "works collection is not bound.")
 	}
-	rec, found, err := c.Public.WorkDetail(ctx, id, catsvc.PublicInclude{}, nsfw, 0, catsvc.PublicFields{})
+	inc := catsvc.PublicInclude{}
+	for _, t := range include {
+		if t == "relations" {
+			inc.Relations = true
+		}
+		if t == "credits" {
+			inc.Credits = true
+		}
+	}
+	rec, found, err := c.Public.WorkDetail(ctx, id, inc, nsfw, 0, workDetailSel(include))
 	if err != nil {
 		return repr.Work{}, err
 	}
 	if found {
-		return workFromDetail(rec), nil
+		return workFromDetail(rec, include), nil
 	}
 	return repr.Work{}, c.mergedOrNotFound(ctx, catmodel.EntityTypeWork, "work", id)
+}
+
+func workDetailSel(include []string) catsvc.PublicFields {
+	keys := "id,medium,display_name,latin,localized,olang,content_rating,release_date,created,updated,claimed_by,cover_slots"
+	for _, t := range include {
+		if t == "companies" {
+			t = "labels"
+		}
+		keys += "," + t
+	}
+	return catsvc.ParsePublicFields(keys)
 }
 
 func (c *Catalog) Stats(ctx context.Context) (repr.CatalogStats, error) {

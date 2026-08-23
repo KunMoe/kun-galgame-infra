@@ -116,3 +116,11 @@ func EngineSpec() Spec {
 		Fields:  []string{"object", "id", "display_name", "work_count"},
 	}
 }
+
+func WorkSubSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id"},
+	}
+}

@@ -282,6 +282,73 @@ components:
         - violence
         - source
       type: object
+    CreditEntry:
+      additionalProperties: true
+      properties:
+        character_id:
+          description: null if this credit is not a voice on a character.
+          maxLength: 20
+          pattern: ^[0-9]+$
+          type:
+            - string
+            - "null"
+        display_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        id:
+          description: Catalog credit-name id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        latin:
+          description: null if unrecorded. Must not be used as a discriminant.
+          maxLength: 512
+          type:
+            - string
+            - "null"
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/LocalizedText"
+          description: BCP-47 keys. Empty object if none. Must not be used as a discriminant.
+          type: object
+        object:
+          description: Type discriminant. Always credit_name.
+          enum:
+            - credit_name
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - object
+        - id
+        - display_name
+        - latin
+        - localized
+        - character_id
+      type: object
+    CreditGroup:
+      additionalProperties: true
+      properties:
+        credits:
+          description: Names credited in this role. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/CreditEntry"
+          type: array
+        role_key:
+          description: Credit role token.
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*$
+          type: string
+        role_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+      required:
+        - role_key
+        - role_name
+        - credits
+      type: object
     CreditName:
       additionalProperties: true
       properties:
@@ -600,6 +667,104 @@ components:
         - object
         - items
       type: object
+    ListCover:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListCover.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Cover"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
+    ListCreditGroup:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListCreditGroup.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/CreditGroup"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
     ListEngine:
       additionalProperties: true
       properties:
@@ -623,6 +788,55 @@ components:
           description: Members of this page. Empty array, never null.
           items:
             $ref: "#/components/schemas/Engine"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
+    ListIntro:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListIntro.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Intro"
           type: array
         missing:
           description: ids requested but not visible. Present only on the ids=/refs= batch lane.
@@ -795,6 +1009,202 @@ components:
           description: Members of this page. Empty array, never null.
           items:
             $ref: "#/components/schemas/ProblemType"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
+    ListRating:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListRating.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Rating"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
+    ListRelation:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListRelation.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Relation"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
+    ListRelease:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListRelease.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Release"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
+    ListScreenshot:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListScreenshot.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Screenshot"
           type: array
         missing:
           description: ids requested but not visible. Present only on the ids=/refs= batch lane.
@@ -1017,6 +1427,202 @@ components:
         - object
         - items
       type: object
+    ListWorkCharacter:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListWorkCharacter.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/WorkCharacter"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
+    ListWorkLink:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListWorkLink.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/WorkLink"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
+    ListWorkSeriesRef:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListWorkSeriesRef.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/WorkSeriesRef"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
+    ListWorkTag:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListWorkTag.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/WorkTag"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
     LocalizedText:
       additionalProperties: true
       properties:
@@ -1128,6 +1734,54 @@ components:
         - object
         - name
         - display_name
+      type: object
+    Playtime:
+      additionalProperties: true
+      properties:
+        minutes:
+          description: Estimated minutes.
+          format: int64
+          minimum: 0
+          type: integer
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        vote_count:
+          description: Votes backing the estimate.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - source
+        - minutes
+        - vote_count
+      type: object
+    Popularity:
+      additionalProperties: true
+      properties:
+        metric:
+          description: Source-native metric token.
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*$
+          type: string
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        value:
+          description: Metric value.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - source
+        - metric
+        - value
       type: object
     Problem:
       additionalProperties: true
@@ -1289,6 +1943,38 @@ components:
         - title
         - description
       type: object
+    Rating:
+      additionalProperties: true
+      properties:
+        rank:
+          description: Source rank. null if unrecorded.
+          format: int64
+          minimum: 0
+          type:
+            - integer
+            - "null"
+        score:
+          description: Source-native aggregate score.
+          format: double
+          minimum: 0
+          type: number
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        vote_count:
+          description: Votes backing score.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - source
+        - score
+        - vote_count
+        - rank
+      type: object
     Ref:
       additionalProperties: true
       properties:
@@ -1305,6 +1991,172 @@ components:
       required:
         - source
         - external_id
+      type: object
+    Relation:
+      additionalProperties: true
+      properties:
+        phrase:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        relation_type:
+          description: Relation token.
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*$
+          type: string
+        work:
+          $ref: "#/components/schemas/Work"
+          description: Related work. Same type as the work collection. view=basic.
+      required:
+        - relation_type
+        - phrase
+        - work
+      type: object
+    Release:
+      additionalProperties: true
+      properties:
+        date:
+          description: Calendar date. null if undated.
+          format: date
+          maxLength: 10
+          type:
+            - string
+            - "null"
+        id:
+          description: Catalog release id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        lang:
+          description: BCP-47. Empty if unrecorded.
+          format: bcp47
+          maxLength: 32
+          type: string
+        object:
+          description: Type discriminant. Always release.
+          enum:
+            - release
+          type: string
+          x-vocabulary-closed: true
+        platform:
+          description: Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+        platforms:
+          description: Every platform on this release. Empty array, never null.
+          items:
+            type: string
+          type: array
+        refs:
+          description: Exact upstream anchors. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Ref"
+          type: array
+        release_kind:
+          description: Release class.
+          enum:
+            - default
+            - digital
+            - physical
+            - trial
+            - patch
+          type: string
+          x-vocabulary-closed: true
+        title:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type:
+            - string
+            - "null"
+      required:
+        - object
+        - id
+        - release_kind
+        - date
+        - title
+        - lang
+        - platform
+        - platforms
+        - refs
+      type: object
+    Screenshot:
+      additionalProperties: true
+      properties:
+        caption:
+          description: Must not be used as a discriminant.
+          maxLength: 2048
+          type: string
+        hash:
+          description: Image-service content hash.
+          maxLength: 64
+          minLength: 64
+          pattern: ^[0-9a-f]{64}$
+          type: string
+        height:
+          description: Pixel height. null if unknown.
+          format: int64
+          maximum: 65535
+          minimum: 0
+          type:
+            - integer
+            - "null"
+        sexual:
+          description: Sexual depiction. null means not assessed.
+          enum:
+            - safe
+            - suggestive
+            - explicit
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        thumbhash:
+          description: Thumbhash. null if unknown.
+          maxLength: 128
+          pattern: ^[A-Za-z0-9+/=_-]+$
+          type:
+            - string
+            - "null"
+        url:
+          description: Absolute image URL. Never a bare hash.
+          format: uri
+          maxLength: 512
+          type: string
+        violence:
+          description: Violent depiction. null means not assessed. Currently always null.
+          enum:
+            - tame
+            - violent
+            - brutal
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        width:
+          description: Pixel width. null if unknown.
+          format: int64
+          maximum: 65535
+          minimum: 0
+          type:
+            - integer
+            - "null"
+      required:
+        - url
+        - hash
+        - width
+        - height
+        - thumbhash
+        - sexual
+        - violence
+        - source
+        - caption
       type: object
     Series:
       additionalProperties: true
@@ -1459,9 +2311,19 @@ components:
         banner:
           $ref: "#/components/schemas/Image"
           description: Selected landscape image. null if none.
+        characters:
+          description: Present when include=characters. Empty array if none.
+          items:
+            $ref: "#/components/schemas/WorkCharacter"
+          type: array
         claim:
           $ref: "#/components/schemas/Claim"
           description: null if unclaimed. Never omitted on view=basic.
+        companies:
+          description: Present when include=companies. Empty array if none.
+          items:
+            $ref: "#/components/schemas/WorkCompany"
+          type: array
         content_rating:
           description: Age axis of the work.
           enum:
@@ -1473,27 +2335,52 @@ components:
         cover:
           $ref: "#/components/schemas/Image"
           description: Selected portrait image. null if none.
+        covers:
+          description: Present when include=covers. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Cover"
+          type: array
         created_at:
           description: RFC 3339 UTC.
           format: date-time
           maxLength: 32
           type: string
+        credits:
+          description: Present when include=credits. Empty array if none.
+          items:
+            $ref: "#/components/schemas/CreditGroup"
+          type: array
         display_name:
           description: Primary label. Never empty. Must not be used as a discriminant.
           maxLength: 512
           type: string
+        engines:
+          description: Present when include=engines. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Engine"
+          type: array
         id:
           description: Catalog work id. JSON string of a decimal integer.
           maxLength: 20
           minLength: 1
           pattern: ^[0-9]+$
           type: string
+        intros:
+          description: Present when include=intros. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Intro"
+          type: array
         latin:
           description: Romanization. null if unrecorded. Must not be used as a discriminant.
           maxLength: 512
           type:
             - string
             - "null"
+        links:
+          description: Present when include=links. Empty array if none.
+          items:
+            $ref: "#/components/schemas/WorkLink"
+          type: array
         localized:
           additionalProperties:
             $ref: "#/components/schemas/LocalizedText"
@@ -1522,6 +2409,36 @@ components:
           format: bcp47
           maxLength: 32
           type: string
+        platforms:
+          description: Present when include=platforms. Empty array if none.
+          items:
+            $ref: "#/components/schemas/WorkPlatform"
+          type: array
+        playtimes:
+          description: Present when include=playtimes. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Playtime"
+          type: array
+        popularity:
+          description: Present when include=popularity. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Popularity"
+          type: array
+        ratings:
+          description: Present when include=ratings. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Rating"
+          type: array
+        refs:
+          description: Present when include=refs. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Ref"
+          type: array
+        relations:
+          description: Present when include=relations. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Relation"
+          type: array
         release_date:
           description: Calendar date. null when release_status is announced, cancelled, or unknown.
           format: date
@@ -1549,6 +2466,31 @@ components:
             - unknown
           type: string
           x-vocabulary-closed: true
+        releases:
+          description: Present when include=releases. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Release"
+          type: array
+        screenshots:
+          description: Present when include=screenshots. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Screenshot"
+          type: array
+        series:
+          description: Present when include=series. Empty array if none.
+          items:
+            $ref: "#/components/schemas/WorkSeriesRef"
+          type: array
+        tags:
+          description: Present when include=tags. Empty array if none.
+          items:
+            $ref: "#/components/schemas/WorkTag"
+          type: array
+        titles:
+          description: Present when include=titles. Empty array if none.
+          items:
+            $ref: "#/components/schemas/WorkTitle"
+          type: array
         updated_at:
           description: RFC 3339 UTC.
           format: date-time
@@ -1571,6 +2513,267 @@ components:
         - claim
         - created_at
         - updated_at
+      type: object
+    WorkCharacter:
+      additionalProperties: true
+      properties:
+        display_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        figure:
+          $ref: "#/components/schemas/Image"
+          description: Figure image. null if none.
+        id:
+          description: Catalog character id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        image:
+          $ref: "#/components/schemas/Image"
+          description: Character image. null if none.
+        latin:
+          description: null if unrecorded. Must not be used as a discriminant.
+          maxLength: 512
+          type:
+            - string
+            - "null"
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/LocalizedText"
+          description: BCP-47 keys. Empty object if none. Must not be used as a discriminant.
+          type: object
+        object:
+          description: Type discriminant. Always character.
+          enum:
+            - character
+          type: string
+          x-vocabulary-closed: true
+        roster_role:
+          description: Appearance strength on this work.
+          enum:
+            - main
+            - secondary
+            - appears
+            - unknown
+          type: string
+          x-vocabulary-closed: true
+        spoiler:
+          description: Spoiler level of this appearance.
+          enum:
+            - none
+            - minor
+            - major
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - object
+        - id
+        - display_name
+        - latin
+        - localized
+        - roster_role
+        - spoiler
+        - image
+        - figure
+      type: object
+    WorkCompany:
+      additionalProperties: true
+      properties:
+        attribution_role:
+          description: Primary capacity on this work.
+          enum:
+            - circle
+            - publisher
+            - developer
+            - brand
+          type: string
+          x-vocabulary-closed: true
+        company_kind:
+          description: Company registry class.
+          enum:
+            - game_brand
+            - bunko
+            - publisher
+            - anime_studio
+            - doujin_circle
+            - group
+          type: string
+          x-vocabulary-closed: true
+        display_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        id:
+          description: Catalog company id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/LocalizedText"
+          description: BCP-47 keys. Empty object if none. Must not be used as a discriminant.
+          type: object
+        object:
+          description: Type discriminant. Always company.
+          enum:
+            - company
+          type: string
+          x-vocabulary-closed: true
+        work_count:
+          description: Works visible under the same NSFW gate.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - id
+        - display_name
+        - localized
+        - company_kind
+        - attribution_role
+        - work_count
+      type: object
+    WorkLink:
+      additionalProperties: true
+      properties:
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        url:
+          description: Absolute URL.
+          format: uri
+          maxLength: 1024
+          type: string
+      required:
+        - source
+        - url
+      type: object
+    WorkPlatform:
+      additionalProperties: true
+      properties:
+        platform:
+          description: Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+      required:
+        - platform
+        - source
+      type: object
+    WorkSeriesRef:
+      additionalProperties: true
+      properties:
+        display_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        id:
+          description: Catalog series id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        member_count:
+          description: Members visible under the same NSFW gate.
+          format: int64
+          minimum: 0
+          type: integer
+        object:
+          description: Type discriminant. Always series.
+          enum:
+            - series
+          type: string
+          x-vocabulary-closed: true
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+      required:
+        - object
+        - id
+        - display_name
+        - source
+        - member_count
+      type: object
+    WorkTag:
+      additionalProperties: true
+      properties:
+        display_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        id:
+          description: Canonical tag id. null if this row is not mapped.
+          maxLength: 20
+          pattern: ^[0-9]+$
+          type:
+            - string
+            - "null"
+        is_sexual:
+          description: Whether this tag is in the sexual family.
+          type: boolean
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        spoiler:
+          description: Spoiler level of this attachment.
+          enum:
+            - none
+            - minor
+            - major
+          type: string
+          x-vocabulary-closed: true
+        tag_kind:
+          description: Tag vocabulary class. null if unmapped.
+          enum:
+            - content
+            - meta
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        tier:
+          description: Tag inventory tier. null if unmapped.
+          enum:
+            - core
+            - longtail
+            - hidden
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        work_count:
+          description: Works visible under the same NSFW gate. null if unmapped.
+          format: int64
+          minimum: 0
+          type:
+            - integer
+            - "null"
+      required:
+        - id
+        - display_name
+        - source
+        - tier
+        - tag_kind
+        - spoiler
+        - is_sexual
+        - work_count
       type: object
     WorkTitle:
       additionalProperties: true
@@ -3137,6 +4340,1194 @@ paths:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
       summary: Get one catalog work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/characters:
+    get:
+      description: Roster characters. Same items as include=characters. Requires an application key.
+      operationId: getCatalogWorkCharacters
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWorkCharacter"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List characters of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/covers:
+    get:
+      description: Work cover rows. Same items as include=covers. Requires an application key.
+      operationId: getCatalogWorkCovers
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCover"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List covers of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/credits:
+    get:
+      description: Credits grouped by role. Same items as include=credits. Requires an application key.
+      operationId: getCatalogWorkCredits
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCreditGroup"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List credits of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/engines:
+    get:
+      description: Engines. Same items as include=engines. Requires an application key.
+      operationId: getCatalogWorkEngines
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEngine"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List engines of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/intros:
+    get:
+      description: Intros. Same items as include=intros. Requires an application key.
+      operationId: getCatalogWorkIntros
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListIntro"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List intros of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/links:
+    get:
+      description: Outbound links. Same items as include=links. Requires an application key.
+      operationId: getCatalogWorkLinks
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWorkLink"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List links of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/ratings:
+    get:
+      description: Source ratings. Same items as include=ratings. Requires an application key.
+      operationId: getCatalogWorkRatings
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListRating"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List ratings of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/relations:
+    get:
+      description: Related works. Same items as include=relations. Requires an application key.
+      operationId: getCatalogWorkRelations
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListRelation"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List relations of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/releases:
+    get:
+      description: Releases of this work. Same items as include=releases. Requires an application key.
+      operationId: getCatalogWorkReleases
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListRelease"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List releases of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/screenshots:
+    get:
+      description: Work screenshots. Same items as include=screenshots. Requires an application key.
+      operationId: getCatalogWorkScreenshots
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListScreenshot"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List screenshots of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/series:
+    get:
+      description: Series memberships. Same items as include=series. Requires an application key.
+      operationId: getCatalogWorkSeries
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWorkSeriesRef"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List series of one work
+      tags:
+        - catalog
+  /v2/catalog/works/{id}/tags:
+    get:
+      description: Tags attached to this work. Same items as include=tags. Requires an application key.
+      operationId: getCatalogWorkTags
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWorkTag"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List tags of one work
       tags:
         - catalog
   /v2/news:

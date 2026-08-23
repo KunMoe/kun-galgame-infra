@@ -65,7 +65,7 @@ func TestWorkFromDetailCoverSlots(t *testing.T) {
 			},
 		},
 	}
-	w := workFromDetail(rec)
+	w := workFromDetail(rec, nil)
 	if w.Cover == nil || w.Cover.Hash != hash || w.Cover.Sexual == nil || *w.Cover.Sexual != "safe" {
 		t.Fatalf("slot cover %+v", w.Cover)
 	}
@@ -88,6 +88,29 @@ func TestClaimFromNil(t *testing.T) {
 	c := claimFrom(&dto.PublicClaimedBy{Site: "s", WorkID: 1, State: "draft", ContentLimit: "nsfw"})
 	if c.SiteWorkID != "1" || c.State != "draft" {
 		t.Fatalf("%+v", c)
+	}
+}
+
+func TestWorkIncludeBlocks(t *testing.T) {
+	rec := dto.PublicCatalogWork{
+		ID: 1, Medium: "galgame", DisplayName: "x", OLang: "ja", ContentRating: "all_ages",
+		Updated: "2026-01-01T00:00:00Z",
+		Titles:  []dto.PublicCatalogTitle{{Lang: "ja", Title: "x", Kind: "official"}},
+		Refs:    []dto.PublicCatalogRef{{Source: "vndb", ExternalID: "v1"}},
+		Labels:  []dto.PublicWorkLabel{{ID: 9, DisplayName: "Brand", LabelKind: "game_brand", Kind: "brand"}},
+	}
+	w := workFromDetail(rec, []string{"titles", "refs", "companies"})
+	if w.Titles == nil || len(*w.Titles) != 1 || (*w.Titles)[0].TitleKind != "official" {
+		t.Fatalf("titles %+v", w.Titles)
+	}
+	if w.Refs == nil || (*w.Refs)[0].ExternalID != "v1" {
+		t.Fatalf("refs %+v", w.Refs)
+	}
+	if w.Companies == nil || (*w.Companies)[0].AttributionRole != "brand" {
+		t.Fatalf("companies %+v", w.Companies)
+	}
+	if w.Tags != nil || w.Covers != nil {
+		t.Fatal("unrequested blocks must be omitted")
 	}
 }
 

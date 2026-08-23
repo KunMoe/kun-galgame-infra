@@ -97,7 +97,10 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.Claim{}, repr.Work{}, repr.FacetValue{},
 			repr.Tag{}, repr.Company{}, repr.CreditName{}, repr.Character{},
 			repr.Series{}, repr.Engine{}, repr.NewsSource{}, repr.NewsItem{},
-			repr.CatalogStats{},
+			repr.CatalogStats{}, repr.Screenshot{}, repr.WorkTag{}, repr.WorkCharacter{},
+			repr.CreditGroup{}, repr.CreditEntry{}, repr.Release{}, repr.Relation{},
+			repr.WorkCompany{}, repr.WorkLink{}, repr.Rating{}, repr.Popularity{},
+			repr.Playtime{}, repr.WorkPlatform{}, repr.WorkSeriesRef{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}

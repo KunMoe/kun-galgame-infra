@@ -131,16 +131,17 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		SkipValidateParams: true,
 	}, getCatalogStats(cat))
 	registerCatalogLists(api, cat)
+	registerWorkSubs(api, cat)
 	registerNews(api, cat)
 }
 
 func getCatalogWork(cat *Catalog) func(context.Context, *resourceIDInput) (*getWorkOutput, error) {
 	return func(ctx context.Context, in *resourceIDInput) (*getWorkOutput, error) {
-		id, nsfw, err := parseResourceID(ctx, in, collect.WorkSpec())
+		id, q, err := parseResource(ctx, in, collect.WorkSpec())
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetWork(ctx, id, nsfw)
+		rec, gerr := cat.GetWork(ctx, id, q.NSFW, q.Include)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -150,11 +151,11 @@ func getCatalogWork(cat *Catalog) func(context.Context, *resourceIDInput) (*getW
 
 func getCatalogCompany(cat *Catalog) func(context.Context, *resourceIDInput) (*getCompanyOutput, error) {
 	return func(ctx context.Context, in *resourceIDInput) (*getCompanyOutput, error) {
-		id, nsfw, err := parseResourceID(ctx, in, collect.CompanySpec())
+		id, q, err := parseResource(ctx, in, collect.CompanySpec())
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetCompany(ctx, id, nsfw)
+		rec, gerr := cat.GetCompany(ctx, id, q.NSFW)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -164,11 +165,11 @@ func getCatalogCompany(cat *Catalog) func(context.Context, *resourceIDInput) (*g
 
 func getCatalogCreditName(cat *Catalog) func(context.Context, *resourceIDInput) (*getCreditNameOutput, error) {
 	return func(ctx context.Context, in *resourceIDInput) (*getCreditNameOutput, error) {
-		id, nsfw, err := parseResourceID(ctx, in, collect.CreditNameSpec())
+		id, q, err := parseResource(ctx, in, collect.CreditNameSpec())
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetCreditName(ctx, id, nsfw)
+		rec, gerr := cat.GetCreditName(ctx, id, q.NSFW)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -178,11 +179,11 @@ func getCatalogCreditName(cat *Catalog) func(context.Context, *resourceIDInput) 
 
 func getCatalogCharacter(cat *Catalog) func(context.Context, *resourceIDInput) (*getCharacterOutput, error) {
 	return func(ctx context.Context, in *resourceIDInput) (*getCharacterOutput, error) {
-		id, nsfw, err := parseResourceID(ctx, in, collect.CharacterSpec())
+		id, q, err := parseResource(ctx, in, collect.CharacterSpec())
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetCharacter(ctx, id, nsfw)
+		rec, gerr := cat.GetCharacter(ctx, id, q.NSFW)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -192,11 +193,11 @@ func getCatalogCharacter(cat *Catalog) func(context.Context, *resourceIDInput) (
 
 func getCatalogTag(cat *Catalog) func(context.Context, *resourceIDInput) (*getTagOutput, error) {
 	return func(ctx context.Context, in *resourceIDInput) (*getTagOutput, error) {
-		id, nsfw, err := parseResourceID(ctx, in, collect.TagSpec())
+		id, q, err := parseResource(ctx, in, collect.TagSpec())
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetTag(ctx, id, nsfw)
+		rec, gerr := cat.GetTag(ctx, id, q.NSFW)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -206,11 +207,11 @@ func getCatalogTag(cat *Catalog) func(context.Context, *resourceIDInput) (*getTa
 
 func getCatalogSeries(cat *Catalog) func(context.Context, *resourceIDInput) (*getSeriesOutput, error) {
 	return func(ctx context.Context, in *resourceIDInput) (*getSeriesOutput, error) {
-		id, nsfw, err := parseResourceID(ctx, in, collect.SeriesSpec())
+		id, q, err := parseResource(ctx, in, collect.SeriesSpec())
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetSeries(ctx, id, nsfw)
+		rec, gerr := cat.GetSeries(ctx, id, q.NSFW)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -220,11 +221,11 @@ func getCatalogSeries(cat *Catalog) func(context.Context, *resourceIDInput) (*ge
 
 func getCatalogEngine(cat *Catalog) func(context.Context, *resourceIDInput) (*getEngineOutput, error) {
 	return func(ctx context.Context, in *resourceIDInput) (*getEngineOutput, error) {
-		id, nsfw, err := parseResourceID(ctx, in, collect.EngineSpec())
+		id, q, err := parseResource(ctx, in, collect.EngineSpec())
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetEngine(ctx, id, nsfw)
+		rec, gerr := cat.GetEngine(ctx, id, q.NSFW)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -242,7 +243,7 @@ func getCatalogStats(cat *Catalog) func(context.Context, *struct{}) (*getStatsOu
 	}
 }
 
-func parseResourceID(ctx context.Context, in *resourceIDInput, spec collect.Spec) (int64, bool, error) {
+func parseResource(ctx context.Context, in *resourceIDInput, spec collect.Spec) (int64, collect.Query, error) {
 	if in == nil {
 		in = &resourceIDInput{}
 	}
@@ -250,18 +251,18 @@ func parseResourceID(ctx context.Context, in *resourceIDInput, spec collect.Spec
 	if !ok {
 		p := problem.New(problem.CodeInvalidParameter, "", "", "id must be a positive decimal catalog id.")
 		p.Errors = []problem.FieldError{{Parameter: "id", Reason: problem.ReasonInvalidFormat, Detail: in.ID}}
-		return 0, false, withIdent(ctx, p)
+		return 0, collect.Query{}, withIdent(ctx, p)
 	}
 	q, err := collect.Parse(collect.Raw{View: in.View, Include: in.Include, Fields: in.Fields, NSFW: in.NSFW}, spec)
 	if err != nil {
-		return 0, false, withIdent(ctx, err)
+		return 0, collect.Query{}, withIdent(ctx, err)
 	}
 	if q.NSFW {
 		if p := refuseNSFW(ctx); p != nil {
-			return 0, false, p
+			return 0, collect.Query{}, p
 		}
 	}
-	return id, q.NSFW, nil
+	return id, q, nil
 }
 
 func refuseNSFW(ctx context.Context) *problem.Problem {

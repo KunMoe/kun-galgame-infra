@@ -75,6 +75,23 @@ func TestSliceBatchMissing(t *testing.T) {
 	}
 }
 
+func TestEncodeDecodeOffset(t *testing.T) {
+	if EncodeOffset(0) != nil {
+		t.Fatal("zero offset omits cursor")
+	}
+	c := EncodeOffset(20)
+	if c == nil {
+		t.Fatal("offset 20")
+	}
+	n, err := DecodeOffset(*c)
+	if err != nil || n != 20 {
+		t.Fatalf("roundtrip %d %v", n, err)
+	}
+	if _, err := DecodeOffset("cur_nope"); err == nil {
+		t.Fatal("bad cursor")
+	}
+}
+
 func TestSliceIncludeTotal(t *testing.T) {
 	all := []string{"a", "b", "c"}
 	q, err := Parse(Raw{Limit: "1", IncludeTotal: "true"}, VocabSpec())

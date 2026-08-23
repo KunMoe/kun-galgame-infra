@@ -368,6 +368,7 @@ type PublicPlatform struct {
 }
 
 type PublicCover struct {
+	ID             int64  `json:"id,omitempty"`
 	URL            string `json:"url"`
 	Kind           string `json:"kind,omitempty"`
 	PortraitPinned bool   `json:"portrait_pinned"`

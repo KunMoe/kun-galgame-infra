@@ -25,7 +25,7 @@ func workFromListItem(it dto.PublicWorkListItem) repr.Work {
 	return w
 }
 
-func workFromDetail(rec dto.PublicCatalogWork) repr.Work {
+func workFromDetail(rec dto.PublicCatalogWork, include []string) repr.Work {
 	var cover, banner *repr.Image
 	if rec.CoverSlots != nil {
 		cover = imageFromSlot(rec.CoverSlots.Portrait)
@@ -40,7 +40,69 @@ func workFromDetail(rec dto.PublicCatalogWork) repr.Work {
 		created, rec.Updated, optString(rec.Latin), localizedFrom(rec.Localized),
 		rec.ReleaseDate, releasePrecision(rec.ReleaseDate), cover, banner, claimFrom(rec.ClaimedBy),
 	)
+	attachWorkIncludes(&w, rec, include)
 	return w
+}
+
+func attachWorkIncludes(w *repr.Work, rec dto.PublicCatalogWork, include []string) {
+	want := map[string]bool{}
+	for _, t := range include {
+		want[t] = true
+	}
+	if want["titles"] {
+		w.Titles = ptrSlice(cap100(titlesFrom(rec.Titles)))
+	}
+	if want["refs"] {
+		w.Refs = ptrSlice(cap100(refsFrom(rec.Refs)))
+	}
+	if want["relations"] {
+		w.Relations = ptrSlice(cap100(relationsFrom(rec.Relations)))
+	}
+	if want["credits"] {
+		w.Credits = ptrSlice(cap100(creditGroupsFrom(rec.Credits)))
+	}
+	if want["releases"] {
+		w.Releases = ptrSlice(cap100(releasesFrom(rec.Releases)))
+	}
+	if want["popularity"] {
+		w.Popularity = ptrSlice(cap100(popularityFrom(rec.Popularity)))
+	}
+	if want["ratings"] {
+		w.Ratings = ptrSlice(cap100(ratingsFrom(rec.Ratings)))
+	}
+	if want["tags"] {
+		w.Tags = ptrSlice(cap100(workTagsFrom(rec.Tags)))
+	}
+	if want["playtimes"] {
+		w.Playtimes = ptrSlice(cap100(playtimesFrom(rec.Playtimes)))
+	}
+	if want["series"] {
+		w.Series = ptrSlice(cap100(workSeriesFrom(rec.Series)))
+	}
+	if want["platforms"] {
+		w.Platforms = ptrSlice(cap100(platformsFrom(rec.Platforms)))
+	}
+	if want["intros"] {
+		w.Intros = ptrSlice(cap100(introsFrom(rec.Intros)))
+	}
+	if want["covers"] {
+		w.Covers = ptrSlice(cap100(coversFrom(rec.Covers)))
+	}
+	if want["screenshots"] {
+		w.Screenshots = ptrSlice(cap100(screenshotsFrom(rec.Screenshots)))
+	}
+	if want["characters"] {
+		w.Characters = ptrSlice(cap100(workCharactersFrom(rec.Characters)))
+	}
+	if want["companies"] {
+		w.Companies = ptrSlice(cap100(workCompaniesFrom(rec.Labels)))
+	}
+	if want["engines"] {
+		w.Engines = ptrSlice(cap100(workEnginesFrom(rec.Engines)))
+	}
+	if want["links"] {
+		w.Links = ptrSlice(cap100(workLinksFrom(rec.Links)))
+	}
 }
 
 func claimFrom(c *dto.PublicClaimedBy) *repr.Claim {

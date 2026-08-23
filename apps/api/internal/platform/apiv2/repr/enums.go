@@ -49,6 +49,15 @@ func ContentRating(v int16) (string, bool) {
 	}
 }
 
+func TitleKindFromKey(key string) (string, bool) {
+	switch key {
+	case "official", "alias", "abbreviation":
+		return key, true
+	default:
+		return "", false
+	}
+}
+
 func TitleKind(v int16) (string, bool) {
 	switch v {
 	case model.WorkTitleKindOfficial:
@@ -73,6 +82,15 @@ func AliasKind(v int16) (string, bool) {
 	}
 }
 
+func RosterRoleFromKey(key string) (string, bool) {
+	switch key {
+	case "unknown", "main", "secondary", "appears":
+		return key, true
+	default:
+		return "", false
+	}
+}
+
 func RosterRole(v int16) (string, bool) {
 	switch v {
 	case model.WorkCharacterKindUnknown:
@@ -83,6 +101,15 @@ func RosterRole(v int16) (string, bool) {
 		return "secondary", true
 	case model.WorkCharacterKindAppears:
 		return "appears", true
+	default:
+		return "", false
+	}
+}
+
+func AttributionRoleFromKey(key string) (string, bool) {
+	switch key {
+	case "circle", "publisher", "developer", "brand":
+		return key, true
 	default:
 		return "", false
 	}
@@ -137,6 +164,15 @@ func TagKind(v int16) (string, bool) {
 		return "content", true
 	case model.TagKindMeta:
 		return "meta", true
+	default:
+		return "", false
+	}
+}
+
+func ReleaseKindFromKey(key string) (string, bool) {
+	switch key {
+	case "default", "digital", "physical", "trial", "patch":
+		return key, true
 	default:
 		return "", false
 	}

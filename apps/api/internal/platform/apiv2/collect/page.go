@@ -2,6 +2,7 @@ package collect
 
 import (
 	"encoding/base64"
+	"strconv"
 
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
@@ -24,6 +25,29 @@ func DecodeCursor(cur string) (string, *problem.Problem) {
 		return "", invalidCursor()
 	}
 	return string(b), nil
+}
+
+func EncodeOffset(n int) *string {
+	if n <= 0 {
+		return nil
+	}
+	e := EncodeCursor(strconv.Itoa(n))
+	return &e
+}
+
+func DecodeOffset(cur string) (int, *problem.Problem) {
+	if cur == "" {
+		return 0, nil
+	}
+	s, err := DecodeCursor(cur)
+	if err != nil {
+		return 0, err
+	}
+	n, conv := strconv.Atoi(s)
+	if conv != nil || n < 0 {
+		return 0, invalidCursor()
+	}
+	return n, nil
 }
 
 func invalidCursor() *problem.Problem {

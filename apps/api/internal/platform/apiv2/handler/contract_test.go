@@ -321,6 +321,32 @@ func TestCatalogCollectionsRequireCredential(t *testing.T) {
 	}
 }
 
+func TestWorkSubresourcesRequireCredential(t *testing.T) {
+	app := testApp(t)
+	status, ct, body := do(t, app, http.MethodGet, "/v2/catalog/works/1/tags")
+	require.Equal(t, 401, status)
+	require.Contains(t, ct, "application/problem+json")
+	var p problem.Problem
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeMissingCredential, p.Code)
+
+	req := httptest.NewRequest(http.MethodGet, "/v2/catalog/works/1/covers", nil)
+	req.Header.Set("Authorization", "Bearer test")
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	require.Equal(t, 503, resp.StatusCode)
+
+	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/works/1?include=nope", nil)
+	req.Header.Set("Authorization", "Bearer test")
+	resp, err = app.Test(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, 400, resp.StatusCode)
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeUnknownInclude, p.Code)
+}
+
 func itoa(n int) string {
 	if n == 0 {
 		return "0"
