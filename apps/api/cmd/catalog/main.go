@@ -305,6 +305,7 @@ func setupPublicCatalog(
 			Resolve:  resolveSvc,
 			StatsSvc: statsSvc,
 			News:     newsSvc,
+			Searcher: searcher,
 		},
 	})
 	v2spec, err := json.Marshal(v2API.OpenAPI())

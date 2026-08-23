@@ -9,6 +9,7 @@ import (
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
 	catmodel "api/internal/platform/catalog/model"
+	catsearch "api/internal/platform/catalog/search"
 	catsvc "api/internal/platform/catalog/service"
 	newsdto "api/internal/platform/news/dto"
 	newssvc "api/internal/platform/news/service"
@@ -19,6 +20,7 @@ type Catalog struct {
 	Resolve  *catsvc.ResolveService
 	StatsSvc *catsvc.StatsService
 	News     *newssvc.PublicService
+	Searcher *catsearch.Indexer
 }
 
 func (c *Catalog) ListWorks(ctx context.Context, q collect.Query) (repr.List[repr.Work], error) {

@@ -1368,6 +1368,55 @@ components:
         - object
         - items
       type: object
+    ListSearchHit:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListSearchHit.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/SearchHit"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
     ListSeries:
       additionalProperties: true
       properties:
@@ -2355,6 +2404,92 @@ components:
         - violence
         - source
         - caption
+      type: object
+    SearchHit:
+      additionalProperties: true
+      properties:
+        content_rating:
+          description: Set on work hits. null otherwise.
+          enum:
+            - all_ages
+            - sensitive
+            - r18
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        display_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        id:
+          description: Catalog id of the hit.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        latin:
+          description: null if unrecorded. Must not be used as a discriminant.
+          maxLength: 512
+          type:
+            - string
+            - "null"
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/LocalizedText"
+          description: BCP-47 keys. Empty object if none. Must not be used as a discriminant.
+          type: object
+        object:
+          description: Type discriminant. Always search_result.
+          enum:
+            - search_result
+          type: string
+          x-vocabulary-closed: true
+        sources:
+          description: Open vocabulary sources. Empty array, never null.
+          items:
+            type: string
+          type: array
+        tag_kind:
+          description: Set on tag hits. null otherwise.
+          enum:
+            - content
+            - meta
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        target_object:
+          description: Family of the hit.
+          enum:
+            - work
+            - character
+            - credit_name
+            - company
+            - tag
+          type: string
+          x-vocabulary-closed: true
+        tier:
+          description: Set on tag hits. null otherwise.
+          enum:
+            - core
+            - longtail
+            - hidden
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+      required:
+        - object
+        - target_object
+        - id
+        - display_name
+        - latin
+        - localized
+        - sources
+        - content_rating
+        - tier
+        - tag_kind
       type: object
     Series:
       additionalProperties: true
@@ -4295,6 +4430,89 @@ paths:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
       summary: Get one release
+      tags:
+        - catalog
+  /v2/catalog/search:
+    get:
+      description: Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= and ids= are not accepted.
+      operationId: searchCatalog
+      parameters:
+        - description: Search string. Empty runs a popularity-ordered listing of that family.
+          explode: false
+          in: query
+          name: q
+          schema:
+            description: Search string. Empty runs a popularity-ordered listing of that family.
+            maxLength: 512
+            type: string
+        - description: "Required family: work, character, credit_name, company, tag."
+          explode: false
+          in: query
+          name: object
+          schema:
+            description: "Required family: work, character, credit_name, company, tag."
+            maxLength: 32
+            type: string
+        - description: zh or ja. Ignored for works. Must not be used as a discriminant.
+          explode: false
+          in: query
+          name: locale
+          schema:
+            description: zh or ja. Ignored for works. Must not be used as a discriminant.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSearchHit"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Search catalog entities
       tags:
         - catalog
   /v2/catalog/series:

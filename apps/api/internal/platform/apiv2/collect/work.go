@@ -152,6 +152,17 @@ func RedirectsSpec() Spec {
 	}
 }
 
+func SearchSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields: []string{
+			"object", "target_object", "id", "display_name", "latin", "localized",
+			"sources", "content_rating", "tier", "tag_kind",
+		},
+	}
+}
+
 func CalendarSpec() Spec {
 	fields := append([]string{}, WorkBasicFields...)
 	fields = append(fields, WorkInclude...)

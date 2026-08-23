@@ -158,6 +158,19 @@ func CompanyKindFromKey(key string) (string, bool) {
 	}
 }
 
+func TagTier(v int16) (string, bool) {
+	switch v {
+	case model.TagTierCore:
+		return "core", true
+	case model.TagTierLongtail:
+		return "longtail", true
+	case model.TagTierHidden:
+		return "hidden", true
+	default:
+		return "", false
+	}
+}
+
 func TagKind(v int16) (string, bool) {
 	switch v {
 	case model.TagKindContent:

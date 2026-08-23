@@ -145,6 +145,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 	}, getCatalogStats(cat))
 	registerCatalogLists(api, cat)
 	registerCatalogFeeds(api, cat)
+	registerCatalogSearch(api, cat)
 	registerWorkSubs(api, cat)
 	registerNews(api, cat)
 }
