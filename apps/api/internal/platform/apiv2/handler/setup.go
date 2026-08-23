@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"reflect"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/apiv2/repr"
+	"api/internal/platform/devapi"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humafiber"
@@ -18,9 +20,10 @@ import (
 var installOnce sync.Once
 
 type Options struct {
-	Store   protocol.Store
-	Works   WorksFunc
-	Catalog *Catalog
+	Store            protocol.Store
+	Works            WorksFunc
+	Catalog          *Catalog
+	LookupCredential func(ctx context.Context, rawToken string) (*devapi.Credential, error)
 }
 
 func Setup(app *fiber.App) huma.API {
@@ -42,7 +45,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	})
 
 	app.Use(protocol.Middleware(opt.Store))
-	app.Use(catalogAuth)
+	app.Use(catalogAuth(opt.LookupCredential))
 
 	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0-preview")
 	cfg.OpenAPIPath = ""
@@ -57,6 +60,9 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 		id := problem.RequestID(fc)
 		ctx = huma.WithValue(ctx, "request_id", id)
 		ctx = huma.WithValue(ctx, "instance", problem.Instance(fc))
+		if cred := devapi.CredentialFrom(fc); cred != nil && cred.NSFWAllowed {
+			ctx = huma.WithValue(ctx, "nsfw_allowed", true)
+		}
 		next(ctx)
 	})
 	prevErr := huma.NewError

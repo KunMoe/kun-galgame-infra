@@ -9,6 +9,7 @@ import (
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
 	"api/internal/platform/apiv2/vocab"
+	"api/internal/platform/devapi"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/gofiber/fiber/v3"
@@ -155,20 +156,48 @@ func withIdent(ctx context.Context, p *problem.Problem) *problem.Problem {
 	return p
 }
 
-func catalogAuth(c fiber.Ctx) error {
-	path := c.Path()
-	if !strings.HasPrefix(path, "/v2/catalog/") || path == "/v2/catalog/openapi.json" || path == "/v2/catalog/stats" {
+func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error)) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		path := c.Path()
+		if !strings.HasPrefix(path, "/v2/catalog/") || path == "/v2/catalog/openapi.json" || path == "/v2/catalog/stats" {
+			return c.Next()
+		}
+		h := c.Get("Authorization")
+		const pfx = "Bearer "
+		if h == "" {
+			return problem.WriteFiberError(c, problem.New(problem.CodeMissingCredential, problem.RequestID(c), problem.Instance(c),
+				"Authorization Bearer token is required."))
+		}
+		if !strings.HasPrefix(h, pfx) {
+			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
+				"Authorization Bearer token is invalid."))
+		}
+		token := strings.TrimSpace(h[len(pfx):])
+		if token == "" {
+			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
+				"Authorization Bearer token is invalid."))
+		}
+		if lookup == nil {
+			return c.Next()
+		}
+		if !devapi.HasKeyPrefix(token) {
+			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
+				"Authorization Bearer token is invalid."))
+		}
+		cred, err := lookup(c.Context(), token)
+		if err != nil {
+			return problem.WriteFiberError(c, problem.New(problem.CodeServiceUnavailable, problem.RequestID(c), problem.Instance(c),
+				"credential store is unavailable."))
+		}
+		if cred == nil {
+			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
+				"Authorization Bearer token is invalid."))
+		}
+		if !cred.HasScope(devapi.ScopeCatalogRead) {
+			return problem.WriteFiberError(c, problem.New(problem.CodeScopeRequired, problem.RequestID(c), problem.Instance(c),
+				"this operation requires the catalog:read scope."))
+		}
+		devapi.WithCredential(c, cred)
 		return c.Next()
 	}
-	h := c.Get("Authorization")
-	const pfx = "Bearer "
-	if h == "" {
-		return problem.WriteFiberError(c, problem.New(problem.CodeMissingCredential, problem.RequestID(c), problem.Instance(c),
-			"Authorization Bearer token is required."))
-	}
-	if !strings.HasPrefix(h, pfx) || strings.TrimSpace(h[len(pfx):]) == "" {
-		return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
-			"Authorization Bearer token is invalid."))
-	}
-	return c.Next()
 }

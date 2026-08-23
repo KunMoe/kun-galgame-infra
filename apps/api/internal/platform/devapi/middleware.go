@@ -41,6 +41,13 @@ func WithCredential(c fiber.Ctx, cred *Credential) {
 	c.Locals(credLocalsKey, cred)
 }
 
+func (m *Middleware) Lookup(ctx context.Context, raw string) (*Credential, error) {
+	if !HasKeyPrefix(raw) {
+		return nil, nil
+	}
+	return m.resolve(ctx, raw)
+}
+
 func (m *Middleware) ResolveCredential(c fiber.Ctx) error {
 	raw := extractKey(c)
 	if !HasKeyPrefix(raw) {

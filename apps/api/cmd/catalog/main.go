@@ -298,7 +298,8 @@ func setupPublicCatalog(
 		WithModeration(clientRepo)
 
 	v2API := v2handler.SetupWith(application.Fiber, v2handler.Options{
-		Store: protocol.NewRedisStore(devCache),
+		Store:            protocol.NewRedisStore(devCache),
+		LookupCredential: mw.Lookup,
 		Catalog: &v2handler.Catalog{
 			Public:   publicSvc,
 			Resolve:  resolveSvc,
