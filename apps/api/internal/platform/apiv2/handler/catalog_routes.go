@@ -44,6 +44,9 @@ type getEngineOutput struct {
 type getReleaseOutput struct {
 	Body repr.Release
 }
+type getCompanyGraphOutput struct {
+	Body repr.CompanyGraph
+}
 type getStatsOutput struct {
 	Body repr.CatalogStats
 }
@@ -63,6 +66,16 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Errors:             authErrs,
 		SkipValidateParams: true,
 	}, getCatalogWork(cat))
+	huma.Register(api, huma.Operation{
+		OperationID:        "getCatalogCompanyGraph",
+		Method:             http.MethodGet,
+		Path:               "/v2/catalog/companies/{id}/graph",
+		Summary:            "Company family graph",
+		Description:        "Corporate-family nodes and directed edges around one company. Inverse relations are not emitted. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
+		Tags:               catalog,
+		Errors:             authErrs,
+		SkipValidateParams: true,
+	}, getCatalogCompanyGraph(cat))
 	huma.Register(api, huma.Operation{
 		OperationID:        "getCatalogCompany",
 		Method:             http.MethodGet,
@@ -161,6 +174,20 @@ func getCatalogWork(cat *Catalog) func(context.Context, *resourceIDInput) (*getW
 			return nil, catalogErr(ctx, gerr)
 		}
 		return &getWorkOutput{Body: rec}, nil
+	}
+}
+
+func getCatalogCompanyGraph(cat *Catalog) func(context.Context, *resourceIDInput) (*getCompanyGraphOutput, error) {
+	return func(ctx context.Context, in *resourceIDInput) (*getCompanyGraphOutput, error) {
+		id, q, err := parseResource(ctx, in, collect.CompanySpec())
+		if err != nil {
+			return nil, err
+		}
+		rec, gerr := cat.GetCompanyGraph(ctx, id, q.NSFW)
+		if gerr != nil {
+			return nil, catalogErr(ctx, gerr)
+		}
+		return &getCompanyGraphOutput{Body: rec}, nil
 	}
 }
 

@@ -231,6 +231,102 @@ components:
         - company_kind
         - work_count
       type: object
+    CompanyGraph:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/CompanyGraph.json
+          format: uri
+          readOnly: true
+          type: string
+        edges:
+          description: Directed relations among nodes. Empty array, never null. Inverse relations are not emitted.
+          items:
+            $ref: "#/components/schemas/CompanyGraphEdge"
+          type: array
+        nodes:
+          description: Companies in this family. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/CompanyGraphNode"
+          type: array
+        object:
+          description: Type discriminant. Always company_graph.
+          enum:
+            - company_graph
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - object
+        - nodes
+        - edges
+      type: object
+    CompanyGraphEdge:
+      additionalProperties: true
+      properties:
+        from_id:
+          description: Source company id. to_id is the named relation of from_id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        relation:
+          description: to_id is this relation of from_id. Inverse edges are not emitted.
+          enum:
+            - parent
+            - imprint
+            - spawned
+            - succeeded_by
+          type: string
+          x-vocabulary-closed: true
+        to_id:
+          description: Target company id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+      required:
+        - from_id
+        - to_id
+        - relation
+      type: object
+    CompanyGraphNode:
+      additionalProperties: true
+      properties:
+        display_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        id:
+          description: Catalog company id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/LocalizedText"
+          description: BCP-47 keys. Empty object if none. Must not be used as a discriminant.
+          type: object
+        object:
+          description: Type discriminant. Always company.
+          enum:
+            - company
+          type: string
+          x-vocabulary-closed: true
+        work_count:
+          description: Works visible under the same NSFW gate.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - id
+        - display_name
+        - localized
+        - work_count
+      type: object
     Cover:
       additionalProperties: true
       properties:
@@ -3748,6 +3844,113 @@ paths:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
       summary: Get one company
+      tags:
+        - catalog
+  /v2/catalog/companies/{id}/graph:
+    get:
+      description: Corporate-family nodes and directed edges around one company. Inverse relations are not emitted. Merged ids are 404 ENTITY_MERGED. Requires an application key.
+      operationId: getCatalogCompanyGraph
+      parameters:
+        - description: Decimal catalog id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: basic (default) or full. Closed vocabulary.
+          explode: false
+          in: query
+          name: view
+          schema:
+            description: basic (default) or full. Closed vocabulary.
+            maxLength: 16
+            type: string
+        - description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+          explode: false
+          in: query
+          name: include
+          schema:
+            description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+            maxLength: 1024
+            type: string
+        - description: Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+            maxLength: 1024
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyGraph"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Company family graph
       tags:
         - catalog
   /v2/catalog/credit-names/{id}:

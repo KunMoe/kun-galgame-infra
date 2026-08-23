@@ -296,6 +296,18 @@ func TestCatalogStatsAndNewsUnauthenticated(t *testing.T) {
 	resp, err = app.Test(req)
 	require.NoError(t, err)
 	require.Equal(t, 503, resp.StatusCode)
+
+	status, ct, body = do(t, app, http.MethodGet, "/v2/catalog/companies/1/graph")
+	require.Equal(t, 401, status)
+	require.Contains(t, ct, "application/problem+json")
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeMissingCredential, p.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/companies/1/graph", nil)
+	req.Header.Set("Authorization", "Bearer test")
+	resp, err = app.Test(req)
+	require.NoError(t, err)
+	require.Equal(t, 503, resp.StatusCode)
 }
 
 func TestCatalogCollectionsRequireCredential(t *testing.T) {
