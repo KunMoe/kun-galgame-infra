@@ -184,19 +184,21 @@ func TestHTTPBatchOmitsEffortWhenUnset(t *testing.T) {
 	assert.Empty(t, p.reqs[0].ReasoningEffort, fmt.Sprintf("req: %+v", p.reqs[0]))
 }
 
-// Cloudflare answers 524 once the origin passes 100s, which a 40-work
-// extraction does. Failing the whole batch there costs 40 works at a time, so
-// an exhausted retryable status has to reach the split retry like a truncated
-// reply does.
-func TestHTTPBatchSplitsWhenTheGatewayGivesUp(t *testing.T) {
+// Cloudflare answers 524 once the origin passes its 100s cap, so retrying the
+// same call just spends another 100s reaching the same cap. The 2026-08-23
+// panel run lost 42 minutes to one 25-work batch doing exactly that, and then
+// got both halves on the first try.
+func TestHTTPBatchSplitsOnA524WithoutRetrying(t *testing.T) {
 	orig := retryBackoff
 	retryBackoff = []time.Duration{time.Millisecond}
 	t.Cleanup(func() { retryBackoff = orig })
 
 	p := fakeChat(t, func(chatReq, int) (string, string) { return `[{"i":0,"摘录":{}}]`, "stop" })
+	// 524 is what a call that runs long gets, so the probe answers it by size:
+	// the whole batch times out, either half gets through.
 	p.status = func(n int) int {
-		if n <= len(retryBackoff)+1 {
-			return 524 // the first call and every one of its retries
+		if strings.Count(p.reqs[n-1].Messages[1].Content, `"i":`) > 1 {
+			return 524
 		}
 		return http.StatusOK
 	}
@@ -206,4 +208,5 @@ func TestHTTPBatchSplitsWhenTheGatewayGivesUp(t *testing.T) {
 	for i, e := range out {
 		require.NoError(t, e.Err, "work %d survived on a half-sized call", i)
 	}
+	require.Len(t, p.reqs, 3, "the oversized call must go straight to the split, not up the ladder")
 }
