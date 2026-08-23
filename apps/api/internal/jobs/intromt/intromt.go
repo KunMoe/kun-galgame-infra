@@ -20,6 +20,8 @@ type Opts struct {
 	SourceLang SourceLang
 	Top        int
 	Limit      int
+	WorkIDs    []int64
+	Force      bool
 	Delay      time.Duration
 	Workers    int
 }
@@ -74,7 +76,7 @@ func Run(ctx context.Context, tr Translator, opts Opts) (*Stats, error) {
 	if src == "" {
 		src = SourceJa
 	}
-	cands, err := loadCandidates(ctx, db, reg, pop, src, opts.Top, opts.Limit)
+	cands, err := loadCandidates(ctx, db, reg, pop, src, opts.Top, opts.Limit, opts.WorkIDs)
 	if err != nil {
 		return nil, fmt.Errorf("load candidates: %w", err)
 	}
@@ -88,9 +90,14 @@ func Run(ctx context.Context, tr Translator, opts Opts) (*Stats, error) {
 		}
 	}
 	slog.Info("intro-mt candidates", "population", pop, "candidates", len(cands),
-		"with_glossary", withGloss, "apply", opts.Apply, "top", opts.Top, "limit", opts.Limit)
+		"with_glossary", withGloss, "apply", opts.Apply, "top", opts.Top, "limit", opts.Limit,
+		"work_ids", len(opts.WorkIDs), "force", opts.Force)
+	if n := len(opts.WorkIDs); n > 0 && n != len(cands) {
+		slog.Warn("named work ids did not all become candidates — the rest fail this lane's gates (medium, olang, a source zh intro, or no source-lang intro)",
+			"named", n, "candidates", len(cands))
+	}
 
-	r := &runner{db: db, tr: tr, stats: &Stats{Candidates: len(cands), WithGlossary: withGloss}}
+	r := &runner{db: db, tr: tr, force: opts.Force, stats: &Stats{Candidates: len(cands), WithGlossary: withGloss}}
 	r.process(ctx, cands, opts.Apply, opts.Delay, opts.Workers)
 	if err := r.touch(ctx); err != nil {
 		return nil, fmt.Errorf("touch works: %w", err)
