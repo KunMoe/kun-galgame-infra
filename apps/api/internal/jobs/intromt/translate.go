@@ -94,6 +94,7 @@ type HTTPTranslator struct {
 	baseURL    string
 	token      string
 	model      string
+	effort     string
 	maxTokens  int
 	http       *http.Client
 }
@@ -116,10 +117,11 @@ type chatMessage struct {
 }
 
 type chatRequest struct {
-	Model       string        `json:"model"`
-	Messages    []chatMessage `json:"messages"`
-	MaxTokens   int           `json:"max_tokens"`
-	Temperature float64       `json:"temperature"`
+	Model           string        `json:"model"`
+	Messages        []chatMessage `json:"messages"`
+	MaxTokens       int           `json:"max_tokens"`
+	Temperature     float64       `json:"temperature"`
+	ReasoningEffort string        `json:"reasoning_effort,omitempty"`
 }
 
 type chatResponse struct {
@@ -137,9 +139,10 @@ var retrySchedule = []time.Duration{2 * time.Second, 8 * time.Second, 30 * time.
 
 func (t *HTTPTranslator) Translate(ctx context.Context, jaText string, gloss Glossary) (string, string, error) {
 	body := chatRequest{
-		Model:       t.model,
-		MaxTokens:   t.maxTokens,
-		Temperature: 0,
+		Model:           t.model,
+		MaxTokens:       t.maxTokens,
+		Temperature:     0,
+		ReasoningEffort: t.effort,
 		Messages: []chatMessage{
 			{Role: "system", Content: withGlossary(t.systemPrompt(), gloss)},
 			{Role: "user", Content: jaText},
@@ -245,6 +248,13 @@ func truncate(s string, n int) string {
 }
 
 func (t *HTTPTranslator) SetSourceLang(src SourceLang) { t.sourceLang = src }
+
+// A reasoning model left on its own default treats "translate this paragraph"
+// as a problem to think about: 2026-08-23 grok-4.6 spent an average of 8,165
+// output tokens and 154 seconds on intros whose translation is ~800 tokens, and
+// long ones ran past the gateway's 100s ceiling into the retry ladder. Omitted
+// when empty, so the Cloudflare lane the nightly rides is unaffected.
+func (t *HTTPTranslator) SetEffort(effort string) { t.effort = effort }
 
 func (t *HTTPTranslator) systemPrompt() string {
 	if t.sourceLang == SourceEn {

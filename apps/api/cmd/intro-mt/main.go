@@ -30,6 +30,7 @@ func main() {
 	workers := flag.Int("workers", 1, "apply-mode concurrency (per-request latency dominates; 8 ≈ 10 req/min, far under gateway rate limits)")
 	workIDs := flag.String("work-ids", "", "comma-separated work ids — the named list IS the population, so --top stops applying")
 	force := flag.Bool("force", false, "retranslate even when src_hash is unchanged (the prompt is not in the hash, so a prompt rewrite needs this)")
+	effort := flag.String("effort", "", "reasoning effort: low | medium | high (empty = the gateway's own default; a reasoning model needs low or it thinks for minutes about a translation)")
 	flag.Parse()
 
 	ids, err := parseWorkIDs(*workIDs)
@@ -53,6 +54,7 @@ func main() {
 		} else {
 			ht := intromt.NewHTTPTranslator(*llmBase, *llmToken, *model, *maxTokens)
 			ht.SetSourceLang(intromt.SourceLang(*sourceLang))
+			ht.SetEffort(*effort)
 			if !ht.Configured() {
 				fmt.Printf("BLOCKED: LLM gateway not configured (need --llm-base + --llm-token, or KUN_INTRO_MT_LLM_* / KUN_AI_UPSTREAM_*).\n" +
 					"This is a designed precondition for a real --apply, not a failure. Use --mock for the offline write-path rehearsal.\n")
