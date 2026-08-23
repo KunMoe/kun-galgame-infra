@@ -31,7 +31,7 @@ func (c *Catalog) GetCreditName(ctx context.Context, id int64, nsfw bool) (repr.
 	}, nil
 }
 
-func (c *Catalog) GetCharacter(ctx context.Context, id int64, nsfw bool) (repr.Character, error) {
+func (c *Catalog) GetCharacter(ctx context.Context, id int64, nsfw bool, include []string) (repr.Character, error) {
 	if c == nil || c.Public == nil {
 		return repr.Character{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
@@ -42,9 +42,59 @@ func (c *Catalog) GetCharacter(ctx context.Context, id int64, nsfw bool) (repr.C
 	if !found {
 		return repr.Character{}, c.mergedOrNotFound(ctx, catmodel.EntityTypeCharacter, "character", id)
 	}
-	return repr.Character{
+	out := repr.Character{
 		Object: "character", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
 		Latin: optString(rec.Latin), Localized: localizedFrom(rec.Localized),
+	}
+	if characterWantsAttrs(include) {
+		attrs, ok, aerr := c.Public.CharacterAttributes(ctx, id)
+		if aerr != nil {
+			return repr.Character{}, aerr
+		}
+		if ok {
+			attachCharacterAttrs(&out, attrs)
+		}
+	}
+	return out, nil
+}
+
+func (c *Catalog) GetPerson(ctx context.Context, id int64) (repr.Person, error) {
+	if c == nil || c.Public == nil {
+		return repr.Person{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+	}
+	rec, found, err := c.Public.Person(ctx, id)
+	if err != nil {
+		return repr.Person{}, err
+	}
+	if !found {
+		return repr.Person{}, c.mergedOrNotFound(ctx, catmodel.EntityTypePerson, "person", id)
+	}
+	var primary *string
+	if rec.PrimaryCreditNameID != nil && *rec.PrimaryCreditNameID > 0 {
+		s := repr.ID(*rec.PrimaryCreditNameID)
+		primary = &s
+	}
+	g, _ := repr.Gender(rec.Gender)
+	return repr.Person{
+		Object: "person", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
+		PrimaryCreditNameID: primary, Gender: g,
+	}, nil
+}
+
+func (c *Catalog) GetTrait(ctx context.Context, id int64) (repr.Trait, error) {
+	if c == nil || c.Public == nil {
+		return repr.Trait{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+	}
+	rec, found, err := c.Public.Trait(ctx, id)
+	if err != nil {
+		return repr.Trait{}, err
+	}
+	if !found {
+		return repr.Trait{}, problem.New(problem.CodeNotFound, "", "", "No trait with this id.")
+	}
+	return repr.Trait{
+		Object: "trait", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
+		NameZh: rec.NameZh, VndbTID: rec.VndbTID, IsSexual: rec.Sexual,
 	}, nil
 }
 

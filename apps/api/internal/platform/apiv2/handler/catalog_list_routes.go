@@ -25,6 +25,23 @@ type listEnginesOutput struct {
 type listReleasesOutput struct {
 	Body repr.List[repr.Release]
 }
+type listCharactersOutput struct {
+	Body repr.List[repr.Character]
+}
+type listCreditNamesOutput struct {
+	Body repr.List[repr.CreditName]
+}
+type listPersonsOutput struct {
+	Body repr.List[repr.Person]
+}
+type listTraitsOutput struct {
+	Body repr.List[repr.Trait]
+}
+
+type listCreditNamesInput struct {
+	collectionInput
+	Q string `query:"q" maxLength:"512" doc:"Name search. Empty lists by id. Must not be used as a discriminant."`
+}
 
 func registerCatalogLists(api huma.API, cat *Catalog) {
 	catalog := []string{"catalog"}
@@ -44,7 +61,7 @@ func registerCatalogLists(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/tags",
 		Summary:            "List tags",
-		Description:        "Keyset-paginated canonical tags. Requires an application key. ids= is a batch lane and does not paginate.",
+		Description:        "Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a batch lane and does not paginate.",
 		Tags:               catalog,
 		Errors:             errs,
 		SkipValidateParams: true,
@@ -54,7 +71,7 @@ func registerCatalogLists(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/series",
 		Summary:            "List series",
-		Description:        "Keyset-paginated series. Requires an application key. ids= is a batch lane and does not paginate.",
+		Description:        "Keyset-paginated series. Requires an application key. ids= is a batch lane and does not paginate. refs= is not resolved: series has no catalog_external_ref entity_type.",
 		Tags:               catalog,
 		Errors:             errs,
 		SkipValidateParams: true,
@@ -64,7 +81,7 @@ func registerCatalogLists(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/engines",
 		Summary:            "List engines",
-		Description:        "Keyset-paginated engines. Requires an application key. ids= is a batch lane and does not paginate.",
+		Description:        "Keyset-paginated engines. Requires an application key. ids=/refs= is a batch lane and does not paginate.",
 		Tags:               catalog,
 		Errors:             errs,
 		SkipValidateParams: true,
@@ -79,6 +96,46 @@ func registerCatalogLists(api huma.API, cat *Catalog) {
 		Errors:             errs,
 		SkipValidateParams: true,
 	}, listCatalogReleases(cat))
+	huma.Register(api, huma.Operation{
+		OperationID:        "listCatalogCharacters",
+		Method:             http.MethodGet,
+		Path:               "/v2/catalog/characters",
+		Summary:            "List characters",
+		Description:        "Keyset-paginated characters. Requires an application key. ids=/refs= is a batch lane and does not paginate.",
+		Tags:               catalog,
+		Errors:             errs,
+		SkipValidateParams: true,
+	}, listCatalogCharacters(cat))
+	huma.Register(api, huma.Operation{
+		OperationID:        "listCatalogCreditNames",
+		Method:             http.MethodGet,
+		Path:               "/v2/catalog/credit-names",
+		Summary:            "List credit names",
+		Description:        "Keyset-paginated credited names. q= filters by name. Requires an application key. ids=/refs= is a batch lane and does not paginate.",
+		Tags:               catalog,
+		Errors:             errs,
+		SkipValidateParams: true,
+	}, listCatalogCreditNames(cat))
+	huma.Register(api, huma.Operation{
+		OperationID:        "listCatalogPersons",
+		Method:             http.MethodGet,
+		Path:               "/v2/catalog/persons",
+		Summary:            "List persons",
+		Description:        "Keyset-paginated persons. Requires an application key. ids=/refs= is a batch lane and does not paginate.",
+		Tags:               catalog,
+		Errors:             errs,
+		SkipValidateParams: true,
+	}, listCatalogPersons(cat))
+	huma.Register(api, huma.Operation{
+		OperationID:        "listCatalogTraits",
+		Method:             http.MethodGet,
+		Path:               "/v2/catalog/traits",
+		Summary:            "List traits",
+		Description:        "Keyset-paginated character traits. Requires an application key. ids= is a batch lane. refs= is not resolved: traits have no catalog_external_ref entity_type.",
+		Tags:               catalog,
+		Errors:             errs,
+		SkipValidateParams: true,
+	}, listCatalogTraits(cat))
 }
 
 func listCatalogCompanies(cat *Catalog) func(context.Context, *collectionInput) (*listCompaniesOutput, error) {
@@ -148,6 +205,65 @@ func listCatalogReleases(cat *Catalog) func(context.Context, *collectionInput) (
 			return nil, catalogErr(ctx, lerr)
 		}
 		return &listReleasesOutput{Body: page}, nil
+	}
+}
+
+func listCatalogCharacters(cat *Catalog) func(context.Context, *collectionInput) (*listCharactersOutput, error) {
+	return func(ctx context.Context, in *collectionInput) (*listCharactersOutput, error) {
+		q, err := parseCatalogList(ctx, in, collect.CharacterSpec())
+		if err != nil {
+			return nil, err
+		}
+		page, lerr := cat.ListCharacters(ctx, q)
+		if lerr != nil {
+			return nil, catalogErr(ctx, lerr)
+		}
+		return &listCharactersOutput{Body: page}, nil
+	}
+}
+
+func listCatalogCreditNames(cat *Catalog) func(context.Context, *listCreditNamesInput) (*listCreditNamesOutput, error) {
+	return func(ctx context.Context, in *listCreditNamesInput) (*listCreditNamesOutput, error) {
+		if in == nil {
+			in = &listCreditNamesInput{}
+		}
+		q, err := parseCatalogList(ctx, &in.collectionInput, collect.CreditNameSpec())
+		if err != nil {
+			return nil, err
+		}
+		page, lerr := cat.ListCreditNames(ctx, q, in.Q)
+		if lerr != nil {
+			return nil, catalogErr(ctx, lerr)
+		}
+		return &listCreditNamesOutput{Body: page}, nil
+	}
+}
+
+func listCatalogPersons(cat *Catalog) func(context.Context, *collectionInput) (*listPersonsOutput, error) {
+	return func(ctx context.Context, in *collectionInput) (*listPersonsOutput, error) {
+		q, err := parseCatalogList(ctx, in, collect.PersonSpec())
+		if err != nil {
+			return nil, err
+		}
+		page, lerr := cat.ListPersons(ctx, q)
+		if lerr != nil {
+			return nil, catalogErr(ctx, lerr)
+		}
+		return &listPersonsOutput{Body: page}, nil
+	}
+}
+
+func listCatalogTraits(cat *Catalog) func(context.Context, *collectionInput) (*listTraitsOutput, error) {
+	return func(ctx context.Context, in *collectionInput) (*listTraitsOutput, error) {
+		q, err := parseCatalogList(ctx, in, collect.TraitSpec())
+		if err != nil {
+			return nil, err
+		}
+		page, lerr := cat.ListTraits(ctx, q)
+		if lerr != nil {
+			return nil, catalogErr(ctx, lerr)
+		}
+		return &listTraitsOutput{Body: page}, nil
 	}
 }
 

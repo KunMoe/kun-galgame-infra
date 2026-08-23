@@ -108,7 +108,7 @@ func (c *Catalog) ListSeries(ctx context.Context, q collect.Query) (repr.List[re
 	if c == nil || c.Public == nil {
 		return repr.List[repr.Series]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
-	ids, missing, err := c.batchEntityIDs(ctx, q, 0)
+	ids, missing, err := c.batchEntityIDs(ctx, q, entityTypeNone)
 	if err != nil {
 		return repr.List[repr.Series]{}, err
 	}
@@ -151,7 +151,7 @@ func (c *Catalog) ListReleases(ctx context.Context, q collect.Query) (repr.List[
 	if c == nil || c.Public == nil {
 		return repr.List[repr.Release]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
-	ids, missing, err := c.batchEntityIDs(ctx, q, 0)
+	ids, missing, err := c.batchEntityIDs(ctx, q, catmodel.EntityTypeRelease)
 	if err != nil {
 		return repr.List[repr.Release]{}, err
 	}
@@ -190,6 +190,8 @@ func (c *Catalog) ListReleases(ctx context.Context, q collect.Query) (repr.List[
 	return finishList(items, data.NextCursor, total, q, missing), nil
 }
 
+const entityTypeNone int16 = -1
+
 func (c *Catalog) batchEntityIDs(ctx context.Context, q collect.Query, entityType int16) ([]int64, []string, error) {
 	if !q.Batch {
 		return nil, nil, nil
@@ -207,19 +209,19 @@ func (c *Catalog) batchEntityIDs(ctx context.Context, q collect.Query, entityTyp
 	}
 	for _, r := range q.Refs {
 		ref := r.Source + ":" + r.ExternalID
-		if entityType != catmodel.EntityTypeLabel {
+		if entityType < 0 || c == nil || c.Public == nil {
 			missing = append(missing, ref)
 			continue
 		}
-		data, found, err := c.Public.LookupTyped(ctx, r.Source, r.ExternalID, entityType, q.NSFW)
+		id, err := c.Public.LookupEntityID(ctx, r.Source, r.ExternalID, entityType)
 		if err != nil {
 			return nil, nil, err
 		}
-		if !found || data.Label == nil {
+		if id == 0 {
 			missing = append(missing, ref)
 			continue
 		}
-		ids = append(ids, data.Label.ID)
+		ids = append(ids, id)
 	}
 	return ids, missing, nil
 }

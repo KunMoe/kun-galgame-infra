@@ -101,7 +101,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/characters/{id}",
 		Summary:            "Get one character",
-		Description:        "Character detail. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
+		Description:        "Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
 		Tags:               catalog,
 		Errors:             authErrs,
 		SkipValidateParams: true,
@@ -160,6 +160,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 	registerCatalogFeeds(api, cat)
 	registerCatalogSearch(api, cat)
 	registerCatalogSchemas(api, cat)
+	registerCatalogEntityExtras(api, cat)
 	registerWorkSubs(api, cat)
 	registerNews(api, cat)
 }
@@ -226,7 +227,7 @@ func getCatalogCharacter(cat *Catalog) func(context.Context, *resourceIDInput) (
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetCharacter(ctx, id, q.NSFW)
+		rec, gerr := cat.GetCharacter(ctx, id, q.NSFW, q.Include)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}

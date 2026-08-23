@@ -76,6 +76,7 @@ func CompanySpec() Spec {
 
 func CreditNameSpec() Spec {
 	return Spec{
+		Sort:    []string{"id"},
 		Include: []string{},
 		FullSet: []string{},
 		Fields:  []string{"object", "id", "display_name", "latin", "localized", "person_id"},
@@ -83,10 +84,40 @@ func CreditNameSpec() Spec {
 }
 
 func CharacterSpec() Spec {
+	full := []string{"gender", "birthday", "height_cm", "weight_kg", "measurements", "blood_type", "instance_of_id"}
+	fields := []string{"object", "id", "display_name", "latin", "localized"}
+	fields = append(fields, full...)
+	return Spec{
+		Sort:    []string{"id"},
+		Include: append([]string{}, full...),
+		FullSet: append([]string{}, full...),
+		Fields:  fields,
+	}
+}
+
+func PersonSpec() Spec {
+	return Spec{
+		Sort:    []string{"id"},
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "display_name", "primary_credit_name_id", "gender"},
+	}
+}
+
+func TraitSpec() Spec {
+	return Spec{
+		Sort:    []string{"id"},
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "display_name", "name_zh", "vndb_tid", "is_sexual"},
+	}
+}
+
+func NameCreditSpec() Spec {
 	return Spec{
 		Include: []string{},
 		FullSet: []string{},
-		Fields:  []string{"object", "id", "display_name", "latin", "localized"},
+		Fields:  []string{"object", "work", "roles"},
 	}
 }
 
@@ -190,6 +221,10 @@ func ObjectSpec(object string) (Spec, bool) {
 		return EngineSpec(), true
 	case "series":
 		return SeriesSpec(), true
+	case "person":
+		return PersonSpec(), true
+	case "trait":
+		return TraitSpec(), true
 	default:
 		return Spec{}, false
 	}
