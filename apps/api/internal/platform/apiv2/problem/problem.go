@@ -13,22 +13,24 @@ import (
 )
 
 type FieldError struct {
-	Pointer   string `json:"pointer,omitempty" doc:"JSON Pointer (RFC 6901) into the request body. Exactly one of pointer, parameter, or header is set."`
-	Parameter string `json:"parameter,omitempty" doc:"Query or path parameter name. Exactly one of pointer, parameter, or header is set."`
-	Header    string `json:"header,omitempty" doc:"Request header name. Exactly one of pointer, parameter, or header is set."`
-	Reason    string `json:"reason" doc:"Field-level reason from the closed reason registry."`
-	Detail    string `json:"detail" doc:"English, request-specific. Must not be used as a discriminant."`
+	_         struct{} `json:"-" additionalProperties:"true"`
+	Pointer   string   `json:"pointer,omitempty" maxLength:"256" pattern:"^/" doc:"JSON Pointer (RFC 6901) into the request body. Exactly one of pointer, parameter, or header is set."`
+	Parameter string   `json:"parameter,omitempty" maxLength:"64" pattern:"^[A-Za-z_][A-Za-z0-9_]*$" doc:"Query or path parameter name. Exactly one of pointer, parameter, or header is set."`
+	Header    string   `json:"header,omitempty" maxLength:"64" pattern:"^[A-Za-z0-9-]+$" doc:"Request header name. Exactly one of pointer, parameter, or header is set."`
+	Reason    string   `json:"reason" pattern:"^[A-Z][A-Z0-9_]*[A-Z0-9]$" maxLength:"63" doc:"Field-level reason from the closed reason registry."`
+	Detail    string   `json:"detail" maxLength:"2048" doc:"English, request-specific. Must not be used as a discriminant."`
 }
 
 type Problem struct {
-	Type      string       `json:"type" doc:"Stable problem type URI of the form https://developer.nextmoe.dev/problems/{domain}/{kebab-code}." format:"uri"`
-	Title     string       `json:"title" doc:"Stable English phrase for this type. Does not vary per request."`
-	Status    int          `json:"status" doc:"HTTP status. Matches the response status line."`
-	Detail    string       `json:"detail,omitempty" doc:"English, request-specific. Must not be used as a discriminant."`
-	Instance  string       `json:"instance,omitempty" doc:"Request path and query string that failed."`
-	Code      string       `json:"code" doc:"Top-level error code from the closed registry. UPPER_SNAKE."`
-	RequestID string       `json:"request_id" doc:"Same value as X-Request-ID. Prefix req_ plus a 26-character ULID."`
-	Errors    []FieldError `json:"errors,omitempty" doc:"Field-level failures. Required and non-empty when code is VALIDATION_FAILED."`
+	_         struct{}     `json:"-" additionalProperties:"true"`
+	Type      string       `json:"type" format:"uri" maxLength:"256" doc:"Stable problem type URI of the form https://developer.nextmoe.dev/problems/{domain}/{kebab-code}."`
+	Title     string       `json:"title" maxLength:"128" pattern:"^[ -~]+$" doc:"Stable English phrase for this type. Does not vary per request."`
+	Status    int          `json:"status" minimum:"400" maximum:"599" doc:"HTTP status. Matches the response status line."`
+	Detail    string       `json:"detail" maxLength:"2048" doc:"English, request-specific. Must not be used as a discriminant. Empty when there is nothing to add."`
+	Instance  string       `json:"instance" maxLength:"2048" pattern:"^(/.*)?$" doc:"Request path and query string that failed. Empty only if the path is unknown."`
+	Code      string       `json:"code" pattern:"^[A-Z][A-Z0-9_]*[A-Z0-9]$" maxLength:"63" doc:"Top-level error code from the closed registry. UPPER_SNAKE."`
+	RequestID string       `json:"request_id" pattern:"^req_[0-9A-HJKMNP-TV-Z]{26}$" minLength:"30" maxLength:"30" doc:"Same value as X-Request-ID. Prefix req_ plus a 26-character ULID."`
+	Errors    []FieldError `json:"errors" doc:"Field-level failures. Empty array when this is not a field-level error."`
 }
 
 func (p *Problem) Error() string {
@@ -71,6 +73,7 @@ func New(code, requestID, instance, detail string) *Problem {
 		Instance:  instance,
 		Code:      def.Code,
 		RequestID: requestID,
+		Errors:    []FieldError{},
 	}
 }
 

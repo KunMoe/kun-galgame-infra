@@ -8,6 +8,7 @@ import (
 
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/protocol"
+	"api/internal/platform/apiv2/repr"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humafiber"
@@ -81,8 +82,17 @@ func annotateSpec(doc *huma.OpenAPI) {
 	var problemRef *huma.Schema
 	if doc.Components != nil && doc.Components.Schemas != nil {
 		problemRef = doc.Components.Schemas.Schema(reflect.TypeOf(problem.Problem{}), true, "Problem")
+		for _, v := range []any{
+			repr.Image{}, repr.Cover{}, repr.Names{}, repr.LocalizedText{},
+			repr.WorkTitle{}, repr.EntityName{}, repr.Intro{}, repr.Ref{},
+			repr.Claim{}, repr.Work{},
+		} {
+			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
+		}
 		for _, schema := range doc.Components.Schemas.Map() {
 			markClosedEnums(schema)
+			forceObjectOpen(schema)
+			markOpenVocab(schema)
 		}
 	}
 	for path, item := range doc.Paths {
@@ -140,6 +150,52 @@ func rewriteErrorResponses(path string, op *huma.Operation, problemRef *huma.Sch
 			"application/problem+json": {Schema: problemRef},
 		}
 	}
+}
+
+func forceObjectOpen(s *huma.Schema) {
+	if s == nil {
+		return
+	}
+	if s.Properties != nil {
+		s.AdditionalProperties = true
+	}
+	if s.Type == "array" || s.Items != nil {
+		s.Nullable = false
+	}
+	for _, p := range s.Properties {
+		forceObjectOpen(p)
+	}
+	forceObjectOpen(s.Items)
+	for _, x := range s.OneOf {
+		forceObjectOpen(x)
+	}
+	for _, x := range s.AnyOf {
+		forceObjectOpen(x)
+	}
+	for _, x := range s.AllOf {
+		forceObjectOpen(x)
+	}
+}
+
+func markOpenVocab(s *huma.Schema) {
+	if s == nil {
+		return
+	}
+	for name, p := range s.Properties {
+		if p == nil {
+			continue
+		}
+		switch name {
+		case "source":
+			if p.Extensions == nil {
+				p.Extensions = map[string]any{}
+			}
+			p.Extensions["x-vocabulary-closed"] = false
+			p.Extensions["x-vocabulary"] = "sources"
+		}
+		markOpenVocab(p)
+	}
+	markOpenVocab(s.Items)
 }
 
 func markClosedEnums(s *huma.Schema) {

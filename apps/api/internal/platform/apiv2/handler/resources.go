@@ -11,32 +11,35 @@ import (
 )
 
 type listObject[T any] struct {
-	Object string `json:"object" enum:"list" doc:"Type discriminant. Always list."`
-	Items  []T    `json:"items" doc:"The members of this list. Empty array, never null."`
+	_      struct{} `json:"-" additionalProperties:"true"`
+	Object string   `json:"object" enum:"list" doc:"Type discriminant. Always list."`
+	Items  []T      `json:"items" doc:"The members of this list. Empty array, never null."`
 }
 
 type problemType struct {
-	Object      string `json:"object" enum:"problem_type" doc:"Type discriminant. Always problem_type."`
-	Code        string `json:"code" doc:"Top-level error code. UPPER_SNAKE."`
-	Domain      string `json:"domain" enum:"platform,catalog,me,moderation,news" doc:"Type URI domain segment."`
-	Status      int    `json:"status" doc:"HTTP status this code is bound to. One status per code."`
-	Type        string `json:"type" format:"uri" doc:"Problem type URI. The last path segment is the kebab-case form of code."`
-	Title       string `json:"title" doc:"Stable English phrase for this type. Does not vary per request."`
-	Description string `json:"description" doc:"English prose. Must not be used as a discriminant."`
+	_           struct{} `json:"-" additionalProperties:"true"`
+	Object      string   `json:"object" enum:"problem_type" doc:"Type discriminant. Always problem_type."`
+	Code        string   `json:"code" pattern:"^[A-Z][A-Z0-9_]*[A-Z0-9]$" maxLength:"63" doc:"Top-level error code. UPPER_SNAKE."`
+	Domain      string   `json:"domain" enum:"platform,catalog,me,moderation,news" doc:"Type URI domain segment."`
+	Status      int      `json:"status" minimum:"400" maximum:"599" doc:"HTTP status this code is bound to. One status per code."`
+	Type        string   `json:"type" format:"uri" maxLength:"256" doc:"Problem type URI. The last path segment is the kebab-case form of code."`
+	Title       string   `json:"title" maxLength:"128" pattern:"^[ -~]+$" doc:"Stable English phrase for this type. Does not vary per request."`
+	Description string   `json:"description" maxLength:"512" doc:"English prose. Must not be used as a discriminant."`
 }
 
 type problemReason struct {
-	Object      string `json:"object" enum:"problem_reason" doc:"Type discriminant. Always problem_reason."`
-	Reason      string `json:"reason" doc:"Field-level reason. UPPER_SNAKE. Disjoint from top-level codes."`
-	Title       string `json:"title" doc:"Stable English phrase for this reason."`
-	Description string `json:"description" doc:"English prose. Must not be used as a discriminant."`
+	_           struct{} `json:"-" additionalProperties:"true"`
+	Object      string   `json:"object" enum:"problem_reason" doc:"Type discriminant. Always problem_reason."`
+	Reason      string   `json:"reason" pattern:"^[A-Z][A-Z0-9_]*[A-Z0-9]$" maxLength:"63" doc:"Field-level reason. UPPER_SNAKE. Disjoint from top-level codes."`
+	Title       string   `json:"title" maxLength:"128" pattern:"^[ -~]+$" doc:"Stable English phrase for this reason."`
+	Description string   `json:"description" maxLength:"512" doc:"English prose. Must not be used as a discriminant."`
 }
 
 type listProblemsOutput struct {
 	Body listObject[problemType]
 }
 type getProblemInput struct {
-	Code string `path:"code" maxLength:"63" doc:"Top-level error code from the registry (UPPER_SNAKE)."`
+	Code string `path:"code" maxLength:"63" pattern:"^[A-Z][A-Z0-9_]*[A-Z0-9]$" doc:"Top-level error code from the registry (UPPER_SNAKE)."`
 }
 type getProblemOutput struct {
 	Body problemType
@@ -48,7 +51,7 @@ type listVocabOutput struct {
 	Body listObject[vocab.Vocabulary]
 }
 type getVocabInput struct {
-	Name string `path:"name" maxLength:"63" doc:"Vocabulary name. The path segment of /v2/vocabularies/{name}."`
+	Name string `path:"name" maxLength:"63" pattern:"^[a-z][a-z0-9_]*$" doc:"Vocabulary name. The path segment of /v2/vocabularies/{name}."`
 }
 type getVocabOutput struct {
 	Body vocab.Vocabulary

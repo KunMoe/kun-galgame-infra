@@ -1,16 +1,18 @@
 package vocab
 
 type Value struct {
-	Value       string `json:"value" doc:"Token as it appears on the wire."`
-	DisplayName string `json:"display_name" doc:"English label for this token. Must not be used as a discriminant."`
-	Description string `json:"description,omitempty" doc:"English prose. Must not be used as a discriminant."`
+	_           struct{} `json:"-" additionalProperties:"true"`
+	Value       string   `json:"value" maxLength:"64" doc:"Token as it appears on the wire. Must not be used as a discriminant."`
+	DisplayName string   `json:"display_name" maxLength:"512" doc:"English label for this token. Must not be used as a discriminant."`
+	Description string   `json:"description" maxLength:"512" doc:"English prose. Must not be used as a discriminant."`
 }
 
 type Vocabulary struct {
-	Object string  `json:"object" enum:"vocabulary" doc:"Type discriminant. Always vocabulary."`
-	Name   string  `json:"name" doc:"Vocabulary name. The path segment of /v2/vocabularies/{name}."`
-	Closed bool    `json:"closed" doc:"true if adding or removing a value is a breaking change."`
-	Values []Value `json:"values" doc:"Every value currently published. Empty array, never null."`
+	_      struct{} `json:"-" additionalProperties:"true"`
+	Object string   `json:"object" enum:"vocabulary" doc:"Type discriminant. Always vocabulary."`
+	Name   string   `json:"name" maxLength:"64" pattern:"^[a-z][a-z0-9_]*$" doc:"Vocabulary name. The path segment of /v2/vocabularies/{name}."`
+	Closed bool     `json:"closed" doc:"true if adding or removing a value is a breaking change."`
+	Values []Value  `json:"values" doc:"Every value currently published. Empty array, never null."`
 }
 
 func All() []Vocabulary {

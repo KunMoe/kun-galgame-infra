@@ -1,29 +1,293 @@
 components:
   schemas:
+    Claim:
+      additionalProperties: true
+      properties:
+        content_limit:
+          description: Editorial display axis for this claim.
+          enum:
+            - sfw
+            - nsfw
+          type: string
+          x-vocabulary-closed: true
+        site:
+          description: Claiming site key.
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*$
+          type: string
+        site_work_id:
+          description: The site's own work id, not the catalog id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        state:
+          description: Claim lifecycle state.
+          enum:
+            - live
+            - draft
+            - pending
+            - declined
+            - hidden
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - site
+        - site_work_id
+        - state
+        - content_limit
+      type: object
+    Cover:
+      additionalProperties: true
+      properties:
+        hash:
+          description: Image-service content hash.
+          maxLength: 64
+          minLength: 64
+          pattern: ^[0-9a-f]{64}$
+          type: string
+        height:
+          description: Pixel height. null if unknown.
+          format: int64
+          maximum: 65535
+          minimum: 0
+          type:
+            - integer
+            - "null"
+        id:
+          description: catalog_work_cover row id, not the image hash.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        portrait_pinned:
+          description: Whether this row is pinned as the portrait cover.
+          type: boolean
+        sexual:
+          description: Sexual depiction. null means not assessed.
+          enum:
+            - safe
+            - suggestive
+            - explicit
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        thumbhash:
+          description: Thumbhash. null if unknown.
+          maxLength: 128
+          pattern: ^[A-Za-z0-9+/=_-]+$
+          type:
+            - string
+            - "null"
+        url:
+          description: Absolute image URL. Never a bare hash.
+          format: uri
+          maxLength: 512
+          type: string
+        violence:
+          description: Violent depiction. null means not assessed. Currently always null.
+          enum:
+            - tame
+            - violent
+            - brutal
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        vote_count:
+          description: Net votes on this cover row.
+          format: int64
+          minimum: 0
+          type: integer
+        width:
+          description: Pixel width. null if unknown.
+          format: int64
+          maximum: 65535
+          minimum: 0
+          type:
+            - integer
+            - "null"
+      required:
+        - id
+        - vote_count
+        - portrait_pinned
+        - url
+        - hash
+        - width
+        - height
+        - thumbhash
+        - sexual
+        - violence
+        - source
+      type: object
+    EntityName:
+      additionalProperties: true
+      properties:
+        alias_kind:
+          description: search_hint is internal and never appears on this type.
+          enum:
+            - translation
+            - spelling_variant
+          type: string
+          x-vocabulary-closed: true
+        is_machine:
+          description: Whether this name is machine-translated.
+          type: boolean
+        lang:
+          description: BCP-47 language tag.
+          format: bcp47
+          maxLength: 32
+          type: string
+        value:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+      required:
+        - lang
+        - value
+        - alias_kind
+        - is_machine
+      type: object
     FieldError:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         detail:
           description: English, request-specific. Must not be used as a discriminant.
+          maxLength: 2048
           type: string
         header:
           description: Request header name. Exactly one of pointer, parameter, or header is set.
+          maxLength: 64
+          pattern: ^[A-Za-z0-9-]+$
           type: string
         parameter:
           description: Query or path parameter name. Exactly one of pointer, parameter, or header is set.
+          maxLength: 64
+          pattern: ^[A-Za-z_][A-Za-z0-9_]*$
           type: string
         pointer:
           description: JSON Pointer (RFC 6901) into the request body. Exactly one of pointer, parameter, or header is set.
+          maxLength: 256
+          pattern: ^/
           type: string
         reason:
           description: Field-level reason from the closed reason registry.
+          maxLength: 63
+          pattern: ^[A-Z][A-Z0-9_]*[A-Z0-9]$
           type: string
       required:
         - reason
         - detail
       type: object
+    Image:
+      additionalProperties: true
+      properties:
+        hash:
+          description: Image-service content hash.
+          maxLength: 64
+          minLength: 64
+          pattern: ^[0-9a-f]{64}$
+          type: string
+        height:
+          description: Pixel height. null if unknown.
+          format: int64
+          maximum: 65535
+          minimum: 0
+          type:
+            - integer
+            - "null"
+        sexual:
+          description: Sexual depiction. null means not assessed.
+          enum:
+            - safe
+            - suggestive
+            - explicit
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        thumbhash:
+          description: Thumbhash. null if unknown.
+          maxLength: 128
+          pattern: ^[A-Za-z0-9+/=_-]+$
+          type:
+            - string
+            - "null"
+        url:
+          description: Absolute image URL. Never a bare hash.
+          format: uri
+          maxLength: 512
+          type: string
+        violence:
+          description: Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.
+          enum:
+            - tame
+            - violent
+            - brutal
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        width:
+          description: Pixel width. null if unknown.
+          format: int64
+          maximum: 65535
+          minimum: 0
+          type:
+            - integer
+            - "null"
+      required:
+        - url
+        - hash
+        - width
+        - height
+        - thumbhash
+        - sexual
+        - violence
+        - source
+      type: object
+    Intro:
+      additionalProperties: true
+      properties:
+        is_machine:
+          description: Whether this intro is machine-translated.
+          type: boolean
+        lang:
+          description: BCP-47 language tag.
+          format: bcp47
+          maxLength: 32
+          type: string
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        value:
+          description: Must not be used as a discriminant.
+          maxLength: 20000
+          type: string
+      required:
+        - lang
+        - value
+        - is_machine
+        - source
+      type: object
     ListObjectProblemReason:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
@@ -36,9 +300,7 @@ components:
           description: The members of this list. Empty array, never null.
           items:
             $ref: "#/components/schemas/ProblemReason"
-          type:
-            - array
-            - "null"
+          type: array
         object:
           description: Type discriminant. Always list.
           enum:
@@ -50,7 +312,7 @@ components:
         - items
       type: object
     ListObjectProblemType:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
@@ -63,9 +325,7 @@ components:
           description: The members of this list. Empty array, never null.
           items:
             $ref: "#/components/schemas/ProblemType"
-          type:
-            - array
-            - "null"
+          type: array
         object:
           description: Type discriminant. Always list.
           enum:
@@ -77,7 +337,7 @@ components:
         - items
       type: object
     ListObjectVocabulary:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
@@ -90,9 +350,7 @@ components:
           description: The members of this list. Empty array, never null.
           items:
             $ref: "#/components/schemas/Vocabulary"
-          type:
-            - array
-            - "null"
+          type: array
         object:
           description: Type discriminant. Always list.
           enum:
@@ -103,8 +361,45 @@ components:
         - object
         - items
       type: object
+    LocalizedText:
+      additionalProperties: true
+      properties:
+        is_machine:
+          description: Whether this value is machine-translated.
+          type: boolean
+        value:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+      required:
+        - value
+        - is_machine
+      type: object
+    Names:
+      additionalProperties: true
+      properties:
+        display_name:
+          description: Primary label. Never empty. Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        latin:
+          description: Romanization. null if unrecorded. Must not be used as a discriminant.
+          maxLength: 512
+          type:
+            - string
+            - "null"
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/LocalizedText"
+          description: BCP-47 keys, sparse. Empty object if none. Must not be used as a discriminant.
+          type: object
+      required:
+        - display_name
+        - latin
+        - localized
+      type: object
     Problem:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
@@ -115,46 +410,61 @@ components:
           type: string
         code:
           description: Top-level error code from the closed registry. UPPER_SNAKE.
+          maxLength: 63
+          pattern: ^[A-Z][A-Z0-9_]*[A-Z0-9]$
           type: string
         detail:
-          description: English, request-specific. Must not be used as a discriminant.
+          description: English, request-specific. Must not be used as a discriminant. Empty when there is nothing to add.
+          maxLength: 2048
           type: string
         errors:
-          description: Field-level failures. Required and non-empty when code is VALIDATION_FAILED.
+          description: Field-level failures. Empty array when this is not a field-level error.
           items:
             $ref: "#/components/schemas/FieldError"
-          type:
-            - array
-            - "null"
+          type: array
         instance:
-          description: Request path and query string that failed.
+          description: Request path and query string that failed. Empty only if the path is unknown.
+          maxLength: 2048
+          pattern: ^(/.*)?$
           type: string
         request_id:
           description: Same value as X-Request-ID. Prefix req_ plus a 26-character ULID.
+          maxLength: 30
+          minLength: 30
+          pattern: ^req_[0-9A-HJKMNP-TV-Z]{26}$
           type: string
         status:
           description: HTTP status. Matches the response status line.
           format: int64
+          maximum: 599
+          minimum: 400
           type: integer
         title:
           description: Stable English phrase for this type. Does not vary per request.
+          maxLength: 128
+          pattern: ^[ -~]+$
           type: string
         type:
           description: Stable problem type URI of the form https://developer.nextmoe.dev/problems/{domain}/{kebab-code}.
           format: uri
+          maxLength: 256
           type: string
       required:
         - type
         - title
         - status
+        - detail
+        - instance
         - code
         - request_id
+        - errors
       type: object
     ProblemReason:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         description:
           description: English prose. Must not be used as a discriminant.
+          maxLength: 512
           type: string
         object:
           description: Type discriminant. Always problem_reason.
@@ -164,9 +474,13 @@ components:
           x-vocabulary-closed: true
         reason:
           description: Field-level reason. UPPER_SNAKE. Disjoint from top-level codes.
+          maxLength: 63
+          pattern: ^[A-Z][A-Z0-9_]*[A-Z0-9]$
           type: string
         title:
           description: Stable English phrase for this reason.
+          maxLength: 128
+          pattern: ^[ -~]+$
           type: string
       required:
         - object
@@ -175,7 +489,7 @@ components:
         - description
       type: object
     ProblemType:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
@@ -186,9 +500,12 @@ components:
           type: string
         code:
           description: Top-level error code. UPPER_SNAKE.
+          maxLength: 63
+          pattern: ^[A-Z][A-Z0-9_]*[A-Z0-9]$
           type: string
         description:
           description: English prose. Must not be used as a discriminant.
+          maxLength: 512
           type: string
         domain:
           description: Type URI domain segment.
@@ -209,13 +526,18 @@ components:
         status:
           description: HTTP status this code is bound to. One status per code.
           format: int64
+          maximum: 599
+          minimum: 400
           type: integer
         title:
           description: Stable English phrase for this type. Does not vary per request.
+          maxLength: 128
+          pattern: ^[ -~]+$
           type: string
         type:
           description: Problem type URI. The last path segment is the kebab-case form of code.
           format: uri
+          maxLength: 256
           type: string
       required:
         - object
@@ -226,24 +548,45 @@ components:
         - title
         - description
       type: object
+    Ref:
+      additionalProperties: true
+      properties:
+        external_id:
+          description: Verbatim upstream id. Must not be used as a discriminant beyond exact match.
+          maxLength: 256
+          type: string
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+      required:
+        - source
+        - external_id
+      type: object
     Value:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         description:
           description: English prose. Must not be used as a discriminant.
+          maxLength: 512
           type: string
         display_name:
           description: English label for this token. Must not be used as a discriminant.
+          maxLength: 512
           type: string
         value:
-          description: Token as it appears on the wire.
+          description: Token as it appears on the wire. Must not be used as a discriminant.
+          maxLength: 64
           type: string
       required:
         - value
         - display_name
+        - description
       type: object
     Vocabulary:
-      additionalProperties: false
+      additionalProperties: true
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
@@ -257,6 +600,8 @@ components:
           type: boolean
         name:
           description: Vocabulary name. The path segment of /v2/vocabularies/{name}.
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*$
           type: string
         object:
           description: Type discriminant. Always vocabulary.
@@ -268,14 +613,167 @@ components:
           description: Every value currently published. Empty array, never null.
           items:
             $ref: "#/components/schemas/Value"
-          type:
-            - array
-            - "null"
+          type: array
       required:
         - object
         - name
         - closed
         - values
+      type: object
+    Work:
+      additionalProperties: true
+      properties:
+        banner:
+          $ref: "#/components/schemas/Image"
+          description: Selected landscape image. null if none.
+        claim:
+          $ref: "#/components/schemas/Claim"
+          description: null if unclaimed. Never omitted on view=basic.
+        content_rating:
+          description: Age axis of the work.
+          enum:
+            - all_ages
+            - sensitive
+            - r18
+          type: string
+          x-vocabulary-closed: true
+        cover:
+          $ref: "#/components/schemas/Image"
+          description: Selected portrait image. null if none.
+        created_at:
+          description: RFC 3339 UTC.
+          format: date-time
+          maxLength: 32
+          type: string
+        display_name:
+          description: Primary label. Never empty. Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        id:
+          description: Catalog work id. JSON string of a decimal integer.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        latin:
+          description: Romanization. null if unrecorded. Must not be used as a discriminant.
+          maxLength: 512
+          type:
+            - string
+            - "null"
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/LocalizedText"
+          description: BCP-47 keys, sparse. Empty object if none. Must not be used as a discriminant.
+          type: object
+        medium:
+          description: Never null.
+          enum:
+            - galgame
+            - manga
+            - novel
+            - anime
+            - asmr
+            - doujin_game
+            - music
+          type: string
+          x-vocabulary-closed: true
+        object:
+          description: Type discriminant. Always work.
+          enum:
+            - work
+          type: string
+          x-vocabulary-closed: true
+        olang:
+          description: Original language, BCP-47. Open vocabulary languages.
+          format: bcp47
+          maxLength: 32
+          type: string
+        release_date:
+          description: Calendar date. null when release_status is announced, cancelled, or unknown.
+          format: date
+          maxLength: 10
+          type:
+            - string
+            - "null"
+        release_date_precision:
+          description: null when release_date is null. month dates sit on the 1st; year dates sit on January 1.
+          enum:
+            - day
+            - month
+            - year
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        release_status:
+          description: World state of the release, distinct from our knowledge gap.
+          enum:
+            - released
+            - dated
+            - announced
+            - cancelled
+            - unknown
+          type: string
+          x-vocabulary-closed: true
+        updated_at:
+          description: RFC 3339 UTC.
+          format: date-time
+          maxLength: 32
+          type: string
+      required:
+        - object
+        - id
+        - medium
+        - display_name
+        - latin
+        - localized
+        - olang
+        - content_rating
+        - release_date
+        - release_date_precision
+        - release_status
+        - cover
+        - banner
+        - claim
+        - created_at
+        - updated_at
+      type: object
+    WorkTitle:
+      additionalProperties: true
+      properties:
+        is_machine:
+          description: Whether this title is machine-translated.
+          type: boolean
+        lang:
+          description: BCP-47 language tag.
+          format: bcp47
+          maxLength: 32
+          type: string
+        latin:
+          description: Romanization. null if unrecorded. Must not be used as a discriminant.
+          maxLength: 512
+          type:
+            - string
+            - "null"
+        title:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        title_kind:
+          description: search_hint is internal and never appears on this type.
+          enum:
+            - official
+            - alias
+            - abbreviation
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - lang
+        - title
+        - latin
+        - title_kind
+        - is_machine
       type: object
 info:
   description: "NextMoe public API v2. Preview: any change is allowed, including deletions and renames. Third parties are not issued /v2 credentials."
@@ -352,6 +850,7 @@ paths:
           schema:
             description: Top-level error code from the registry (UPPER_SNAKE).
             maxLength: 63
+            pattern: ^[A-Z][A-Z0-9_]*[A-Z0-9]$
             type: string
       responses:
         "200":
@@ -429,6 +928,7 @@ paths:
           schema:
             description: Vocabulary name. The path segment of /v2/vocabularies/{name}.
             maxLength: 63
+            pattern: ^[a-z][a-z0-9_]*$
             type: string
       responses:
         "200":
