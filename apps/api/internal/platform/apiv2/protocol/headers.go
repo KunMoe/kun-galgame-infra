@@ -63,6 +63,7 @@ func applyHeaders(c fiber.Ctx) {
 func isVocabPath(path string) bool {
 	return strings.HasPrefix(path, "/v2/problems") ||
 		strings.HasPrefix(path, "/v2/vocabularies") ||
+		strings.HasPrefix(path, "/v2/catalog/schemas/") ||
 		path == "/v2/catalog/openapi.json"
 }
 

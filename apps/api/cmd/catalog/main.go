@@ -195,7 +195,7 @@ func main() {
 	adminNews.Post("/items/:id/decision", newsAdminH.Decide)
 
 	setupPublicCatalog(application, cfg, catalogDB, readSvc, resolveSvc, searcher, statsSvc,
-		clientRepo, tokenVerifier, devStore, devCache, newsSvc)
+		clientRepo, tokenVerifier, devStore, devCache, newsSvc, editRegistry)
 
 	galgameapp.MountRetiredPublic(application)
 
@@ -242,6 +242,7 @@ func setupPublicCatalog(
 	store devapi.Store,
 	devCache *cache.RedisCache,
 	newsSvc *newsService.PublicService,
+	editRegistry *editing.Registry,
 ) {
 	oauthDB := application.DB.DB()
 
@@ -301,11 +302,12 @@ func setupPublicCatalog(
 		Store:            protocol.NewRedisStore(devCache),
 		LookupCredential: mw.Lookup,
 		Catalog: &v2handler.Catalog{
-			Public:   publicSvc,
-			Resolve:  resolveSvc,
-			StatsSvc: statsSvc,
-			News:     newsSvc,
-			Searcher: searcher,
+			Public:    publicSvc,
+			Resolve:   resolveSvc,
+			StatsSvc:  statsSvc,
+			News:      newsSvc,
+			Searcher:  searcher,
+			EditTypes: editRegistry,
 		},
 	})
 	v2spec, err := json.Marshal(v2API.OpenAPI())

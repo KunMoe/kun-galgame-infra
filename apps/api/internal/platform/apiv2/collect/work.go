@@ -173,3 +173,24 @@ func CalendarSpec() Spec {
 		Fields:  fields,
 	}
 }
+
+func ObjectSpec(object string) (Spec, bool) {
+	switch object {
+	case "work":
+		return WorkSpec(), true
+	case "company":
+		return CompanySpec(), true
+	case "character":
+		return CharacterSpec(), true
+	case "release":
+		return ReleaseSpec(), true
+	case "tag":
+		return TagSpec(), true
+	case "engine":
+		return EngineSpec(), true
+	case "series":
+		return SeriesSpec(), true
+	default:
+		return Spec{}, false
+	}
+}

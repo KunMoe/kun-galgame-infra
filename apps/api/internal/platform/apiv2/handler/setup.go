@@ -109,6 +109,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.Playtime{}, repr.WorkPlatform{}, repr.WorkSeriesRef{},
 			repr.Change{}, repr.Redirect{}, repr.SearchHit{},
 			repr.CompanyGraph{}, repr.CompanyGraphNode{}, repr.CompanyGraphEdge{},
+			repr.ObjectSchema{}, repr.SchemaField{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}

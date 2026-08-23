@@ -11,16 +11,18 @@ import (
 	catmodel "api/internal/platform/catalog/model"
 	catsearch "api/internal/platform/catalog/search"
 	catsvc "api/internal/platform/catalog/service"
+	"api/internal/platform/editing"
 	newsdto "api/internal/platform/news/dto"
 	newssvc "api/internal/platform/news/service"
 )
 
 type Catalog struct {
-	Public   *catsvc.PublicService
-	Resolve  *catsvc.ResolveService
-	StatsSvc *catsvc.StatsService
-	News     *newssvc.PublicService
-	Searcher *catsearch.Indexer
+	Public    *catsvc.PublicService
+	Resolve   *catsvc.ResolveService
+	StatsSvc  *catsvc.StatsService
+	News      *newssvc.PublicService
+	Searcher  *catsearch.Indexer
+	EditTypes *editing.Registry
 }
 
 func (c *Catalog) ListWorks(ctx context.Context, q collect.Query) (repr.List[repr.Work], error) {

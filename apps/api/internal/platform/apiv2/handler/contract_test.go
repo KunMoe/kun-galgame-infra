@@ -46,6 +46,7 @@ func TestContractHitsEverySpecOperation(t *testing.T) {
 			url = strings.ReplaceAll(url, "{code}", problem.CodeRateLimited)
 			url = strings.ReplaceAll(url, "{name}", "medium")
 			url = strings.ReplaceAll(url, "{id}", "1")
+			url = strings.ReplaceAll(url, "{object}", "work")
 			if strings.Contains(url, "{") {
 				t.Fatalf("unsubstituted path param in %s", url)
 			}
@@ -261,6 +262,12 @@ func TestCatalogStatsAndNewsUnauthenticated(t *testing.T) {
 	require.Equal(t, 503, status)
 	require.Contains(t, ct, "application/problem+json")
 	var p problem.Problem
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
+
+	status, ct, body = do(t, app, http.MethodGet, "/v2/catalog/schemas/work")
+	require.Equal(t, 503, status)
+	require.Contains(t, ct, "application/problem+json")
 	require.NoError(t, json.Unmarshal(body, &p))
 	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 

@@ -159,7 +159,7 @@ func withIdent(ctx context.Context, p *problem.Problem) *problem.Problem {
 func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error)) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		path := c.Path()
-		if !strings.HasPrefix(path, "/v2/catalog/") || path == "/v2/catalog/openapi.json" || path == "/v2/catalog/stats" {
+		if !strings.HasPrefix(path, "/v2/catalog/") || path == "/v2/catalog/openapi.json" || path == "/v2/catalog/stats" || strings.HasPrefix(path, "/v2/catalog/schemas/") {
 			return c.Next()
 		}
 		h := c.Get("Authorization")

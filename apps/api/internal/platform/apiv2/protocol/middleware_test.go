@@ -22,6 +22,9 @@ func protoApp(t *testing.T) *fiber.App {
 	app.Get("/v2/problems", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"object": "list", "items": []any{}})
 	})
+	app.Get("/v2/catalog/schemas/work", func(c fiber.Ctx) error {
+		return c.JSON(fiber.Map{"object": "object_schema", "target_object": "work", "fields": []any{}})
+	})
 	app.Post("/v2/probe", func(c fiber.Ctx) error {
 		return c.Status(fiber.StatusCreated).JSON(fiber.Map{"object": "probe", "ok": true})
 	})
@@ -46,6 +49,13 @@ func do(t *testing.T, app *fiber.App, method, path string, hdr map[string]string
 	b, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	return resp.StatusCode, resp.Header, b
+}
+
+func TestProtocolHeadersOnSchema(t *testing.T) {
+	app := protoApp(t)
+	status, h, _ := do(t, app, http.MethodGet, "/v2/catalog/schemas/work", nil, "")
+	require.Equal(t, 200, status)
+	require.Equal(t, cacheVocab, h.Get("Cache-Control"))
 }
 
 func TestProtocolHeadersOnSuccess(t *testing.T) {
