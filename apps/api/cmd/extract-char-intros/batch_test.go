@@ -210,3 +210,60 @@ func TestHTTPBatchSplitsOnA524WithoutRetrying(t *testing.T) {
 	}
 	require.Len(t, p.reqs, 3, "the oversized call must go straight to the split, not up the ladder")
 }
+
+func fourWorks() []candidateWork {
+	return []candidateWork{
+		{WorkID: 11, Intro: "甲作品简介", Roster: []rosterChar{{CharacterID: 1, Name: "沙耶"}}},
+		{WorkID: 22, Intro: "乙作品简介", Roster: []rosterChar{{CharacterID: 2, Name: "玲"}}},
+		{WorkID: 33, Intro: "丙作品简介", Roster: []rosterChar{{CharacterID: 3, Name: "葵"}}},
+		{WorkID: 44, Intro: "丁作品简介", Roster: []rosterChar{{CharacterID: 4, Name: "樒"}}},
+	}
+}
+
+// oversizeOnlyOK answers 524 to any call carrying more than one item, so a
+// batch only survives once it has been cut all the way down to 1.
+func oversizeOnlyOK(p *chatProbe) func(int) int {
+	return func(n int) int {
+		if strings.Count(p.reqs[n-1].Messages[1].Content, `"i":`) > 1 {
+			return 524
+		}
+		return http.StatusOK
+	}
+}
+
+// One cut is not always enough. The 2026-08-23 panel run measured both ends of
+// this: at --batch 10 the single allowed cut landed on 5 and cleared the 100s
+// cap, but at --batch 25 it landed on 12, still over the cap, and the batch died
+// one cut short of working. Oversize is the failure halving converges on, so it
+// keeps halving: 4 -> 2 -> 1 is 1 + 2 + 4 = 7 calls.
+func TestHTTPBatchKeepsHalvingWhileTheCauseIsOversize(t *testing.T) {
+	orig := retryBackoff
+	retryBackoff = []time.Duration{time.Millisecond}
+	t.Cleanup(func() { retryBackoff = orig })
+
+	p := fakeChat(t, func(chatReq, int) (string, string) { return `[{"i":0,"摘录":{}}]`, "stop" })
+	p.status = oversizeOnlyOK(p)
+
+	out := p.ex.ExtractBatch(context.Background(), fourWorks())
+	require.Len(t, out, 4)
+	for i, e := range out {
+		require.NoError(t, e.Err, "work %d survived once the batch reached size 1", i)
+	}
+	assert.Len(t, p.reqs, 7, "4 -> two 2s -> four 1s")
+}
+
+// The negative control for the rule above: a reply of the wrong shape means one
+// item is systematically bad, and deeper cuts would only binary-search for it.
+// That cause still stops after a single level — 4 plus its two halves.
+func TestHTTPBatchStopsAtOneCutWhenTheShapeIsWrong(t *testing.T) {
+	p := fakeChat(t, func(chatReq, int) (string, string) {
+		return "抱歉,我无法完成这个任务。", "stop"
+	})
+
+	out := p.ex.ExtractBatch(context.Background(), fourWorks())
+	require.Len(t, out, 4)
+	for i, e := range out {
+		require.Error(t, e.Err, "work %d", i)
+	}
+	assert.Len(t, p.reqs, 3, "one cut only; a bad item must not turn the run into a binary search")
+}
