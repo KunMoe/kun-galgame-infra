@@ -308,6 +308,7 @@ func TestCatalogCollectionsRequireCredential(t *testing.T) {
 		"/v2/catalog/releases",
 		"/v2/catalog/changes",
 		"/v2/catalog/redirects",
+		"/v2/catalog/calendar",
 	} {
 		status, ct, body := do(t, app, http.MethodGet, path)
 		require.Equal(t, 401, status, path)

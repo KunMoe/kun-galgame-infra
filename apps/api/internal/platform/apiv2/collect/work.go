@@ -151,3 +151,14 @@ func RedirectsSpec() Spec {
 		Fields:  []string{"object", "target_object", "old_id", "current_id", "merged_at"},
 	}
 }
+
+func CalendarSpec() Spec {
+	fields := append([]string{}, WorkBasicFields...)
+	fields = append(fields, WorkInclude...)
+	return Spec{
+		Sort:    []string{"id"},
+		Include: WorkInclude,
+		FullSet: WorkFullSet,
+		Fields:  fields,
+	}
+}

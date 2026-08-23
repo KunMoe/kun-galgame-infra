@@ -3016,6 +3016,97 @@ info:
   x-stability: preview
 openapi: 3.1.0
 paths:
+  /v2/catalog/calendar:
+    get:
+      description: One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. Requires an application key. ids= is not accepted.
+      operationId: listCatalogCalendar
+      parameters:
+        - description: "Dated month window YYYY-MM. Default: current month in Asia/Tokyo."
+          explode: false
+          in: query
+          name: month
+          schema:
+            description: "Dated month window YYYY-MM. Default: current month in Asia/Tokyo."
+            maxLength: 7
+            type: string
+        - description: "Year-only window YYYY (v1 pending). Default with precision=year: current year in Asia/Tokyo."
+          explode: false
+          in: query
+          name: year
+          schema:
+            description: "Year-only window YYYY (v1 pending). Default with precision=year: current year in Asia/Tokyo."
+            maxLength: 4
+            type: string
+        - description: day, month, or year. year selects the year-only window. day and month use the dated month window.
+          explode: false
+          in: query
+          name: precision
+          schema:
+            description: day, month, or year. year selects the year-only window. day and month use the dated month window.
+            maxLength: 8
+            type: string
+        - description: released, dated, announced, cancelled, unknown. announced and unknown select the undated window. cancelled is empty until the catalog records cancellations.
+          explode: false
+          in: query
+          name: status
+          schema:
+            description: released, dated, announced, cancelled, unknown. announced and unknown select the undated window. cancelled is empty until the catalog records cancellations.
+            maxLength: 16
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWork"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Release calendar
+      tags:
+        - catalog
   /v2/catalog/changes:
     get:
       description: Works updated recently, oldest first. Keyset-paginated. Requires an application key. ids= is not accepted.
