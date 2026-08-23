@@ -97,7 +97,24 @@ func parseBatchArray[T any](text string, want int) ([]T, error) {
 // one run into a binary search.
 const splitRetries = 1
 
-func splittable(depth, size int) bool { return depth < splitRetries && size > 1 }
+// An oversize batch is the one failure halving converges on, so it keeps
+// halving. 2026-08-23 measured both ends of that on the same run: at --batch 10
+// a single cut (10 -> 5) cleared Cloudflare's 100s cap on the first try, but at
+// --batch 25 the one allowed cut landed on 12, which was still over the cap, so
+// the whole batch died with a fix one more cut away. Four levels take any batch
+// this tool ships down to 1.
+const oversizeSplitRetries = 4
+
+// splittable answers per cause, because the two failures want opposite depths:
+// a shape mismatch means one item is systematically bad and deeper cuts only
+// binary-search for it, while an oversize call is fixed by getting smaller.
+func splittable(depth, size int, err error) bool {
+	limit := splitRetries
+	if errors.Is(err, errBatchOversize) {
+		limit = oversizeSplitRetries
+	}
+	return depth < limit && size > 1
+}
 
 // --- extraction ---
 
@@ -165,7 +182,7 @@ func extractBatchVia(ctx context.Context, c promptCaller, batch []candidateWork,
 	if err == nil {
 		err = gateErr
 	}
-	if splittable(depth, len(batch)) {
+	if splittable(depth, len(batch), err) {
 		slog.Warn("extraction batch failed the integrity gate — splitting", "works", len(batch), "err", err)
 		half := len(batch) / 2
 		return append(extractBatchVia(ctx, c, batch[:half], depth+1), extractBatchVia(ctx, c, batch[half:], depth+1)...)
@@ -230,7 +247,7 @@ func compareBatchVia(ctx context.Context, c promptCaller, batch []comparison, de
 	if err == nil {
 		err = gateErr
 	}
-	if splittable(depth, len(batch)) {
+	if splittable(depth, len(batch), err) {
 		slog.Warn("judge batch failed the integrity gate — splitting", "votes", len(batch), "err", err)
 		half := len(batch) / 2
 		return append(compareBatchVia(ctx, c, batch[:half], depth+1), compareBatchVia(ctx, c, batch[half:], depth+1)...)
