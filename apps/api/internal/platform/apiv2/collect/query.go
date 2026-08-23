@@ -22,6 +22,7 @@ type Raw struct {
 	IncludeTotal string
 	Facets       string
 	Sort         string
+	NSFW         string
 }
 
 type Spec struct {
@@ -44,6 +45,7 @@ type Query struct {
 	Facets       []string
 	Sort         string
 	Batch        bool
+	NSFW         bool
 }
 
 func Parse(raw Raw, spec Spec) (Query, *problem.Problem) {
@@ -146,6 +148,14 @@ func Parse(raw Raw, spec Spec) (Query, *problem.Problem) {
 		return Query{}, err
 	}
 	q.Facets = facets
+
+	if raw.NSFW != "" {
+		v, err := parse.Bool(raw.NSFW, "nsfw")
+		if err != nil {
+			return Query{}, err
+		}
+		q.NSFW = v
+	}
 	return q, nil
 }
 

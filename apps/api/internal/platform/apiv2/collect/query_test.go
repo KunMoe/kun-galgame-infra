@@ -121,3 +121,31 @@ func TestParseRefsAndIncludeTotal(t *testing.T) {
 		t.Fatalf("include_total: %+v", err)
 	}
 }
+
+func TestParseNSFW(t *testing.T) {
+	q, err := Parse(Raw{}, WorkSpec())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q.NSFW {
+		t.Fatal("nsfw defaults false")
+	}
+	q, err = Parse(Raw{NSFW: "true"}, WorkSpec())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !q.NSFW {
+		t.Fatal("nsfw true")
+	}
+	q, err = Parse(Raw{NSFW: "false"}, WorkSpec())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q.NSFW {
+		t.Fatal("nsfw false")
+	}
+	_, err = Parse(Raw{NSFW: "1"}, WorkSpec())
+	if err == nil || err.Code != problem.CodeInvalidParameter {
+		t.Fatalf("nsfw=1: %+v", err)
+	}
+}

@@ -31,6 +31,8 @@ type Problem struct {
 	Code      string       `json:"code" pattern:"^[A-Z][A-Z0-9_]*[A-Z0-9]$" maxLength:"63" doc:"Top-level error code from the closed registry. UPPER_SNAKE."`
 	RequestID string       `json:"request_id" pattern:"^req_[0-9A-HJKMNP-TV-Z]{26}$" minLength:"30" maxLength:"30" doc:"Same value as X-Request-ID. Prefix req_ plus a 26-character ULID."`
 	Errors    []FieldError `json:"errors" doc:"Field-level failures. Empty array when this is not a field-level error."`
+	Object    string       `json:"object,omitempty" maxLength:"32" pattern:"^[a-z][a-z0-9_]*$" doc:"Entity family when code is ENTITY_MERGED."`
+	CurrentID string       `json:"current_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"Canonical id when code is ENTITY_MERGED."`
 }
 
 func (p *Problem) Error() string {
@@ -48,6 +50,32 @@ func (p *Problem) GetStatus() int {
 		return http.StatusInternalServerError
 	}
 	return p.Status
+}
+
+func (p *Problem) GetHeaders() http.Header {
+	if p == nil || p.Code != CodeEntityMerged || p.CurrentID == "" {
+		return nil
+	}
+	seg := objectPath[p.Object]
+	if seg == "" {
+		return nil
+	}
+	h := make(http.Header)
+	h.Set("Link", "</v2/catalog/"+seg+"/"+p.CurrentID+">; rel=\"canonical\"")
+	return h
+}
+
+var objectPath = map[string]string{
+	"work": "works", "release": "releases", "character": "characters",
+	"credit_name": "credit-names", "person": "persons", "company": "companies",
+	"tag": "tags", "trait": "traits", "series": "series", "engine": "engines",
+}
+
+func Merged(object, currentID, requestID, instance, detail string) *Problem {
+	p := New(CodeEntityMerged, requestID, instance, detail)
+	p.Object = object
+	p.CurrentID = currentID
+	return p
 }
 
 func (p *Problem) ContentType(ct string) string {
@@ -143,6 +171,13 @@ func WriteFiberError(c fiber.Ctx, err error) error {
 	}
 	c.Set("X-Request-ID", p.RequestID)
 	c.Set("Cache-Control", "no-store")
+	if h := p.GetHeaders(); h != nil {
+		for k, vs := range h {
+			if len(vs) > 0 {
+				c.Set(k, vs[0])
+			}
+		}
+	}
 	if p.Status == http.StatusUnauthorized {
 		c.Set("WWW-Authenticate", `Bearer realm="nextmoe", error="invalid_token"`)
 	}

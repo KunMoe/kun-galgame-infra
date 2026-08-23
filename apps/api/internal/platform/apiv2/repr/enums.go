@@ -122,6 +122,15 @@ func CompanyKind(v int16) (string, bool) {
 	}
 }
 
+func CompanyKindFromKey(key string) (string, bool) {
+	switch key {
+	case "game_brand", "bunko", "publisher", "anime_studio", "doujin_circle", "group":
+		return key, true
+	default:
+		return "", false
+	}
+}
+
 func TagKind(v int16) (string, bool) {
 	switch v {
 	case model.TagKindContent:

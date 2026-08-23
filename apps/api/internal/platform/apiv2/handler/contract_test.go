@@ -45,6 +45,7 @@ func TestContractHitsEverySpecOperation(t *testing.T) {
 			url := path
 			url = strings.ReplaceAll(url, "{code}", problem.CodeRateLimited)
 			url = strings.ReplaceAll(url, "{name}", "medium")
+			url = strings.ReplaceAll(url, "{id}", "1")
 			if strings.Contains(url, "{") {
 				t.Fatalf("unsubstituted path param in %s", url)
 			}
@@ -230,6 +231,71 @@ func TestWorksRequiresCredential(t *testing.T) {
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	require.Equal(t, 400, resp.StatusCode)
+
+	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/works?nsfw=true", nil)
+	req.Header.Set("Authorization", "Bearer test")
+	resp, err = app.Test(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, 403, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/problem+json")
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeNSFWCapabilityRequired, p.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/works/1?nsfw=yes", nil)
+	req.Header.Set("Authorization", "Bearer test")
+	resp, err = app.Test(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, 400, resp.StatusCode)
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeInvalidParameter, p.Code)
+}
+
+func TestCatalogStatsAndNewsUnauthenticated(t *testing.T) {
+	app := testApp(t)
+
+	status, ct, body := do(t, app, http.MethodGet, "/v2/catalog/stats")
+	require.Equal(t, 503, status)
+	require.Contains(t, ct, "application/problem+json")
+	var p problem.Problem
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
+
+	status, ct, body = do(t, app, http.MethodGet, "/v2/news/sources")
+	require.Equal(t, 503, status)
+	require.Contains(t, ct, "application/problem+json")
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
+
+	status, _, body = do(t, app, http.MethodGet, "/v2/news")
+	require.Equal(t, 503, status)
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
+
+	status, ct, body = do(t, app, http.MethodGet, "/v2/catalog/works/1")
+	require.Equal(t, 401, status)
+	require.Contains(t, ct, "application/problem+json")
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeMissingCredential, p.Code)
+
+	req := httptest.NewRequest(http.MethodGet, "/v2/catalog/works/1", nil)
+	req.Header.Set("Authorization", "Bearer test")
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, 503, resp.StatusCode)
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/companies/1", nil)
+	req.Header.Set("Authorization", "Bearer test")
+	resp, err = app.Test(req)
+	require.NoError(t, err)
+	require.Equal(t, 503, resp.StatusCode)
 }
 
 func itoa(n int) string {

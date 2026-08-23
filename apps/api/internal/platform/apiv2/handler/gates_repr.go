@@ -13,6 +13,7 @@ var g8Exceptions = map[string]bool{
 	"object": true,
 	"state":  true,
 	"value":  true,
+	"source": true, // news_item.source is a news_source object; Image/Ref/Intro.source is the open sources key
 }
 
 func CheckG7toG16(doc *huma.OpenAPI) []string {

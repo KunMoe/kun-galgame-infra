@@ -25,6 +25,7 @@ type collectionInput struct {
 	IncludeTotal string `query:"include_total" maxLength:"8" doc:"true to include total. Only true or false."`
 	Facets       string `query:"facets" maxLength:"512" doc:"Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET."`
 	Sort         string `query:"sort" maxLength:"32" doc:"Closed per-collection sort key."`
+	NSFW         string `query:"nsfw" maxLength:"8" doc:"true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."`
 }
 
 type listVocabOutput struct {
@@ -112,13 +113,18 @@ func listWorks(src WorksFunc) func(context.Context, *collectionInput) (*listWork
 		if err != nil {
 			return nil, withIdent(ctx, err)
 		}
+		if q.NSFW {
+			if p := refuseNSFW(ctx); p != nil {
+				return nil, p
+			}
+		}
 		if src == nil {
 			id, inst := ident(ctx)
 			return nil, problem.New(problem.CodeServiceUnavailable, id, inst, "works collection is not bound.")
 		}
 		page, lerr := src(ctx, q)
 		if lerr != nil {
-			return nil, lerr
+			return nil, catalogErr(ctx, lerr)
 		}
 		return &listWorksOutput{Body: page}, nil
 	}
@@ -131,7 +137,7 @@ func rawFrom(in *collectionInput) collect.Raw {
 	return collect.Raw{
 		Cursor: in.Cursor, Limit: in.Limit, View: in.View, Include: in.Include,
 		Fields: in.Fields, IDs: in.IDs, Refs: in.Refs, IncludeTotal: in.IncludeTotal,
-		Facets: in.Facets, Sort: in.Sort,
+		Facets: in.Facets, Sort: in.Sort, NSFW: in.NSFW,
 	}
 }
 
@@ -151,7 +157,7 @@ func withIdent(ctx context.Context, p *problem.Problem) *problem.Problem {
 
 func catalogAuth(c fiber.Ctx) error {
 	path := c.Path()
-	if !strings.HasPrefix(path, "/v2/catalog/") || path == "/v2/catalog/openapi.json" {
+	if !strings.HasPrefix(path, "/v2/catalog/") || path == "/v2/catalog/openapi.json" || path == "/v2/catalog/stats" {
 		return c.Next()
 	}
 	h := c.Get("Authorization")

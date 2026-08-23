@@ -18,8 +18,9 @@ import (
 var installOnce sync.Once
 
 type Options struct {
-	Store protocol.Store
-	Works WorksFunc
+	Store   protocol.Store
+	Works   WorksFunc
+	Catalog *Catalog
 }
 
 func Setup(app *fiber.App) huma.API {
@@ -62,8 +63,13 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	huma.NewError = func(status int, msg string, errs ...error) huma.StatusError {
 		return problem.FromHuma(nil, status, msg, errs...)
 	}
+	works := opt.Works
+	if works == nil && opt.Catalog != nil {
+		works = opt.Catalog.ListWorks
+	}
 	registerMeta(api)
-	registerCollections(api, opt.Works)
+	registerCollections(api, works)
+	registerCatalog(api, opt.Catalog)
 	huma.NewError = prevErr
 	annotateSpec(api.OpenAPI())
 	return api
@@ -89,6 +95,9 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.Image{}, repr.Cover{}, repr.Names{}, repr.LocalizedText{},
 			repr.WorkTitle{}, repr.EntityName{}, repr.Intro{}, repr.Ref{},
 			repr.Claim{}, repr.Work{}, repr.FacetValue{},
+			repr.Tag{}, repr.Company{}, repr.CreditName{}, repr.Character{},
+			repr.Series{}, repr.Engine{}, repr.NewsSource{}, repr.NewsItem{},
+			repr.CatalogStats{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}
@@ -190,6 +199,9 @@ func markOpenVocab(s *huma.Schema) {
 		}
 		switch name {
 		case "source":
+			if p.Ref != "" || p.Properties != nil {
+				break
+			}
 			if p.Extensions == nil {
 				p.Extensions = map[string]any{}
 			}

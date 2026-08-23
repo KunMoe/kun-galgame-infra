@@ -54,3 +54,61 @@ func ProblemSpec() Spec {
 		Facets:  []string{},
 	}
 }
+
+func NewsSpec() Spec {
+	return Spec{
+		Sort:    []string{"published"},
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "title", "summary", "source", "source_url", "published_at"},
+		Facets:  []string{},
+	}
+}
+
+func CompanySpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "display_name", "latin", "localized", "company_kind", "work_count"},
+	}
+}
+
+func CreditNameSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "display_name", "latin", "localized", "person_id"},
+	}
+}
+
+func CharacterSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "display_name", "latin", "localized"},
+	}
+}
+
+func TagSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "display_name", "tier", "tag_kind", "work_count"},
+	}
+}
+
+func SeriesSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "display_name"},
+	}
+}
+
+func EngineSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "display_name", "work_count"},
+	}
+}
