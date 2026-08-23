@@ -140,6 +140,56 @@ func (c *Catalog) ListSeries(ctx context.Context, q collect.Query) (repr.List[re
 	return finishList(items, data.NextCursor, data.Total, q, missing), nil
 }
 
+func releaseFeedKinds() []int16 {
+	return []int16{
+		catmodel.ReleaseKindDefault, catmodel.ReleaseKindDigital, catmodel.ReleaseKindPhysical,
+		catmodel.ReleaseKindTrial, catmodel.ReleaseKindPatch,
+	}
+}
+
+func (c *Catalog) ListReleases(ctx context.Context, q collect.Query) (repr.List[repr.Release], error) {
+	if c == nil || c.Public == nil {
+		return repr.List[repr.Release]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+	}
+	ids, missing, err := c.batchEntityIDs(ctx, q, 0)
+	if err != nil {
+		return repr.List[repr.Release]{}, err
+	}
+	if q.Batch && len(ids) == 0 {
+		return finishList([]repr.Release{}, nil, 0, q, missing), nil
+	}
+	sort := q.Sort
+	if sort == "" {
+		sort = catsvc.ReleaseFeedSortDateDesc
+	}
+	f := catsvc.ReleaseFeedFilter{NSFW: q.NSFW, Sort: sort, Kinds: releaseFeedKinds(), IDs: ids}
+	limit := q.Limit
+	if q.Batch {
+		limit = 100
+		q.Cursor = ""
+	}
+	data, lerr := c.Public.ReleaseFeed(ctx, f, q.Cursor, limit)
+	if lerr != nil {
+		return repr.List[repr.Release]{}, listCursorErr(lerr)
+	}
+	items := make([]repr.Release, 0, len(data.Items))
+	seen := map[int64]bool{}
+	for _, it := range data.Items {
+		items = append(items, releaseFromFeed(it))
+		seen[it.ID] = true
+	}
+	missing = appendUnseen(missing, ids, seen)
+	var total int64
+	if q.IncludeTotal {
+		n, _, _, merr := c.Public.ReleaseFeedMeta(ctx, f)
+		if merr != nil {
+			return repr.List[repr.Release]{}, merr
+		}
+		total = n
+	}
+	return finishList(items, data.NextCursor, total, q, missing), nil
+}
+
 func (c *Catalog) batchEntityIDs(ctx context.Context, q collect.Query, entityType int16) ([]int64, []string, error) {
 	if !q.Batch {
 		return nil, nil, nil

@@ -59,6 +59,7 @@ type Release struct {
 	_           struct{} `json:"-" additionalProperties:"true"`
 	Object      string   `json:"object" enum:"release" doc:"Type discriminant. Always release."`
 	ID          string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog release id."`
+	WorkID      *string  `json:"work_id" pattern:"^[0-9]+$" maxLength:"20" doc:"Parent catalog work id. null on a work sub-resource, where the work is the URL."`
 	ReleaseKind string   `json:"release_kind" enum:"default,digital,physical,trial,patch" doc:"Release class."`
 	Date        *string  `json:"date" format:"date" maxLength:"10" doc:"Calendar date. null if undated."`
 	Title       *string  `json:"title" maxLength:"512" doc:"Must not be used as a discriminant."`

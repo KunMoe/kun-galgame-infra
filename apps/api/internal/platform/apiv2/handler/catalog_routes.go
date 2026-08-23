@@ -41,6 +41,9 @@ type getSeriesOutput struct {
 type getEngineOutput struct {
 	Body repr.Engine
 }
+type getReleaseOutput struct {
+	Body repr.Release
+}
 type getStatsOutput struct {
 	Body repr.CatalogStats
 }
@@ -120,6 +123,16 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Errors:             authErrs,
 		SkipValidateParams: true,
 	}, getCatalogEngine(cat))
+	huma.Register(api, huma.Operation{
+		OperationID:        "getCatalogRelease",
+		Method:             http.MethodGet,
+		Path:               "/v2/catalog/releases/{id}",
+		Summary:            "Get one release",
+		Description:        "A catalog release. Merged ids are 404 ENTITY_MERGED. r18 parent works are 404 without nsfw=true. Requires an application key.",
+		Tags:               catalog,
+		Errors:             authErrs,
+		SkipValidateParams: true,
+	}, getCatalogRelease(cat))
 	huma.Register(api, huma.Operation{
 		OperationID:        "getCatalogStats",
 		Method:             http.MethodGet,
@@ -230,6 +243,20 @@ func getCatalogEngine(cat *Catalog) func(context.Context, *resourceIDInput) (*ge
 			return nil, catalogErr(ctx, gerr)
 		}
 		return &getEngineOutput{Body: rec}, nil
+	}
+}
+
+func getCatalogRelease(cat *Catalog) func(context.Context, *resourceIDInput) (*getReleaseOutput, error) {
+	return func(ctx context.Context, in *resourceIDInput) (*getReleaseOutput, error) {
+		id, q, err := parseResource(ctx, in, collect.ReleaseSpec())
+		if err != nil {
+			return nil, err
+		}
+		rec, gerr := cat.GetRelease(ctx, id, q.NSFW)
+		if gerr != nil {
+			return nil, catalogErr(ctx, gerr)
+		}
+		return &getReleaseOutput{Body: rec}, nil
 	}
 }
 

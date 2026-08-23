@@ -124,3 +124,12 @@ func WorkSubSpec() Spec {
 		Fields:  []string{"object", "id"},
 	}
 }
+
+func ReleaseSpec() Spec {
+	return Spec{
+		Sort:    []string{"date_desc", "date_asc"},
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "work_id", "release_kind", "date", "title", "lang", "platform", "platforms", "refs"},
+	}
+}

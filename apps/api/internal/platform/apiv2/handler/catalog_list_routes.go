@@ -22,6 +22,9 @@ type listSeriesOutput struct {
 type listEnginesOutput struct {
 	Body repr.List[repr.Engine]
 }
+type listReleasesOutput struct {
+	Body repr.List[repr.Release]
+}
 
 func registerCatalogLists(api huma.API, cat *Catalog) {
 	catalog := []string{"catalog"}
@@ -66,6 +69,16 @@ func registerCatalogLists(api huma.API, cat *Catalog) {
 		Errors:             errs,
 		SkipValidateParams: true,
 	}, listCatalogEngines(cat))
+	huma.Register(api, huma.Operation{
+		OperationID:        "listCatalogReleases",
+		Method:             http.MethodGet,
+		Path:               "/v2/catalog/releases",
+		Summary:            "List releases",
+		Description:        "Keyset-paginated dated releases, sorted by date_desc by default. Requires an application key. ids= is a batch lane and does not paginate.",
+		Tags:               catalog,
+		Errors:             errs,
+		SkipValidateParams: true,
+	}, listCatalogReleases(cat))
 }
 
 func listCatalogCompanies(cat *Catalog) func(context.Context, *collectionInput) (*listCompaniesOutput, error) {
@@ -121,6 +134,20 @@ func listCatalogEngines(cat *Catalog) func(context.Context, *collectionInput) (*
 			return nil, catalogErr(ctx, lerr)
 		}
 		return &listEnginesOutput{Body: page}, nil
+	}
+}
+
+func listCatalogReleases(cat *Catalog) func(context.Context, *collectionInput) (*listReleasesOutput, error) {
+	return func(ctx context.Context, in *collectionInput) (*listReleasesOutput, error) {
+		q, err := parseCatalogList(ctx, in, collect.ReleaseSpec())
+		if err != nil {
+			return nil, err
+		}
+		page, lerr := cat.ListReleases(ctx, q)
+		if lerr != nil {
+			return nil, catalogErr(ctx, lerr)
+		}
+		return &listReleasesOutput{Body: page}, nil
 	}
 }
 

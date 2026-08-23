@@ -2015,6 +2015,13 @@ components:
     Release:
       additionalProperties: true
       properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/Release.json
+          format: uri
+          readOnly: true
+          type: string
         date:
           description: Calendar date. null if undated.
           format: date
@@ -2069,9 +2076,17 @@ components:
           type:
             - string
             - "null"
+        work_id:
+          description: Parent catalog work id. null on a work sub-resource, where the work is the URL.
+          maxLength: 20
+          pattern: ^[0-9]+$
+          type:
+            - string
+            - "null"
       required:
         - object
         - id
+        - work_id
         - release_kind
         - date
         - title
@@ -3538,6 +3553,260 @@ paths:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
       summary: Get one engine
+      tags:
+        - catalog
+  /v2/catalog/releases:
+    get:
+      description: Keyset-paginated dated releases, sorted by date_desc by default. Requires an application key. ids= is a batch lane and does not paginate.
+      operationId: listCatalogReleases
+      parameters:
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+            maxLength: 8
+            type: string
+        - description: basic (default) or full. Closed vocabulary.
+          explode: false
+          in: query
+          name: view
+          schema:
+            description: basic (default) or full. Closed vocabulary.
+            maxLength: 16
+            type: string
+        - description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+          explode: false
+          in: query
+          name: include
+          schema:
+            description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+            maxLength: 1024
+            type: string
+        - description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+            maxLength: 1024
+            type: string
+        - description: "Comma-separated ids, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: ids
+          schema:
+            description: "Comma-separated ids, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: refs
+          schema:
+            description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: true to include total. Only true or false.
+          explode: false
+          in: query
+          name: include_total
+          schema:
+            description: true to include total. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+          explode: false
+          in: query
+          name: facets
+          schema:
+            description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+            maxLength: 512
+            type: string
+        - description: Closed per-collection sort key.
+          explode: false
+          in: query
+          name: sort
+          schema:
+            description: Closed per-collection sort key.
+            maxLength: 32
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListRelease"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List releases
+      tags:
+        - catalog
+  /v2/catalog/releases/{id}:
+    get:
+      description: A catalog release. Merged ids are 404 ENTITY_MERGED. r18 parent works are 404 without nsfw=true. Requires an application key.
+      operationId: getCatalogRelease
+      parameters:
+        - description: Decimal catalog id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: basic (default) or full. Closed vocabulary.
+          explode: false
+          in: query
+          name: view
+          schema:
+            description: basic (default) or full. Closed vocabulary.
+            maxLength: 16
+            type: string
+        - description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+          explode: false
+          in: query
+          name: include
+          schema:
+            description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+            maxLength: 1024
+            type: string
+        - description: Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+            maxLength: 1024
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Release"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Get one release
       tags:
         - catalog
   /v2/catalog/series:

@@ -6,6 +6,7 @@ import (
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
 	catmodel "api/internal/platform/catalog/model"
+	catsvc "api/internal/platform/catalog/service"
 )
 
 func (c *Catalog) GetCreditName(ctx context.Context, id int64, nsfw bool) (repr.CreditName, error) {
@@ -111,4 +112,19 @@ func (c *Catalog) GetSeries(ctx context.Context, id int64, nsfw bool) (repr.Seri
 		return repr.Series{}, problem.New(problem.CodeNotFound, "", "", "series not found.")
 	}
 	return repr.Series{Object: "series", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName}, nil
+}
+
+func (c *Catalog) GetRelease(ctx context.Context, id int64, nsfw bool) (repr.Release, error) {
+	if c == nil || c.Public == nil {
+		return repr.Release{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+	}
+	f := catsvc.ReleaseFeedFilter{NSFW: nsfw, IDs: []int64{id}, Kinds: releaseFeedKinds()}
+	data, err := c.Public.ReleaseFeed(ctx, f, "", 1)
+	if err != nil {
+		return repr.Release{}, err
+	}
+	if len(data.Items) == 0 {
+		return repr.Release{}, c.mergedOrNotFound(ctx, catmodel.EntityTypeRelease, "release", id)
+	}
+	return releaseFromFeed(data.Items[0]), nil
 }

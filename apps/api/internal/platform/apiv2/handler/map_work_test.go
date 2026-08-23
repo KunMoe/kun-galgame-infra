@@ -91,6 +91,22 @@ func TestClaimFromNil(t *testing.T) {
 	}
 }
 
+func TestReleaseFromFeed(t *testing.T) {
+	date := "2011-06-24"
+	it := dto.PublicReleaseFeedItem{
+		ID: 11, Kind: "digital", Date: &date, Title: "DL", Lang: "ja", Platform: "win",
+		Platforms: []string{"win"}, Refs: []dto.PublicCatalogRef{{Source: "dlsite", ExternalID: "RJ1"}},
+		Work: dto.PublicWorkListItem{ID: 19658, Medium: "galgame", DisplayName: "x"},
+	}
+	r := releaseFromFeed(it)
+	if r.Object != "release" || r.ID != "11" || r.WorkID == nil || *r.WorkID != "19658" || r.ReleaseKind != "digital" {
+		t.Fatalf("%+v", r)
+	}
+	if r.Title == nil || *r.Title != "DL" || len(r.Refs) != 1 {
+		t.Fatalf("title/refs %+v", r)
+	}
+}
+
 func TestWorkIncludeBlocks(t *testing.T) {
 	rec := dto.PublicCatalogWork{
 		ID: 1, Medium: "galgame", DisplayName: "x", OLang: "ja", ContentRating: "all_ages",

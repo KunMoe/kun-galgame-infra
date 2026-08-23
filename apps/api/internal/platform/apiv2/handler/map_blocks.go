@@ -175,6 +175,27 @@ func creditGroupsFrom(in []dto.PublicCreditGroup) []repr.CreditGroup {
 	return out
 }
 
+func releaseFromFeed(it dto.PublicReleaseFeedItem) repr.Release {
+	kind, ok := repr.ReleaseKindFromKey(it.Kind)
+	if !ok {
+		kind = "default"
+	}
+	plats := it.Platforms
+	if plats == nil {
+		plats = []string{}
+	}
+	var workID *string
+	if it.Work.ID > 0 {
+		s := repr.ID(it.Work.ID)
+		workID = &s
+	}
+	return repr.Release{
+		Object: "release", ID: repr.ID(it.ID), WorkID: workID, ReleaseKind: kind, Date: it.Date,
+		Title: optString(it.Title), Lang: it.Lang, Platform: it.Platform, Platforms: plats,
+		Refs: refsFrom(it.Refs),
+	}
+}
+
 func releasesFrom(in []dto.PublicRelease) []repr.Release {
 	out := make([]repr.Release, 0, len(in))
 	for _, r := range in {
