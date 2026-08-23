@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"api/internal/platform/catalog/repository"
 
@@ -142,6 +143,12 @@ func (r *runner) handle(ctx context.Context, c candidate, apply bool, delay time
 		slog.Warn("translate returned empty — refusing to write an empty machine row", "work", c.WorkID)
 		return
 	}
+	if collapsed(c.JaText, zh) {
+		r.inc(&r.stats.Collapsed)
+		slog.Warn("translation collapsed a long source into almost nothing — keeping the previous row",
+			"work", c.WorkID, "src_runes", utf8.RuneCountInString(c.JaText), "zh", zh)
+		return
+	}
 
 	rows, err := r.upsert(ctx, c, zh, hash, mtModel)
 	if err != nil {
@@ -179,4 +186,18 @@ func (r *runner) upsert(ctx context.Context, c candidate, zh, hash, mtModel stri
 		return 0, res.Error
 	}
 	return res.RowsAffected, nil
+}
+
+// Prompt rule 2 lets the model drop whole blocks that are not description, so
+// it can also drop everything. Shortness alone is not the signal — 529 machine
+// rows are legitimately under 20 characters — so the guard only fires when a
+// long source produced almost nothing, and it leaves the previous row in place
+// so the work comes back as a candidate on the next pass.
+const (
+	collapseSourceRunes = 100
+	collapseOutputRunes = 20
+)
+
+func collapsed(src, zh string) bool {
+	return utf8.RuneCountInString(src) >= collapseSourceRunes && utf8.RuneCountInString(zh) < collapseOutputRunes
 }
