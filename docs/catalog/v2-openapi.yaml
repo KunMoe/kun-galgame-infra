@@ -295,6 +295,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ListObjectProblemType"
           description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
         "500":
           content:
             application/problem+json:
@@ -315,6 +323,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ListObjectProblemReason"
           description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
         "500":
           content:
             application/problem+json:
@@ -344,6 +360,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemType"
           description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
         "404":
           content:
             application/problem+json:
@@ -356,6 +374,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
         "500":
           content:
             application/problem+json:
@@ -376,6 +400,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ListObjectVocabulary"
           description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
         "500":
           content:
             application/problem+json:
@@ -405,6 +437,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Vocabulary"
           description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
         "404":
           content:
             application/problem+json:
@@ -417,6 +451,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
         "500":
           content:
             application/problem+json:

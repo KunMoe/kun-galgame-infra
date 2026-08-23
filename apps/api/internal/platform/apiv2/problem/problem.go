@@ -139,6 +139,10 @@ func WriteFiberError(c fiber.Ctx, err error) error {
 		p = OfStatus(status, RequestID(c), Instance(c), msg)
 	}
 	c.Set("X-Request-ID", p.RequestID)
+	c.Set("Cache-Control", "no-store")
+	if p.Status == http.StatusUnauthorized {
+		c.Set("WWW-Authenticate", `Bearer realm="nextmoe", error="invalid_token"`)
+	}
 	if err := c.Status(p.Status).JSON(p); err != nil {
 		return err
 	}

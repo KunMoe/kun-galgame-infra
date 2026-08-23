@@ -144,6 +144,20 @@ func TestProblemsAndVocabularies(t *testing.T) {
 	require.NoError(t, json.Unmarshal(body, &p))
 	require.Equal(t, problem.CodeNotFound, p.Code)
 
+	status, h := func() (int, http.Header) {
+		req := httptest.NewRequest(http.MethodGet, "/v2/problems", nil)
+		resp, err := app.Test(req)
+		require.NoError(t, err)
+		return resp.StatusCode, resp.Header
+	}()
+	require.Equal(t, 200, status)
+	require.True(t, strings.HasPrefix(h.Get("X-Request-ID"), "req_"))
+	require.Equal(t, "public, max-age=300, s-maxage=1800, stale-while-revalidate=3600", h.Get("Cache-Control"))
+	require.Equal(t, "Authorization, Accept-Encoding", h.Get("Vary"))
+	require.Contains(t, h.Get("Link"), `rel="service-desc"`)
+	require.NotEmpty(t, h.Get("ETag"))
+	require.Equal(t, "*", h.Get("Access-Control-Allow-Origin"))
+
 	status, ct, body = do(t, app, http.MethodPost, "/v2/problems")
 	require.Equal(t, 405, status)
 	require.Contains(t, ct, "application/problem+json")

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/apiv2/protocol"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humafiber"
@@ -15,7 +16,15 @@ import (
 
 var installOnce sync.Once
 
+type Options struct {
+	Store protocol.Store
+}
+
 func Setup(app *fiber.App) huma.API {
+	return SetupWith(app, Options{})
+}
+
+func SetupWith(app *fiber.App, opt Options) huma.API {
 	installOnce.Do(func() {
 		prev := huma.NewErrorWithContext
 		huma.NewErrorWithContext = func(ctx huma.Context, status int, msg string, errs ...error) huma.StatusError {
@@ -29,7 +38,7 @@ func Setup(app *fiber.App) huma.API {
 		}
 	})
 
-	app.Use(v2Middleware)
+	app.Use(protocol.Middleware(opt.Store))
 
 	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0-preview")
 	cfg.OpenAPIPath = ""
@@ -54,29 +63,6 @@ func Setup(app *fiber.App) huma.API {
 	huma.NewError = prevErr
 	annotateSpec(api.OpenAPI())
 	return api
-}
-
-func v2Middleware(c fiber.Ctx) error {
-	if strings.HasPrefix(c.Path(), "/v2") {
-		_ = problem.RequestID(c)
-	}
-	err := c.Next()
-	if !strings.HasPrefix(c.Path(), "/v2") {
-		return err
-	}
-	status := c.Response().StatusCode()
-	if err != nil && status < 400 {
-		return err
-	}
-	if status < 400 {
-		return err
-	}
-	if strings.Contains(string(c.Response().Header.ContentType()), "application/problem+json") {
-		return err
-	}
-	msg := http.StatusText(status)
-	c.Response().ResetBody()
-	return problem.WriteFiberError(c, fiber.NewError(status, msg))
 }
 
 func annotateSpec(doc *huma.OpenAPI) {
@@ -131,8 +117,16 @@ func rewriteErrorResponses(path string, op *huma.Operation, problemRef *huma.Sch
 		op.Responses = map[string]*huma.Response{}
 	}
 	delete(op.Responses, "default")
+	if _, ok := op.Responses["429"]; !ok {
+		op.Responses["429"] = &huma.Response{Description: http.StatusText(http.StatusTooManyRequests)}
+	}
+	if op.Method == http.MethodGet || op.Method == http.MethodHead {
+		if _, ok := op.Responses["304"]; !ok {
+			op.Responses["304"] = &huma.Response{Description: "Not Modified. The representation is unchanged."}
+		}
+	}
 	for status, resp := range op.Responses {
-		if status == "200" || status == "201" || status == "204" {
+		if status == "200" || status == "201" || status == "204" || status == "304" {
 			continue
 		}
 		if resp == nil {

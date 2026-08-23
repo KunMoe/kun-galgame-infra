@@ -63,7 +63,7 @@ func registerMeta(api huma.API) {
 		Summary:     "List every top-level error code",
 		Description: "The closed registry of top-level error codes. Unauthenticated. This list is the machine-readable form of the same registry the problem type URIs resolve against.",
 		Tags:        tags,
-		Errors:      []int{http.StatusInternalServerError},
+		Errors:      []int{http.StatusTooManyRequests, http.StatusInternalServerError},
 	}, listProblemTypes)
 	huma.Register(api, huma.Operation{
 		OperationID: "listProblemReasons",
@@ -72,7 +72,7 @@ func registerMeta(api huma.API) {
 		Summary:     "List every field-level error reason",
 		Description: "The closed registry of field-level reasons. Unauthenticated. Values in this list never appear as top-level codes.",
 		Tags:        tags,
-		Errors:      []int{http.StatusInternalServerError},
+		Errors:      []int{http.StatusTooManyRequests, http.StatusInternalServerError},
 	}, listProblemReasons)
 	huma.Register(api, huma.Operation{
 		OperationID: "getProblemType",
@@ -81,7 +81,7 @@ func registerMeta(api huma.API) {
 		Summary:     "Get one top-level error code",
 		Description: "Returns the registry entry for one code. Unknown codes are 404 NOT_FOUND, not 422 — the path parameter is a lookup key, not a closed enum.",
 		Tags:        tags,
-		Errors:      []int{http.StatusNotFound, http.StatusInternalServerError},
+		Errors:      []int{http.StatusNotFound, http.StatusTooManyRequests, http.StatusInternalServerError},
 	}, getProblemType)
 	huma.Register(api, huma.Operation{
 		OperationID: "listVocabularies",
@@ -90,7 +90,7 @@ func registerMeta(api huma.API) {
 		Summary:     "List published vocabularies",
 		Description: "Closed vocabularies are part of the code. Open vocabularies currently publish their seed values; live distinct-from-data overlay arrives with the catalog resource wave.",
 		Tags:        tags,
-		Errors:      []int{http.StatusInternalServerError},
+		Errors:      []int{http.StatusTooManyRequests, http.StatusInternalServerError},
 	}, listVocabularies)
 	huma.Register(api, huma.Operation{
 		OperationID: "getVocabulary",
@@ -99,7 +99,7 @@ func registerMeta(api huma.API) {
 		Summary:     "Get one vocabulary",
 		Description: "Returns every published value of one vocabulary. Unknown names are 404 NOT_FOUND.",
 		Tags:        tags,
-		Errors:      []int{http.StatusNotFound, http.StatusInternalServerError},
+		Errors:      []int{http.StatusNotFound, http.StatusTooManyRequests, http.StatusInternalServerError},
 	}, getVocabulary)
 }
 

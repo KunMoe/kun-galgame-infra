@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"api/internal/platform/apiv2/problem"
@@ -16,6 +17,13 @@ func CheckG1toG5(doc *huma.OpenAPI) []string {
 	errs = append(errs, checkG3(doc)...)
 	errs = append(errs, checkG4(doc)...)
 	errs = append(errs, checkG5(doc)...)
+	return errs
+}
+
+func CheckG6G13(doc *huma.OpenAPI) []string {
+	var errs []string
+	errs = append(errs, checkG6(doc)...)
+	errs = append(errs, checkG13(doc)...)
 	return errs
 }
 
@@ -185,7 +193,7 @@ func checkG4(doc *huma.OpenAPI) []string {
 				}
 			}
 			for status, resp := range op.Responses {
-				if status == "200" || status == "201" || status == "204" || status == "default" {
+				if status == "200" || status == "201" || status == "204" || status == "304" || status == "default" {
 					continue
 				}
 				if resp == nil || resp.Content["application/problem+json"] == nil {
@@ -290,4 +298,93 @@ func opMethod(op *huma.Operation) string {
 		return op.Method
 	}
 	return "?"
+}
+
+func checkG6(doc *huma.OpenAPI) []string {
+	banned := []string{"message", "data", "success", "timestamp", "error"}
+	var errs []string
+	for path, item := range doc.Paths {
+		for _, op := range pathOps(item) {
+			for _, status := range []string{"200", "201"} {
+				resp := op.Responses[status]
+				if resp == nil {
+					continue
+				}
+				for mt, content := range resp.Content {
+					if content == nil {
+						continue
+					}
+					s := deref(doc, content.Schema)
+					if s == nil || s.Properties == nil {
+						continue
+					}
+					if objectEnumHas(s, "problem_type") || objectEnumHas(s, "problem_reason") {
+						continue
+					}
+					for _, k := range banned {
+						if _, ok := s.Properties[k]; ok {
+							errs = append(errs, fmt.Sprintf("G6: %s %s %s %s has envelope key %s", opMethod(op), path, status, mt, k))
+						}
+					}
+				}
+			}
+		}
+	}
+	return errs
+}
+
+func objectEnumHas(s *huma.Schema, val string) bool {
+	if s == nil || s.Properties == nil {
+		return false
+	}
+	obj := s.Properties["object"]
+	if obj == nil {
+		return false
+	}
+	for _, e := range obj.Enum {
+		if fmt.Sprint(e) == val {
+			return true
+		}
+	}
+	return false
+}
+
+func checkG13(doc *huma.OpenAPI) []string {
+	var errs []string
+	seen := map[string]int{}
+	uri := map[string]string{}
+	for _, d := range problem.Codes {
+		if _, ok := seen[d.Code]; ok {
+			errs = append(errs, "G13: duplicate code "+d.Code)
+		}
+		seen[d.Code] = d.Status
+		if prev, ok := uri[d.TypeURI()]; ok {
+			errs = append(errs, "G13: type URI collision "+d.TypeURI()+" for "+prev+" and "+d.Code)
+		}
+		uri[d.TypeURI()] = d.Code
+		if problem.CodeFromKebab(problem.Kebab(d.Code)) != d.Code {
+			errs = append(errs, "G13: "+d.Code+" is not bijective with its type URI")
+		}
+	}
+	for _, r := range problem.Reasons {
+		if _, ok := seen[r.Reason]; ok {
+			errs = append(errs, "G13: reason "+r.Reason+" collides with a top-level code")
+		}
+	}
+	ft := reflect.TypeOf(problem.FieldError{})
+	loc := 0
+	for i := 0; i < ft.NumField(); i++ {
+		name := strings.Split(ft.Field(i).Tag.Get("json"), ",")[0]
+		if name == "code" {
+			errs = append(errs, "G13: errors[] must not have a json field named code")
+		}
+		if name == "pointer" || name == "parameter" || name == "header" {
+			loc++
+		}
+	}
+	if loc != 3 {
+		errs = append(errs, "G13: FieldError must expose pointer, parameter, and header")
+	}
+	_ = doc
+	return errs
 }

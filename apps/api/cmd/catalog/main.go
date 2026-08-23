@@ -15,6 +15,7 @@ import (
 	searchInfra "api/internal/infrastructure/search"
 	"api/internal/middleware"
 	v2handler "api/internal/platform/apiv2/handler"
+	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/catalog/editspec"
 	catHandler "api/internal/platform/catalog/handler"
 	catalogPerm "api/internal/platform/catalog/perm"
@@ -139,7 +140,7 @@ func main() {
 
 	catHandler.SetupPlaytime(application.Fiber, service.NewUserPlaytimeService(catalogDB.DB()))
 
-	v2API := v2handler.Setup(application.Fiber)
+	v2API := v2handler.SetupWith(application.Fiber, v2handler.Options{Store: protocol.NewRedisStore(devCache)})
 	v2spec, err := json.Marshal(v2API.OpenAPI())
 	if err != nil {
 		slog.Error("marshal catalog v2 spec", "error", err)
