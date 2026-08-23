@@ -47,6 +47,8 @@ func TestContractHitsEverySpecOperation(t *testing.T) {
 			url = strings.ReplaceAll(url, "{name}", "medium")
 			url = strings.ReplaceAll(url, "{id}", "1")
 			url = strings.ReplaceAll(url, "{object}", "work")
+			url = strings.ReplaceAll(url, "{work_id}", "1")
+			url = strings.ReplaceAll(url, "{cover_id}", "1")
 			if strings.Contains(url, "{") {
 				t.Fatalf("unsubstituted path param in %s", url)
 			}
@@ -67,7 +69,7 @@ func TestContractHitsEverySpecOperation(t *testing.T) {
 				if p.Code == "" || p.Type == "" || p.Status != status {
 					t.Errorf("%s %s problem %+v", method, path, p)
 				}
-			} else if !strings.Contains(ct, "json") {
+			} else if status != http.StatusNoContent && !strings.Contains(ct, "json") {
 				t.Errorf("%s %s success content-type %q", method, path, ct)
 			}
 		}

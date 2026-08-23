@@ -457,6 +457,46 @@ components:
         - violence
         - source
       type: object
+    CoverVote:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/CoverVote.json
+          format: uri
+          readOnly: true
+          type: string
+        cover_id:
+          description: Catalog cover row id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        object:
+          description: Type discriminant. Always cover_vote.
+          enum:
+            - cover_vote
+          type: string
+          x-vocabulary-closed: true
+        vote:
+          description: Only up is stored. down is not a catalog ballot.
+          enum:
+            - up
+          type: string
+          x-vocabulary-closed: true
+        work_id:
+          description: Work the ballot is on.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+      required:
+        - object
+        - cover_id
+        - work_id
+        - vote
+      type: object
     CreditEntry:
       additionalProperties: true
       properties:
@@ -963,6 +1003,55 @@ components:
           description: Members of this page. Empty array, never null.
           items:
             $ref: "#/components/schemas/Cover"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
+    ListCoverVote:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListCoverVote.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/CoverVote"
           type: array
         missing:
           description: ids requested but not visible. Present only on the ids=/refs= batch lane.
@@ -1896,6 +1985,55 @@ components:
         - object
         - items
       type: object
+    ListUserPlaytime:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListUserPlaytime.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/UserPlaytime"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
     ListVocabulary:
       additionalProperties: true
       properties:
@@ -2709,6 +2847,44 @@ components:
         - title
         - description
       type: object
+    PutCoverVoteInputBody:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/PutCoverVoteInputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        vote:
+          description: Only up is stored.
+          enum:
+            - up
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - vote
+      type: object
+    PutPlaytimeInputBody:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/PutPlaytimeInputBody.json
+          format: uri
+          readOnly: true
+          type: string
+        minutes:
+          description: Absolute cumulative minutes.
+          format: int64
+          maximum: 60000
+          minimum: 0
+          type: integer
+      required:
+        - minutes
+      type: object
     Rating:
       additionalProperties: true
       properties:
@@ -3250,6 +3426,38 @@ components:
         - name_zh
         - vndb_tid
         - is_sexual
+      type: object
+    UserPlaytime:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/UserPlaytime.json
+          format: uri
+          readOnly: true
+          type: string
+        minutes:
+          description: Absolute cumulative minutes.
+          format: int64
+          minimum: 0
+          type: integer
+        object:
+          description: Type discriminant. Always playtime.
+          enum:
+            - playtime
+          type: string
+          x-vocabulary-closed: true
+        work_id:
+          description: Catalog work id this row is about.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+      required:
+        - object
+        - work_id
+        - minutes
       type: object
     Value:
       additionalProperties: true
@@ -8285,6 +8493,505 @@ paths:
       summary: List tags of one work
       tags:
         - catalog
+  /v2/me/cover-votes:
+    get:
+      description: Every cover the bearer has voted up. Requires a user access token.
+      operationId: listMyCoverVotes
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCoverVote"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List my cover votes
+      tags:
+        - me
+  /v2/me/cover-votes/{cover_id}:
+    delete:
+      description: 204 with no body. Requires a user access token.
+      operationId: deleteMyCoverVote
+      parameters:
+        - description: Catalog cover row id.
+          in: path
+          name: cover_id
+          required: true
+          schema:
+            description: Catalog cover row id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Withdraw a cover vote
+      tags:
+        - me
+    put:
+      description: Only vote=up is stored. One ballot per work. Requires a user access token.
+      operationId: putMyCoverVote
+      parameters:
+        - description: Catalog cover row id.
+          in: path
+          name: cover_id
+          required: true
+          schema:
+            description: Catalog cover row id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutCoverVoteInputBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoverVote"
+          description: OK
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Cast a cover vote
+      tags:
+        - me
+  /v2/me/playtimes:
+    get:
+      description: The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token.
+      operationId: listMyPlaytimes
+      parameters:
+        - description: Comma-separated work ids, max 100. Batch read, no pagination.
+          explode: false
+          in: query
+          name: work_ids
+          schema:
+            description: Comma-separated work ids, max 100. Batch read, no pagination.
+            maxLength: 4096
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListUserPlaytime"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: List my playtimes
+      tags:
+        - me
+  /v2/me/playtimes/{work_id}:
+    delete:
+      description: 204 with no body. Requires a user access token.
+      operationId: deleteMyPlaytime
+      parameters:
+        - description: Catalog work id.
+          in: path
+          name: work_id
+          required: true
+          schema:
+            description: Catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Delete my playtime on one work
+      tags:
+        - me
+    get:
+      description: 404 when the user has never reported. Requires a user access token.
+      operationId: getMyPlaytime
+      parameters:
+        - description: Catalog work id.
+          in: path
+          name: work_id
+          required: true
+          schema:
+            description: Catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPlaytime"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Get my playtime on one work
+      tags:
+        - me
+    put:
+      description: Absolute minutes. Naturally idempotent. Requires a user access token.
+      operationId: putMyPlaytime
+      parameters:
+        - description: Catalog work id.
+          in: path
+          name: work_id
+          required: true
+          schema:
+            description: Catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutPlaytimeInputBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPlaytime"
+          description: OK
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Replace my playtime on one work
+      tags:
+        - me
   /v2/news:
     get:
       description: Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are required on every item.

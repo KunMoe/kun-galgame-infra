@@ -47,6 +47,9 @@ func applyHeaders(c fiber.Ctx) {
 		return
 	}
 	path := c.Path()
+	if (strings.HasPrefix(path, "/v2/me/") || strings.HasPrefix(path, "/v2/moderation/")) && c.GetRespHeader("Cache-Control") == "" {
+		c.Set("Cache-Control", "private, no-store")
+	}
 	if isVocabPath(path) && c.GetRespHeader("Cache-Control") == "" {
 		c.Set("Cache-Control", cacheVocab)
 	}

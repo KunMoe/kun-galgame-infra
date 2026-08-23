@@ -24,6 +24,7 @@ type Options struct {
 	Works            WorksFunc
 	Catalog          *Catalog
 	LookupCredential func(ctx context.Context, rawToken string) (*devapi.Credential, error)
+	LookupUser       func(ctx context.Context, rawToken string) (uid int64, clientID string, err error)
 }
 
 func Setup(app *fiber.App) huma.API {
@@ -46,6 +47,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 
 	app.Use(protocol.Middleware(opt.Store))
 	app.Use(catalogAuth(opt.LookupCredential))
+	app.Use(userAuth(opt.LookupUser))
 
 	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0-preview")
 	cfg.OpenAPIPath = ""
@@ -63,6 +65,15 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 		if cred := devapi.CredentialFrom(fc); cred != nil && cred.NSFWAllowed {
 			ctx = huma.WithValue(ctx, "nsfw_allowed", true)
 		}
+		switch id := fc.Locals("user_id").(type) {
+		case uint:
+			ctx = huma.WithValue(ctx, ctxUserID, int64(id))
+		case int64:
+			ctx = huma.WithValue(ctx, ctxUserID, id)
+		}
+		if clientID, ok := fc.Locals("token_client_id").(string); ok {
+			ctx = huma.WithValue(ctx, ctxClientID, clientID)
+		}
 		next(ctx)
 	})
 	prevErr := huma.NewError
@@ -76,6 +87,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	registerMeta(api)
 	registerCollections(api, works)
 	registerCatalog(api, opt.Catalog)
+	registerMe(api, opt.Catalog)
 	huma.NewError = prevErr
 	annotateSpec(api.OpenAPI())
 	return api
@@ -111,6 +123,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.CompanyGraph{}, repr.CompanyGraphNode{}, repr.CompanyGraphEdge{},
 			repr.ObjectSchema{}, repr.SchemaField{},
 			repr.Person{}, repr.Trait{}, repr.Measurements{}, repr.NameCredit{}, repr.NameCreditRole{},
+			repr.UserPlaytime{}, repr.CoverVote{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}

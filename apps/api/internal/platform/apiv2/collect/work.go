@@ -113,6 +113,23 @@ func TraitSpec() Spec {
 	}
 }
 
+func PlaytimeSpec() Spec {
+	return Spec{
+		Sort:    []string{"updated"},
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "work_id", "minutes"},
+	}
+}
+
+func CoverVoteSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "cover_id", "work_id", "vote"},
+	}
+}
+
 func NameCreditSpec() Spec {
 	return Spec{
 		Include: []string{},

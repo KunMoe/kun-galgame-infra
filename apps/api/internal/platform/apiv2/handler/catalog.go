@@ -17,12 +17,14 @@ import (
 )
 
 type Catalog struct {
-	Public    *catsvc.PublicService
-	Resolve   *catsvc.ResolveService
-	StatsSvc  *catsvc.StatsService
-	News      *newssvc.PublicService
-	Searcher  *catsearch.Indexer
-	EditTypes *editing.Registry
+	Public     *catsvc.PublicService
+	Resolve    *catsvc.ResolveService
+	StatsSvc   *catsvc.StatsService
+	News       *newssvc.PublicService
+	Searcher   *catsearch.Indexer
+	EditTypes  *editing.Registry
+	Playtime   *catsvc.UserPlaytimeService
+	CoverVotes *catsvc.CoverVoteService
 }
 
 func (c *Catalog) ListWorks(ctx context.Context, q collect.Query) (repr.List[repr.Work], error) {

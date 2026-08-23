@@ -138,7 +138,8 @@ func main() {
 		"catalog": catalogPerm.Resolver,
 	}, claimSvc, readSvc)
 
-	catHandler.SetupPlaytime(application.Fiber, service.NewUserPlaytimeService(catalogDB.DB()))
+	playtimeSvc := service.NewUserPlaytimeService(catalogDB.DB())
+	catHandler.SetupPlaytime(application.Fiber, playtimeSvc)
 
 	catalogSpec, err := json.Marshal(catHandler.SetupCatalogPublicSpec(fiber.New()).OpenAPI())
 	if err != nil {
@@ -195,7 +196,7 @@ func main() {
 	adminNews.Post("/items/:id/decision", newsAdminH.Decide)
 
 	setupPublicCatalog(application, cfg, catalogDB, readSvc, resolveSvc, searcher, statsSvc,
-		clientRepo, tokenVerifier, devStore, devCache, newsSvc, editRegistry)
+		clientRepo, tokenVerifier, devStore, devCache, newsSvc, editRegistry, playtimeSvc, coverVoteSvc)
 
 	galgameapp.MountRetiredPublic(application)
 
@@ -243,6 +244,8 @@ func setupPublicCatalog(
 	devCache *cache.RedisCache,
 	newsSvc *newsService.PublicService,
 	editRegistry *editing.Registry,
+	playtimeSvc *service.UserPlaytimeService,
+	coverVoteSvc *service.CoverVoteService,
 ) {
 	oauthDB := application.DB.DB()
 
@@ -301,13 +304,22 @@ func setupPublicCatalog(
 	v2API := v2handler.SetupWith(application.Fiber, v2handler.Options{
 		Store:            protocol.NewRedisStore(devCache),
 		LookupCredential: mw.Lookup,
+		LookupUser: func(ctx context.Context, raw string) (int64, string, error) {
+			claims, err := tokenVerifier.Parse(ctx, raw)
+			if err != nil {
+				return 0, "", err
+			}
+			return int64(claims.ID), claims.ClientID, nil
+		},
 		Catalog: &v2handler.Catalog{
-			Public:    publicSvc,
-			Resolve:   resolveSvc,
-			StatsSvc:  statsSvc,
-			News:      newsSvc,
-			Searcher:  searcher,
-			EditTypes: editRegistry,
+			Public:     publicSvc,
+			Resolve:    resolveSvc,
+			StatsSvc:   statsSvc,
+			News:       newsSvc,
+			Searcher:   searcher,
+			EditTypes:  editRegistry,
+			Playtime:   playtimeSvc,
+			CoverVotes: coverVoteSvc,
 		},
 	})
 	v2spec, err := json.Marshal(v2API.OpenAPI())
