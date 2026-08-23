@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+// Cloudflare answers 524 when the origin passes its 100s cap. net/http has no
+// name for it because it is not an IANA status.
+const statusCloudflareTimeout = 524
+
 // The ladder has to outlast ONE call, not one hiccup. A gateway that queues
 // answers 429 for as long as the call ahead is still running, and a batched
 // extraction runs ~100s: the old 5/10/20/40/60 ladder spent all five retries
@@ -37,10 +41,16 @@ func (t *httpExtractor) postChat(ctx context.Context, raw []byte) ([]byte, error
 		if !retryable {
 			return nil, err
 		}
+		// Cloudflare's 524 is a duration cap, not a queue signal: the origin went
+		// past 100s, and the same call goes past it again. Waiting is the wrong
+		// answer here even though waiting is right for the 429 below. The
+		// 2026-08-23 panel run spent 42 minutes emptying the ladder into one
+		// 25-work batch and then got both halves on the first try.
+		if status == statusCloudflareTimeout {
+			return nil, fmt.Errorf("%w: %v", errBatchOversize, err)
+		}
 		// Out of retries on a failure a SMALLER call might survive, so hand it to
-		// the split retry rather than failing the whole batch. Cloudflare answers
-		// 524 once the origin passes 100s, which a 40-work extraction does often
-		// enough to cost 40 works at a time (2026-08-22 panel run).
+		// the split retry rather than failing the whole batch.
 		if attempt >= len(retryBackoff) {
 			return nil, fmt.Errorf("%w: %v", errBatchOversize, err)
 		}
