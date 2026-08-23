@@ -246,7 +246,7 @@ func TestPopularityOrdering(t *testing.T) {
 
 	reg2, err := resolveRegistry(ctx, testDB)
 	require.NoError(t, err)
-	cands, err := loadCandidates(ctx, testDB, reg2, PopulationBodyless, SourceJa, 5000, 2)
+	cands, err := loadCandidates(ctx, testDB, reg2, PopulationBodyless, SourceJa, 5000, 2, nil)
 	require.NoError(t, err)
 	require.Len(t, cands, 2, "--limit 2 keeps the two most popular")
 	assert.Equal(t, wHi, cands[0].WorkID, "9000 downloads first")
@@ -283,7 +283,7 @@ func TestClaimedPopulation(t *testing.T) {
 
 	reg2, err := resolveRegistry(ctx, testDB)
 	require.NoError(t, err)
-	cands, err := loadCandidates(ctx, testDB, reg2, PopulationClaimed, SourceJa, 5000, 0)
+	cands, err := loadCandidates(ctx, testDB, reg2, PopulationClaimed, SourceJa, 5000, 0, nil)
 	require.NoError(t, err)
 	require.Len(t, cands, 3)
 	assert.Equal(t, wA, cands[0].WorkID, "no popularity → work_id ASC")
@@ -464,7 +464,7 @@ func TestEnglishLaneIsALastResort(t *testing.T) {
 
 	reg2, err := resolveRegistry(ctx, testDB)
 	require.NoError(t, err)
-	cands, err := loadCandidates(ctx, testDB, reg2, PopulationPublished, SourceEn, 5000, 0)
+	cands, err := loadCandidates(ctx, testDB, reg2, PopulationPublished, SourceEn, 5000, 0, nil)
 	require.NoError(t, err)
 	require.Len(t, cands, 2)
 	ids := []int64{cands[0].WorkID, cands[1].WorkID}
@@ -509,7 +509,7 @@ func TestOlangGateExcludesNonJapaneseOriginals(t *testing.T) {
 
 	reg2, err := resolveRegistry(ctx, testDB)
 	require.NoError(t, err)
-	cands, err := loadCandidates(ctx, testDB, reg2, PopulationPublished, SourceJa, 0, 0)
+	cands, err := loadCandidates(ctx, testDB, reg2, PopulationPublished, SourceJa, 0, 0, nil)
 	require.NoError(t, err)
 	require.Len(t, cands, 2, "olang=ja and unset pass; a declared non-ja original is excluded")
 	ids := []int64{cands[0].WorkID, cands[1].WorkID}
