@@ -75,7 +75,7 @@ func TestContractHitsEverySpecOperation(t *testing.T) {
 func TestProblemsAndVocabularies(t *testing.T) {
 	app := testApp(t)
 
-	status, _, body := do(t, app, http.MethodGet, "/v2/problems")
+	status, _, body := do(t, app, http.MethodGet, "/v2/problems?limit=100")
 	require.Equal(t, 200, status)
 	var list struct {
 		Object string `json:"object"`
@@ -125,7 +125,7 @@ func TestProblemsAndVocabularies(t *testing.T) {
 	require.NoError(t, json.Unmarshal(body, &reasons))
 	require.Len(t, reasons.Items, len(problem.Reasons))
 
-	status, _, body = do(t, app, http.MethodGet, "/v2/vocabularies")
+	status, _, body = do(t, app, http.MethodGet, "/v2/vocabularies?limit=100")
 	require.Equal(t, 200, status)
 	var vocabs struct {
 		Items []struct {
@@ -169,6 +169,67 @@ func TestProblemsAndVocabularies(t *testing.T) {
 	require.Contains(t, ct, "application/problem+json")
 	require.NoError(t, json.Unmarshal(body, &p), string(body))
 	require.Equal(t, problem.CodeNotFound, p.Code)
+}
+
+func TestCollectionPaginationAndBatch(t *testing.T) {
+	app := testApp(t)
+
+	status, _, body := do(t, app, http.MethodGet, "/v2/problems?limit=2")
+	require.Equal(t, 200, status)
+	var page struct {
+		Items []struct {
+			Code string `json:"code"`
+		} `json:"items"`
+		NextCursor *string `json:"next_cursor"`
+		Total      *int64  `json:"total"`
+	}
+	require.NoError(t, json.Unmarshal(body, &page))
+	require.Len(t, page.Items, 2)
+	require.NotNil(t, page.NextCursor)
+	require.Nil(t, page.Total)
+
+	status, _, body = do(t, app, http.MethodGet, "/v2/problems?limit=2&cursor="+*page.NextCursor+"&include_total=true")
+	require.Equal(t, 200, status)
+	require.NoError(t, json.Unmarshal(body, &page))
+	require.Len(t, page.Items, 2)
+	require.NotNil(t, page.Total)
+	require.Equal(t, int64(len(problem.Codes)), *page.Total)
+
+	status, ct, body := do(t, app, http.MethodGet, "/v2/problems?limit=101")
+	require.Equal(t, 400, status)
+	require.Contains(t, ct, "application/problem+json")
+	var p problem.Problem
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeLimitTooLarge, p.Code)
+
+	status, _, body = do(t, app, http.MethodGet, "/v2/vocabularies?ids=medium,nope")
+	require.Equal(t, 200, status)
+	var batch struct {
+		Items []struct {
+			Name string `json:"name"`
+		} `json:"items"`
+		Missing []string `json:"missing"`
+	}
+	require.NoError(t, json.Unmarshal(body, &batch))
+	require.Len(t, batch.Items, 1)
+	require.Equal(t, "medium", batch.Items[0].Name)
+	require.Equal(t, []string{"nope"}, batch.Missing)
+}
+
+func TestWorksRequiresCredential(t *testing.T) {
+	app := testApp(t)
+	status, ct, body := do(t, app, http.MethodGet, "/v2/catalog/works")
+	require.Equal(t, 401, status)
+	require.Contains(t, ct, "application/problem+json")
+	var p problem.Problem
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeMissingCredential, p.Code)
+
+	req := httptest.NewRequest(http.MethodGet, "/v2/catalog/works?limit=101", nil)
+	req.Header.Set("Authorization", "Bearer test")
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	require.Equal(t, 400, resp.StatusCode)
 }
 
 func itoa(n int) string {

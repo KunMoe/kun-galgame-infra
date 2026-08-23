@@ -35,9 +35,6 @@ type problemReason struct {
 	Description string   `json:"description" maxLength:"512" doc:"English prose. Must not be used as a discriminant."`
 }
 
-type listProblemsOutput struct {
-	Body listObject[problemType]
-}
 type getProblemInput struct {
 	Code string `path:"code" maxLength:"63" pattern:"^[A-Z][A-Z0-9_]*[A-Z0-9]$" doc:"Top-level error code from the registry (UPPER_SNAKE)."`
 }
@@ -46,9 +43,6 @@ type getProblemOutput struct {
 }
 type listReasonsOutput struct {
 	Body listObject[problemReason]
-}
-type listVocabOutput struct {
-	Body listObject[vocab.Vocabulary]
 }
 type getVocabInput struct {
 	Name string `path:"name" maxLength:"63" pattern:"^[a-z][a-z0-9_]*$" doc:"Vocabulary name. The path segment of /v2/vocabularies/{name}."`
@@ -59,15 +53,6 @@ type getVocabOutput struct {
 
 func registerMeta(api huma.API) {
 	tags := []string{"meta"}
-	huma.Register(api, huma.Operation{
-		OperationID: "listProblemTypes",
-		Method:      http.MethodGet,
-		Path:        "/v2/problems",
-		Summary:     "List every top-level error code",
-		Description: "The closed registry of top-level error codes. Unauthenticated. This list is the machine-readable form of the same registry the problem type URIs resolve against.",
-		Tags:        tags,
-		Errors:      []int{http.StatusTooManyRequests, http.StatusInternalServerError},
-	}, listProblemTypes)
 	huma.Register(api, huma.Operation{
 		OperationID: "listProblemReasons",
 		Method:      http.MethodGet,
@@ -87,15 +72,6 @@ func registerMeta(api huma.API) {
 		Errors:      []int{http.StatusNotFound, http.StatusTooManyRequests, http.StatusInternalServerError},
 	}, getProblemType)
 	huma.Register(api, huma.Operation{
-		OperationID: "listVocabularies",
-		Method:      http.MethodGet,
-		Path:        "/v2/vocabularies",
-		Summary:     "List published vocabularies",
-		Description: "Closed vocabularies are part of the code. Open vocabularies currently publish their seed values; live distinct-from-data overlay arrives with the catalog resource wave.",
-		Tags:        tags,
-		Errors:      []int{http.StatusTooManyRequests, http.StatusInternalServerError},
-	}, listVocabularies)
-	huma.Register(api, huma.Operation{
 		OperationID: "getVocabulary",
 		Method:      http.MethodGet,
 		Path:        "/v2/vocabularies/{name}",
@@ -104,14 +80,6 @@ func registerMeta(api huma.API) {
 		Tags:        tags,
 		Errors:      []int{http.StatusNotFound, http.StatusTooManyRequests, http.StatusInternalServerError},
 	}, getVocabulary)
-}
-
-func listProblemTypes(ctx context.Context, _ *struct{}) (*listProblemsOutput, error) {
-	items := make([]problemType, 0, len(problem.Codes))
-	for _, d := range problem.Codes {
-		items = append(items, problemTypeFrom(d))
-	}
-	return &listProblemsOutput{Body: listObject[problemType]{Object: "list", Items: items}}, nil
 }
 
 func listProblemReasons(ctx context.Context, _ *struct{}) (*listReasonsOutput, error) {
@@ -131,14 +99,6 @@ func getProblemType(ctx context.Context, in *getProblemInput) (*getProblemOutput
 		return nil, problem.New(problem.CodeNotFound, id, inst, "No problem type named "+in.Code+".")
 	}
 	return &getProblemOutput{Body: problemTypeFrom(d)}, nil
-}
-
-func listVocabularies(ctx context.Context, _ *struct{}) (*listVocabOutput, error) {
-	items := vocab.All()
-	if items == nil {
-		items = []vocab.Vocabulary{}
-	}
-	return &listVocabOutput{Body: listObject[vocab.Vocabulary]{Object: "list", Items: items}}, nil
 }
 
 func getVocabulary(ctx context.Context, in *getVocabInput) (*getVocabOutput, error) {

@@ -19,6 +19,7 @@ var installOnce sync.Once
 
 type Options struct {
 	Store protocol.Store
+	Works WorksFunc
 }
 
 func Setup(app *fiber.App) huma.API {
@@ -40,6 +41,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	})
 
 	app.Use(protocol.Middleware(opt.Store))
+	app.Use(catalogAuth)
 
 	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0-preview")
 	cfg.OpenAPIPath = ""
@@ -61,6 +63,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 		return problem.FromHuma(nil, status, msg, errs...)
 	}
 	registerMeta(api)
+	registerCollections(api, opt.Works)
 	huma.NewError = prevErr
 	annotateSpec(api.OpenAPI())
 	return api
@@ -85,7 +88,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 		for _, v := range []any{
 			repr.Image{}, repr.Cover{}, repr.Names{}, repr.LocalizedText{},
 			repr.WorkTitle{}, repr.EntityName{}, repr.Intro{}, repr.Ref{},
-			repr.Claim{}, repr.Work{},
+			repr.Claim{}, repr.Work{}, repr.FacetValue{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}

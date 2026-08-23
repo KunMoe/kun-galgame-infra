@@ -15,12 +15,20 @@ type Claim struct {
 }
 
 type List[T any] struct {
-	_          struct{}  `json:"-" additionalProperties:"true"`
-	Object     string    `json:"object" enum:"list" doc:"Type discriminant. Always list."`
-	Items      []T       `json:"items" doc:"Members of this page. Empty array, never null."`
-	NextCursor *string   `json:"next_cursor,omitempty" pattern:"^cur_[A-Za-z0-9._~-]+$" maxLength:"512" doc:"Opaque keyset cursor. Omitted on the last page."`
-	Total      *int64    `json:"total,omitempty" minimum:"0" doc:"Present only when include_total=true. Same visibility gate as items."`
-	Missing    *[]string `json:"missing,omitempty" doc:"ids requested but not visible. Present only on the ids=/refs= batch lane."`
+	_          struct{}                 `json:"-" additionalProperties:"true"`
+	Object     string                   `json:"object" enum:"list" doc:"Type discriminant. Always list."`
+	Items      []T                      `json:"items" doc:"Members of this page. Empty array, never null."`
+	NextCursor *string                  `json:"next_cursor,omitempty" pattern:"^cur_[A-Za-z0-9._~-]+$" maxLength:"512" doc:"Opaque keyset cursor. Omitted on the last page."`
+	Total      *int64                   `json:"total,omitempty" minimum:"0" doc:"Present only when include_total=true. Same visibility gate as items."`
+	Missing    *[]string                `json:"missing,omitempty" doc:"ids requested but not visible. Present only on the ids=/refs= batch lane."`
+	Facets     *map[string][]FacetValue `json:"facets,omitempty" doc:"Named facet buckets. Present only when facets= is requested."`
+}
+
+type FacetValue struct {
+	_           struct{} `json:"-" additionalProperties:"true"`
+	Value       string   `json:"value" maxLength:"256" doc:"Token to pass back to the same filter. Must not be used as a discriminant."`
+	DisplayName string   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
+	Count       int      `json:"count" minimum:"0" doc:"Hits in this bucket after the same filters as items."`
 }
 
 func NewList[T any](items []T, nextCursor *string) List[T] {
