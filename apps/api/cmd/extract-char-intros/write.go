@@ -34,7 +34,6 @@ type stats struct {
 	RefusedShort       int
 	RefusedNameAbsent  int
 	UnmatchedName      int
-	RefusedKanaBack    int
 	CallErrors         int
 	Touched            int
 	PanelAdopted       int
@@ -109,17 +108,6 @@ func (w *writer) gate(cand candidateWork, found map[string]string, mtModel strin
 		}
 		g := gated{WorkID: cand.WorkID, Target: target, Passage: passage, SrcHash: srcHash, MTModel: mtModel}
 		if target.Incumbent != "" && w.judge != nil {
-			// The panel scores 介绍性/信息量/通顺中文 and gives kana no weight at
-			// all, so it will happily adopt a better-written excerpt that puts kana
-			// names back into a clean incumbent — the exact complaint this wave
-			// exists to fix. 3 of the first 24 adoptions on 2026-08-22 did that,
-			// against 2 that fixed one. Refuse the regression before it costs votes.
-			if hasBareKana(passage) && !hasBareKana(target.Incumbent) {
-				w.st.RefusedKanaBack++
-				slog.Warn("excerpt would put kana names back into a clean intro", "work", cand.WorkID,
-					"character", target.CharacterID, "name", name)
-				continue
-			}
 			contested = append(contested, g)
 			continue
 		}
@@ -352,15 +340,6 @@ func nameAppears(intro string, target rosterChar) bool {
 }
 
 var parenSpan = regexp.MustCompile(`[（(][^）)]*[）)]`)
-
-var bareKana = regexp.MustCompile(`[ぁ-ゖァ-ヺ]{2,}`)
-
-// hasBareKana reports whether kana survive OUTSIDE parentheses. Parenthesised
-// readings are legitimate in a Chinese intro (藤宫晴真（ふじみや はるま）); kana
-// in the running text is an untranslated name.
-func hasBareKana(s string) bool {
-	return bareKana.MatchString(parenSpan.ReplaceAllString(s, ""))
-}
 
 // looksJapanese refuses a passage that is Japanese prose rather than Chinese.
 // A zh-Hans work intro can still carry untranslated Japanese, and the verbatim
