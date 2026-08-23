@@ -7,6 +7,14 @@ type UserPlaytime struct {
 	Minutes int      `json:"minutes" minimum:"0" doc:"Absolute cumulative minutes."`
 }
 
+type ClaimRecord struct {
+	_           struct{} `json:"-" additionalProperties:"true"`
+	Object      string   `json:"object" enum:"claim" doc:"Type discriminant. Always claim."`
+	ID          string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog work id this claim is on."`
+	State       string   `json:"state" enum:"live,draft,pending,declined,hidden" doc:"Claim lifecycle state."`
+	DisplayName string   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
+}
+
 type CoverVote struct {
 	_       struct{} `json:"-" additionalProperties:"true"`
 	Object  string   `json:"object" enum:"cover_vote" doc:"Type discriminant. Always cover_vote."`

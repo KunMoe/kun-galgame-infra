@@ -130,6 +130,14 @@ func CoverVoteSpec() Spec {
 	}
 }
 
+func ClaimSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "state", "display_name"},
+	}
+}
+
 func NameCreditSpec() Spec {
 	return Spec{
 		Include: []string{},

@@ -83,6 +83,16 @@ func registerMe(api huma.API, cat *Catalog) {
 		Tags: me, Errors: errs, SkipValidateParams: true,
 	}, putMyCoverVote(cat))
 	huma.Register(api, huma.Operation{
+		OperationID: "listMyClaims", Method: http.MethodGet, Path: "/v2/me/claims",
+		Summary: "List my claims", Description: "Claims the bearer submitted. Requires a user access token.",
+		Tags: me, Errors: errs, SkipValidateParams: true,
+	}, listMyClaims(cat))
+	huma.Register(api, huma.Operation{
+		OperationID: "listModerationClaims", Method: http.MethodGet, Path: "/v2/moderation/claims",
+		Summary: "Moderation claim queue", Description: "Pending claims. Requires a user access token with review authority.",
+		Tags: []string{"moderation"}, Errors: errs, SkipValidateParams: true,
+	}, listModerationClaims(cat))
+	huma.Register(api, huma.Operation{
 		OperationID: "deleteMyCoverVote", Method: http.MethodDelete, Path: "/v2/me/cover-votes/{cover_id}",
 		Summary: "Withdraw a cover vote", Description: "204 with no body. Requires a user access token.",
 		Tags: me, Errors: errs, DefaultStatus: http.StatusNoContent, SkipValidateParams: true,
@@ -196,6 +206,38 @@ func deleteMyCoverVote(cat *Catalog) func(context.Context, *deleteCoverVoteInput
 			return nil, catalogErr(ctx, err)
 		}
 		return &struct{}{}, nil
+	}
+}
+
+type listClaimsOutput struct {
+	Body repr.List[repr.ClaimRecord]
+}
+
+func listMyClaims(cat *Catalog) func(context.Context, *collectionInput) (*listClaimsOutput, error) {
+	return func(ctx context.Context, in *collectionInput) (*listClaimsOutput, error) {
+		q, err := parseCatalogList(ctx, in, collect.ClaimSpec())
+		if err != nil {
+			return nil, err
+		}
+		page, lerr := cat.ListMyClaims(ctx, q)
+		if lerr != nil {
+			return nil, catalogErr(ctx, lerr)
+		}
+		return &listClaimsOutput{Body: page}, nil
+	}
+}
+
+func listModerationClaims(cat *Catalog) func(context.Context, *collectionInput) (*listClaimsOutput, error) {
+	return func(ctx context.Context, in *collectionInput) (*listClaimsOutput, error) {
+		q, err := parseCatalogList(ctx, in, collect.ClaimSpec())
+		if err != nil {
+			return nil, err
+		}
+		page, lerr := cat.ListModerationClaims(ctx, q)
+		if lerr != nil {
+			return nil, catalogErr(ctx, lerr)
+		}
+		return &listClaimsOutput{Body: page}, nil
 	}
 }
 

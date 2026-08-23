@@ -42,6 +42,15 @@ func TestPlaytimeUnboundWithUser(t *testing.T) {
 	}
 }
 
+func TestClaimsUnbound(t *testing.T) {
+	ctx := contextWithUser(t.Context(), 7, "client-a")
+	_, err := (*Catalog)(nil).ListMyClaims(ctx, collect.Query{})
+	p, ok := err.(*problem.Problem)
+	if !ok || p.Code != problem.CodeServiceUnavailable {
+		t.Fatalf("%v", err)
+	}
+}
+
 func TestCoverVoteUnbound(t *testing.T) {
 	ctx := contextWithUser(t.Context(), 7, "client-a")
 	_, err := (*Catalog)(nil).ListCoverVotes(ctx)

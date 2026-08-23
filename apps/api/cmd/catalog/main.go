@@ -196,7 +196,7 @@ func main() {
 	adminNews.Post("/items/:id/decision", newsAdminH.Decide)
 
 	setupPublicCatalog(application, cfg, catalogDB, readSvc, resolveSvc, searcher, statsSvc,
-		clientRepo, tokenVerifier, devStore, devCache, newsSvc, editRegistry, playtimeSvc, coverVoteSvc)
+		clientRepo, tokenVerifier, devStore, devCache, newsSvc, editRegistry, playtimeSvc, coverVoteSvc, claimSvc)
 
 	galgameapp.MountRetiredPublic(application)
 
@@ -246,6 +246,7 @@ func setupPublicCatalog(
 	editRegistry *editing.Registry,
 	playtimeSvc *service.UserPlaytimeService,
 	coverVoteSvc *service.CoverVoteService,
+	claimSvc *service.ClaimLifecycleService,
 ) {
 	oauthDB := application.DB.DB()
 
@@ -320,6 +321,7 @@ func setupPublicCatalog(
 			EditTypes:  editRegistry,
 			Playtime:   playtimeSvc,
 			CoverVotes: coverVoteSvc,
+			Claims:     claimSvc,
 		},
 	})
 	v2spec, err := json.Marshal(v2API.OpenAPI())
