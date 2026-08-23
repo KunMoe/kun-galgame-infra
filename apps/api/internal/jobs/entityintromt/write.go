@@ -23,12 +23,14 @@ const (
 	decSkipSame
 )
 
-func decide(c candidate) (decision, string) {
+// force exists because the prompt is not part of the hash: after a prompt
+// rewrite every row still hashes as current, so nothing would be redone.
+func decide(c candidate, force bool) (decision, string) {
 	hash := hashCandidate(c.Text, c.Gloss)
 	if c.MZhID == nil {
 		return decInsert, hash
 	}
-	if c.MZhSrcHash != nil && *c.MZhSrcHash == hash {
+	if !force && c.MZhSrcHash != nil && *c.MZhSrcHash == hash {
 		return decSkipSame, hash
 	}
 	return decRetrans, hash
@@ -50,6 +52,7 @@ type runner struct {
 	db      *gorm.DB
 	tr      Translator
 	lane    laneDef
+	force   bool
 	stats   *LaneStats
 	mu      sync.Mutex
 	touched []int64
@@ -135,7 +138,7 @@ func (r *runner) handle(ctx context.Context, c candidate, apply bool, delay time
 		r.inc(&r.stats.SkipShortSource)
 		return
 	}
-	dec, hash := decide(c)
+	dec, hash := decide(c, r.force)
 	switch dec {
 	case decSkipSame:
 		r.inc(&r.stats.SkipUnchanged)
