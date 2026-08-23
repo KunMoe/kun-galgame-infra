@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/devapi"
 
 	"github.com/gofiber/fiber/v3"
@@ -15,6 +16,8 @@ type ctxKey string
 const (
 	ctxUserID   ctxKey = "v2_user_id"
 	ctxClientID ctxKey = "v2_client_id"
+	ctxSite     ctxKey = "v2_catalog_site"
+	ctxRoles    ctxKey = "v2_user_roles"
 )
 
 func userIDFrom(ctx context.Context) int64 {
@@ -39,7 +42,37 @@ func requireUser(ctx context.Context) (int64, string, error) {
 	return uid, client, nil
 }
 
-func userAuth(lookup func(context.Context, string) (int64, string, error)) fiber.Handler {
+func siteFrom(ctx context.Context) string {
+	v, _ := ctx.Value(ctxSite).(string)
+	return v
+}
+
+func rolesFrom(ctx context.Context) []string {
+	v, _ := ctx.Value(ctxRoles).([]string)
+	return v
+}
+
+func requireSite(ctx context.Context) (string, error) {
+	site := siteFrom(ctx)
+	if site == "" {
+		return "", problem.New(problem.CodeSiteNotBound, "", "", "the access token's client is not bound to a catalog site.")
+	}
+	return site, nil
+}
+
+func requireIfMatch(header, etag string) error {
+	if strings.TrimSpace(header) == "" {
+		p := problem.New(problem.CodePreconditionRequired, "", "", "this operation requires If-Match.")
+		p.Errors = []problem.FieldError{{Header: "If-Match", Reason: problem.ReasonRequired, Detail: "send the current ETag"}}
+		return p
+	}
+	if !protocol.IfMatch(header, etag) {
+		return problem.New(problem.CodePreconditionFailed, "", "", "If-Match did not match the current representation.")
+	}
+	return nil
+}
+
+func userAuth(lookup func(context.Context, string) (int64, string, error), lookupSite func(context.Context, string) (string, error)) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		path := c.Path()
 		if !strings.HasPrefix(path, "/v2/me/") && !strings.HasPrefix(path, "/v2/moderation/") {
@@ -76,6 +109,11 @@ func userAuth(lookup func(context.Context, string) (int64, string, error)) fiber
 			}
 			c.Locals("user_id", uid)
 			c.Locals("token_client_id", clientID)
+			if lookupSite != nil && clientID != "" {
+				if site, serr := lookupSite(c.Context(), clientID); serr == nil && site != "" {
+					c.Locals("catalog_site", site)
+				}
+			}
 		}
 		return c.Next()
 	}

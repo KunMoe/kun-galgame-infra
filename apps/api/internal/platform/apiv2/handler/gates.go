@@ -193,7 +193,7 @@ func checkG4(doc *huma.OpenAPI) []string {
 				}
 			}
 			for status, resp := range op.Responses {
-				if status == "200" || status == "201" || status == "204" || status == "304" || status == "default" {
+				if status == "200" || status == "201" || status == "204" || status == "207" || status == "304" || status == "default" {
 					continue
 				}
 				if resp == nil || resp.Content["application/problem+json"] == nil {

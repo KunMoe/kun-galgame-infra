@@ -42,6 +42,23 @@ func TestPlaytimeUnboundWithUser(t *testing.T) {
 	}
 }
 
+func TestWriteOpsUnbound(t *testing.T) {
+	ctx := contextWithUser(t.Context(), 7, "client-a")
+	ctx = context.WithValue(ctx, ctxSite, "kungal")
+	_, err := (*Catalog)(nil).CreateProposal(ctx, "catalog.work", "1", map[string]any{"catalog.work.display_name": "x"}, "")
+	p, ok := err.(*problem.Problem)
+	if !ok || p.Code != problem.CodeServiceUnavailable {
+		t.Fatalf("proposal %v", err)
+	}
+	if err := requireIfMatch("", `"x"`); err == nil {
+		t.Fatal("empty If-Match")
+	}
+	p, ok = requireIfMatch("", `"x"`).(*problem.Problem)
+	if !ok || p.Code != problem.CodePreconditionRequired {
+		t.Fatalf("if-match %v", err)
+	}
+}
+
 func TestClaimsUnbound(t *testing.T) {
 	ctx := contextWithUser(t.Context(), 7, "client-a")
 	_, err := (*Catalog)(nil).ListMyClaims(ctx, collect.Query{})

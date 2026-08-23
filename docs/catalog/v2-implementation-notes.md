@@ -9,8 +9,10 @@ Date: 2026-08-23. Branch: `v2-stage0`. No push (deploy is automatic).
 - Protocol, problems, vocabularies, collection contract, repr types, CI gates G1–G16.
 - Catalog read: works (list/detail/12 subs), companies+graph, tags, series, engines, releases, characters, credit-names, persons, traits, search, calendar, changes, redirects, stats, schemas/{object}, news.
 - Character `view=full` carries D30 attributes (`gender`, `birthday` as `MM-DD`, measurements, `blood_type` as `a|b|ab|o`, `instance_of_id`). `description` / `extra` / `field_provenance` stay out, as D30.
-- `/v2/me/playtimes` GET/PUT/DELETE and `/v2/me/cover-votes` GET/PUT/DELETE.
-- `/v2/me/claims` and `/v2/moderation/claims` list (pending queue). User token, not application key.
+- `/v2/me/playtimes` GET/PUT/DELETE and POST 207 batch; `/v2/me/cover-votes` GET/PUT/DELETE.
+- `/v2/me/claims` list/create/get/withdraw; `/v2/me/proposals` list/create/get/patch/amend.
+- `/v2/moderation/claims` queue + decisions; `/v2/moderation/proposals` queue + decisions; reverts; snapshots.
+- User token on `/v2/me` and `/v2/moderation`, not an application key; `private, no-store`.
 
 ## Spec deviations (with reason)
 
@@ -32,23 +34,27 @@ Date: 2026-08-23. Branch: `v2-stage0`. No push (deploy is automatic).
 
 9. **`blood_type` public tokens are lowercase** (`a|b|ab|o`) per 04-representation. D30's table wrote `A|B|AB|O` as domain letters; the editing engine stores int16. Public JSON follows 04.
 
-## Not mounted yet (Stage 6 remainder)
+## Stage 6 write (mounted 2026-08-23)
 
-These have v1 backends; they need a v2 handler reshape, not new tables:
+| Route | Bind |
+|---|---|
+| `POST /v2/me/playtimes` | 207 list of playtime-or-problem items |
+| `POST /v2/me/claims` | `work_id` → `Act(claim)`; else `SubmitWork` (needs `display_name` to mint) |
+| `GET/PATCH /v2/me/claims/{id}` | `{id}` is catalog work id. PATCH `{state:withdrawn}` + If-Match |
+| `GET/POST /v2/me/proposals` | `editing.Engine` |
+| `GET/PATCH /v2/me/proposals/{id}` | PATCH withdraw or amend; If-Match |
+| `POST /v2/me/proposals/{id}/amendments` | `AmendProposal` + If-Match |
+| `POST /v2/moderation/claims/{id}/decisions` | approve/decline + If-Match |
+| `GET /v2/moderation/proposals` | open proposals, site-fenced when the token client has a catalog site |
+| `POST /v2/moderation/proposals/{id}/decisions` | merge/decline + If-Match |
+| `POST /v2/moderation/reverts` | `revision_id` loads `edit_revision` then `Revert` |
+| `GET /v2/moderation/snapshots/{object}/{id}` | `CurrentSnapshot` |
 
-| Spec route | Backend | Blocker |
-|---|---|---|
-| `POST /v2/me/playtimes` 207 batch | `UserPlaytimeService.Report` per item | 207 Multi-Status + per-item problem objects |
-| `POST /v2/me/claims` | `SubmitWork` | Body reshape (`work_id`/`refs`/`content_limit` vs v1 `fields`) |
-| `GET/PATCH /v2/me/claims/{id}` | `Act` + work row | `{id}` is catalog work id; GET has no dedicated method |
-| `GET/POST /v2/me/proposals*` | `editing.Engine` | Need Engine on `Catalog`; PATCH folds withdraw+amend |
-| `POST /v2/me/proposals/{id}/amendments` | `AmendProposal` | Direct |
-| `GET /v2/moderation/claims/{id}` | work + pending state | No GetClaim |
-| `POST /v2/moderation/claims/{id}/decisions` | `Act` approve/decline | If-Match required (428); decline needs reason |
-| `GET /v2/moderation/proposals` | `ListProposalsWithTotal` | Site + review perm |
-| `POST /v2/moderation/proposals/{id}/decisions` | `MergeProposal` / `DeclineProposal` | If-Match |
-| `POST /v2/moderation/reverts` | `Engine.Revert` | Spec `{revision_id}` vs engine `(type,id,seq)` |
-| `GET /v2/moderation/snapshots/{object}/{id}` | `CurrentSnapshot` | Direct |
+Still missing vs 03/06:
+
+- `GET /v2/moderation/claims/{id}` as its own read (queue list exists)
+- Claim POST `refs` as source:external_id (SubmitWork anchors are URL `links`, not v2 refs)
+- Per-field `HasPerm` depends on JWT `roles`; a token without catalog edit perms will 403 `PERMISSION_REQUIRED` on propose/review — same as v1, not a new identity system.
 
 ## Stage 7–10 (not this repo's HTTP surface)
 

@@ -28,6 +28,7 @@ type UserClaimQuery struct {
 	Site        string
 	ClaimStates []string
 	Before      int64
+	WorkID      int64
 	Limit       int
 	// Kind narrows which events qualify the actor: "submitted" keeps only the
 	// works the actor owns (their own submissions), "audited" keeps only the
@@ -54,6 +55,10 @@ func (s *ClaimLifecycleService) ClaimsByActor(ctx context.Context, q UserClaimQu
 	case "audited":
 		ownerGate = " AND w.owner_user_id IS DISTINCT FROM ?"
 		ownerArgs = []any{q.ActorUID}
+	}
+	if q.WorkID > 0 {
+		ownerGate += " AND w.id = ?"
+		ownerArgs = append(ownerArgs, q.WorkID)
 	}
 
 	const from = `

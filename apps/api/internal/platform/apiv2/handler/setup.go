@@ -25,6 +25,7 @@ type Options struct {
 	Catalog          *Catalog
 	LookupCredential func(ctx context.Context, rawToken string) (*devapi.Credential, error)
 	LookupUser       func(ctx context.Context, rawToken string) (uid int64, clientID string, err error)
+	LookupSite       func(ctx context.Context, clientID string) (string, error)
 }
 
 func Setup(app *fiber.App) huma.API {
@@ -47,7 +48,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 
 	app.Use(protocol.Middleware(opt.Store))
 	app.Use(catalogAuth(opt.LookupCredential))
-	app.Use(userAuth(opt.LookupUser))
+	app.Use(userAuth(opt.LookupUser, opt.LookupSite))
 
 	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0-preview")
 	cfg.OpenAPIPath = ""
@@ -74,6 +75,12 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 		if clientID, ok := fc.Locals("token_client_id").(string); ok {
 			ctx = huma.WithValue(ctx, ctxClientID, clientID)
 		}
+		if site, ok := fc.Locals("catalog_site").(string); ok {
+			ctx = huma.WithValue(ctx, ctxSite, site)
+		}
+		if roles, ok := fc.Locals("user_roles").([]string); ok {
+			ctx = huma.WithValue(ctx, ctxRoles, roles)
+		}
 		next(ctx)
 	})
 	prevErr := huma.NewError
@@ -88,6 +95,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	registerCollections(api, works)
 	registerCatalog(api, opt.Catalog)
 	registerMe(api, opt.Catalog)
+	registerMeWrite(api, opt.Catalog)
 	huma.NewError = prevErr
 	annotateSpec(api.OpenAPI())
 	return api
@@ -124,6 +132,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.ObjectSchema{}, repr.SchemaField{},
 			repr.Person{}, repr.Trait{}, repr.Measurements{}, repr.NameCredit{}, repr.NameCreditRole{},
 			repr.UserPlaytime{}, repr.CoverVote{}, repr.ClaimRecord{},
+			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.DecisionRecord{}, repr.SnapshotRecord{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}
@@ -174,7 +183,7 @@ func rewriteErrorResponses(path string, op *huma.Operation, problemRef *huma.Sch
 		}
 	}
 	for status, resp := range op.Responses {
-		if status == "200" || status == "201" || status == "204" || status == "304" {
+		if status == "200" || status == "201" || status == "204" || status == "207" || status == "304" {
 			continue
 		}
 		if resp == nil {

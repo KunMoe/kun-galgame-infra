@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -119,6 +120,37 @@ func (c *Catalog) DeletePlaytime(ctx context.Context, workID int64) error {
 		return err
 	}
 	return playtimeErr(c.Playtime.DeleteMine(ctx, uid, workID))
+}
+
+func (c *Catalog) BatchPlaytimes(ctx context.Context, items []struct {
+	WorkID  string
+	Minutes int
+}) (repr.List[repr.PlaytimeBatchItem], error) {
+	out := make([]repr.PlaytimeBatchItem, 0, len(items))
+	if len(items) > 100 {
+		return repr.List[repr.PlaytimeBatchItem]{}, problem.New(problem.CodeTooManyIDs, "", "", "batch playtimes named more than 100 items.")
+	}
+	for i, it := range items {
+		id, ok := repr.ParseID(it.WorkID)
+		if !ok {
+			p := problem.New(problem.CodeValidationFailed, "", "", "work_id must be a decimal catalog id.")
+			p.Errors = []problem.FieldError{{Pointer: fmt.Sprintf("/items/%d/work_id", i), Reason: problem.ReasonInvalidFormat, Detail: it.WorkID}}
+			out = append(out, repr.PlaytimeBatchItem{Status: 422, Problem: p})
+			continue
+		}
+		rec, err := c.PutPlaytime(ctx, id, it.Minutes)
+		if err != nil {
+			p, ok := err.(*problem.Problem)
+			if !ok {
+				p = problem.New(problem.CodeInternalError, "", "", err.Error())
+			}
+			out = append(out, repr.PlaytimeBatchItem{Status: p.Status, Problem: p})
+			continue
+		}
+		obj, wid, min := "playtime", rec.WorkID, rec.Minutes
+		out = append(out, repr.PlaytimeBatchItem{Status: 200, Object: &obj, WorkID: &wid, Minutes: &min})
+	}
+	return repr.NewList(out, nil), nil
 }
 
 func playtimeErr(err error) error {

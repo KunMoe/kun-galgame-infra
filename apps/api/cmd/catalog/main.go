@@ -196,7 +196,7 @@ func main() {
 	adminNews.Post("/items/:id/decision", newsAdminH.Decide)
 
 	setupPublicCatalog(application, cfg, catalogDB, readSvc, resolveSvc, searcher, statsSvc,
-		clientRepo, tokenVerifier, devStore, devCache, newsSvc, editRegistry, playtimeSvc, coverVoteSvc, claimSvc)
+		clientRepo, tokenVerifier, devStore, devCache, newsSvc, editRegistry, playtimeSvc, coverVoteSvc, claimSvc, editEngine)
 
 	galgameapp.MountRetiredPublic(application)
 
@@ -247,6 +247,7 @@ func setupPublicCatalog(
 	playtimeSvc *service.UserPlaytimeService,
 	coverVoteSvc *service.CoverVoteService,
 	claimSvc *service.ClaimLifecycleService,
+	editEngine *editing.Engine,
 ) {
 	oauthDB := application.DB.DB()
 
@@ -312,6 +313,13 @@ func setupPublicCatalog(
 			}
 			return int64(claims.ID), claims.ClientID, nil
 		},
+		LookupSite: func(ctx context.Context, clientID string) (string, error) {
+			cl, err := clientRepo.FindByClientID(ctx, clientID)
+			if err != nil || cl == nil {
+				return "", err
+			}
+			return cl.CatalogSite, nil
+		},
 		Catalog: &v2handler.Catalog{
 			Public:     publicSvc,
 			Resolve:    resolveSvc,
@@ -322,6 +330,7 @@ func setupPublicCatalog(
 			Playtime:   playtimeSvc,
 			CoverVotes: coverVoteSvc,
 			Claims:     claimSvc,
+			Engine:     editEngine,
 		},
 	})
 	v2spec, err := json.Marshal(v2API.OpenAPI())

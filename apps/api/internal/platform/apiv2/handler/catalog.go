@@ -26,6 +26,7 @@ type Catalog struct {
 	Playtime   *catsvc.UserPlaytimeService
 	CoverVotes *catsvc.CoverVoteService
 	Claims     *catsvc.ClaimLifecycleService
+	Engine     *editing.Engine
 }
 
 func (c *Catalog) ListWorks(ctx context.Context, q collect.Query) (repr.List[repr.Work], error) {
