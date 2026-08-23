@@ -44,6 +44,7 @@ type Stats struct {
 	Inserted         int
 	Retranslated     int
 	Refused          int
+	Collapsed        int
 	Errors           int
 
 	Samples []Sample
@@ -108,7 +109,7 @@ func Run(ctx context.Context, tr Translator, opts Opts) (*Stats, error) {
 		"candidates", st.Candidates, "with_glossary", st.WithGlossary, "would_insert", st.WouldInsert,
 		"would_retranslate", st.WouldRetranslate, "skip_unchanged", st.SkipUnchanged,
 		"inserted", st.Inserted, "retranslated", st.Retranslated,
-		"refused", st.Refused, "errors", st.Errors)
+		"refused", st.Refused, "collapsed", st.Collapsed, "errors", st.Errors)
 	return st, nil
 }
 
