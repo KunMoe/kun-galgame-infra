@@ -133,3 +133,21 @@ func ReleaseSpec() Spec {
 		Fields:  []string{"object", "id", "work_id", "release_kind", "date", "title", "lang", "platform", "platforms", "refs"},
 	}
 }
+
+func ChangesSpec() Spec {
+	return Spec{
+		Sort:    []string{"updated"},
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "target_object", "id", "updated_at"},
+	}
+}
+
+func RedirectsSpec() Spec {
+	return Spec{
+		Sort:    []string{"merged_at"},
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "target_object", "old_id", "current_id", "merged_at"},
+	}
+}

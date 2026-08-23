@@ -144,6 +144,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		SkipValidateParams: true,
 	}, getCatalogStats(cat))
 	registerCatalogLists(api, cat)
+	registerCatalogFeeds(api, cat)
 	registerWorkSubs(api, cat)
 	registerNews(api, cat)
 }
