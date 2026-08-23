@@ -91,6 +91,35 @@ func TestClaimFromNil(t *testing.T) {
 	}
 }
 
+func TestTaxonomyListItemMappers(t *testing.T) {
+	c := companyFromListItem(dto.PublicLabelListItem{
+		ID: 7, DisplayName: "Alcot", Kind: "game_brand", WorkCount: 3,
+		Localized: map[string]dto.PublicLocalizedName{"zh-Hans": {Value: "品牌"}},
+	})
+	if c.Object != "company" || c.ID != "7" || c.CompanyKind != "game_brand" || c.WorkCount != 3 {
+		t.Fatalf("company %+v", c)
+	}
+	if c.Localized["zh-Hans"].Value != "品牌" {
+		t.Fatalf("localized %+v", c.Localized)
+	}
+	other := companyFromListItem(dto.PublicLabelListItem{ID: 8, DisplayName: "x", Kind: "other"})
+	if other.CompanyKind != "group" {
+		t.Fatalf("other kind %s", other.CompanyKind)
+	}
+	tag := tagFromListItem(dto.PublicTagListItem{ID: 2, Name: "nukige", Tier: "core", Kind: "content", WorkCount: 9})
+	if tag.DisplayName != "nukige" || tag.TagKind != "content" || tag.ID != "2" {
+		t.Fatalf("tag %+v", tag)
+	}
+	eng := engineFromListItem(dto.PublicEngineListItem{ID: 4, Name: "KiriKiri", WorkCount: 1})
+	if eng.DisplayName != "KiriKiri" || eng.ID != "4" {
+		t.Fatalf("engine %+v", eng)
+	}
+	ser := seriesFromDetail(5, "シリーズ")
+	if ser.Object != "series" || ser.ID != "5" || ser.DisplayName != "シリーズ" {
+		t.Fatalf("series %+v", ser)
+	}
+}
+
 func TestLocalizedFromEmpty(t *testing.T) {
 	if localizedFrom(nil) == nil {
 		t.Fatal("nil must become empty map")

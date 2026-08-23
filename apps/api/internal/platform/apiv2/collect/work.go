@@ -67,6 +67,7 @@ func NewsSpec() Spec {
 
 func CompanySpec() Spec {
 	return Spec{
+		Sort:    []string{"id"},
 		Include: []string{},
 		FullSet: []string{},
 		Fields:  []string{"object", "id", "display_name", "latin", "localized", "company_kind", "work_count"},
@@ -91,6 +92,7 @@ func CharacterSpec() Spec {
 
 func TagSpec() Spec {
 	return Spec{
+		Sort:    []string{"id"},
 		Include: []string{},
 		FullSet: []string{},
 		Fields:  []string{"object", "id", "display_name", "tier", "tag_kind", "work_count"},
@@ -99,6 +101,7 @@ func TagSpec() Spec {
 
 func SeriesSpec() Spec {
 	return Spec{
+		Sort:    []string{"id"},
 		Include: []string{},
 		FullSet: []string{},
 		Fields:  []string{"object", "id", "display_name"},
@@ -107,6 +110,7 @@ func SeriesSpec() Spec {
 
 func EngineSpec() Spec {
 	return Spec{
+		Sort:    []string{"id"},
 		Include: []string{},
 		FullSet: []string{},
 		Fields:  []string{"object", "id", "display_name", "work_count"},

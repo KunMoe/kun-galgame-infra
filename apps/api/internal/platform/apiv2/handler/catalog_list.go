@@ -1,0 +1,209 @@
+package handler
+
+import (
+	"context"
+	"errors"
+
+	"api/internal/platform/apiv2/collect"
+	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/apiv2/repr"
+	catmodel "api/internal/platform/catalog/model"
+	catsvc "api/internal/platform/catalog/service"
+)
+
+func (c *Catalog) ListCompanies(ctx context.Context, q collect.Query) (repr.List[repr.Company], error) {
+	if c == nil || c.Public == nil {
+		return repr.List[repr.Company]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+	}
+	ids, missing, err := c.batchEntityIDs(ctx, q, catmodel.EntityTypeLabel)
+	if err != nil {
+		return repr.List[repr.Company]{}, err
+	}
+	if q.Batch && len(ids) == 0 {
+		return finishList([]repr.Company{}, nil, 0, q, missing), nil
+	}
+	f := catsvc.LabelsListFilter{NSFW: q.NSFW, IDs: ids}
+	limit := q.Limit
+	if q.Batch {
+		limit = 100
+		q.Cursor = ""
+	}
+	data, lerr := c.Public.LabelsList(ctx, f, q.Cursor, limit)
+	if lerr != nil {
+		return repr.List[repr.Company]{}, listCursorErr(lerr)
+	}
+	items := make([]repr.Company, 0, len(data.Items))
+	seen := map[int64]bool{}
+	for _, it := range data.Items {
+		items = append(items, companyFromListItem(it))
+		seen[it.ID] = true
+	}
+	missing = appendUnseen(missing, ids, seen)
+	return finishList(items, data.NextCursor, data.Total, q, missing), nil
+}
+
+func (c *Catalog) ListTags(ctx context.Context, q collect.Query) (repr.List[repr.Tag], error) {
+	if c == nil || c.Public == nil {
+		return repr.List[repr.Tag]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+	}
+	ids, missing, err := c.batchEntityIDs(ctx, q, catmodel.EntityTypeTag)
+	if err != nil {
+		return repr.List[repr.Tag]{}, err
+	}
+	if q.Batch && len(ids) == 0 {
+		return finishList([]repr.Tag{}, nil, 0, q, missing), nil
+	}
+	f := catsvc.TagsListFilter{NSFW: q.NSFW, IDs: ids}
+	limit := q.Limit
+	if q.Batch {
+		limit = 100
+		q.Cursor = ""
+	}
+	data, lerr := c.Public.TagsList(ctx, f, q.Cursor, limit)
+	if lerr != nil {
+		return repr.List[repr.Tag]{}, listCursorErr(lerr)
+	}
+	items := make([]repr.Tag, 0, len(data.Items))
+	seen := map[int64]bool{}
+	for _, it := range data.Items {
+		items = append(items, tagFromListItem(it))
+		seen[it.ID] = true
+	}
+	missing = appendUnseen(missing, ids, seen)
+	return finishList(items, data.NextCursor, data.Total, q, missing), nil
+}
+
+func (c *Catalog) ListEngines(ctx context.Context, q collect.Query) (repr.List[repr.Engine], error) {
+	if c == nil || c.Public == nil {
+		return repr.List[repr.Engine]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+	}
+	ids, missing, err := c.batchEntityIDs(ctx, q, catmodel.EntityTypeEngine)
+	if err != nil {
+		return repr.List[repr.Engine]{}, err
+	}
+	if q.Batch && len(ids) == 0 {
+		return finishList([]repr.Engine{}, nil, 0, q, missing), nil
+	}
+	f := catsvc.EnginesListFilter{NSFW: q.NSFW, IDs: ids}
+	limit := q.Limit
+	if q.Batch {
+		limit = 100
+		q.Cursor = ""
+	}
+	data, lerr := c.Public.EnginesList(ctx, f, q.Cursor, limit)
+	if lerr != nil {
+		return repr.List[repr.Engine]{}, listCursorErr(lerr)
+	}
+	items := make([]repr.Engine, 0, len(data.Items))
+	seen := map[int64]bool{}
+	for _, it := range data.Items {
+		items = append(items, engineFromListItem(it))
+		seen[it.ID] = true
+	}
+	missing = appendUnseen(missing, ids, seen)
+	return finishList(items, data.NextCursor, data.Total, q, missing), nil
+}
+
+func (c *Catalog) ListSeries(ctx context.Context, q collect.Query) (repr.List[repr.Series], error) {
+	if c == nil || c.Public == nil {
+		return repr.List[repr.Series]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+	}
+	ids, missing, err := c.batchEntityIDs(ctx, q, 0)
+	if err != nil {
+		return repr.List[repr.Series]{}, err
+	}
+	if q.Batch {
+		items := make([]repr.Series, 0, len(ids))
+		seen := map[int64]bool{}
+		for _, id := range ids {
+			rec, found, derr := c.Public.SeriesDetail(ctx, id, false, q.NSFW, 0, 0)
+			if derr != nil {
+				return repr.List[repr.Series]{}, derr
+			}
+			if !found {
+				continue
+			}
+			items = append(items, seriesFromDetail(rec.ID, rec.DisplayName))
+			seen[id] = true
+		}
+		missing = appendUnseen(missing, ids, seen)
+		return finishList(items, nil, int64(len(items)), q, missing), nil
+	}
+	data, lerr := c.Public.SeriesList(ctx, q.NSFW, q.Cursor, "", q.Limit)
+	if lerr != nil {
+		return repr.List[repr.Series]{}, listCursorErr(lerr)
+	}
+	items := make([]repr.Series, 0, len(data.Items))
+	for _, it := range data.Items {
+		items = append(items, seriesFromDetail(it.ID, it.DisplayName))
+	}
+	return finishList(items, data.NextCursor, data.Total, q, missing), nil
+}
+
+func (c *Catalog) batchEntityIDs(ctx context.Context, q collect.Query, entityType int16) ([]int64, []string, error) {
+	if !q.Batch {
+		return nil, nil, nil
+	}
+	var ids []int64
+	var missing []string
+	for _, s := range q.IDs {
+		n, ok := repr.ParseID(s)
+		if !ok {
+			p := problem.New(problem.CodeInvalidParameter, "", "", "ids= values must be decimal catalog ids.")
+			p.Errors = []problem.FieldError{{Parameter: "ids", Reason: problem.ReasonInvalidFormat, Detail: s}}
+			return nil, nil, p
+		}
+		ids = append(ids, n)
+	}
+	for _, r := range q.Refs {
+		ref := r.Source + ":" + r.ExternalID
+		if entityType != catmodel.EntityTypeLabel {
+			missing = append(missing, ref)
+			continue
+		}
+		data, found, err := c.Public.LookupTyped(ctx, r.Source, r.ExternalID, entityType, q.NSFW)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !found || data.Label == nil {
+			missing = append(missing, ref)
+			continue
+		}
+		ids = append(ids, data.Label.ID)
+	}
+	return ids, missing, nil
+}
+
+func listCursorErr(err error) error {
+	if errors.Is(err, catsvc.ErrBadCursor) {
+		return collectInvalidCursor()
+	}
+	return err
+}
+
+func appendUnseen(missing []string, ids []int64, seen map[int64]bool) []string {
+	for _, id := range ids {
+		if !seen[id] {
+			missing = append(missing, repr.ID(id))
+		}
+	}
+	return missing
+}
+
+func finishList[T any](items []T, next *string, total int64, q collect.Query, missing []string) repr.List[T] {
+	var enc *string
+	if next != nil && *next != "" && !q.Batch {
+		e := collect.EncodeCursor(*next)
+		enc = &e
+	}
+	out := repr.NewList(items, enc)
+	if q.IncludeTotal {
+		n := total
+		out.Total = &n
+	}
+	if missing != nil {
+		m := missing
+		out.Missing = &m
+	}
+	return out
+}

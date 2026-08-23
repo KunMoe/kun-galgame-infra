@@ -298,6 +298,29 @@ func TestCatalogStatsAndNewsUnauthenticated(t *testing.T) {
 	require.Equal(t, 503, resp.StatusCode)
 }
 
+func TestCatalogCollectionsRequireCredential(t *testing.T) {
+	app := testApp(t)
+	for _, path := range []string{
+		"/v2/catalog/companies",
+		"/v2/catalog/tags",
+		"/v2/catalog/series",
+		"/v2/catalog/engines",
+	} {
+		status, ct, body := do(t, app, http.MethodGet, path)
+		require.Equal(t, 401, status, path)
+		require.Contains(t, ct, "application/problem+json", path)
+		var p problem.Problem
+		require.NoError(t, json.Unmarshal(body, &p), path)
+		require.Equal(t, problem.CodeMissingCredential, p.Code, path)
+
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Header.Set("Authorization", "Bearer test")
+		resp, err := app.Test(req)
+		require.NoError(t, err, path)
+		require.Equal(t, 503, resp.StatusCode, path)
+	}
+}
+
 func itoa(n int) string {
 	if n == 0 {
 		return "0"
