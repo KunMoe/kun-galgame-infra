@@ -2,7 +2,7 @@
 
 This page records **binds that differ from `refs/api-v2`**. It is not a substitute for the design spec. Code + `docs/catalog/v2-openapi.yaml` are the machine-readable contract.
 
-Date: 2026-08-23. Branch: `v2-stage0`. No push (deploy is automatic).
+Date: 2026-08-24. Branch: `v2-stage0` landing on `main` as preview (stage 8). v1 is unchanged. GA / v1 sunset are not this merge.
 
 ## Done on this branch
 
@@ -59,7 +59,7 @@ Date: 2026-08-23. Branch: `v2-stage0`. No push (deploy is automatic).
 - **SDK check** — `internal/platform/apiv2/sdk` Go client compiles and hits problems/vocabularies/works. TypeScript twin is the portal docs-model + explore relay.
 - **Portal** — `apps/developer` documents the v2 face from `docs/catalog/v2-openapi.yaml`, HTML problem pages at `/problems/{domain}/{kebab}`, vocabularies, design principles, preview banner. Explore and landing relay `/v2`.
 - **Keys** — `/v2` rejects `nm_live_` / `nm_test_`. Internal-tier mint/rotate issues `nmk_live_` / `nmk_test_` with CRC32. v1 still accepts both generations (malformed `nmk_` rejected offline).
-- **Edge** — `docker-compose.prod.yml` routes `Host(api.nextmoe.dev) && PathPrefix(/v2)` to catalog. **Not deployed until this branch is pushed.**
+- **Edge** — `docker-compose.prod.yml` routes `Host(api.nextmoe.dev) && PathPrefix(/v2)` to catalog. Landing this branch on `main` deploys that router with the catalog image. The developer portal and MCP compose projects stay manual.
 
 ## Stage 9–10 (not code-completeable here)
 
