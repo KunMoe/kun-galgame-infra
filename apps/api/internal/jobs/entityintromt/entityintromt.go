@@ -39,6 +39,10 @@ type Opts struct {
 	Delay   time.Duration
 	Workers int
 	Force   bool
+	// EntityIDs is meaningful only together with Lane: the three lanes number
+	// their entities independently, so the same integers name a different row in
+	// each one. Run rejects the combination rather than filtering all three.
+	EntityIDs []int64
 }
 
 type Sample struct {
@@ -81,6 +85,9 @@ func Run(ctx context.Context, tr Translator, opts Opts) ([]*LaneStats, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(opts.EntityIDs) > 0 && opts.Lane == "" {
+		return nil, fmt.Errorf("--entity-ids needs --lane: entity ids are per-lane, so an unlaned list would also match unrelated persons and labels holding the same numbers")
+	}
 	db, err := database.OpenJob(opts.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("connect catalog db: %w", err)
@@ -91,7 +98,7 @@ func Run(ctx context.Context, tr Translator, opts Opts) ([]*LaneStats, error) {
 
 	var out []*LaneStats
 	for _, lane := range selected {
-		cands, err := loadCandidates(ctx, db, lane, opts.Limit, opts.Offset)
+		cands, err := loadCandidates(ctx, db, lane, opts.Limit, opts.Offset, opts.EntityIDs)
 		if err != nil {
 			return nil, fmt.Errorf("load %s candidates: %w", lane.key, err)
 		}
@@ -112,7 +119,12 @@ func Run(ctx context.Context, tr Translator, opts Opts) ([]*LaneStats, error) {
 		slog.Info("entity-intro-mt candidates", "lane", lane.key,
 			"candidates", len(cands), "from_ja", st.FromJa, "from_en", st.FromEn,
 			"with_glossary", st.WithGlossary,
-			"apply", opts.Apply, "limit", opts.Limit, "offset", opts.Offset)
+			"apply", opts.Apply, "limit", opts.Limit, "offset", opts.Offset,
+			"entity_ids", len(opts.EntityIDs), "force", opts.Force)
+		if n := len(opts.EntityIDs); n > 0 && n != len(cands) {
+			slog.Warn("named entity ids did not all become candidates — the rest fail this lane's gates (deleted, a source zh intro, or no ja/en source intro)",
+				"lane", lane.key, "named", n, "candidates", len(cands))
+		}
 
 		r := &runner{db: db, tr: tr, lane: lane, force: opts.Force, stats: st}
 		r.process(ctx, cands, opts.Apply, opts.Delay, opts.Workers)
