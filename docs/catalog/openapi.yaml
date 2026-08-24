@@ -1481,6 +1481,28 @@ components:
         - code
         - message
       type: object
+    EnvelopeMapStringInterface {}:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopeMapStringInterface {}.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          additionalProperties: {}
+          type: object
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
     EnvelopeNameWorksResponse:
       additionalProperties: false
       properties:
@@ -4340,6 +4362,34 @@ paths:
       tags:
         - catalog-user
   /api/v1/user/catalog/works/{id}:
+    delete:
+      operationId: deleteCatalogDraftUser
+      parameters:
+        - description: Work id (must be one the token's user owns)
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Work id (must be one the token's user owns)
+            format: int64
+            minimum: 1
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeMapStringInterface {}"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Soft-delete one's OWN draft work. Only the entry's owner may delete it, and only while it is still a draft (claim_state=draft) — a live / pending / declined work must be withdrawn first, and a hidden or foreign work can never be deleted this way. 403 on another user's work; 409 when the work is not a draft
+      tags:
+        - catalog-user
     get:
       operationId: getCatalogWorkByIDUser
       parameters:
