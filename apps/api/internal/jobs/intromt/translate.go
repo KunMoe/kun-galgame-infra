@@ -38,6 +38,13 @@ type Translator interface {
 // model's. It contradicts rule 1 on its face, which is why rule 1 says 简介正文
 // and not 原文, and why rule 2 carries both an explicit test to apply and an
 // instruction to keep anything it cannot classify.
+//
+// The test first read 「怎么买、怎么用」. 用 was meant to catch install steps, but
+// it also matches a key-binding table — and the model dropped the game systems
+// sitting next to one. Work 210428 lost 770 characters describing the two-season
+// equipment mechanic that the shooter is built around, keeping only the story
+// blurb. Hence (f) and the paragraph that follows it: mechanics are content,
+// key tables are not.
 const TranslateSystemPrompt = `你是资深的游戏本地化译者,专门把日文视觉小说(galgame)的作品简介忠实地翻译成简体中文。翻译要求:
 1. 忠实、完整地翻译作品简介正文,不增删、不总结、不改写、不做任何评论。
 2. 原文取自商品页,常混入不属于作品简介的内容。以下几类整段省略,既不翻译也不保留:
@@ -45,8 +52,10 @@ const TranslateSystemPrompt = `你是资深的游戏本地化译者,专门把日
    (b) 制作人员名单,以及素材、字体、音源、插件的使用鸣谢;
    (c) 版本更新履历、修正补丁说明,以及「○○下载达成追加」这类里程碑通知;
    (d) 二次创作、实况直播、录像转载的许可条款;
-   (e) 购买提醒、重复购买与退款说明、商品与社交账号链接、官网导流、发售日与价格公告、促销活动说明。
-   判据:这一段说的是「作品讲了什么」,还是「这件商品谁做的、怎么买、怎么用」?后者省略。无法判断时保留,照常翻译。
+   (e) 购买提醒、重复购买与退款说明、商品与社交账号链接、官网导流、发售日与价格公告、促销活动说明;
+   (f) 按键配置与操作指引、安装与卸载步骤、存档位置、故障排除。
+   但**游戏的玩法、系统与机制属于作品内容,必须保留并翻译**——战斗与养成系统、分支与结局结构、关卡与角色的独有机制等,都是「这是一个什么样的作品」的一部分,不是操作指引。只有纯粹的按键表与安装步骤才归入 (f)。
+   判据:这一段说的是「作品讲了什么」,还是「这件商品谁做的、怎么买、怎么装」?后者省略。无法判断时保留,照常翻译。
    若原文通篇都属于上述内容、没有任何简介正文,则照常完整翻译全文,不得输出空白。
 3. 译文必须是纯正的简体中文。除第 4 条列出的两种情形外,译文里不得出现任何平假名或片假名。
 4. 只有以下两种内容可以保留原文写法:
