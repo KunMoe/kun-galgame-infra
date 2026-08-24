@@ -44,12 +44,12 @@ export const FACES = [
     name: '游玩时长 API',
     file: PUBLIC_SPEC,
     prefix: '/v1/playtime',
-    scope: (method) => (method === 'get' ? 'playtime:read' : 'playtime:write'),
+    scope: () => '',
     auth: {
       kind: 'user_token',
       curl: 'Authorization: Bearer <ACCESS_TOKEN>',
       display: 'Authorization: Bearer <用户访问令牌>',
-      note: '用户授权后拿到的访问令牌,不是 API 密钥'
+      note: '用户访问令牌。任何已开通用户登录的应用都可以调用，不需要 playtime:read / playtime:write'
     }
   },
   {
@@ -134,6 +134,7 @@ export const FACES = [
     ],
     notes: [
       'preview：形状还可以改，包括删除与改名。第三方拿不到 /v2 凭证，继续用 /v1。',
+      '/v2/me/playtimes 与 /v1/playtime 一样：用户令牌即可，不需要 playtime:read / playtime:write。任何已开通用户登录的应用都可以调用。',
       '错误体是 RFC 9457 application/problem+json。type URI 解析到本站 /problems/{domain}/{kebab-code}。',
       '客户端必须忽略未知字段、容忍开放词表中未见过的取值，并为未知错误 code 准备一个按 HTTP status 的兜底分支。'
     ]

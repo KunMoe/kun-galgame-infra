@@ -58,7 +58,7 @@
 ```json
 { "name": "Kurumi", "user_login": {
     "redirect_uris": ["http://127.0.0.1:53682/callback"],
-    "scopes": ["playtime:read", "playtime:write"] } }
+    "scopes": ["openid", "profile"] } }
 ```
 
 给出它 → app 置 `is_public=true`、`grants=["authorization_code","refresh_token"]`,scope 并入 `allowed_scopes`(`openid` 自动补)。**不给 → 完全保持原样**,本字段出现前注册的每个 app 行为逐字节不变。`user_login` 是**整体替换**而非 patch:否则删掉一个回调将永远做不到,而废弃的回调正是最该能删的东西。
@@ -68,7 +68,7 @@
 1. **回调白名单**:只收 `https://`(且不是裸 IP)与 `http://` 到 `127.0.0.1` / `[::1]` 环回。拒绝通配、fragment(隐式流的令牌通道)、userinfo(`https://example.com@evil.com/cb` 在人眼里是前者)、以及到任何非环回主机的明文 http —— 授权码就走在这个 URL 里。**`localhost` 也拒**:它过主机名解析,可以被指向别处,`127.0.0.1` 不能。
 2. **强制 PKCE**:桌面应用把二进制发给用户,里面没有秘密。标 `is_public` 即让 OAuth 服务在无 `code_challenge` 时**拒绝**它的授权码。环回回调按 **RFC 8252 §7.3 端口无关**匹配(端口是运行时才选的),scheme/host/path/query 仍精确匹配 —— 非环回 URI 永远走不到这个分支。
 3. **保留名**:同意页把应用名显示在用户账号旁边,「NextMoe 官方助手」就是我们自己托管的钓鱼页。含 nextmoe / 未萌 / kungal / 官方 / official / admin 等片段一律拒。这是地板不是滤网(存心的冒充者会用同形字),配套的是同意页上不靠猜意图的**第三方标记**(`owner_user_id` 非空)。
-4. **同意 scope 白名单**(`selfServiceUserScopes`):`openid` / `profile` / `email` / `playtime:read` / `playtime:write` / **`catalog:edit`(wave R3,2026-08-17 起)**。**注意仍不在其中的**:`image:upload`、`artifact:upload` —— 自助注册不能向人索取花我们存储的权限。往这张表里加一项是**政策决定**,不是改配置;`catalog:edit` 就是这样一次政策决定,其代价已在面上收讫:第三方令牌永远 `ModerationCapped`(只能提案、不能裁决),且每用户未决提案帽 20(429)。写共享语料因此始终隔着一道人审。
+4. **同意 scope 白名单**(`selfServiceUserScopes`):`openid` / `profile` / `email` / `playtime:read` / `playtime:write` / **`catalog:edit`(wave R3,2026-08-17 起)**。**`playtime:read` / `playtime:write` 仍可申请,但调 `/v1/playtime` 与 `/v2/me/playtimes` 不再需要它们**——任何已开通用户登录的应用都能读写该用户自己的时长。这两个词留在白名单里只是为了让旧授权 URL 不 400。**注意仍不在其中的**:`image:upload`、`artifact:upload` —— 自助注册不能向人索取花我们存储的权限。往这张表里加一项是**政策决定**,不是改配置;`catalog:edit` 就是这样一次政策决定,其代价已在面上收讫:第三方令牌永远 `ModerationCapped`(只能提案、不能裁决),且每用户未决提案帽 20(429)。写共享语料因此始终隔着一道人审。
 
 它与 API key 的 scope 白名单(`selfServiceScopes`,2026-08-18 起只剩 `catalog:read`)**故意分开**:两者管的是不同凭证。一个说机器 key 匿名能干什么,另一个说应用**能向人要什么**。合并就等于让只读 key 的白名单去决定同意页的政策。
 

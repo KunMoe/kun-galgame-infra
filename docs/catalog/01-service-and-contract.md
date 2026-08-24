@@ -443,13 +443,12 @@ wave 176-179 把人类的**写**搬完了;本波搬的是搬完写之后还留�
 
 > 绑定 client 的用户访问令牌本身就带齐两个身份 —— `id` 说是哪个人,`client_id` 说是哪个应用。
 
-再加一把 API key,证明的是已经证明过的事,代价却是**同一个 scope 词写在两个注册表里**(`developer_api_keys.scopes` 和 `oauth_clients.allowed_scopes`),两处授予、两处撤销。于是必然出现「key 有而 client 没有」的工单,而排查的人要先知道存在两套 scope。所以:一个凭证、一次 scope 判定、一处吊销。
+再加一把 API key,证明的是已经证明过的事,代价却是**同一个 scope 词写在两个注册表里**(`developer_api_keys.scopes` 和 `oauth_clients.allowed_scopes`),两处授予、两处撤销。于是必然出现「key 有而 client 没有」的工单,而排查的人要先知道存在两套 scope。所以:一个凭证、一处吊销。`playtime:read` / `playtime:write` **不再判定**——任何已开通用户登录的应用都可以调这张脸。
 
 链是 `JWTAuth → PlaytimeGate`:
 1. 令牌指名一个用户(时长是某个人的);
 2. 令牌**绑定 client**(应用 id 是主键第三段,也是剔除坏应用的把手;`/auth/login` 的一等会话令牌无 `client_id`,在此被拒);
-3. 令牌至少持 `playtime:read` / `playtime:write` 之一,**具体哪个由每个 op 自己再判**;
-4. 按 (应用, 用户) 限流(120 次/分)。限流器故障时**放行** —— 它是防跑飞的护栏,不是授权判定,Redis 抖一下不该让所有人记不了时长。
+3. 按 (应用, 用户) 限流(120 次/分)。限流器故障时**放行** —— 它是防跑飞的护栏,不是授权判定,Redis 抖一下不该让所有人记不了时长。
 
 **不要求 `catalog_site` 绑定**:catalog 三张写面从它解析租户,因为它们写的每行都归属某个产品站;而时长归属的是用户与应用。要求 catalog 租户等于把这张脸存在的意义全挡在门外。
 
@@ -460,20 +459,20 @@ wave 176-179 把人类的**写**搬完了;本波搬的是搬完写之后还留�
 ```json
 { "name": "Kurumi", "user_login": {
     "redirect_uris": ["http://127.0.0.1:53682/callback"],
-    "scopes": ["playtime:read", "playtime:write"] } }
+    "scopes": ["openid", "profile"] } }
 ```
 
 后端据此把 app 置为 `is_public` + `grants: [authorization_code, refresh_token]`,并把申请的 scope 写进 `allowed_scopes`。四道护栏见 [developer-platform/05](../developer-platform/05-developer-portal.md) 的自助登录一节:回调白名单(仅 `https://` 与 `127.0.0.1`/`[::1]` 环回)、强制 PKCE、保留名拒绝、第三方姿态。桌面管理器走 RFC 8252 原生应用模式,环回回调**按端口无关匹配**(端口是运行时才知道的)。
 
 ### 端点
 
-| op | 路径 | scope |
-|---|---|---|
-| `reportPlaytime` | `PUT /v1/playtime/works/{workID}` | write |
-| `reportPlaytimeByRef` | `PUT /v1/playtime/by-ref/{source}/{externalID}` | write |
-| `reportPlaytimeBatch` | `POST /v1/playtime/batch`(≤200,逐条成败) | write |
-| `listOwnPlaytime` | `GET /v1/playtime/mine?updated_since=` | read |
-| `getOwnPlaytimeForWork` | `GET /v1/playtime/works/{workID}` | read |
+| op | 路径 |
+|---|---|
+| `reportPlaytime` | `PUT /v1/playtime/works/{workID}` |
+| `reportPlaytimeByRef` | `PUT /v1/playtime/by-ref/{source}/{externalID}` |
+| `reportPlaytimeBatch` | `POST /v1/playtime/batch`(≤200,逐条成败) |
+| `listOwnPlaytime` | `GET /v1/playtime/mine?updated_since=` |
+| `getOwnPlaytimeForWork` | `GET /v1/playtime/works/{workID}` |
 
 `by-ref` 决定这张脸**能不能被接入**:管理器手上是 VNDB id 或 DLsite workno,从来不是我们的 work id;强制要 work id 等于把映射问题推给每一个应用作者。**只有 exact 锚解析** —— probable 链接是线索不是身份,拿它归属别人的时长就是记到错的游戏上。
 
@@ -497,7 +496,7 @@ wave 176-179 把人类的**写**搬完了;本波搬的是搬完写之后还留�
 - **admin face(`/api/v1/admin/catalog/*`)**:Bearer JWT(accept-both verifier)+ **ren 角色(超管专属)**,与 site 绑定列无关;wave 187b 起还要过 **client 闸**——令牌若签发自第三方应用(`oauth_clients.owner_user_id` 非空)一律 403,先于权限判定(空 `client_id` 的第一方会话令牌放行,见 §4.2 的缺口条)。
 - **user face(`/api/v1/user/catalog/*`,wave 176)**:Bearer **用户**访问令牌(同一 accept-both verifier)+ `catalog:edit` scope + **client 绑定**。这里 `oauth_clients.catalog_site` 的用法与 S2S 写面**不同**:S2S 校验「绑定值 == 请求体 site」,user face **根本不收 site**——绑定值**就是**写入的租户。因此新增消费站的动作仍是同一条(给其 client 设 `catalog_site`),但一等登录令牌(无 `client_id`)在本面**永远**拿不到租户,只能走 OAuth 授权码流取得 client 绑定令牌。详见 §4。
 - **编辑引擎提案桥面已死**(曾为 09-open-api-phase2 06b 的过渡参考):`/internal/edit/*`(scope `galgame:propose`、计量 face `galgame_internal_propose`)随 galgame 面退役**整体移除**——今天这些路径连 410 都不是,就是 404。编辑引擎的 S2S 面(`/api/v1/catalog/edit/*`)在 wave 181/185 两轮收缩后只剩 list(第三人称统计读)/revisions/diff **三条只读**,写与裁决全在用户面。「第三方实际开放」已于 **wave R3(2026-08-17)裁定并落地**:不复活桥面、不开 /v1 编辑路由,第三方经自助 user_login 申请 `catalog:edit` 用户 scope 后走用户面(见 §4 的第三方准入段)。
-- **playtime face(`/v1/playtime/*`)**:Bearer 用户访问令牌 + `playtime:read` / `playtime:write` + **client 绑定**,**无 API key**(令牌已带齐用户与应用两个身份,再加 key 就是第二套 scope 注册表),**不要求** `catalog_site`。详见 §4.6。
+- **playtime face(`/v1/playtime/*`)**:Bearer 用户访问令牌 + **client 绑定**,**无 API key**,**不要求** `playtime:read` / `playtime:write`(任何已开通用户登录的应用都可以调),**不要求** `catalog_site`。详见 §4.6。
 - **public face(`/v1/catalog/*`)**:开发者平台 API key(`Authorization: Bearer nm_live_…`)+ `catalog:read`,过 `internal/platform/devapi` 的中间件链(凭据解析 → 用量记账 → 限流 → 日配额 → scope)。**唯一例外 `GET /v1/catalog/stats` 无鉴权**:它只发布「目录有多大」的聚合数(LIVE works × medium + 身份族存量,无 `nsfw` 参数、人人同一份 payload),是公开站与开发者门户在任何人持 key 之前就要渲染的那几个数字;不计量、不限流,由 `Cache-Control: s-maxage=3600` 兜住。**该路由裸挂在 app 上且必须排在 `/v1/catalog` 分组之前**——Fiber 按注册序匹配、分组的 handler 即前缀 `Use`,挪到分组之后路由仍然通,只是悄悄退回 key 闸后面(钉子:`cmd/catalog/public_stats_route_test.go`,带反序对照)。
 - `GET /openapi.json`(S2S spec)、`GET /healthz` 无鉴权。
 

@@ -54,22 +54,22 @@ func registerMe(api huma.API, cat *Catalog) {
 	errs := collectionErrors(http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusServiceUnavailable)
 	huma.Register(api, huma.Operation{
 		OperationID: "listMyPlaytimes", Method: http.MethodGet, Path: "/v2/me/playtimes",
-		Summary: "List my playtimes", Description: "The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token.",
+		Summary: "List my playtimes", Description: "The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token. Any app may call this; playtime:read is not required.",
 		Tags: me, Errors: errs, SkipValidateParams: true,
 	}, listMyPlaytimes(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "getMyPlaytime", Method: http.MethodGet, Path: "/v2/me/playtimes/{work_id}",
-		Summary: "Get my playtime on one work", Description: "404 when the user has never reported. Requires a user access token.",
+		Summary: "Get my playtime on one work", Description: "404 when the user has never reported. Requires a user access token. Any app may call this; playtime:read is not required.",
 		Tags: me, Errors: errs, SkipValidateParams: true,
 	}, getMyPlaytime(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "putMyPlaytime", Method: http.MethodPut, Path: "/v2/me/playtimes/{work_id}",
-		Summary: "Replace my playtime on one work", Description: "Absolute minutes. Naturally idempotent. Requires a user access token.",
+		Summary: "Replace my playtime on one work", Description: "Absolute minutes. Naturally idempotent. Requires a user access token. Any app may call this; playtime:write is not required.",
 		Tags: me, Errors: errs, SkipValidateParams: true,
 	}, putMyPlaytime(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "deleteMyPlaytime", Method: http.MethodDelete, Path: "/v2/me/playtimes/{work_id}",
-		Summary: "Delete my playtime on one work", Description: "204 with no body. Requires a user access token.",
+		Summary: "Delete my playtime on one work", Description: "204 with no body. Requires a user access token. Any app may call this; playtime:write is not required.",
 		Tags: me, Errors: errs, DefaultStatus: http.StatusNoContent, SkipValidateParams: true,
 	}, deleteMyPlaytime(cat))
 	huma.Register(api, huma.Operation{

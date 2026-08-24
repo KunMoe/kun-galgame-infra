@@ -894,18 +894,18 @@ curl "https://api.nextmoe.dev/v1/catalog/stats"
 # 游玩时长 API
 
 - 路径前缀：`/v1/playtime`
-- 凭据：Authorization: Bearer <用户访问令牌>（用户授权后拿到的访问令牌,不是 API 密钥）
+- 凭据：Authorization: Bearer <用户访问令牌>（用户访问令牌。任何已开通用户登录的应用都可以调用，不需要 playtime:read / playtime:write）
 - 端点数：5
 
 ## 上报
 
 ### PUT /v1/playtime/works/{workID}
 
-Report the bearer token's own playtime on a work. The body carries the ABSOLUTE cumulative total in minutes, never a delta — re-sending the same number is a no-op, which makes the call safe to retry. Keyed by (user, work, client): a second app of the same user reports alongside, not over. Requires playtime:write
+Report the bearer token's own playtime on a work. The body carries the ABSOLUTE cumulative total in minutes, never a delta — re-sending the same number is a no-op, which makes the call safe to retry. Keyed by (user, work, client): a second app of the same user reports alongside, not over. Any app with a user access token may call this; playtime:write is not required.
 
 - 所属 API：游玩时长 API（/v1/playtime）
 - 鉴权：Authorization: Bearer <用户访问令牌>
-- scope：playtime:write
+- scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -920,11 +920,11 @@ curl -X PUT "https://api.nextmoe.dev/v1/playtime/works/1" \
 
 ### PUT /v1/playtime/by-ref/{source}/{externalID}
 
-Report playtime addressing the work by an external id the client already holds (vndb/dlsite/getchu/bangumi …) instead of a catalog work id. Only EXACT anchors resolve; the response echoes the resolved work_id, which the client should cache. 404 when nothing is anchored to that id. Requires playtime:write
+Report playtime addressing the work by an external id the client already holds (vndb/dlsite/getchu/bangumi …) instead of a catalog work id. Only EXACT anchors resolve; the response echoes the resolved work_id, which the client should cache. 404 when nothing is anchored to that id. Any app with a user access token may call this; playtime:write is not required.
 
 - 所属 API：游玩时长 API（/v1/playtime）
 - 鉴权：Authorization: Bearer <用户访问令牌>
-- scope：playtime:write
+- scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -940,11 +940,11 @@ curl -X PUT "https://api.nextmoe.dev/v1/playtime/by-ref/value/value" \
 
 ### POST /v1/playtime/batch
 
-Report up to 200 works in one call — the first-login library sync. Each item is accepted or rejected on its own and the response reports per-item outcomes; a single bad item never fails the batch. Requires playtime:write
+Report up to 200 works in one call — the first-login library sync. Each item is accepted or rejected on its own and the response reports per-item outcomes; a single bad item never fails the batch. Any app with a user access token may call this; playtime:write is not required.
 
 - 所属 API：游玩时长 API（/v1/playtime）
 - 鉴权：Authorization: Bearer <用户访问令牌>
-- scope：playtime:write
+- scope：无需凭据
 
 无参数。
 
@@ -959,11 +959,11 @@ curl -X POST "https://api.nextmoe.dev/v1/playtime/batch" \
 
 ### GET /v1/playtime/mine
 
-Page the bearer token's own playtime rows in (updated_at) order — the sync-back leg for a second device. Hand `cursor` back as ?updated_since= to fetch only what changed. Requires playtime:read
+Page the bearer token's own playtime rows in (updated_at) order — the sync-back leg for a second device. Hand `cursor` back as ?updated_since= to fetch only what changed. Any app with a user access token may call this; playtime:read is not required.
 
 - 所属 API：游玩时长 API（/v1/playtime）
 - 鉴权：Authorization: Bearer <用户访问令牌>
-- scope：playtime:read
+- scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -977,11 +977,11 @@ curl "https://api.nextmoe.dev/v1/playtime/mine" \
 
 ### GET /v1/playtime/works/{workID}
 
-The bearer token's own playtime on ONE work, folded across their applications (MAX minutes — two apps watching one save file are not two playthroughs). `playtime` is null when the user has never reported here; that is a 200, not a 404. This is the call a rating form makes to offer 'you played 30h — attach it?'. Requires playtime:read
+The bearer token's own playtime on ONE work, folded across their applications (MAX minutes — two apps watching one save file are not two playthroughs). `playtime` is null when the user has never reported here; that is a 200, not a 404. This is the call a rating form makes to offer 'you played 30h — attach it?'. Any app with a user access token may call this; playtime:read is not required.
 
 - 所属 API：游玩时长 API（/v1/playtime）
 - 鉴权：Authorization: Bearer <用户访问令牌>
-- scope：playtime:read
+- scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -1204,6 +1204,8 @@ curl "https://api.nextmoe.dev/v1/news/1" \
 - 端点数：73
 
 > preview：形状还可以改，包括删除与改名。第三方拿不到 /v2 凭证，继续用 /v1。
+
+> /v2/me/playtimes 与 /v1/playtime 一样：用户令牌即可，不需要 playtime:read / playtime:write。任何已开通用户登录的应用都可以调用。
 
 > 错误体是 RFC 9457 application/problem+json。type URI 解析到本站 /problems/{domain}/{kebab-code}。
 
@@ -2504,7 +2506,7 @@ curl -X DELETE "https://api.nextmoe.dev/v2/me/cover-votes/value" \
 
 List my playtimes
 
-The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token.
+The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token. Any app may call this; playtime:read is not required.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -2523,7 +2525,7 @@ curl "https://api.nextmoe.dev/v2/me/playtimes" \
 
 Batch write playtimes
 
-207 Multi-Status. Each item is a playtime or a problem. Requires a user access token.
+207 Multi-Status. Each item is a playtime or a problem. Requires a user access token. Any app may call this; playtime:write is not required.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -2542,7 +2544,7 @@ curl -X POST "https://api.nextmoe.dev/v2/me/playtimes" \
 
 Get my playtime on one work
 
-404 when the user has never reported. Requires a user access token.
+404 when the user has never reported. Requires a user access token. Any app may call this; playtime:read is not required.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -2561,7 +2563,7 @@ curl "https://api.nextmoe.dev/v2/me/playtimes/value" \
 
 Replace my playtime on one work
 
-Absolute minutes. Naturally idempotent. Requires a user access token.
+Absolute minutes. Naturally idempotent. Requires a user access token. Any app may call this; playtime:write is not required.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -2582,7 +2584,7 @@ curl -X PUT "https://api.nextmoe.dev/v2/me/playtimes/value" \
 
 Delete my playtime on one work
 
-204 with no body. Requires a user access token.
+204 with no body. Requires a user access token. Any app may call this; playtime:write is not required.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…

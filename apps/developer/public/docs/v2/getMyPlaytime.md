@@ -13,7 +13,7 @@
 
 Get my playtime on one work
 
-404 when the user has never reported. Requires a user access token.
+404 when the user has never reported. Requires a user access token. Any app may call this; playtime:read is not required.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…

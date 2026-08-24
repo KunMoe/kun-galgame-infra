@@ -167,13 +167,13 @@
 
 **playtime 面**(后端 = `cmd/catalog` 同进程挂载;**平台第二个公开面,也是第一个用「用户 Bearer 令牌」而非 API key 认证的公开面**——语义与错误面详见 §3.8):
 
-| 公开端点(`/v1`) | scope | 说明 |
+| 公开端点(`/v1`) | 凭据 | 说明 |
 |---|---|---|
-| `PUT /v1/playtime/works/{workID}` | `playtime:write` | 上报**自己**在某作品上的游玩时长。body `{minutes, status?, last_played_at?}`,`minutes` 是**绝对累计值(分钟),永远不是增量**——重发同一个数是 no-op,故该调用**可安全重试**。按 `(user, work, client)` 三元组落行:同一用户的第二个 App **并排写**而不是覆盖。作品非 LIVE / 不存在 → 404 |
-| `PUT /v1/playtime/by-ref/{source}/{externalID}` | `playtime:write` | 同上,但用客户端手里已有的**外部 id** 寻址(`vndb`/`dlsite`/`getchu`/`bangumi`…),免去先跑一趟 lookup。**只认 exact 锚**;响应回显解析出的 `work_id`(带 `resolved_from`),客户端应缓存它。源键未知 / 无锚 → 404 |
-| `POST /v1/playtime/batch` | `playtime:write` | 首次登录的**库同步**:一次最多 200 条,每条可用 `work_id` **或** `source`+`external_id` 寻址。**逐条判定**——响应给 `{accepted, refused, results[]}`,`results[i]` 带 `{index, status(ok\|not_found\|rejected), work_id, error}`;**一条坏数据永不带崩整批**(不是事务) |
-| `GET /v1/playtime/mine` | `playtime:read` | 分页拉**自己**的全部记录,按 `updated_at` 升序;`updated_since=`(RFC 3339)只取该时刻之后变化的行,`limit` 1-200 缺省 200。响应的 `cursor` 就是本页最后一行的 `updated_at`,**原样回填成下一次的 `updated_since=`** 即增量续拉——第二台设备的回灌腿 |
-| `GET /v1/playtime/works/{workID}` | `playtime:read` | 自己在**某一部**作品上的记录,**跨自己的多个 App 折叠**:`minutes` 取 **MAX**(两个 App 盯同一份存档不是两周目),`status` 取那一行的状态但**任一行 finished 即整体 finished**,`last_played_at` 取最新,另给 `clients` = 折叠了几个 App。从未上报过 → `data` 为 **`null` 且是 200,不是 404**(评分表单据此问「你玩了 30 小时,要附上吗?」) |
+| `PUT /v1/playtime/works/{workID}` | 用户令牌(任意 app) | 上报**自己**在某作品上的游玩时长。body `{minutes, status?, last_played_at?}`,`minutes` 是**绝对累计值(分钟),永远不是增量**——重发同一个数是 no-op,故该调用**可安全重试**。按 `(user, work, client)` 三元组落行:同一用户的第二个 App **并排写**而不是覆盖。作品非 LIVE / 不存在 → 404。**不需要** `playtime:write` |
+| `PUT /v1/playtime/by-ref/{source}/{externalID}` | 用户令牌(任意 app) | 同上,但用客户端手里已有的**外部 id** 寻址(`vndb`/`dlsite`/`getchu`/`bangumi`…),免去先跑一趟 lookup。**只认 exact 锚**;响应回显解析出的 `work_id`(带 `resolved_from`),客户端应缓存它。源键未知 / 无锚 → 404 |
+| `POST /v1/playtime/batch` | 用户令牌(任意 app) | 首次登录的**库同步**:一次最多 200 条,每条可用 `work_id` **或** `source`+`external_id` 寻址。**逐条判定**——响应给 `{accepted, refused, results[]}`,`results[i]` 带 `{index, status(ok\|not_found\|rejected), work_id, error}`;**一条坏数据永不带崩整批**(不是事务) |
+| `GET /v1/playtime/mine` | 用户令牌(任意 app) | 分页拉**自己**的全部记录,按 `updated_at` 升序;`updated_since=`(RFC 3339)只取该时刻之后变化的行,`limit` 1-200 缺省 200。响应的 `cursor` 就是本页最后一行的 `updated_at`,**原样回填成下一次的 `updated_since=`** 即增量续拉——第二台设备的回灌腿。**不需要** `playtime:read` |
+| `GET /v1/playtime/works/{workID}` | 用户令牌(任意 app) | 自己在**某一部**作品上的记录,**跨自己的多个 App 折叠**:`minutes` 取 **MAX**(两个 App 盯同一份存档不是两周目),`status` 取那一行的状态但**任一行 finished 即整体 finished**,`last_played_at` 取最新,另给 `clients` = 折叠了几个 App。从未上报过 → `data` 为 **`null` 且是 200,不是 404**(评分表单据此问「你玩了 30 小时,要附上吗?」) |
 
 ### 3.2.1 D7 投影约定(2026-07-29 A2-1a 落账)
 
@@ -577,7 +577,7 @@ Content-Type: application/json
 | 凭据 | 机器 API key:`X-API-Key: nm_live_…`(或 `Authorization: Bearer nm_live_…`) | **用户** OAuth 访问令牌:`Authorization: Bearer <access token>` |
 | 主体 | 一把 key = 一个应用,与人无关 | 令牌里的**那一个用户**;写谁的行由令牌推导,请求里**没有** uid 参数 |
 | 门 | key 有效性 + tier + 日配额 | JWT/JWKS 验签 → 令牌须**带用户身份**,否则 401;须**绑定 OAuth client**(`client_id`),否则 403 |
-| scope | `catalog:read` | `playtime:read` / `playtime:write`,**两者都可在开发者门户自助申请**(与 `openid`/`profile`/`email` 同属 self-service 名单) |
+| scope | `catalog:read` | **无。**`playtime:read` / `playtime:write` 不再判定。任何已开通用户登录的应用,用它签出的用户令牌即可读写该用户自己的时长。这两个 scope 仍可出现在同意页(旧授权 URL 不 400),但缺它们不再 403 |
 | 限流 | key 级配额 | **每 (client, user) 每分钟 120 次**,超出 429;Redis 不可用时**fail-open** |
 
 - **令牌必须绑 client 不是形式主义**:记录按 `(user, work, client)` 三元组落行,`client_id` 是主键的一部分。没有它就没有「这条是哪个 App 报的」,读面的跨 App 折叠也就无从谈起——所以无 client 绑定的令牌(例如站内直接登录换来的那种)在本面一律 403,而不是悄悄写进一个空 client。
@@ -594,7 +594,7 @@ Content-Type: application/json
 **它如何回到公开面(以及如何不回)**
 
 - **只有 `finished` 的行进公开聚合**(`playing`/`dropped`/`on_hold` 与 `<10` 分钟的行一并剔除):聚合作业先按用户折叠(同用户多 client 取 MAX),再对用户取**中位数**,**至少 3 个上报用户**才写出一行,落 `catalog_work_playtime` 的 `nextmoe` 源。它出现在 catalog 面 `works/{id}` 的 `playtimes[]` 里,与 vndb / erogamescape 的同名块**同形同源键规则**(`source=nextmoe`)。
-- **个人行永不上公开面**:公开面看得到的只有那个中位数与上报人数;谁玩了多久只有本人的 `playtime:read` 令牌读得到。
+- **个人行永不上公开面**:公开面看得到的只有那个中位数与上报人数;谁玩了多久只有本人的用户令牌读得到。
 
 **与 MCP 的关系**:playtime 面**刻意不进 MCP 工具面**,理由见 [09 §4](./09-mcp-server.md)。
 

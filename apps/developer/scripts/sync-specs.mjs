@@ -20,7 +20,7 @@
  * projection was delisted and its spec deleted.
  *
  * Three spec files, four faces. `public-openapi.yaml` carries catalog (API-key,
- * read-only) and playtime (user-token; scope differs per method). Modelling
+ * read-only) and playtime (user-token; no playtime scope required). Modelling
  * those as one face published five playtime operations as `catalog:read` with
  * an `nm_live_` key in the curl sample — a credential that face rejects.
  * `openapi.yaml` is the user-edit subset only: the third face, `edit`, claims
