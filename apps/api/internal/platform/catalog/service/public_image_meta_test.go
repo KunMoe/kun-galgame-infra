@@ -2,12 +2,35 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
+	"api/internal/platform/catalog/dto"
 	"api/internal/platform/catalog/model"
 )
 
 func sexualPtr(v int16) *int16 { return &v }
+
+func assertImageMetaJSONOmitsViolence(t *testing.T, v any) {
+	t.Helper()
+	raw, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("marshal image_meta: %v", err)
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		t.Fatalf("unmarshal image_meta: %v", err)
+	}
+	if _, ok := obj["violence"]; ok {
+		t.Fatalf("image_meta JSON = %s, want no violence key", raw)
+	}
+}
+
+func TestPopulatedImageMetaJSONOmitsViolence(t *testing.T) {
+	assertImageMetaJSONOmitsViolence(t, dto.PublicImageMeta{
+		Width: 800, Height: 600, Thumbhash: "th", Sexual: sexualPtr(1),
+	})
+}
 
 func metaFetcher(t *testing.T, calls *int, table map[string]ImageMeta) ImageMetaFunc {
 	t.Helper()
@@ -89,9 +112,7 @@ func TestRosterCarriesImageMetaOnlyForResolvedHashes(t *testing.T) {
 	if got.ImageMeta.Sexual == nil || *got.ImageMeta.Sexual != 2 {
 		t.Fatalf("image_meta.sexual = %v, want 2", got.ImageMeta.Sexual)
 	}
-	if got.ImageMeta.Violence != nil {
-		t.Fatalf("image_meta.violence = %v, want absent: no per-image violence assessment exists", got.ImageMeta.Violence)
-	}
+	assertImageMetaJSONOmitsViolence(t, got.ImageMeta)
 	if got.Figure == "" {
 		t.Fatal("figure URL must still render without its metadata")
 	}

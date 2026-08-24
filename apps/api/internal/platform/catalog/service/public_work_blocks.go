@@ -86,7 +86,7 @@ func (s *PublicService) publicCovers(rows []WorkCoverRow, meta map[string]ImageM
 			continue
 		}
 		pc := dto.PublicCover{
-			URL: url, Kind: c.Kind, PortraitPinned: c.PortraitPinned,
+			ID: c.ID, URL: url, Kind: c.Kind, PortraitPinned: c.PortraitPinned,
 			Sexual: c.Sexual, Violence: c.Violence, Source: s.sourceKey(c.SourceID),
 		}
 		if m, ok := meta[c.ImageHash]; ok {

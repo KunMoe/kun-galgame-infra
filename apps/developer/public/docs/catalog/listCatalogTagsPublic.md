@@ -23,11 +23,11 @@ The cross-source canonical tag vocabulary, id ascending. work_count is the numbe
 | --- | --- | --- | --- | --- |
 | `tier` | query | 否 | string | Filter by display tier; a token outside this closed set is a 400 取值：core \| longtail \| hidden |
 | `kind` | query | 否 | string | Filter by tag kind; a token outside this closed set is a 400 取值：content \| meta |
-| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor; omit for the first page |
-| `limit` | query | 否 | integer (int64) | Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400 |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk |
+| `limit` | query | 否 | integer (int64) | Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400 |
 | `nsfw` | query | 否 | boolean | true/1 = count r18 works in work_count (default false = excluded, matching what an sfw works?tag_id= call returns) |
 | `has_works` | query | 否 | boolean | true/1 = only tags whose work_count is > 0 under the same nsfw setting (default false = every tag); total converges with the filter |
-| `ids` | query | 否 | string | Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row |
+| `ids` | query | 否 | string | Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400 |
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/tags" \

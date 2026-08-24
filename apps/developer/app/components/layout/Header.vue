@@ -33,6 +33,14 @@ const handleLogout = async () => {
   <header
     class="sticky top-0 z-30 border-b border-default-200 bg-background/85 backdrop-blur-md"
   >
+    <div class="border-b border-warning-200 bg-warning-50 px-4 py-1.5 text-center text-xs text-warning-700">
+      Public API v2 is
+      <strong>preview</strong>
+      · breaking changes allowed · third parties stay on /v1 ·
+      <NuxtLink to="/docs/v2" class="underline">v2 docs</NuxtLink>
+      ·
+      <NuxtLink to="/docs/design" class="underline">design principles</NuxtLink>
+    </div>
     <div
       class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6"
     >

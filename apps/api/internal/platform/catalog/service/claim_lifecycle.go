@@ -342,6 +342,10 @@ func (s *ClaimLifecycleService) EventsSince(ctx context.Context, since int64, li
 }
 
 func (s *ClaimLifecycleService) PendingClaims(ctx context.Context, site string, limit int) ([]PendingClaimItem, int64, error) {
+	return s.PendingClaimsAfter(ctx, site, limit, 0)
+}
+
+func (s *ClaimLifecycleService) PendingClaimsAfter(ctx context.Context, site string, limit int, before int64) ([]PendingClaimItem, int64, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
@@ -349,6 +353,10 @@ func (s *ClaimLifecycleService) PendingClaims(ctx context.Context, site string, 
 		Where("w.deleted_at IS NULL AND w.claim_state = ?", model.ClaimStatePending)
 	if site != "" {
 		q = q.Where("w.site = ?", site)
+	}
+	if before > 0 {
+		q = q.Where(`(SELECT max(e.id) FROM catalog_claim_event e
+			WHERE e.work_id = w.id AND e.to_state = ?) > ?`, model.ClaimStatePending, before)
 	}
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
@@ -373,6 +381,40 @@ type PendingClaimItem struct {
 	Site             *string `json:"site"`
 	ProductWorkID    *int64  `json:"product_work_id"`
 	SubmittedEventID *int64  `json:"submitted_event_id"`
+}
+
+func (s *ClaimLifecycleService) ClaimByWorkID(ctx context.Context, workID int64, site string) (*UserClaimItem, error) {
+	if workID <= 0 {
+		return nil, nil
+	}
+	var row struct {
+		WorkID        int64
+		DisplayName   string
+		Site          *string
+		ProductWorkID *int64
+		ClaimState    *int16
+	}
+	q := s.db.WithContext(ctx).Table("catalog_work AS w").
+		Select("w.id AS work_id, w.display_name, w.site, w.product_work_id, w.claim_state").
+		Where("w.id = ? AND w.deleted_at IS NULL", workID)
+	if site != "" {
+		q = q.Where("w.site = ?", site)
+	}
+	if err := q.Scan(&row).Error; err != nil {
+		return nil, err
+	}
+	if row.WorkID == 0 {
+		return nil, nil
+	}
+	item := UserClaimItem{
+		WorkID: row.WorkID, DisplayName: row.DisplayName,
+		ProductWorkID: row.ProductWorkID,
+		ClaimState:    model.ClaimStateKey(row.Site, row.ProductWorkID, row.ClaimState),
+	}
+	if row.Site != nil {
+		item.Site = *row.Site
+	}
+	return &item, nil
 }
 
 func stateKeyOf(state int16) string {

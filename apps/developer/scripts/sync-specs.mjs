@@ -46,8 +46,11 @@ import {
   FACE_GROUPS,
   FACES,
   NEWS_SPEC,
+  NO_AUTH,
   OPERATION_AUTH_OVERRIDES,
-  PUBLIC_SPEC
+  PUBLIC_SPEC,
+  USER_TOKEN_AUTH,
+  V2_SPEC
 } from './faces.mjs'
 import { writeLlmArtifacts } from './gen-llms.mjs'
 
@@ -200,6 +203,21 @@ const buildParams = (rawParams = []) => {
 const jsonContent = (content) =>
   content?.['application/json'] || content?.['application/problem+json']
 
+const authForPath = (faceDef, path, method) => {
+  if (faceDef.key !== 'v2') return faceDef.auth
+  if (path.startsWith('/v2/me/') || path.startsWith('/v2/moderation/')) return USER_TOKEN_AUTH
+  if (
+    path.startsWith('/v2/problems') ||
+    path.startsWith('/v2/vocabularies') ||
+    path.startsWith('/v2/news') ||
+    path === '/v2/catalog/stats' ||
+    path.startsWith('/v2/catalog/schemas/')
+  ) {
+    return NO_AUTH
+  }
+  return faceDef.auth
+}
+
 const buildOperation = (method, path, op, { schemas, scope, auth }) => {
   const params = buildParams(op.parameters)
 
@@ -242,11 +260,32 @@ const METHODS = ['get', 'post', 'put', 'patch', 'delete']
 
 const opKey = (method, path) => `${method.toUpperCase()} ${path}`
 
+const autoGroupDefs = (faceDef, spec) => {
+  const defs = faceDef.autoGroups.map((g) => ({ key: g.key, label: g.label, ops: [] }))
+  for (const [path, item] of Object.entries(spec.paths || {})) {
+    if (!path.startsWith(faceDef.prefix)) continue
+    for (const method of METHODS) {
+      if (!item[method]) continue
+      const group = defs.find((g) => {
+        const src = faceDef.autoGroups.find((a) => a.key === g.key)
+        return src.match.test(path)
+      })
+      if (!group) {
+        throw new Error(
+          `docs-model grouping guard: ${opKey(method, path)} matches no autoGroup of face ${faceDef.key}`
+        )
+      }
+      group.ops.push(opKey(method, path))
+    }
+  }
+  return defs
+}
+
 const buildFace = (faceDef, specs) => {
   const spec = specs.get(faceDef.file)
   const schemas = spec.components?.schemas || {}
 
-  const groupDefs = FACE_GROUPS[faceDef.key]
+  const groupDefs = faceDef.autoGroups ? autoGroupDefs(faceDef, spec) : FACE_GROUPS[faceDef.key]
   if (!groupDefs) {
     throw new Error(`docs-model grouping guard: face ${faceDef.key} has no FACE_GROUPS entry`)
   }
@@ -267,11 +306,13 @@ const buildFace = (faceDef, specs) => {
         )
       }
       placed.add(key)
+      const auth = authForPath(faceDef, path, method)
+      const scopeFn = faceDef.scope.length >= 2 ? faceDef.scope(method, path) : faceDef.scope(method)
       buckets.get(group.key).push(
         buildOperation(method, path, op, {
           schemas,
-          scope: faceDef.scope(method),
-          auth: faceDef.auth
+          scope: scopeFn,
+          auth
         })
       )
     }
@@ -345,7 +386,7 @@ for (const face of model.faces) {
 // documented as catalog ones. Full-coverage applies to the two fully-published
 // specs only — openapi.yaml is a first-party spec whose unclaimed prefixes must
 // not trip this guard.
-for (const file of [PUBLIC_SPEC, NEWS_SPEC]) {
+for (const file of [PUBLIC_SPEC, NEWS_SPEC, V2_SPEC]) {
   const claimed = new Set(
     model.faces
       .filter((f) => FACES.find((d) => d.key === f.key)?.file === file)

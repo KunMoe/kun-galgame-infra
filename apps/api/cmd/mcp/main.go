@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -40,7 +41,16 @@ func main() {
 	}
 
 	up := mcpface.NewUpstream(upstreamBase)
-	server := mcpface.NewServer(up)
+	spec, err := loadV2Spec(up)
+	if err != nil {
+		slog.Error("load v2 openapi", "error", err)
+		os.Exit(1)
+	}
+	server, err := mcpface.NewServer(up, spec)
+	if err != nil {
+		slog.Error("mcp server from spec", "error", err)
+		os.Exit(1)
+	}
 
 	handler := mcp.NewStreamableHTTPHandler(
 		func(*http.Request) *mcp.Server { return server },
@@ -80,6 +90,20 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		slog.Error("mcp server shutdown", "error", err)
 	}
+}
+
+func loadV2Spec(up *mcpface.Upstream) ([]byte, error) {
+	if p := os.Getenv("KUN_MCP_OPENAPI_PATH"); p != "" {
+		return os.ReadFile(p)
+	}
+	status, body, err := up.Get(context.Background(), "/v2/catalog/openapi.json", nil, "")
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, fmt.Errorf("GET /v2/catalog/openapi.json: %d", status)
+	}
+	return body, nil
 }
 
 func envInt(key string, def int) int {

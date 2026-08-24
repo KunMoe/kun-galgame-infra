@@ -155,6 +155,10 @@ func (s *PublicService) LookupBatch(ctx context.Context, pairs []dto.PublicLooku
 	return out, nil
 }
 
+func (s *PublicService) LookupEntityID(ctx context.Context, source, externalID string, entityType int16) (int64, error) {
+	return s.lookupEntityID(ctx, source, externalID, entityType)
+}
+
 func (s *PublicService) lookupEntityID(ctx context.Context, source, externalID string, entityType int16) (int64, error) {
 	db := s.db.WithContext(ctx)
 

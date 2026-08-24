@@ -37,7 +37,6 @@ type PublicImageMeta struct {
 	Height    int    `json:"height,omitempty"`
 	Thumbhash string `json:"thumbhash,omitempty"`
 	Sexual    *int16 `json:"sexual,omitempty" doc:"0 safe / 1 suggestive / 2 explicit; absent = not yet assessed"`
-	Violence  *int16 `json:"violence,omitempty" doc:"0 tame / 1 violent / 2 brutal; absent = no known assessment"`
 }
 
 type PublicRelation struct {
@@ -369,6 +368,7 @@ type PublicPlatform struct {
 }
 
 type PublicCover struct {
+	ID             int64  `json:"id,omitempty"`
 	URL            string `json:"url"`
 	Kind           string `json:"kind,omitempty"`
 	PortraitPinned bool   `json:"portrait_pinned"`

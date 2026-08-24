@@ -100,6 +100,19 @@ func canonicalLinkURL(cl classifiedLink) string {
 	return fmt.Sprintf(tpl, cl.ExternalID)
 }
 
+func WorkLinkURL(source, externalID string) (string, bool) {
+	src := strings.ToLower(strings.TrimSpace(source))
+	id := strings.TrimSpace(externalID)
+	if src == "" || id == "" {
+		return "", false
+	}
+	tpl, ok := linkURLTemplates[src]
+	if !ok {
+		return "", false
+	}
+	return fmt.Sprintf(tpl, id), true
+}
+
 func parseLinks(v any) ([]string, error) {
 	arr, err := asArray(v, "URL strings")
 	if err != nil {

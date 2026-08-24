@@ -79,6 +79,8 @@ func TestHasKeyPrefix(t *testing.T) {
 	cases := map[string]bool{
 		"nm_live_abc":          true,
 		"nm_test_abc":          true,
+		"nmk_live_abc":         true,
+		"nmk_test_abc":         true,
 		"nm_prod_abc":          false,
 		"eyJhbGciOi.jwt.token": false,
 		"":                     false,
@@ -87,5 +89,37 @@ func TestHasKeyPrefix(t *testing.T) {
 		if got := HasKeyPrefix(raw); got != want {
 			t.Errorf("HasKeyPrefix(%q) = %v, want %v", raw, got, want)
 		}
+	}
+}
+
+func TestGenerateV2KeyFormat(t *testing.T) {
+	for _, live := range []bool{true, false} {
+		k, err := GenerateV2Key(live)
+		if err != nil {
+			t.Fatalf("GenerateV2Key: %v", err)
+		}
+		if len(k) != V2KeyLen {
+			t.Errorf("len(%q) = %d, want %d", k, len(k), V2KeyLen)
+		}
+		if !ValidV2Key(k) {
+			t.Errorf("ValidV2Key rejected generated key %q", k)
+		}
+		wantPrefix := V2LivePrefix
+		if !live {
+			wantPrefix = V2TestPrefix
+		}
+		if !strings.HasPrefix(k, wantPrefix) {
+			t.Errorf("key %q missing prefix %q", k, wantPrefix)
+		}
+		tampered := k[:len(k)-1] + "0"
+		if tampered != k && ValidV2Key(tampered) {
+			t.Errorf("ValidV2Key accepted a tampered CRC: %q", tampered)
+		}
+	}
+	if ValidV2Key("nm_live_notav2key") {
+		t.Error("v1 key must not pass ValidV2Key")
+	}
+	if ValidV2Key("nmk_live_short") {
+		t.Error("short nmk_ key must fail")
 	}
 }

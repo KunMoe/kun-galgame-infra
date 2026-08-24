@@ -504,6 +504,16 @@ services:
       traefik.http.routers.infra-user-catalog-pub-http.entrypoints: web
       traefik.http.routers.infra-user-catalog-pub-http.middlewares: redirect-to-https@file
       traefik.http.routers.infra-user-catalog-pub-http.service: infra-catalog-pub
+      # /v2 — public API v2 (preview). One prefix covers catalog, news, me,
+      # moderation, problems and vocabularies; all live on this process.
+      traefik.http.routers.infra-v2-pub.rule: Host(`api.nextmoe.dev`) && PathPrefix(`/v2`)
+      traefik.http.routers.infra-v2-pub.entrypoints: websecure
+      traefik.http.routers.infra-v2-pub.tls.certresolver: letsencrypt
+      traefik.http.routers.infra-v2-pub.service: infra-catalog-pub
+      traefik.http.routers.infra-v2-pub-http.rule: Host(`api.nextmoe.dev`) && PathPrefix(`/v2`)
+      traefik.http.routers.infra-v2-pub-http.entrypoints: web
+      traefik.http.routers.infra-v2-pub-http.middlewares: redirect-to-https@file
+      traefik.http.routers.infra-v2-pub-http.service: infra-catalog-pub
       traefik.http.services.infra-catalog-pub.loadbalancer.server.port: "9281"
     depends_on:
       postgres: { condition: service_healthy }
