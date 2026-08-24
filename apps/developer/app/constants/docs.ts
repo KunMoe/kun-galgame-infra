@@ -22,7 +22,7 @@ export const DOCS_FACE_META: Record<
     icon: 'lucide:timer',
     label: '游玩时长',
     tagline:
-      '用户自己的游玩时长：上报（单条 / 用外部 id 定位 / 批量）与回拉。用用户授权后的访问令牌，不是 API 密钥；一个用户只读写得到自己的记录。'
+      '用户自己的游玩时长：上报（单条 / 用外部 id 定位 / 批量）与回拉。用用户访问令牌，不是 API 密钥。任何已开通用户登录的应用都可以调用，不需要 playtime:read / playtime:write；一个用户只读写得到自己的记录。'
   },
   edit: {
     icon: 'lucide:pencil',

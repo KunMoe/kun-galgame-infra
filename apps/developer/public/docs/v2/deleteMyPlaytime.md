@@ -13,7 +13,7 @@
 
 Delete my playtime on one work
 
-204 with no body. Requires a user access token.
+204 with no body. Requires a user access token. Any app may call this; playtime:write is not required.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…

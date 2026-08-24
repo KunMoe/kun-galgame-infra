@@ -9695,7 +9695,7 @@ paths:
         - me
   /v2/me/playtimes:
     get:
-      description: The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token.
+      description: The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token. Any app may call this; playtime:read is not required.
       operationId: listMyPlaytimes
       parameters:
         - description: Comma-separated work ids, max 100. Batch read, no pagination.
@@ -9767,7 +9767,7 @@ paths:
       tags:
         - me
     post:
-      description: 207 Multi-Status. Each item is a playtime or a problem. Requires a user access token.
+      description: 207 Multi-Status. Each item is a playtime or a problem. Requires a user access token. Any app may call this; playtime:write is not required.
       operationId: batchMyPlaytimes
       requestBody:
         content:
@@ -9853,7 +9853,7 @@ paths:
         - me
   /v2/me/playtimes/{work_id}:
     delete:
-      description: 204 with no body. Requires a user access token.
+      description: 204 with no body. Requires a user access token. Any app may call this; playtime:write is not required.
       operationId: deleteMyPlaytime
       parameters:
         - description: Catalog work id.
@@ -9921,7 +9921,7 @@ paths:
       tags:
         - me
     get:
-      description: 404 when the user has never reported. Requires a user access token.
+      description: 404 when the user has never reported. Requires a user access token. Any app may call this; playtime:read is not required.
       operationId: getMyPlaytime
       parameters:
         - description: Catalog work id.
@@ -9995,7 +9995,7 @@ paths:
       tags:
         - me
     put:
-      description: Absolute minutes. Naturally idempotent. Requires a user access token.
+      description: Absolute minutes. Naturally idempotent. Requires a user access token. Any app may call this; playtime:write is not required.
       operationId: putMyPlaytime
       parameters:
         - description: Catalog work id.

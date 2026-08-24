@@ -18,7 +18,7 @@ func registerMeWrite(api huma.API, cat *Catalog) {
 
 	huma.Register(api, huma.Operation{
 		OperationID: "batchMyPlaytimes", Method: http.MethodPost, Path: "/v2/me/playtimes",
-		Summary: "Batch write playtimes", Description: "207 Multi-Status. Each item is a playtime or a problem. Requires a user access token.",
+		Summary: "Batch write playtimes", Description: "207 Multi-Status. Each item is a playtime or a problem. Requires a user access token. Any app may call this; playtime:write is not required.",
 		Tags: me, Errors: writeErrs, DefaultStatus: 207, SkipValidateParams: true,
 	}, batchMyPlaytimes(cat))
 	huma.Register(api, huma.Operation{

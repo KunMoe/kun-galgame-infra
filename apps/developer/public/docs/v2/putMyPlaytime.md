@@ -13,7 +13,7 @@
 
 Replace my playtime on one work
 
-Absolute minutes. Naturally idempotent. Requires a user access token.
+Absolute minutes. Naturally idempotent. Requires a user access token. Any app may call this; playtime:write is not required.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…

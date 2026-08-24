@@ -5235,6 +5235,11 @@ export const docsModel: DocsModel = {
                                   "type": "integer"
                                 },
                                 {
+                                  "name": "id",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
                                   "name": "kind",
                                   "type": "string"
                                 },
@@ -6448,6 +6453,11 @@ export const docsModel: DocsModel = {
                               "children": [
                                 {
                                   "name": "height",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "id",
                                   "format": "int64",
                                   "type": "integer"
                                 },
@@ -14658,7 +14668,7 @@ export const docsModel: DocsModel = {
         "kind": "user_token",
         "curl": "Authorization: Bearer <ACCESS_TOKEN>",
         "display": "Authorization: Bearer <用户访问令牌>",
-        "note": "用户授权后拿到的访问令牌,不是 API 密钥"
+        "note": "用户访问令牌。任何已开通用户登录的应用都可以调用，不需要 playtime:read / playtime:write"
       },
       "groups": [
         {
@@ -14669,8 +14679,8 @@ export const docsModel: DocsModel = {
               "id": "reportPlaytime",
               "method": "put",
               "path": "/v1/playtime/works/{workID}",
-              "summary": "Report the bearer token's own playtime on a work. The body carries the ABSOLUTE cumulative total in minutes, never a delta — re-sending the same number is a no-op, which makes the call safe to retry. Keyed by (user, work, client): a second app of the same user reports alongside, not over. Requires playtime:write",
-              "scope": "playtime:write",
+              "summary": "Report the bearer token's own playtime on a work. The body carries the ABSOLUTE cumulative total in minutes, never a delta — re-sending the same number is a no-op, which makes the call safe to retry. Keyed by (user, work, client): a second app of the same user reports alongside, not over. Any app with a user access token may call this; playtime:write is not required.",
+              "scope": "",
               "params": [
                 {
                   "name": "workID",
@@ -14805,8 +14815,8 @@ export const docsModel: DocsModel = {
               "id": "reportPlaytimeByRef",
               "method": "put",
               "path": "/v1/playtime/by-ref/{source}/{externalID}",
-              "summary": "Report playtime addressing the work by an external id the client already holds (vndb/dlsite/getchu/bangumi …) instead of a catalog work id. Only EXACT anchors resolve; the response echoes the resolved work_id, which the client should cache. 404 when nothing is anchored to that id. Requires playtime:write",
-              "scope": "playtime:write",
+              "summary": "Report playtime addressing the work by an external id the client already holds (vndb/dlsite/getchu/bangumi …) instead of a catalog work id. Only EXACT anchors resolve; the response echoes the resolved work_id, which the client should cache. 404 when nothing is anchored to that id. Any app with a user access token may call this; playtime:write is not required.",
+              "scope": "",
               "params": [
                 {
                   "name": "source",
@@ -14947,8 +14957,8 @@ export const docsModel: DocsModel = {
               "id": "reportPlaytimeBatch",
               "method": "post",
               "path": "/v1/playtime/batch",
-              "summary": "Report up to 200 works in one call — the first-login library sync. Each item is accepted or rejected on its own and the response reports per-item outcomes; a single bad item never fails the batch. Requires playtime:write",
-              "scope": "playtime:write",
+              "summary": "Report up to 200 works in one call — the first-login library sync. Each item is accepted or rejected on its own and the response reports per-item outcomes; a single bad item never fails the batch. Any app with a user access token may call this; playtime:write is not required.",
+              "scope": "",
               "params": [],
               "requestBody": {
                 "type": "object",
@@ -15119,8 +15129,8 @@ export const docsModel: DocsModel = {
               "id": "listOwnPlaytime",
               "method": "get",
               "path": "/v1/playtime/mine",
-              "summary": "Page the bearer token's own playtime rows in (updated_at) order — the sync-back leg for a second device. Hand `cursor` back as ?updated_since= to fetch only what changed. Requires playtime:read",
-              "scope": "playtime:read",
+              "summary": "Page the bearer token's own playtime rows in (updated_at) order — the sync-back leg for a second device. Hand `cursor` back as ?updated_since= to fetch only what changed. Any app with a user access token may call this; playtime:read is not required.",
+              "scope": "",
               "params": [
                 {
                   "name": "updated_since",
@@ -15250,8 +15260,8 @@ export const docsModel: DocsModel = {
               "id": "getOwnPlaytimeForWork",
               "method": "get",
               "path": "/v1/playtime/works/{workID}",
-              "summary": "The bearer token's own playtime on ONE work, folded across their applications (MAX minutes — two apps watching one save file are not two playthroughs). `playtime` is null when the user has never reported here; that is a 200, not a 404. This is the call a rating form makes to offer 'you played 30h — attach it?'. Requires playtime:read",
-              "scope": "playtime:read",
+              "summary": "The bearer token's own playtime on ONE work, folded across their applications (MAX minutes — two apps watching one save file are not two playthroughs). `playtime` is null when the user has never reported here; that is a 200, not a 404. This is the call a rating form makes to offer 'you played 30h — attach it?'. Any app with a user access token may call this; playtime:read is not required.",
+              "scope": "",
               "params": [
                 {
                   "name": "workID",
@@ -17208,6 +17218,7 @@ export const docsModel: DocsModel = {
       },
       "notes": [
         "preview：形状还可以改，包括删除与改名。第三方拿不到 /v2 凭证，继续用 /v1。",
+        "/v2/me/playtimes 与 /v1/playtime 一样：用户令牌即可，不需要 playtime:read / playtime:write。任何已开通用户登录的应用都可以调用。",
         "错误体是 RFC 9457 application/problem+json。type URI 解析到本站 /problems/{domain}/{kebab-code}。",
         "客户端必须忽略未知字段、容忍开放词表中未见过的取值，并为未知错误 code 准备一个按 HTTP status 的兜底分支。"
       ],
@@ -73988,7 +73999,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/me/playtimes",
               "summary": "List my playtimes",
-              "description": "The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token.",
+              "description": "The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token. Any app may call this; playtime:read is not required.",
               "scope": "",
               "params": [
                 {
@@ -74923,7 +74934,7 @@ export const docsModel: DocsModel = {
               "method": "post",
               "path": "/v2/me/playtimes",
               "summary": "Batch write playtimes",
-              "description": "207 Multi-Status. Each item is a playtime or a problem. Requires a user access token.",
+              "description": "207 Multi-Status. Each item is a playtime or a problem. Requires a user access token. Any app may call this; playtime:write is not required.",
               "scope": "",
               "params": [],
               "requestBody": {
@@ -76280,7 +76291,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/me/playtimes/{work_id}",
               "summary": "Get my playtime on one work",
-              "description": "404 when the user has never reported. Requires a user access token.",
+              "description": "404 when the user has never reported. Requires a user access token. Any app may call this; playtime:read is not required.",
               "scope": "",
               "params": [
                 {
@@ -77143,7 +77154,7 @@ export const docsModel: DocsModel = {
               "method": "put",
               "path": "/v2/me/playtimes/{work_id}",
               "summary": "Replace my playtime on one work",
-              "description": "Absolute minutes. Naturally idempotent. Requires a user access token.",
+              "description": "Absolute minutes. Naturally idempotent. Requires a user access token. Any app may call this; playtime:write is not required.",
               "scope": "",
               "params": [
                 {
@@ -78014,7 +78025,7 @@ export const docsModel: DocsModel = {
               "method": "delete",
               "path": "/v2/me/playtimes/{work_id}",
               "summary": "Delete my playtime on one work",
-              "description": "204 with no body. Requires a user access token.",
+              "description": "204 with no body. Requires a user access token. Any app may call this; playtime:write is not required.",
               "scope": "",
               "params": [
                 {
