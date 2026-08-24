@@ -81,6 +81,15 @@ type NameCredit struct {
 	Roles  []NameCreditRole `json:"roles" doc:"Roles on this work. Empty array, never null."`
 }
 
+type Appearance struct {
+	_          struct{}     `json:"-" additionalProperties:"true"`
+	Object     string       `json:"object" enum:"appearance" doc:"Type discriminant. Always appearance."`
+	Work       Work         `json:"work" doc:"Work this character appears on. view=basic."`
+	RosterRole string       `json:"roster_role" enum:"main,secondary,appears,unknown" doc:"Appearance strength on this work."`
+	Spoiler    string       `json:"spoiler" enum:"none,minor,major" doc:"Spoiler level of this appearance."`
+	Voices     []CreditName `json:"voices" doc:"Voice credits on this appearance. Empty array, never null."`
+}
+
 type NameCreditRole struct {
 	_           struct{} `json:"-" additionalProperties:"true"`
 	RoleKey     string   `json:"role_key" maxLength:"64" pattern:"^[a-z][a-z0-9_]*$" doc:"Credit role token."`

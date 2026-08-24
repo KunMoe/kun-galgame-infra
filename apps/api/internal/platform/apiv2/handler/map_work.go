@@ -8,7 +8,7 @@ import (
 	"api/internal/platform/catalog/dto"
 )
 
-func workFromListItem(it dto.PublicWorkListItem) repr.Work {
+func workFromListItem(it dto.PublicWorkListItem, include []string) repr.Work {
 	var cover, banner *repr.Image
 	if it.Covers != nil {
 		cover = imageFromSlot(it.Covers.Portrait)
@@ -22,6 +22,22 @@ func workFromListItem(it dto.PublicWorkListItem) repr.Work {
 		it.Updated, it.Updated, optString(it.Latin), localizedFrom(it.Localized),
 		it.ReleaseDate, releasePrecision(it.ReleaseDate), cover, banner, claimFrom(it.ClaimedBy),
 	)
+	want := map[string]bool{}
+	for _, t := range include {
+		want[t] = true
+	}
+	if want["intros"] {
+		w.Intros = ptrSlice(cap100(introsFrom(it.Intros)))
+	}
+	if want["companies"] {
+		w.Companies = ptrSlice(cap100(workCompaniesFrom(it.Labels)))
+	}
+	if want["ratings"] {
+		w.Ratings = ptrSlice(cap100(ratingsFrom(it.Ratings)))
+	}
+	if want["refs"] {
+		w.Refs = ptrSlice(cap100(refsFrom(it.Refs)))
+	}
 	return w
 }
 

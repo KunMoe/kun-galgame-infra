@@ -22,7 +22,7 @@ func TestWorkFromListItemBasic(t *testing.T) {
 		Cover:         "https://img.example/ab/cd/" + strings.Repeat("a", 64) + ".webp",
 		ClaimedBy:     &dto.PublicClaimedBy{Site: "touchgal", WorkID: 8812, State: "live", ContentLimit: "sfw"},
 	}
-	w := workFromListItem(it)
+	w := workFromListItem(it, nil)
 	if w.Object != "work" || w.ID != "19658" || w.ReleaseStatus != "released" {
 		t.Fatalf("work %+v", w)
 	}
@@ -48,7 +48,7 @@ func TestWorkFromListItemUnknownRelease(t *testing.T) {
 	w := workFromListItem(dto.PublicWorkListItem{
 		ID: 1, Medium: "galgame", DisplayName: "x", OLang: "ja", ContentRating: "all_ages",
 		Updated: "2026-01-01T00:00:00Z",
-	})
+	}, nil)
 	if w.ReleaseStatus != "unknown" || w.ReleaseDate != nil || w.ReleaseDatePrecision != nil {
 		t.Fatalf("unknown release %+v", w)
 	}

@@ -28,6 +28,7 @@ type WorksListFilter struct {
 	IDs            []int64
 	NSFW           bool
 	Sort           string
+	OLang          PublicOLang
 	Include        WorksListInclude
 	Fields         PublicFields
 }
@@ -118,6 +119,10 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 			where = append(where, earliest+" <= ?")
 			args = append(args, f.ReleasedBefore)
 		}
+	}
+	if pred, pargs := f.OLang.predicate(); pred != "" {
+		where = append(where, pred)
+		args = append(args, pargs...)
 	}
 	if len(f.IDs) > 0 {
 		where = append(where, "w.id IN ?")
