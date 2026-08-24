@@ -38,6 +38,12 @@ func RegisterUserClaimOps(api huma.API, lifecycle *service.ClaimLifecycleService
 		Summary: "The claims the BEARER TOKEN'S OWN USER has acted on, on the token client's catalog site: current state, latest transition and reason, most recent activity first (cursor: before=last_event_id). The total is the per-user statistic — 'published by me' is this call with claim_state=live&limit=1",
 		Tags:    tags,
 	}, s.mine)
+	huma.Register(api, huma.Operation{
+		OperationID: "deleteCatalogDraftUser", Method: http.MethodDelete,
+		Path:    UserPrefix + "/works/{id}",
+		Summary: "Soft-delete one's OWN draft work. Only the entry's owner may delete it, and only while it is still a draft (claim_state=draft) — a live / pending / declined work must be withdrawn first, and a hidden or foreign work can never be deleted this way. 403 on another user's work; 409 when the work is not a draft",
+		Tags:    tags,
+	}, s.deleteDraft)
 }
 
 
@@ -145,4 +151,23 @@ func (s *UserClaimServer) mine(ctx context.Context, in *userMineClaimsInput) (*u
 		page.NextBefore = items[len(items)-1].LastEventID
 	}
 	return &userClaimsOutput{Body: okEnvelope(page)}, nil
+}
+
+type userDeleteDraftInput struct {
+	ID int64 `path:"id" minimum:"1" doc:"Work id (must be one the token's user owns)"`
+}
+
+type deleteDraftOutput struct {
+	Body Envelope[map[string]any]
+}
+
+func (s *UserClaimServer) deleteDraft(ctx context.Context, in *userDeleteDraftInput) (*deleteDraftOutput, error) {
+	uid, _, he := userActor(ctx)
+	if he != nil {
+		return nil, he
+	}
+	if err := s.claims.DeleteDraft(ctx, in.ID, uid); err != nil {
+		return nil, claimErr(err)
+	}
+	return &deleteDraftOutput{Body: okEnvelope(map[string]any{})}, nil
 }
