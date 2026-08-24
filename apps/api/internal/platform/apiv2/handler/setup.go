@@ -92,7 +92,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 		works = opt.Catalog.ListWorks
 	}
 	registerMeta(api)
-	registerCollections(api, works)
+	registerCollections(api, works, opt.Catalog)
 	registerCatalog(api, opt.Catalog)
 	registerMe(api, opt.Catalog)
 	registerMeWrite(api, opt.Catalog)
@@ -130,7 +130,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.Change{}, repr.Redirect{}, repr.SearchHit{},
 			repr.CompanyGraph{}, repr.CompanyGraphNode{}, repr.CompanyGraphEdge{},
 			repr.ObjectSchema{}, repr.SchemaField{},
-			repr.Person{}, repr.Trait{}, repr.Measurements{}, repr.NameCredit{}, repr.NameCreditRole{},
+			repr.Person{}, repr.Trait{}, repr.Measurements{}, repr.NameCredit{}, repr.NameCreditRole{}, repr.Appearance{},
 			repr.UserPlaytime{}, repr.CoverVote{}, repr.ClaimRecord{},
 			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.DecisionRecord{}, repr.SnapshotRecord{},
 		} {

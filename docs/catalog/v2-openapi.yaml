@@ -24,6 +24,47 @@ components:
             type: string
           type: array
       type: object
+    Appearance:
+      additionalProperties: true
+      properties:
+        object:
+          description: Type discriminant. Always appearance.
+          enum:
+            - appearance
+          type: string
+          x-vocabulary-closed: true
+        roster_role:
+          description: Appearance strength on this work.
+          enum:
+            - main
+            - secondary
+            - appears
+            - unknown
+          type: string
+          x-vocabulary-closed: true
+        spoiler:
+          description: Spoiler level of this appearance.
+          enum:
+            - none
+            - minor
+            - major
+          type: string
+          x-vocabulary-closed: true
+        voices:
+          description: Voice credits on this appearance. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/CreditName"
+          type: array
+        work:
+          $ref: "#/components/schemas/Work"
+          description: Work this character appears on. view=basic.
+      required:
+        - object
+        - work
+        - roster_role
+        - spoiler
+        - voices
+      type: object
     BatchPlaytimesInputBody:
       additionalProperties: true
       properties:
@@ -1081,6 +1122,55 @@ components:
       required:
         - work_id
         - minutes
+      type: object
+    ListAppearance:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListAppearance.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Appearance"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
       type: object
     ListChange:
       additionalProperties: true
@@ -5106,6 +5196,105 @@ paths:
       summary: Get one character
       tags:
         - catalog
+  /v2/catalog/characters/{id}/appearances:
+    get:
+      description: Works this character appears in, with roster_role, spoiler, and voice credits. Offset cursor. Requires an application key.
+      operationId: getCatalogCharacterAppearances
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20.
+            maxLength: 8
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListAppearance"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Appearances of one character
+      tags:
+        - catalog
   /v2/catalog/companies:
     get:
       description: Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate.
@@ -7633,7 +7822,7 @@ paths:
         - catalog
   /v2/catalog/works:
     get:
-      description: Keyset-paginated work collection. Requires an application key. view/include/fields/ids/refs/facets follow the v2 collection contract.
+      description: Keyset-paginated work collection. q= switches to search (sort defaults to relevance). company_id=/tag_id=/series_id= filter the live registry when q= is absent. Requires an application key. view/include/fields/ids/refs/facets follow the v2 collection contract.
       operationId: listCatalogWorks
       parameters:
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -7723,6 +7912,126 @@ paths:
           schema:
             description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
             maxLength: 8
+            type: string
+        - description: Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant.
+          explode: false
+          in: query
+          name: q
+          schema:
+            description: Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant.
+            maxLength: 512
+            type: string
+        - description: "Closed: all_ages, sensitive, r18. r18 requires nsfw=true."
+          explode: false
+          in: query
+          name: content_rating
+          schema:
+            description: "Closed: all_ages, sensitive, r18. r18 requires nsfw=true."
+            maxLength: 16
+            type: string
+        - description: true or false. Absent = no gate.
+          explode: false
+          in: query
+          name: claimed
+          schema:
+            description: true or false. Absent = no gate.
+            maxLength: 8
+            type: string
+        - description: "Comma-separated closed states: none, live, draft, pending, declined, hidden."
+          explode: false
+          in: query
+          name: claim_state
+          schema:
+            description: "Comma-separated closed states: none, live, draft, pending, declined, hidden."
+            maxLength: 128
+            type: string
+        - description: "Comma-separated closed editorial axis: sfw, nsfw."
+          explode: false
+          in: query
+          name: content_limit
+          schema:
+            description: "Comma-separated closed editorial axis: sfw, nsfw."
+            maxLength: 32
+            type: string
+        - description: Claiming site key. Open vocabulary; unknown values match nothing.
+          explode: false
+          in: query
+          name: site
+          schema:
+            description: Claiming site key. Open vocabulary; unknown values match nothing.
+            maxLength: 64
+            type: string
+        - description: Catalog company id. Live registry filter when q= is absent.
+          explode: false
+          in: query
+          name: company_id
+          schema:
+            description: Catalog company id. Live registry filter when q= is absent.
+            maxLength: 20
+            type: string
+        - description: true expands company_id one hop down imprint/subsidiary. Only true or false.
+          explode: false
+          in: query
+          name: company_rollup
+          schema:
+            description: true expands company_id one hop down imprint/subsidiary. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Comma-separated canonical tag ids, AND, max 10.
+          explode: false
+          in: query
+          name: tag_id
+          schema:
+            description: Comma-separated canonical tag ids, AND, max 10.
+            maxLength: 256
+            type: string
+        - description: Catalog series id.
+          explode: false
+          in: query
+          name: series_id
+          schema:
+            description: Catalog series id.
+            maxLength: 20
+            type: string
+        - description: Catalog engine id.
+          explode: false
+          in: query
+          name: engine_id
+          schema:
+            description: Catalog engine id.
+            maxLength: 20
+            type: string
+        - description: Open vocabulary platform token. Unknown matches nothing.
+          explode: false
+          in: query
+          name: platform
+          schema:
+            description: Open vocabulary platform token. Unknown matches nothing.
+            maxLength: 64
+            type: string
+        - description: YYYY-MM-DD inclusive, earliest release per work.
+          explode: false
+          in: query
+          name: released_after
+          schema:
+            description: YYYY-MM-DD inclusive, earliest release per work.
+            maxLength: 10
+            type: string
+        - description: YYYY-MM-DD inclusive, earliest release per work.
+          explode: false
+          in: query
+          name: released_before
+          schema:
+            description: YYYY-MM-DD inclusive, earliest release per work.
+            maxLength: 10
+            type: string
+        - description: Comma-separated BCP-47, or all. Open vocabulary; unknown values match nothing. Absent = no language gate.
+          explode: false
+          in: query
+          name: olang
+          schema:
+            description: Comma-separated BCP-47, or all. Open vocabulary; unknown values match nothing. Absent = no language gate.
+            maxLength: 64
             type: string
       responses:
         "200":

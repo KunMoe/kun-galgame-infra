@@ -17,10 +17,19 @@ var WorkBasicFields = []string{
 	"cover", "banner", "claim", "created_at", "updated_at",
 }
 
-var WorkSort = []string{"id", "updated"}
+var WorkSort = []string{"id", "updated", "relevance", "released_desc", "released_asc", "popularity"}
 
 var WorkFacets = []string{
 	"tag_id", "company_id", "olang", "content_rating", "medium", "platform",
+}
+
+func SearchSort(sort string) bool {
+	switch sort {
+	case "relevance", "released_desc", "released_asc", "popularity":
+		return true
+	default:
+		return false
+	}
 }
 
 func WorkSpec() Spec {

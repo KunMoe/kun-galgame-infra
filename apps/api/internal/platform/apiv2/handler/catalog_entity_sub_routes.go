@@ -22,6 +22,9 @@ type listNameCreditsOutput struct {
 type listPersonNamesOutput struct {
 	Body repr.List[repr.CreditName]
 }
+type listAppearancesOutput struct {
+	Body repr.List[repr.Appearance]
+}
 
 func registerCatalogEntityExtras(api huma.API, cat *Catalog) {
 	catalog := []string{"catalog"}
@@ -36,6 +39,16 @@ func registerCatalogEntityExtras(api huma.API, cat *Catalog) {
 		Errors:             authErrs,
 		SkipValidateParams: true,
 	}, getCatalogCreditNameCredits(cat))
+	huma.Register(api, huma.Operation{
+		OperationID:        "getCatalogCharacterAppearances",
+		Method:             http.MethodGet,
+		Path:               "/v2/catalog/characters/{id}/appearances",
+		Summary:            "Appearances of one character",
+		Description:        "Works this character appears in, with roster_role, spoiler, and voice credits. Offset cursor. Requires an application key.",
+		Tags:               catalog,
+		Errors:             authErrs,
+		SkipValidateParams: true,
+	}, getCatalogCharacterAppearances(cat))
 	huma.Register(api, huma.Operation{
 		OperationID:        "getCatalogPersonCreditNames",
 		Method:             http.MethodGet,
@@ -79,6 +92,20 @@ func getCatalogCreditNameCredits(cat *Catalog) func(context.Context, *workSubInp
 			return nil, catalogErr(ctx, gerr)
 		}
 		return &listNameCreditsOutput{Body: page}, nil
+	}
+}
+
+func getCatalogCharacterAppearances(cat *Catalog) func(context.Context, *workSubInput) (*listAppearancesOutput, error) {
+	return func(ctx context.Context, in *workSubInput) (*listAppearancesOutput, error) {
+		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
+		if err != nil {
+			return nil, err
+		}
+		page, gerr := cat.CharacterAppearances(ctx, id, nsfw, cur, limit)
+		if gerr != nil {
+			return nil, catalogErr(ctx, gerr)
+		}
+		return &listAppearancesOutput{Body: page}, nil
 	}
 }
 

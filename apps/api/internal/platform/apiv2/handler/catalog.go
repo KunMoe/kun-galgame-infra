@@ -30,58 +30,7 @@ type Catalog struct {
 }
 
 func (c *Catalog) ListWorks(ctx context.Context, q collect.Query) (repr.List[repr.Work], error) {
-	if c == nil || c.Public == nil {
-		return repr.List[repr.Work]{}, problem.New(problem.CodeServiceUnavailable, "", "", "works collection is not bound.")
-	}
-	f := catsvc.WorksListFilter{NSFW: q.NSFW, Sort: q.Sort}
-	if f.Sort == "" {
-		f.Sort = "id"
-	}
-	var missing []string
-	if q.Batch {
-		ids, miss, err := c.batchWorkIDs(ctx, q)
-		if err != nil {
-			return repr.List[repr.Work]{}, err
-		}
-		f.IDs = ids
-		missing = miss
-		q.Cursor = ""
-	}
-	limit := q.Limit
-	if q.Batch {
-		limit = 100
-	}
-	data, err := c.Public.WorksList(ctx, f, q.Cursor, limit)
-	if err != nil {
-		if errors.Is(err, catsvc.ErrBadCursor) {
-			return repr.List[repr.Work]{}, collectInvalidCursor()
-		}
-		return repr.List[repr.Work]{}, err
-	}
-	items := make([]repr.Work, 0, len(data.Items))
-	seen := map[int64]bool{}
-	for _, it := range data.Items {
-		items = append(items, workFromListItem(it))
-		seen[it.ID] = true
-	}
-	if q.Batch {
-		for _, id := range f.IDs {
-			if !seen[id] {
-				missing = append(missing, repr.ID(id))
-			}
-		}
-	}
-	var next *string
-	if data.NextCursor != nil && *data.NextCursor != "" && !q.Batch {
-		enc := collect.EncodeCursor(*data.NextCursor)
-		next = &enc
-	}
-	out := repr.NewList(items, next)
-	if missing != nil {
-		m := missing
-		out.Missing = &m
-	}
-	return out, nil
+	return c.ListWorksFiltered(ctx, q, worksFilter{OLang: catsvc.PublicOLang{All: true}})
 }
 
 func (c *Catalog) batchWorkIDs(ctx context.Context, q collect.Query) ([]int64, []string, error) {
