@@ -13,7 +13,7 @@ type ObjectSchema struct {
 
 type SchemaField struct {
 	_             struct{} `json:"-" additionalProperties:"true"`
-	Key           string   `json:"key" maxLength:"128" pattern:"^[a-z0-9_]+(\.[a-z0-9_]+)+$" doc:"Editing-engine field key. Must not be used as a discriminant."`
+	Key           string   `json:"key" maxLength:"128" pattern:"^[a-z0-9_]+(\\.[a-z0-9_]+)+$" doc:"Editing-engine field key. Must not be used as a discriminant."`
 	FieldType     string   `json:"field_type" enum:"text,i18nmap,enum,int,date,list,ref,imagehash" doc:"Control type. Not a domain vocabulary."`
 	DiffHint      string   `json:"diff_hint" enum:"inline,lines,items,image" doc:"How a diff of this field should be rendered."`
 	Deprecated    bool     `json:"deprecated" doc:"true when writes of this key are rejected."`
