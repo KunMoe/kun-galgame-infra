@@ -11,49 +11,31 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-var expectedTools = []string{
-	"catalog_calendar",
-	"catalog_calendar_pending",
-	"catalog_calendar_tba",
-	"catalog_changes",
-	"catalog_character_get",
-	"catalog_engine_get",
-	"catalog_engines_list",
-	"catalog_label_get",
-	"catalog_label_relation_graph",
-	"catalog_labels_list",
-	"catalog_lookup_external",
-	"catalog_name_get",
-	"catalog_releases",
-	"catalog_search",
-	"catalog_series_get",
-	"catalog_series_list",
-	"catalog_stats",
-	"catalog_tag_get",
-	"catalog_tags_list",
-	"catalog_work_characters",
-	"catalog_work_covers",
-	"catalog_work_credits",
-	"catalog_work_engines",
-	"catalog_work_get",
-	"catalog_work_intros",
-	"catalog_work_links",
-	"catalog_work_ratings",
-	"catalog_work_relations",
-	"catalog_work_releases",
-	"catalog_work_screenshots",
-	"catalog_work_series",
-	"catalog_work_tags",
-	"catalog_works_list",
-	"catalog_works_search",
-	"news_get",
-	"news_list",
-	"news_sources",
-}
+var fixtureSpec = []byte(`{
+  "paths": {
+    "/v2/catalog/works": {
+      "get": {
+        "operationId": "listCatalogWorks",
+        "summary": "List works",
+        "parameters": [
+          {"name": "q", "in": "query", "schema": {"type": "string"}},
+          {"name": "view", "in": "query", "schema": {"type": "string"}},
+          {"name": "fields", "in": "query", "schema": {"type": "string"}}
+        ]
+      }
+    },
+    "/v2/problems": {
+      "get": {"operationId": "listProblemTypes", "summary": "Problem types"}
+    }
+  }
+}`)
 
 func TestToolRegistry(t *testing.T) {
 	ctx := context.Background()
-	server := NewServer(NewUpstream("http://127.0.0.1:0"))
+	server, err := NewServer(NewUpstream("http://127.0.0.1:0"), fixtureSpec)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
 
 	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil)
 	st, ct := mcp.NewInMemoryTransports()
@@ -84,13 +66,32 @@ func TestToolRegistry(t *testing.T) {
 		}
 	}
 	sort.Strings(got)
-
-	if len(got) != len(expectedTools) {
-		t.Fatalf("tool count = %d, want %d (%v)", len(got), len(expectedTools), got)
+	want := []string{"listCatalogWorks", "listProblemTypes"}
+	if len(got) != len(want) {
+		t.Fatalf("tool count = %d, want %d (%v)", len(got), len(want), got)
 	}
-	for i, name := range expectedTools {
+	for i, name := range want {
 		if got[i] != name {
 			t.Errorf("tool[%d] = %q, want %q", i, got[i], name)
+		}
+	}
+	descs, err := ToolsFromSpec(fixtureSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var works ToolDesc
+	for _, d := range descs {
+		if d.Name == "listCatalogWorks" {
+			works = d
+		}
+	}
+	have := map[string]bool{}
+	for _, p := range works.Params {
+		have[p] = true
+	}
+	for _, p := range []string{"q", "view", "fields"} {
+		if !have[p] {
+			t.Errorf("listCatalogWorks missing param %s", p)
 		}
 	}
 }
@@ -104,10 +105,10 @@ func TestBearerTokenFormCheck(t *testing.T) {
 	}{
 		{"missing", http.Header{}, false, ""},
 		{"nil header", nil, false, ""},
-		{"non-bearer scheme", http.Header{"Authorization": {"Basic nm_live_x"}}, false, ""},
-		{"bearer non-nm token (e.g. a JWT)", http.Header{"Authorization": {"Bearer eyJhbGci.foo.bar"}}, false, ""},
-		{"bearer live key", http.Header{"Authorization": {"Bearer nm_live_abc123"}}, true, "nm_live_abc123"},
-		{"bearer test key with padding", http.Header{"Authorization": {"Bearer   nm_test_xyz  "}}, true, "nm_test_xyz"},
+		{"non-bearer scheme", http.Header{"Authorization": {"Basic nmk_live_x"}}, false, ""},
+		{"bearer non-nmk token (e.g. a JWT)", http.Header{"Authorization": {"Bearer eyJhbGci.foo.bar"}}, false, ""},
+		{"bearer v1 key rejected", http.Header{"Authorization": {"Bearer nm_live_abc123"}}, false, ""},
+		{"bearer live key", http.Header{"Authorization": {"Bearer nmk_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAA"}}, true, "nmk_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAA"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -191,35 +192,39 @@ func TestUpstreamGetTimeout(t *testing.T) {
 }
 
 func TestHandlerEndToEnd(t *testing.T) {
-	var gotPath, gotQuery string
+	var gotPath, gotQuery, gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
-		_, _ = w.Write([]byte(`{"data":{"items":[]}}`))
+		gotPath, gotQuery, gotAuth = r.URL.Path, r.URL.RawQuery, r.Header.Get("Authorization")
+		_, _ = w.Write([]byte(`{"object":"list","items":[]}`))
 	}))
 	defer srv.Close()
 
-	tl := &tools{up: NewUpstream(srv.URL)}
+	key := "nmk_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	td := ToolDesc{Name: "listCatalogWorks", Path: "/v2/catalog/works", Params: []string{"q", "view"}, NeedsKey: true}
+	h := (&toolsRunner{up: NewUpstream(srv.URL)}).handler(td)
 	ctx := context.Background()
-
 	req := &mcp.CallToolRequest{Extra: &mcp.RequestExtra{
-		Header: http.Header{"Authorization": {"Bearer nm_test_smoke"}},
+		Header: http.Header{"Authorization": {"Bearer " + key}},
 	}}
-	res, _, err := tl.catalogSearch(ctx, req, catalogSearchInput{Type: "works", Q: "fate", Limit: 10})
+	res, _, err := h(ctx, req, map[string]any{"q": "fate", "view": "basic"})
 	if err != nil {
 		t.Fatalf("handler err: %v", err)
 	}
 	if res.IsError {
 		t.Fatalf("handler returned an error result: %q", textOf(t, res))
 	}
-	if gotPath != "/v1/catalog/search" {
+	if gotPath != "/v2/catalog/works" {
 		t.Errorf("path = %q", gotPath)
 	}
-	if !contains(gotQuery, "q=fate") || !contains(gotQuery, "type=works") || !contains(gotQuery, "limit=10") {
-		t.Errorf("query = %q (want type=works, q=fate and limit=10)", gotQuery)
+	if !contains(gotQuery, "q=fate") || !contains(gotQuery, "view=basic") {
+		t.Errorf("query = %q", gotQuery)
+	}
+	if gotAuth != "Bearer "+key {
+		t.Errorf("auth = %q", gotAuth)
 	}
 
 	noKey := &mcp.CallToolRequest{Extra: &mcp.RequestExtra{Header: http.Header{}}}
-	res2, _, err := tl.catalogWorkGet(ctx, noKey, catalogWorkGetInput{ID: 1})
+	res2, _, err := h(ctx, noKey, map[string]any{"q": "fate"})
 	if err != nil {
 		t.Fatalf("handler err: %v", err)
 	}
@@ -231,111 +236,39 @@ func TestHandlerEndToEnd(t *testing.T) {
 	}
 }
 
-func TestNewsToolsHitTheNewsFace(t *testing.T) {
-	var gotPath, gotQuery string
+func TestSpecToolsSubstitutePathAndSkipKeyOnNews(t *testing.T) {
+	var gotPath, gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
-		_, _ = w.Write([]byte(`{"data":{"items":[]}}`))
+		gotPath, gotAuth = r.URL.Path, r.Header.Get("Authorization")
+		_, _ = w.Write([]byte(`{"object":"news_item"}`))
 	}))
 	defer srv.Close()
 
-	tl := &tools{up: NewUpstream(srv.URL)}
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{Extra: &mcp.RequestExtra{
-		Header: http.Header{"Authorization": {"Bearer nm_test_smoke"}},
-	}}
-
-	if _, _, err := tl.newsList(ctx, req, newsListInput{Source: "ymgal", Lane: "column", Limit: 5}); err != nil {
-		t.Fatalf("news_list: %v", err)
+	td := ToolDesc{Name: "getNewsItem", Path: "/v2/news/{id}", Params: []string{"id"}, Required: []string{"id"}, NeedsKey: false}
+	h := (&toolsRunner{up: NewUpstream(srv.URL)}).handler(td)
+	res, _, err := h(context.Background(), &mcp.CallToolRequest{}, map[string]any{"id": "42"})
+	if err != nil {
+		t.Fatalf("news: %v", err)
 	}
-	if gotPath != "/v1/news" {
-		t.Errorf("news_list path = %q", gotPath)
+	if res.IsError {
+		t.Fatalf("news error: %q", textOf(t, res))
 	}
-	if !contains(gotQuery, "source=ymgal") || !contains(gotQuery, "lane=column") || !contains(gotQuery, "limit=5") {
-		t.Errorf("news_list query = %q", gotQuery)
+	if gotPath != "/v2/news/42" {
+		t.Errorf("path = %q", gotPath)
 	}
-
-	if _, _, err := tl.newsSources(ctx, req, newsSourcesInput{}); err != nil {
-		t.Fatalf("news_sources: %v", err)
-	}
-	if gotPath != "/v1/news/sources" || gotQuery != "" {
-		t.Errorf("news_sources = %q?%q", gotPath, gotQuery)
+	if gotAuth != "" {
+		t.Errorf("news must not require a key, got auth %q", gotAuth)
 	}
 
-	if _, _, err := tl.newsGet(ctx, req, newsGetInput{ID: 42}); err != nil {
-		t.Fatalf("news_get: %v", err)
+	covers := ToolDesc{Name: "getCatalogWorkCovers", Path: "/v2/catalog/works/{id}/covers", Params: []string{"id", "limit"}, NeedsKey: true}
+	h = (&toolsRunner{up: NewUpstream(srv.URL)}).handler(covers)
+	key := "nmk_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	req := &mcp.CallToolRequest{Extra: &mcp.RequestExtra{Header: http.Header{"Authorization": {"Bearer " + key}}}}
+	if _, _, err := h(context.Background(), req, map[string]any{"id": "7", "limit": "5"}); err != nil {
+		t.Fatal(err)
 	}
-	if gotPath != "/v1/news/42" {
-		t.Errorf("news_get path = %q", gotPath)
-	}
-}
-
-func TestWorkSubresourceToolsHitTheirBlock(t *testing.T) {
-	var gotPath, gotQuery string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
-		_, _ = w.Write([]byte(`{"data":{"items":[]}}`))
-	}))
-	defer srv.Close()
-
-	tl := &tools{up: NewUpstream(srv.URL)}
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{Extra: &mcp.RequestExtra{
-		Header: http.Header{"Authorization": {"Bearer nm_test_smoke"}},
-	}}
-	in := workSubresourceInput{ID: 7, Limit: 5, Offset: 10, Nsfw: true}
-
-	blocks := map[string]func() error{
-		"covers":      func() error { _, _, err := tl.catalogWorkCovers(ctx, req, in); return err },
-		"screenshots": func() error { _, _, err := tl.catalogWorkScreenshots(ctx, req, in); return err },
-		"characters":  func() error { _, _, err := tl.catalogWorkCharacters(ctx, req, in); return err },
-		"credits":     func() error { _, _, err := tl.catalogWorkCredits(ctx, req, in); return err },
-		"releases":    func() error { _, _, err := tl.catalogWorkReleases(ctx, req, in); return err },
-		"intros":      func() error { _, _, err := tl.catalogWorkIntros(ctx, req, in); return err },
-		"ratings":     func() error { _, _, err := tl.catalogWorkRatings(ctx, req, in); return err },
-		"relations":   func() error { _, _, err := tl.catalogWorkRelations(ctx, req, in); return err },
-		"series":      func() error { _, _, err := tl.catalogWorkSeries(ctx, req, in); return err },
-		"links":       func() error { _, _, err := tl.catalogWorkLinks(ctx, req, in); return err },
-		"engines":     func() error { _, _, err := tl.catalogWorkEngines(ctx, req, in); return err },
-	}
-	for block, call := range blocks {
-		if err := call(); err != nil {
-			t.Fatalf("%s: %v", block, err)
-		}
-		if want := "/v1/catalog/works/7/" + block; gotPath != want {
-			t.Errorf("%s path = %q, want %q", block, gotPath, want)
-		}
-		if !contains(gotQuery, "limit=5") || !contains(gotQuery, "offset=10") || !contains(gotQuery, "nsfw=1") {
-			t.Errorf("%s query = %q", block, gotQuery)
-		}
-		if contains(gotQuery, "spoilers") {
-			t.Errorf("%s must not send spoilers, query = %q", block, gotQuery)
-		}
-	}
-
-	if _, _, err := tl.catalogWorkTags(ctx, req, workTagsInput{ID: 7, Limit: 5, Spoilers: 2}); err != nil {
-		t.Fatalf("tags: %v", err)
-	}
-	if gotPath != "/v1/catalog/works/7/tags" {
-		t.Errorf("tags path = %q", gotPath)
-	}
-	if !contains(gotQuery, "spoilers=2") {
-		t.Errorf("tags query = %q, want spoilers=2", gotQuery)
-	}
-}
-
-func TestNewsToolDescriptionsStateTheGrant(t *testing.T) {
-	for name, desc := range map[string]string{
-		"news_list":    descNewsList,
-		"news_sources": descNewsSources,
-		"news_get":     descNewsGet,
-	} {
-		if !contains(desc, "news:read") {
-			t.Errorf("%s description must name the news:read scope", name)
-		}
-		if !contains(desc, "GRANTED BY THE PLATFORM") {
-			t.Errorf("%s description must say the scope is not self-service", name)
-		}
+	if gotPath != "/v2/catalog/works/7/covers" {
+		t.Errorf("covers path = %q", gotPath)
 	}
 }
 

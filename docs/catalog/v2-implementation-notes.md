@@ -32,7 +32,7 @@ Date: 2026-08-23. Branch: `v2-stage0`. No push (deploy is automatic).
 
 8. **Claim POST mint needs `display_name`** — D33. `SubmitWork` cannot mint without `catalog.work.display_name`. `refs` that miss `catalog_external_ref` become `catalog.work.links` URLs via the existing source URL templates. `work_id` and `refs` both absent is 422 even if `display_name` is present.
 
-9. **Moderation claims/proposals lists are not keyset-paginated yet** — pending claims order by submitted event id and return one page. `/v2/me/claims` is keyset-paginated. The queues stay one page until `PendingClaims` grows a cursor.
+9. **Moderation queues and `/v2/me/proposals` are keyset-paginated** on event/proposal id (`cur_` + over-fetch).
 
 ## Stage 6 write
 
@@ -53,11 +53,18 @@ Date: 2026-08-23. Branch: `v2-stage0`. No push (deploy is automatic).
 
 `content_limit` on claim POST is not stored (no column on the claim row). Omit it.
 
-## Stage 7–10 (not this repo's HTTP surface)
+## Stage 7–8 (this repo)
 
-- **7 MCP / SDK** — generated from `v2-openapi.yaml` in kungal-docs / client repos.
-- **8 preview portal, HTML problem catalog, design-principles page** — `developer.nextmoe.dev`, not `cmd/catalog`.
-- **9 GA / 10 v1 410** — product announcement, consumer migration, Sunset headers. Not code-completeable from infra alone.
+- **MCP** — `cmd/mcp` loads `GET /v2/catalog/openapi.json` (or `KUN_MCP_OPENAPI_PATH`) and registers one read-only tool per GET on `/v2/catalog`, `/v2/news`, `/v2/problems`, `/v2/vocabularies`. Tool name = operationId. `nmk_` keys only. G10 compares tool params ⊇ HTTP query/path params.
+- **SDK check** — `internal/platform/apiv2/sdk` Go client compiles and hits problems/vocabularies/works. TypeScript twin is the portal docs-model + explore relay.
+- **Portal** — `apps/developer` documents the v2 face from `docs/catalog/v2-openapi.yaml`, HTML problem pages at `/problems/{domain}/{kebab}`, vocabularies, design principles, preview banner. Explore and landing relay `/v2`.
+- **Keys** — `/v2` rejects `nm_live_` / `nm_test_`. Internal-tier mint/rotate issues `nmk_live_` / `nmk_test_` with CRC32. v1 still accepts both generations (malformed `nmk_` rejected offline).
+- **Edge** — `docker-compose.prod.yml` routes `Host(api.nextmoe.dev) && PathPrefix(/v2)` to catalog. **Not deployed until this branch is pushed.**
+
+## Stage 9–10 (not code-completeable here)
+
+- **9 GA** — user announcement after kungal / moyu / letmoe migrate and letmoe is actually live. Then enable G12, freeze default masks and error codes, drop the preview banner, issue `nmk_` to third parties, notify the 17 owners.
+- **10 v1 410** — Deprecation/Sunset from GA, brownout, then `/v1/**` 410. Do not start the clock from preview.
 
 ## Tests that exist
 

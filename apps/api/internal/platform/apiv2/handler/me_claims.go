@@ -63,9 +63,21 @@ func (c *Catalog) ListModerationClaims(ctx context.Context, q collect.Query) (re
 	if limit <= 0 {
 		limit = collect.DefaultLimit
 	}
-	rows, total, lerr := c.Claims.PendingClaims(ctx, site, limit)
+	before, berr := claimEventCursor(q.Cursor)
+	if berr != nil {
+		return repr.List[repr.ClaimRecord]{}, berr
+	}
+	rows, total, lerr := c.Claims.PendingClaimsAfter(ctx, site, limit+1, before)
 	if lerr != nil {
 		return repr.List[repr.ClaimRecord]{}, lerr
+	}
+	var next *string
+	if len(rows) > limit {
+		rows = rows[:limit]
+		if last := rows[len(rows)-1].SubmittedEventID; last != nil {
+			s := strconv.FormatInt(*last, 10)
+			next = &s
+		}
 	}
 	items := make([]repr.ClaimRecord, 0, len(rows))
 	for _, r := range rows {
@@ -73,7 +85,7 @@ func (c *Catalog) ListModerationClaims(ctx context.Context, q collect.Query) (re
 			Object: "claim", ID: repr.ID(r.WorkID), State: "pending", DisplayName: r.DisplayName,
 		})
 	}
-	return finishList(items, nil, total, q, nil), nil
+	return finishList(items, next, total, q, nil), nil
 }
 
 func (c *Catalog) GetModerationClaim(ctx context.Context, workID int64) (repr.ClaimRecord, error) {

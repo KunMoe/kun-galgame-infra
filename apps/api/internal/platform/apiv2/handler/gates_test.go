@@ -40,6 +40,17 @@ func TestG7toG16(t *testing.T) {
 	}
 }
 
+func TestG10G15G17(t *testing.T) {
+	doc := Setup(fiber.New()).OpenAPI()
+	var errs []string
+	errs = append(errs, CheckG10(doc)...)
+	errs = append(errs, CheckG15(doc)...)
+	errs = append(errs, CheckG17(doc)...)
+	if len(errs) > 0 {
+		t.Fatalf("gates:\n  %s", stringsJoin(errs))
+	}
+}
+
 func stringsJoin(errs []string) string {
 	out := errs[0]
 	for i := 1; i < len(errs); i++ {

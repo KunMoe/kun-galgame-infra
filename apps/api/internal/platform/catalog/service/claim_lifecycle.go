@@ -342,6 +342,10 @@ func (s *ClaimLifecycleService) EventsSince(ctx context.Context, since int64, li
 }
 
 func (s *ClaimLifecycleService) PendingClaims(ctx context.Context, site string, limit int) ([]PendingClaimItem, int64, error) {
+	return s.PendingClaimsAfter(ctx, site, limit, 0)
+}
+
+func (s *ClaimLifecycleService) PendingClaimsAfter(ctx context.Context, site string, limit int, before int64) ([]PendingClaimItem, int64, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
@@ -349,6 +353,10 @@ func (s *ClaimLifecycleService) PendingClaims(ctx context.Context, site string, 
 		Where("w.deleted_at IS NULL AND w.claim_state = ?", model.ClaimStatePending)
 	if site != "" {
 		q = q.Where("w.site = ?", site)
+	}
+	if before > 0 {
+		q = q.Where(`(SELECT max(e.id) FROM catalog_claim_event e
+			WHERE e.work_id = w.id AND e.to_state = ?) > ?`, model.ClaimStatePending, before)
 	}
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {

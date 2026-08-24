@@ -109,6 +109,7 @@ type ProposalFilter struct {
 	ProposerUID int64
 	Status      int16
 	Limit       int
+	BeforeID    int64
 }
 
 func (e *Engine) ListProposals(ctx context.Context, f ProposalFilter) ([]Proposal, error) {
@@ -132,6 +133,9 @@ func (e *Engine) ListProposalsWithTotal(ctx context.Context, f ProposalFilter) (
 	}
 	if f.Status >= 0 {
 		q = q.Where("status = ?", f.Status)
+	}
+	if f.BeforeID > 0 {
+		q = q.Where("id < ?", f.BeforeID)
 	}
 	limit := f.Limit
 	if limit <= 0 || limit > 200 {

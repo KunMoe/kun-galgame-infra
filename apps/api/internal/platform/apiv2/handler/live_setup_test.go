@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/catalog/editspec"
@@ -29,13 +30,35 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-const (
-	liveAppKey    = "nm_live_v2test"
+var (
+	liveAppKey    = mustLiveV2Key()
+	liveAppKeyB   = mustLiveV2Key()
 	liveUserToken = "user-live-token"
 	liveUID       = int64(7)
 	liveClient    = "kungal-client"
 	liveSite      = "kungal"
 )
+
+type liveUnlimitedStore struct{}
+
+func (liveUnlimitedStore) Incr(context.Context, string, time.Duration) (int64, error) {
+	return 1, nil
+}
+func (liveUnlimitedStore) Decr(context.Context, string) error { return nil }
+func (liveUnlimitedStore) Get(context.Context, string) ([]byte, error) {
+	return nil, nil
+}
+func (liveUnlimitedStore) Set(context.Context, string, []byte, time.Duration) error {
+	return nil
+}
+
+func mustLiveV2Key() string {
+	k, err := devapi.GenerateV2Key(true)
+	if err != nil {
+		panic(err)
+	}
+	return k
+}
 
 type liveFix struct {
 	Work, Pending, Claimable, Anchored int64
@@ -102,14 +125,21 @@ func liveCatalog(t *testing.T) *liveEnv {
 		}
 		app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
 		SetupWith(app, Options{
+			Store:   liveUnlimitedStore{},
 			Catalog: cat,
 			LookupCredential: func(_ context.Context, raw string) (*devapi.Credential, error) {
-				if raw != liveAppKey {
+				switch raw {
+				case liveAppKey:
+					return &devapi.Credential{
+						KeyID: 1, NSFWAllowed: true, Scopes: []string{devapi.ScopeCatalogRead},
+					}, nil
+				case liveAppKeyB:
+					return &devapi.Credential{
+						KeyID: 2, NSFWAllowed: true, Scopes: []string{devapi.ScopeCatalogRead},
+					}, nil
+				default:
 					return nil, nil
 				}
-				return &devapi.Credential{
-					KeyID: 1, NSFWAllowed: true, Scopes: []string{devapi.ScopeCatalogRead},
-				}, nil
 			},
 			LookupUser: func(_ context.Context, raw string) (UserIdentity, error) {
 				if raw != liveUserToken {

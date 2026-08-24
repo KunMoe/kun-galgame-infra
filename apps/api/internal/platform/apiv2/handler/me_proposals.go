@@ -54,7 +54,15 @@ func (c *Catalog) ListMyProposals(ctx context.Context, q collect.Query, state st
 	if err != nil {
 		return repr.List[repr.ProposalRecord]{}, err
 	}
-	f := editing.ProposalFilter{ProposerUID: uid, Limit: q.Limit, Status: -1}
+	limit := q.Limit
+	if limit <= 0 {
+		limit = collect.DefaultLimit
+	}
+	before, berr := claimEventCursor(q.Cursor)
+	if berr != nil {
+		return repr.List[repr.ProposalRecord]{}, berr
+	}
+	f := editing.ProposalFilter{ProposerUID: uid, Limit: limit + 1, Status: -1, BeforeID: before}
 	if site := siteFrom(ctx); site != "" {
 		f.Site = site
 	}
@@ -65,11 +73,17 @@ func (c *Catalog) ListMyProposals(ctx context.Context, q collect.Query, state st
 	if lerr != nil {
 		return repr.List[repr.ProposalRecord]{}, lerr
 	}
+	var next *string
+	if len(rows) > limit {
+		rows = rows[:limit]
+		s := strconv.FormatInt(rows[len(rows)-1].ID, 10)
+		next = &s
+	}
 	items := make([]repr.ProposalRecord, 0, len(rows))
 	for i := range rows {
 		items = append(items, proposalFrom(&rows[i]))
 	}
-	return finishList(items, nil, total, q, nil), nil
+	return finishList(items, next, total, q, nil), nil
 }
 
 func (c *Catalog) GetMyProposal(ctx context.Context, id int64) (repr.ProposalRecord, string, error) {
@@ -182,16 +196,30 @@ func (c *Catalog) ListModerationProposals(ctx context.Context, q collect.Query) 
 	if err != nil {
 		return repr.List[repr.ProposalRecord]{}, err
 	}
-	f := editing.ProposalFilter{Status: editing.StatusOpen, Limit: q.Limit, Site: site}
+	limit := q.Limit
+	if limit <= 0 {
+		limit = collect.DefaultLimit
+	}
+	before, berr := claimEventCursor(q.Cursor)
+	if berr != nil {
+		return repr.List[repr.ProposalRecord]{}, berr
+	}
+	f := editing.ProposalFilter{Status: editing.StatusOpen, Limit: limit + 1, Site: site, BeforeID: before}
 	rows, total, lerr := c.Engine.ListProposalsWithTotal(ctx, f)
 	if lerr != nil {
 		return repr.List[repr.ProposalRecord]{}, lerr
+	}
+	var next *string
+	if len(rows) > limit {
+		rows = rows[:limit]
+		s := strconv.FormatInt(rows[len(rows)-1].ID, 10)
+		next = &s
 	}
 	items := make([]repr.ProposalRecord, 0, len(rows))
 	for i := range rows {
 		items = append(items, proposalFrom(&rows[i]))
 	}
-	return finishList(items, nil, total, q, nil), nil
+	return finishList(items, next, total, q, nil), nil
 }
 
 func (c *Catalog) DecideProposal(ctx context.Context, id int64, decision, note, ifMatch string) (repr.DecisionRecord, error) {

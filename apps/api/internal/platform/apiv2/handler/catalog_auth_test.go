@@ -36,12 +36,22 @@ func authGET(t *testing.T, app *fiber.App, path, token string) (int, problem.Pro
 	return resp.StatusCode, p
 }
 
+func mustV2Key(t *testing.T) string {
+	t.Helper()
+	k, err := devapi.GenerateV2Key(true)
+	require.NoError(t, err)
+	return k
+}
+
 func TestCatalogAuthLookupRejectsUnknownAndUnscopedKeys(t *testing.T) {
+	sfw := mustV2Key(t)
+	news := mustV2Key(t)
+	missing := mustV2Key(t)
 	lookup := func(_ context.Context, raw string) (*devapi.Credential, error) {
 		switch raw {
-		case "nm_live_sfwkey":
+		case sfw:
 			return &devapi.Credential{KeyID: 1, Scopes: []string{devapi.ScopeCatalogRead}}, nil
-		case "nm_live_newskey":
+		case news:
 			return &devapi.Credential{KeyID: 2, Scopes: []string{devapi.ScopeNewsRead}}, nil
 		default:
 			return nil, nil
@@ -53,22 +63,27 @@ func TestCatalogAuthLookupRejectsUnknownAndUnscopedKeys(t *testing.T) {
 	require.Equal(t, 401, status)
 	require.Equal(t, problem.CodeInvalidCredential, p.Code)
 
-	status, p = authGET(t, app, "/v2/catalog/works", "nm_live_missing")
+	status, p = authGET(t, app, "/v2/catalog/works", "nm_live_legacy")
 	require.Equal(t, 401, status)
 	require.Equal(t, problem.CodeInvalidCredential, p.Code)
 
-	status, p = authGET(t, app, "/v2/catalog/works", "nm_live_newskey")
+	status, p = authGET(t, app, "/v2/catalog/works", missing)
+	require.Equal(t, 401, status)
+	require.Equal(t, problem.CodeInvalidCredential, p.Code)
+
+	status, p = authGET(t, app, "/v2/catalog/works", news)
 	require.Equal(t, 403, status)
 	require.Equal(t, problem.CodeScopeRequired, p.Code)
 
-	status, p = authGET(t, app, "/v2/catalog/works?nsfw=true", "nm_live_sfwkey")
+	status, p = authGET(t, app, "/v2/catalog/works?nsfw=true", sfw)
 	require.Equal(t, 403, status)
 	require.Equal(t, problem.CodeNSFWCapabilityRequired, p.Code)
 }
 
 func TestCatalogAuthLookupHonoursNSFWCapability(t *testing.T) {
+	nsfw := mustV2Key(t)
 	lookup := func(_ context.Context, raw string) (*devapi.Credential, error) {
-		if raw == "nm_live_nsfwkey" {
+		if raw == nsfw {
 			return &devapi.Credential{
 				KeyID: 3, NSFWAllowed: true, Scopes: []string{devapi.ScopeCatalogRead},
 			}, nil
@@ -77,11 +92,11 @@ func TestCatalogAuthLookupHonoursNSFWCapability(t *testing.T) {
 	}
 	app := testAppLookup(t, lookup)
 
-	status, p := authGET(t, app, "/v2/catalog/works?nsfw=true", "nm_live_nsfwkey")
+	status, p := authGET(t, app, "/v2/catalog/works?nsfw=true", nsfw)
 	require.Equal(t, 503, status)
 	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 
-	status, p = authGET(t, app, "/v2/catalog/works/1?nsfw=true", "nm_live_nsfwkey")
+	status, p = authGET(t, app, "/v2/catalog/works/1?nsfw=true", nsfw)
 	require.Equal(t, 503, status)
 	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 }
@@ -90,7 +105,7 @@ func TestCatalogAuthLookupStoreFailureIs503(t *testing.T) {
 	app := testAppLookup(t, func(context.Context, string) (*devapi.Credential, error) {
 		return nil, errors.New("redis down")
 	})
-	status, p := authGET(t, app, "/v2/catalog/works", "nm_live_anything")
+	status, p := authGET(t, app, "/v2/catalog/works", mustV2Key(t))
 	require.Equal(t, 503, status)
 	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 }

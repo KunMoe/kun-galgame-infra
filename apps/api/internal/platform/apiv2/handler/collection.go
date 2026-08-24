@@ -180,7 +180,11 @@ func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error
 		if lookup == nil {
 			return c.Next()
 		}
-		if !devapi.HasKeyPrefix(token) {
+		if devapi.HasV1KeyPrefix(token) {
+			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
+				"v1 application keys are not accepted on /v2 during preview."))
+		}
+		if !devapi.IsV2KeyPrefix(token) || !devapi.ValidV2Key(token) {
 			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
 				"Authorization Bearer token is invalid."))
 		}

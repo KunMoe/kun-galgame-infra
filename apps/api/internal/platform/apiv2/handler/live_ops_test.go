@@ -218,3 +218,13 @@ func TestLiveSpecWalk(t *testing.T) {
 		}
 	}
 }
+
+func TestLiveG11SameBytesAcrossKeys(t *testing.T) {
+	env := liveCatalog(t)
+	path := "/v2/catalog/works/" + idstr(env.fx.Work)
+	statusA, _, a := liveDo(t, env, http.MethodGet, path, liveAppKey, "")
+	statusB, _, b := liveDo(t, env, http.MethodGet, path, liveAppKeyB, "")
+	require.Equal(t, 200, statusA, string(a))
+	require.Equal(t, 200, statusB, string(b))
+	require.Equal(t, a, b)
+}

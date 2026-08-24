@@ -42,7 +42,11 @@ func WithCredential(c fiber.Ctx, cred *Credential) {
 }
 
 func (m *Middleware) Lookup(ctx context.Context, raw string) (*Credential, error) {
-	if !HasKeyPrefix(raw) {
+	if IsV2KeyPrefix(raw) {
+		if !ValidV2Key(raw) {
+			return nil, nil
+		}
+	} else if !HasV1KeyPrefix(raw) {
 		return nil, nil
 	}
 	return m.resolve(ctx, raw)
@@ -50,7 +54,11 @@ func (m *Middleware) Lookup(ctx context.Context, raw string) (*Credential, error
 
 func (m *Middleware) ResolveCredential(c fiber.Ctx) error {
 	raw := extractKey(c)
-	if !HasKeyPrefix(raw) {
+	if IsV2KeyPrefix(raw) {
+		if !ValidV2Key(raw) {
+			return resp401(c)
+		}
+	} else if !HasV1KeyPrefix(raw) {
 		return resp401(c)
 	}
 	cred, err := m.resolve(c.Context(), raw)
