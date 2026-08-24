@@ -3657,6 +3657,7 @@ components:
         key:
           description: Editing-engine field key. Must not be used as a discriminant.
           maxLength: 128
+          pattern: ^[a-z0-9_]+(\.[a-z0-9_]+)+$
           type: string
         max_elements:
           description: Cap on a list field's element count. 0 for scalar fields.
