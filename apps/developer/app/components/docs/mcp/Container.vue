@@ -5,13 +5,13 @@ import { MCP_TOOLS } from '~~/shared/mcp-tools.mjs'
 useSeoMeta({
   title: 'AI / MCP 接入',
   description:
-    '把 NextMoe 开放 API 作为 MCP（Model Context Protocol）server 接入 AI 助手：端点、密钥配置，37 个只读工具，以及 Claude Code / Claude Desktop / 通用 MCP 客户端三段配置示例。'
+    '把 NextMoe 开放 API v2 作为 MCP server 接入 AI 助手：工具由 /v2 OpenAPI 生成，密钥是 nmk_live_。'
 })
 
 const tools = MCP_TOOLS
 
 const claudeCodeCmd = `claude mcp add --transport http nextmoe ${MCP_ENDPOINT} \\
-  --header "Authorization: Bearer nm_live_你的密钥"`
+  --header "Authorization: Bearer nmk_live_你的密钥"`
 
 const claudeDesktopJson = `{
   "mcpServers": {
@@ -19,7 +19,7 @@ const claudeDesktopJson = `{
       "type": "http",
       "url": "${MCP_ENDPOINT}",
       "headers": {
-        "Authorization": "Bearer nm_live_你的密钥"
+        "Authorization": "Bearer nmk_live_你的密钥"
       }
     }
   }
@@ -29,14 +29,14 @@ const genericJson = `{
   "transport": "streamable-http",
   "url": "${MCP_ENDPOINT}",
   "headers": {
-    "Authorization": "Bearer nm_live_你的密钥"
+    "Authorization": "Bearer nmk_live_你的密钥"
   }
 }`
 
 const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
   -H "Content-Type: application/json" \\
   -H "Accept: application/json, text/event-stream" \\
-  -H "Authorization: Bearer nm_live_你的密钥" \\
+  -H "Authorization: Bearer nmk_live_你的密钥" \\
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize",
        "params":{"protocolVersion":"2025-06-18","capabilities":{},
                  "clientInfo":{"name":"curl","version":"0"}}}'`
@@ -53,7 +53,7 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
         NextMoe 开放 API 同时以 <strong class="text-foreground">MCP</strong>（Model
         Context Protocol）server 暴露：AI 助手 / agent 用自然的工具调用直接查生态目录，
         无需为它写胶水代码。它是一层<strong class="text-foreground">纯透传适配</strong>——
-        每次工具调用就是一次对公开 /v1 端点的请求，原样带上你的密钥。
+        工具由 v2 OpenAPI 生成，每次调用就是一次对公开 /v2 GET 的请求。
       </p>
     </header>
 
@@ -93,7 +93,7 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
           <code
             class="rounded bg-default-100 px-1 py-0.5 font-mono text-xs text-foreground"
           >
-            Authorization: Bearer nm_live_…
+            Authorization: Bearer nmk_live_…
           </code>
           。与直连同一把密钥，
           <NuxtLink to="/dashboard" class="text-primary hover:underline">
@@ -115,25 +115,20 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
         MCP 层自身<strong class="text-foreground">零鉴权、零计量</strong>逻辑——鉴权、tier、
         NSFW 可见性、限流、日配额与用量统计全部复用同一套端点、记在同一把密钥上：一次工具调用在
         <code class="font-mono text-xs text-foreground">/dev/usage</code>
-        里与一次直连 <code class="font-mono text-xs text-foreground">/v1</code> 请求毫无区别。
+        里与一次直连 <code class="font-mono text-xs text-foreground">/v2</code> 请求毫无区别。preview 期间只要 internal 档签发的 nmk_ 密钥。
       </p>
     </section>
 
     <section>
       <h2 class="text-lg font-semibold text-foreground">工具（{{ tools.length }} 个）</h2>
       <p class="mt-1 text-sm text-default-500">
-        每个工具映射一个公开只读端点。手握 id / 外部 id 用
-        <code class="font-mono text-xs text-foreground">*_get</code> /
-        <code class="font-mono text-xs text-foreground">*_lookup</code>，自然语言用
-        <code class="font-mono text-xs text-foreground">*_search</code>。带
-        <span class="font-medium text-warning-600">授权制</span>
-        的三个走资讯 API，密钥须带
-        <code class="font-mono text-xs text-foreground">news:read</code>
-        ——授权制权限：在
-        <NuxtLink to="/dashboard" class="text-primary hover:underline">
-          控制台
-        </NuxtLink>
-        申请并说明用途，批准后即可自助勾选；没有它调这三个一律 403。
+        每个工具对应一条公开 GET，工具名就是 OpenAPI
+        <code class="font-mono text-xs">operationId</code>，参数集合就是 HTTP 的 query 与 path（含
+        <code class="font-mono text-xs">view=</code> /
+        <code class="font-mono text-xs">fields=</code>）。完整契约见
+        <NuxtLink to="/docs/v2" class="text-primary hover:underline">API v2 文档</NuxtLink>。
+        v2 资讯面无凭证，MCP 上 news 工具也不再要求
+        <code class="font-mono text-xs">news:read</code>。
       </p>
       <ul class="mt-4 space-y-2">
         <li
@@ -162,7 +157,7 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
         <h2 class="text-lg font-semibold text-foreground">客户端配置</h2>
         <p class="mt-1 text-sm text-default-500">
           把下面的
-          <code class="font-mono text-xs text-foreground">nm_live_你的密钥</code>
+          <code class="font-mono text-xs text-foreground">nmk_live_你的密钥</code>
           换成你自己的密钥。
         </p>
       </div>

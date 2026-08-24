@@ -65,6 +65,17 @@ watch(
     <div
       :class="cn('space-y-4 py-4 lg:pr-3', mobileOpen ? 'block' : 'hidden lg:block')"
     >
+      <div class="mb-3 space-y-1 text-xs">
+        <NuxtLink to="/docs/design" class="block text-default-400 hover:text-foreground">
+          设计原则
+        </NuxtLink>
+        <NuxtLink to="/docs/vocabularies" class="block text-default-400 hover:text-foreground">
+          词表
+        </NuxtLink>
+        <NuxtLink to="/problems" class="block text-default-400 hover:text-foreground">
+          Problem types
+        </NuxtLink>
+      </div>
       <div class="grid grid-cols-2 gap-1 rounded-lg bg-default-100 p-1">
         <NuxtLink
           v-for="f in faces"

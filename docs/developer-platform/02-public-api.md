@@ -10,7 +10,8 @@
 
 - **白名单暴露**:只把精选的只读端点放进 `api.nextmoe.dev/v1/…`;internal / admin / 写端点**永不**进入公开路由(物理上不挂到公开路由组)。**wave 207 收窄措辞**:被禁的是**注册表 / 编辑写面**——改注册行、认领、merge、审核队列这一族,它们至今一条都不在公开路由上。`/v1/playtime` 是**唯一**的公开写面,且写的**不是注册表**而是调用方自己的游玩记录:凭据是**用户自己的 Bearer 令牌**(不是机器 API key),一个用户只写得到自己那几行,见 §3.8。
 - **URL 版本化** `/v1/`:一旦有了无法协调破坏性变更的外部开发者,版本化与弃用策略从"过早优化"变成"硬需求"。
-- **弃用策略**:破坏性变更必须升 `/v2/`;字段级弃用走 `Deprecation` / `Sunset` 响应头 + 门户公告 + 不少于 N 个月窗口。
+- **弃用策略(v1)**:字段级弃用走 `Deprecation` / `Sunset` 响应头 + 门户公告 + 不少于 N 个月窗口。主版本退役从 **v2 GA** 起算，不是从 `/v2` 上线起算。
+- **`/v2` preview(2026-08-23)**:`/v2` 已经挂在 `cmd/catalog` 上，契约由 `docs/catalog/v2-openapi.yaml` 从真实路由生成。**preview 期间允许破坏性变更**（含删除与改名），合法性来自「不向第三方签发 `/v2` 凭证」：控制台只给 `dev_tier=internal` 的应用铸造 `nmk_live_` / `nmk_test_`（定长 37，CRC32 校验位）；存量 `nm_live_` 钥匙继续只对 `/v1` 有效。spec `info.x-stability: preview`。门户顶部有 preview 横幅。**这一段与上一句「破坏必须升 v2」字面冲突时，preview 规则优先**——否则我们又在违反自己发布的政策。GA 由平台宣布（判据：kungal / 摸鱼 / letmoe 迁完且 letmoe 真实上线），届时启用 oasdiff 破坏门、撤横幅、向第三方开放 `nmk_` 凭证，并给 v1 落 `Deprecation`/`Sunset`。客户端契约三句见门户 [/docs/design](https://developer.nextmoe.dev/docs/design)。
 - **路径命名空间 = 面**:`/v1/catalog/*`、`/v1/galgame/*`,未来 `/v1/manga/*` 等。galgame 的领域词表(officials/tags/engines/series)全部收进 `/v1/galgame/` 之下,给未来媒介留干净的顶层命名空间。**(galgame 面已于 2026-07-30 摘牌,整族落 `410 Gone`;该命名空间原则不变。)wave 207 更正**:在产的面现在是**两个**——`/v1/catalog`(**37 op**,wave 213 波 1 加了十二条作品子资源;机器 API key:`X-API-Key`,或 `Authorization: Bearer nm_live_…`)与 `/v1/playtime`(5 op,**用户**访问令牌:`Authorization: Bearer <OAuth access token>`,见 §3.8),冻结 spec 合计 42 op。它们同进程(`cmd/catalog`)挂载但**凭据体系不同**,不要写成一句「公开面用 API key」。
 - **公开投影与内部契约解耦**:公开面是从既有 Huma spec 精选出的**独立 spec**;内部 S2S/站点契约继续自由演进,互不牵制。
 

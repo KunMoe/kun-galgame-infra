@@ -2,9 +2,12 @@
 useSeoMeta({ title: '数据浏览', robots: 'noindex' })
 
 interface SearchHit {
-  id: number
-  entity_type: string
-  name: string
+  id: string | number
+  object?: string
+  target_object?: string
+  entity_type?: string
+  name?: string
+  display_name?: string
   latin?: string | null
   content_rating?: string
   sources?: string[]
@@ -23,7 +26,7 @@ const showRaw = ref(false)
 
 interface ExpandedEntity {
   group: string
-  id: number
+  id: string
   name: string
   raw: Record<string, unknown>
   showRaw: boolean
@@ -33,25 +36,26 @@ const expandNote = ref('')
 const expanding = ref(false)
 const EXPAND_CAP = 6
 
-const GROUP_KIND: Record<string, 'characters' | 'names' | 'labels' | 'works'> = {
-  '厂牌 / 社团': 'labels',
+const GROUP_KIND: Record<string, 'characters' | 'credit-names' | 'companies' | 'works'> = {
+  '厂牌 / 社团': 'companies',
   '角色': 'characters',
-  '名义': 'names',
+  '名义': 'credit-names',
   '关联作品': 'works'
 }
 const entityTarget = ref<{
-  kind: 'characters' | 'names' | 'labels' | 'works'
-  id: number
+  kind: 'characters' | 'credit-names' | 'companies' | 'works'
+  id: string
 } | null>(null)
 const openEntity = (e: ExpandedEntity) => {
   const kind = GROUP_KIND[e.group]
   if (kind) entityTarget.value = { kind, id: e.id }
 }
 
-const idOf = (v: unknown): number | null => {
+const idOf = (v: unknown): string | null => {
   if (v && typeof v === 'object' && 'id' in v) {
     const n = (v as { id?: unknown }).id
-    return typeof n === 'number' ? n : null
+    if (typeof n === 'string' && n) return n
+    if (typeof n === 'number' && n > 0) return String(n)
   }
   return null
 }
@@ -66,17 +70,17 @@ const expandAll = async () => {
 
   const jobs: {
     group: string
-    id: number
+    id: string
     path: string
     query: Record<string, string>
   }[] = []
   const seen = new Set<string>()
   const gate = (): Record<string, string> =>
-    nsfw.value ? { nsfw: '1' } : {}
+    nsfw.value ? { nsfw: 'true' } : {}
   const push = (
     group: string,
-    id: number | null,
-    path: (i: number) => string,
+    id: string | null,
+    path: (i: string) => string,
     query: Record<string, string> = {}
   ) => {
     if (id === null || seen.has(`${group}:${id}`)) return
@@ -84,15 +88,13 @@ const expandAll = async () => {
     jobs.push({ group, id, path: path(id), query })
   }
 
-  for (const l of arr('labels'))
-    push('厂牌 / 社团', idOf(l), (i) => `v1/catalog/labels/${i}`, {
-      include: 'works',
+  for (const l of arr('companies'))
+    push('厂牌 / 社团', idOf(l), (i) => `v2/catalog/companies/${i}`, {
       ...gate()
     })
   for (const c of arr('characters'))
-    push('角色', idOf(c), (i) => `v1/catalog/characters/${i}`, {
-      include: 'works',
-      spoilers: '2',
+    push('角色', idOf(c), (i) => `v2/catalog/characters/${i}`, {
+      view: 'full',
       ...gate()
     })
   for (const r of arr('credits')) {
@@ -102,15 +104,15 @@ const expandAll = async () => {
         push(
           '名义',
           idOf((c as { name?: unknown }).name) ?? idOf(c),
-          (i) => `v1/catalog/names/${i}`,
-          { include: 'credits', ...gate() }
+          (i) => `v2/catalog/credit-names/${i}`,
+          { ...gate() }
         )
   }
   for (const r of arr('relations'))
     push(
       '关联作品',
       idOf((r as { work?: unknown }).work),
-      (i) => `v1/catalog/works/${i}`,
+      (i) => `v2/catalog/works/${i}`,
       { include: 'relations,credits', ...gate() }
     )
   const totals = new Map<string, number>()
@@ -128,7 +130,7 @@ const expandAll = async () => {
   const results = await Promise.allSettled(
     capped.map(async (j) => {
       const resp = await relay(j.path, j.query)
-      return { j, data: resp.data as Record<string, unknown> | null }
+      return { j, data: resp as Record<string, unknown> }
     })
   )
   let failed = 0
@@ -177,12 +179,21 @@ onMounted(() => {
 })
 watch(apiKey, (v) => sessionStorage.setItem('explore_api_key', v))
 
+const problemMessage = (e: unknown): string => {
+  const err = e as { data?: { detail?: string; title?: string; message?: string }; statusCode?: number }
+  return (
+    err.data?.detail ??
+    err.data?.title ??
+    err.data?.message ??
+    `请求失败（${err.statusCode ?? '网络错误'}）`
+  )
+}
+
 const relay = async (path: string, query: Record<string, string>) => {
   const qs = new URLSearchParams(query).toString()
-  return await $fetch<{ code: number; message: string; data: unknown }>(
-    `/relay/${path}?${qs}`,
-    { headers: { Authorization: `Bearer ${apiKey.value.trim()}` } }
-  )
+  return await $fetch<unknown>(`/relay/${path}?${qs}`, {
+    headers: { Authorization: `Bearer ${apiKey.value.trim()}` }
+  })
 }
 
 const search = async () => {
@@ -191,39 +202,37 @@ const search = async () => {
   error.value = ''
   detail.value = null
   try {
-    const resp = await relay('v1/catalog/search', {
-      type: 'works',
+    const resp = await relay('v2/catalog/search', {
+      object: 'work',
       q: q.value,
-      ...(nsfw.value && { nsfw: '1' })
+      ...(nsfw.value && { nsfw: 'true' })
     })
-    const data = resp.data as { items?: SearchHit[]; total?: number } | null
-    hits.value = data?.items ?? []
-    total.value = data?.total ?? 0
+    const data = resp as { items?: SearchHit[]; total?: number }
+    hits.value = data.items ?? []
+    total.value = data.total ?? 0
   } catch (e) {
     hits.value = []
-    const err = e as { data?: { message?: string }; statusCode?: number }
-    error.value = err.data?.message ?? `请求失败（${err.statusCode ?? '网络错误'}）`
+    error.value = problemMessage(e)
   } finally {
     searching.value = false
   }
 }
 
-const openDetail = async (id: number) => {
+const openDetail = async (id: string | number) => {
   if (loadingDetail.value) return
   loadingDetail.value = true
   error.value = ''
   try {
-    const resp = await relay(`v1/catalog/works/${id}`, {
-      include: 'relations,credits',
-      ...(nsfw.value && { nsfw: '1' })
+    const resp = await relay(`v2/catalog/works/${id}`, {
+      include: 'relations,credits,companies,characters',
+      ...(nsfw.value && { nsfw: 'true' })
     })
-    detail.value = (resp.data as Record<string, unknown>) ?? null
+    detail.value = (resp as Record<string, unknown>) ?? null
     expanded.value = []
     expandNote.value = ''
     showRaw.value = false
   } catch (e) {
-    const err = e as { data?: { message?: string }; statusCode?: number }
-    error.value = err.data?.message ?? `请求失败（${err.statusCode ?? '网络错误'}）`
+    error.value = problemMessage(e)
   } finally {
     loadingDetail.value = false
   }
@@ -294,7 +303,7 @@ const facetSummary = computed(() => {
         @click="openDetail(h.id)"
       >
         <span class="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-          {{ h.name }}
+          {{ h.display_name || h.name || `#${h.id}` }}
         </span>
         <KunChip v-if="h.content_rating === 'r18'" color="danger" variant="flat" size="xs">
           R18

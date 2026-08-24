@@ -16,6 +16,7 @@ export const API_HOST = 'https://api.nextmoe.dev'
 export const PUBLIC_SPEC = join(REPO_ROOT, 'docs/catalog/public-openapi.yaml')
 export const CATALOG_SPEC = join(REPO_ROOT, 'docs/catalog/openapi.yaml')
 export const NEWS_SPEC = join(REPO_ROOT, 'docs/news/public-openapi.yaml')
+export const V2_SPEC = join(REPO_ROOT, 'docs/catalog/v2-openapi.yaml')
 
 // A face is a path prefix plus the credential that prefix accepts. The spec
 // itself carries neither: OpenAPI security schemes are not emitted by the
@@ -96,6 +97,45 @@ export const FACES = [
       '授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，所以 news:read 不是自助勾一下就有的。在开发者门户控制台提交申请并说明用途，批准后这一项就出现在铸密钥的可勾选项里；没有它的密钥调这三条路径一律 403。',
       '这是索引，不是转载：每条只有标题、摘要与题图，正文既不下发也不留存。每一项都恒带来源块与 source_url，读者要看全文只能回到媒体自己的站点——渲染时必须把来源与链接一并展示。',
       '撤回即不可寻址：我们撤下的、以及上游原文已消失的条目会从列表中消失，按 id 直取则 404。这个 404 是契约而不是查询失败，不要重试，也不要拿缓存副本顶上。'
+    ]
+  },
+  {
+    key: 'v2',
+    label: 'API v2',
+    name: 'Public API v2（preview）',
+    file: V2_SPEC,
+    prefix: '/v2',
+    scope: (_method, path) => {
+      if (!path) return 'catalog:read'
+      if (path.startsWith('/v2/me/') || path.startsWith('/v2/moderation/')) return ''
+      if (
+        path.startsWith('/v2/problems') ||
+        path.startsWith('/v2/vocabularies') ||
+        path.startsWith('/v2/news') ||
+        path === '/v2/catalog/stats' ||
+        path.startsWith('/v2/catalog/schemas/')
+      ) {
+        return ''
+      }
+      return 'catalog:read'
+    },
+    auth: {
+      kind: 'api_key',
+      curl: 'Authorization: Bearer nmk_live_<YOUR_KEY>',
+      display: 'Authorization: Bearer nmk_live_…',
+      note: 'v2 应用密钥。preview 期间只签发给 internal 档应用'
+    },
+    autoGroups: [
+      { key: 'meta', label: '注册表', match: /^\/v2\/(problems|vocabularies)/ },
+      { key: 'catalog', label: '目录', match: /^\/v2\/catalog/ },
+      { key: 'news', label: '资讯', match: /^\/v2\/news/ },
+      { key: 'me', label: '我的', match: /^\/v2\/me/ },
+      { key: 'moderation', label: '审核', match: /^\/v2\/moderation/ }
+    ],
+    notes: [
+      'preview：形状还可以改，包括删除与改名。第三方拿不到 /v2 凭证，继续用 /v1。',
+      '错误体是 RFC 9457 application/problem+json。type URI 解析到本站 /problems/{domain}/{kebab-code}。',
+      '客户端必须忽略未知字段、容忍开放词表中未见过的取值，并为未知错误 code 准备一个按 HTTP status 的兜底分支。'
     ]
   }
 ]
@@ -251,4 +291,11 @@ export const NO_AUTH = {
 }
 export const OPERATION_AUTH_OVERRIDES = { getCatalogStatsPublic: NO_AUTH }
 
-export const EXPECTED_OPERATION_COUNTS = { catalog: 37, playtime: 5, edit: 6, news: 3 }
+export const USER_TOKEN_AUTH = {
+  kind: 'user_token',
+  curl: 'Authorization: Bearer <ACCESS_TOKEN>',
+  display: 'Authorization: Bearer <用户访问令牌>',
+  note: '用户授权后的访问令牌,不是 API 密钥'
+}
+
+export const EXPECTED_OPERATION_COUNTS = { catalog: 37, playtime: 5, edit: 6, news: 3, v2: 73 }
