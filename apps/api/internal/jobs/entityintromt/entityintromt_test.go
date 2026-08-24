@@ -200,7 +200,7 @@ func TestLoadCandidates_SourcePreference(t *testing.T) {
 	blank := mkCharacter(t, "blank")
 	mkCharIntro(t, blank, "ja", "   \n  ", lo)
 
-	cands, err := loadCandidates(ctx, testDB, lane, 0, 0)
+	cands, err := loadCandidates(ctx, testDB, lane, 0, 0, nil)
 	require.NoError(t, err)
 
 	byID := map[int64]candidate{}
