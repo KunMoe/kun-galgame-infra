@@ -39,8 +39,10 @@ type UserClaimQuery struct {
 
 func (s *ClaimLifecycleService) ClaimsByActor(ctx context.Context, q UserClaimQuery) ([]UserClaimItem, int64, error) {
 	limit := q.Limit
-	if limit <= 0 || limit > 100 {
+	if limit <= 0 {
 		limit = 20
+	} else if limit > 101 {
+		limit = 101
 	}
 	stateGate, stateArgs := claimStateWhere(q.ClaimStates)
 	if stateGate != "" {

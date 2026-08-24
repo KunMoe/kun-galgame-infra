@@ -62,6 +62,11 @@ func registerMeWrite(api huma.API, cat *Catalog) {
 		Tags: me, Errors: writeErrs, DefaultStatus: http.StatusCreated, SkipValidateParams: true,
 	}, amendMyProposal(cat))
 	huma.Register(api, huma.Operation{
+		OperationID: "getModerationClaim", Method: http.MethodGet, Path: "/v2/moderation/claims/{id}",
+		Summary: "Get one moderation claim", Description: "id is the catalog work id. Site-fenced. Requires a user access token bound to a catalog site.",
+		Tags: mod, Errors: errs, SkipValidateParams: true,
+	}, getModerationClaim(cat))
+	huma.Register(api, huma.Operation{
 		OperationID: "decideModerationClaim", Method: http.MethodPost, Path: "/v2/moderation/claims/{id}/decisions",
 		Summary: "Decide a claim", Description: "decision=approve|decline. If-Match required.",
 		Tags: mod, Errors: writeErrs, DefaultStatus: http.StatusCreated, SkipValidateParams: true,
@@ -100,11 +105,17 @@ type batchPlaytimesOutput struct {
 	Status int
 	Body   repr.List[repr.PlaytimeBatchItem]
 }
+type claimRefBody struct {
+	Source     string `json:"source" minLength:"1" maxLength:"64" doc:"Open vocabulary source key such as vndb. Must not be used as a discriminant."`
+	ExternalID string `json:"external_id" minLength:"1" maxLength:"256" doc:"Verbatim upstream id. Must not be used as a discriminant beyond exact match."`
+}
+
 type createClaimInput struct {
 	Body struct {
-		SiteWorkID  string `json:"site_work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"The site's own work id."`
-		WorkID      string `json:"work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"Existing catalog work id to claim."`
-		DisplayName string `json:"display_name,omitempty" maxLength:"512" doc:"Required to mint a new work. Must not be used as a discriminant."`
+		SiteWorkID  string         `json:"site_work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"The site's own work id."`
+		WorkID      string         `json:"work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"Existing catalog work id to claim."`
+		DisplayName string         `json:"display_name,omitempty" maxLength:"512" doc:"Required to mint when refs do not match. Must not be used as a discriminant."`
+		Refs        []claimRefBody `json:"refs,omitempty" doc:"source:external_id anchors. Used when work_id is absent."`
 	}
 }
 type getClaimInput struct {
@@ -203,7 +214,11 @@ func createMyClaim(cat *Catalog) func(context.Context, *createClaimInput) (*getC
 		if in == nil {
 			in = &createClaimInput{}
 		}
-		rec, err := cat.CreateClaim(ctx, in.Body.WorkID, in.Body.SiteWorkID, in.Body.DisplayName)
+		refs := make([]repr.Ref, 0, len(in.Body.Refs))
+		for _, r := range in.Body.Refs {
+			refs = append(refs, repr.Ref{Source: r.Source, ExternalID: r.ExternalID})
+		}
+		rec, err := cat.CreateClaim(ctx, in.Body.WorkID, in.Body.SiteWorkID, in.Body.DisplayName, refs)
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
@@ -323,6 +338,23 @@ func amendMyProposal(cat *Catalog) func(context.Context, *amendProposalInput) (*
 			return nil, catalogErr(ctx, err)
 		}
 		return &getProposalOutput{Body: rec}, nil
+	}
+}
+
+func getModerationClaim(cat *Catalog) func(context.Context, *getClaimInput) (*getClaimOutput, error) {
+	return func(ctx context.Context, in *getClaimInput) (*getClaimOutput, error) {
+		if in == nil {
+			in = &getClaimInput{}
+		}
+		id, ok := repr.ParseID(in.ID)
+		if !ok {
+			return nil, catalogErr(ctx, problemInvalidID(in.ID))
+		}
+		rec, err := cat.GetModerationClaim(ctx, id)
+		if err != nil {
+			return nil, catalogErr(ctx, err)
+		}
+		return &getClaimOutput{Body: rec}, nil
 	}
 }
 

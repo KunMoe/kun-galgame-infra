@@ -306,12 +306,12 @@ func setupPublicCatalog(
 	v2API := v2handler.SetupWith(application.Fiber, v2handler.Options{
 		Store:            protocol.NewRedisStore(devCache),
 		LookupCredential: mw.Lookup,
-		LookupUser: func(ctx context.Context, raw string) (int64, string, error) {
+		LookupUser: func(ctx context.Context, raw string) (v2handler.UserIdentity, error) {
 			claims, err := tokenVerifier.Parse(ctx, raw)
 			if err != nil {
-				return 0, "", err
+				return v2handler.UserIdentity{}, err
 			}
-			return int64(claims.ID), claims.ClientID, nil
+			return v2handler.UserIdentity{UID: int64(claims.ID), ClientID: claims.ClientID, Roles: claims.Roles}, nil
 		},
 		LookupSite: func(ctx context.Context, clientID string) (string, error) {
 			cl, err := clientRepo.FindByClientID(ctx, clientID)

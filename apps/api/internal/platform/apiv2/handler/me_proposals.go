@@ -178,10 +178,11 @@ func (c *Catalog) ListModerationProposals(ctx context.Context, q collect.Query) 
 	if _, _, err := requireUser(ctx); err != nil {
 		return repr.List[repr.ProposalRecord]{}, err
 	}
-	f := editing.ProposalFilter{Status: editing.StatusOpen, Limit: q.Limit}
-	if site := siteFrom(ctx); site != "" {
-		f.Site = site
+	site, err := requireSite(ctx)
+	if err != nil {
+		return repr.List[repr.ProposalRecord]{}, err
 	}
+	f := editing.ProposalFilter{Status: editing.StatusOpen, Limit: q.Limit, Site: site}
 	rows, total, lerr := c.Engine.ListProposalsWithTotal(ctx, f)
 	if lerr != nil {
 		return repr.List[repr.ProposalRecord]{}, lerr

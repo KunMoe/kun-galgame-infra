@@ -375,6 +375,40 @@ type PendingClaimItem struct {
 	SubmittedEventID *int64  `json:"submitted_event_id"`
 }
 
+func (s *ClaimLifecycleService) ClaimByWorkID(ctx context.Context, workID int64, site string) (*UserClaimItem, error) {
+	if workID <= 0 {
+		return nil, nil
+	}
+	var row struct {
+		WorkID        int64
+		DisplayName   string
+		Site          *string
+		ProductWorkID *int64
+		ClaimState    *int16
+	}
+	q := s.db.WithContext(ctx).Table("catalog_work AS w").
+		Select("w.id AS work_id, w.display_name, w.site, w.product_work_id, w.claim_state").
+		Where("w.id = ? AND w.deleted_at IS NULL", workID)
+	if site != "" {
+		q = q.Where("w.site = ?", site)
+	}
+	if err := q.Scan(&row).Error; err != nil {
+		return nil, err
+	}
+	if row.WorkID == 0 {
+		return nil, nil
+	}
+	item := UserClaimItem{
+		WorkID: row.WorkID, DisplayName: row.DisplayName,
+		ProductWorkID: row.ProductWorkID,
+		ClaimState:    model.ClaimStateKey(row.Site, row.ProductWorkID, row.ClaimState),
+	}
+	if row.Site != nil {
+		item.Site = *row.Site
+	}
+	return &item, nil
+}
+
 func stateKeyOf(state int16) string {
 	site, product := "e", int64(0)
 	return model.ClaimStateKey(&site, &product, &state)

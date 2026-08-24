@@ -1,6 +1,6 @@
 # v2 implementation notes (preview)
 
-This page records **binds that differ from `refs/api-v2`** and **Stage 6–8 work that is not mounted yet**. It is not a substitute for the design spec. Code + `docs/catalog/v2-openapi.yaml` are the machine-readable contract.
+This page records **binds that differ from `refs/api-v2`**. It is not a substitute for the design spec. Code + `docs/catalog/v2-openapi.yaml` are the machine-readable contract.
 
 Date: 2026-08-23. Branch: `v2-stage0`. No push (deploy is automatic).
 
@@ -10,9 +10,9 @@ Date: 2026-08-23. Branch: `v2-stage0`. No push (deploy is automatic).
 - Catalog read: works (list/detail/12 subs), companies+graph, tags, series, engines, releases, characters, credit-names, persons, traits, search, calendar, changes, redirects, stats, schemas/{object}, news.
 - Character `view=full` carries D30 attributes (`gender`, `birthday` as `MM-DD`, measurements, `blood_type` as `a|b|ab|o`, `instance_of_id`). `description` / `extra` / `field_provenance` stay out, as D30.
 - `/v2/me/playtimes` GET/PUT/DELETE and POST 207 batch; `/v2/me/cover-votes` GET/PUT/DELETE.
-- `/v2/me/claims` list/create/get/withdraw; `/v2/me/proposals` list/create/get/patch/amend.
-- `/v2/moderation/claims` queue + decisions; `/v2/moderation/proposals` queue + decisions; reverts; snapshots.
-- User token on `/v2/me` and `/v2/moderation`, not an application key; `private, no-store`.
+- `/v2/me/claims` list (keyset on last claim-event id)/create/get/withdraw; `/v2/me/proposals` list/create/get/patch/amend.
+- `/v2/moderation/claims` queue + GET by id + decisions; `/v2/moderation/proposals` queue + decisions; reverts; snapshots. Queue and GET are site-fenced (`SITE_NOT_BOUND` when the token client has no catalog site).
+- User token on `/v2/me` and `/v2/moderation`, not an application key; `private, no-store`. JWT `roles` are copied into the handler context so `HasPerm` matches v1.
 
 ## Spec deviations (with reason)
 
@@ -28,33 +28,30 @@ Date: 2026-08-23. Branch: `v2-stage0`. No push (deploy is automatic).
 
 6. **Playtime delete** — v1 had no DELETE. v2 DELETE removes `catalog_user_playtime` rows for that (user, work). Additive service method, existing table.
 
-7. **Claims list is not keyset-paginated yet** — v1 `ClaimsByActor` pages on `last_event_id`. The v2 list currently returns one page. Cursor mapping is still to do.
+7. **`blood_type` public tokens are lowercase** (`a|b|ab|o`) per 04-representation. D30's table wrote `A|B|AB|O` as domain letters; the editing engine stores int16. Public JSON follows 04.
 
-8. **Moderation claims list is not site-fenced yet** — `PendingClaims` is called with empty site. Production must pass the token client's catalog site once UserGate/AdminGate is applied to these prefixes. Until then the queue is process-wide.
+8. **Claim POST mint needs `display_name`** — D33. `SubmitWork` cannot mint without `catalog.work.display_name`. `refs` that miss `catalog_external_ref` become `catalog.work.links` URLs via the existing source URL templates. `work_id` and `refs` both absent is 422 even if `display_name` is present.
 
-9. **`blood_type` public tokens are lowercase** (`a|b|ab|o`) per 04-representation. D30's table wrote `A|B|AB|O` as domain letters; the editing engine stores int16. Public JSON follows 04.
+9. **Moderation claims/proposals lists are not keyset-paginated yet** — pending claims order by submitted event id and return one page. `/v2/me/claims` is keyset-paginated. The queues stay one page until `PendingClaims` grows a cursor.
 
-## Stage 6 write (mounted 2026-08-23)
+## Stage 6 write
 
 | Route | Bind |
 |---|---|
 | `POST /v2/me/playtimes` | 207 list of playtime-or-problem items |
-| `POST /v2/me/claims` | `work_id` → `Act(claim)`; else `SubmitWork` (needs `display_name` to mint) |
+| `POST /v2/me/claims` | `work_id` → `Act(claim)`; else `refs` → `LookupEntityID` then claim or mint with `display_name` + links |
 | `GET/PATCH /v2/me/claims/{id}` | `{id}` is catalog work id. PATCH `{state:withdrawn}` + If-Match |
 | `GET/POST /v2/me/proposals` | `editing.Engine` |
 | `GET/PATCH /v2/me/proposals/{id}` | PATCH withdraw or amend; If-Match |
 | `POST /v2/me/proposals/{id}/amendments` | `AmendProposal` + If-Match |
+| `GET /v2/moderation/claims/{id}` | Site-fenced `ClaimByWorkID` |
 | `POST /v2/moderation/claims/{id}/decisions` | approve/decline + If-Match |
-| `GET /v2/moderation/proposals` | open proposals, site-fenced when the token client has a catalog site |
+| `GET /v2/moderation/proposals` | open proposals, `SITE_NOT_BOUND` without a catalog site |
 | `POST /v2/moderation/proposals/{id}/decisions` | merge/decline + If-Match |
 | `POST /v2/moderation/reverts` | `revision_id` loads `edit_revision` then `Revert` |
 | `GET /v2/moderation/snapshots/{object}/{id}` | `CurrentSnapshot` |
 
-Still missing vs 03/06:
-
-- `GET /v2/moderation/claims/{id}` as its own read (queue list exists)
-- Claim POST `refs` as source:external_id (SubmitWork anchors are URL `links`, not v2 refs)
-- Per-field `HasPerm` depends on JWT `roles`; a token without catalog edit perms will 403 `PERMISSION_REQUIRED` on propose/review — same as v1, not a new identity system.
+`content_limit` on claim POST is not stored (no column on the claim row). Omit it.
 
 ## Stage 7–10 (not this repo's HTTP surface)
 
@@ -67,6 +64,10 @@ Still missing vs 03/06:
 - Spec-driven: `TestContractHitsEverySpecOperation` hits every registered op; undeclared status fails.
 - Gates G2–G16 on the generated OpenAPI document.
 - Per-bind unit tests for mapping, unbound 503, auth 401, NSFW, cursor, schema `field_type`.
-- **Not yet:** live DB integration per route (needs a track-specific `TEST_DATABASE_DSN`). Handler tests without a catalog DB cannot assert 200 bodies for list/detail.
+- Live DB: `handler/live_*_test.go` (requires track `TEST_DATABASE_DSN`). One 200 GET per bound read, write happy paths, then a spec walk against the live app.
 
-When a test database is assigned, the next slice is: one 200-path integration test per operation in `v2-openapi.yaml`, plus the Stage 6 POST/PATCH/DELETE table above.
+News and search 200 paths need the news DB and Meilisearch. With those unbound, those ops return declared 503.
+
+When a test database is assigned, run:
+
+`GOMAXPROCS=8 go test -count=1 -p 1 ./internal/platform/apiv2/handler/ -run 'TestLive|TestContract|TestMe|TestClaims'`

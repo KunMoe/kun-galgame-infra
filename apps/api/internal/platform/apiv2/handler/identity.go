@@ -72,7 +72,13 @@ func requireIfMatch(header, etag string) error {
 	return nil
 }
 
-func userAuth(lookup func(context.Context, string) (int64, string, error), lookupSite func(context.Context, string) (string, error)) fiber.Handler {
+type UserIdentity struct {
+	UID      int64
+	ClientID string
+	Roles    []string
+}
+
+func userAuth(lookup func(context.Context, string) (UserIdentity, error), lookupSite func(context.Context, string) (string, error)) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		path := c.Path()
 		if !strings.HasPrefix(path, "/v2/me/") && !strings.HasPrefix(path, "/v2/moderation/") {
@@ -98,19 +104,22 @@ func userAuth(lookup func(context.Context, string) (int64, string, error), looku
 				"this face requires a user access token, not an application key."))
 		}
 		if lookup != nil {
-			uid, clientID, err := lookup(c.Context(), token)
+			ident, err := lookup(c.Context(), token)
 			if err != nil {
 				return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
 					"Authorization Bearer token is invalid."))
 			}
-			if uid <= 0 {
+			if ident.UID <= 0 {
 				return problem.WriteFiberError(c, problem.New(problem.CodeUserIdentityRequired, problem.RequestID(c), problem.Instance(c),
 					"this operation requires a user access token."))
 			}
-			c.Locals("user_id", uid)
-			c.Locals("token_client_id", clientID)
-			if lookupSite != nil && clientID != "" {
-				if site, serr := lookupSite(c.Context(), clientID); serr == nil && site != "" {
+			c.Locals("user_id", ident.UID)
+			c.Locals("token_client_id", ident.ClientID)
+			if len(ident.Roles) > 0 {
+				c.Locals("user_roles", ident.Roles)
+			}
+			if lookupSite != nil && ident.ClientID != "" {
+				if site, serr := lookupSite(c.Context(), ident.ClientID); serr == nil && site != "" {
 					c.Locals("catalog_site", site)
 				}
 			}

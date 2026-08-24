@@ -9,6 +9,8 @@ import (
 
 	"api/internal/platform/apiv2/collect"
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/apiv2/repr"
+	catsvc "api/internal/platform/catalog/service"
 
 	"github.com/stretchr/testify/require"
 )
@@ -65,6 +67,39 @@ func TestClaimsUnbound(t *testing.T) {
 	p, ok := err.(*problem.Problem)
 	if !ok || p.Code != problem.CodeServiceUnavailable {
 		t.Fatalf("%v", err)
+	}
+}
+
+func TestModerationClaimsRequireSite(t *testing.T) {
+	ctx := contextWithUser(t.Context(), 7, "client-a")
+	cat := &Catalog{Claims: &catsvc.ClaimLifecycleService{}}
+	_, err := cat.ListModerationClaims(ctx, collect.Query{})
+	p, ok := err.(*problem.Problem)
+	if !ok || p.Code != problem.CodeSiteNotBound {
+		t.Fatalf("list %v", err)
+	}
+	_, err = cat.GetModerationClaim(ctx, 1)
+	if p, ok = err.(*problem.Problem); !ok || p.Code != problem.CodeSiteNotBound {
+		t.Fatalf("get %v", err)
+	}
+}
+
+func TestCreateClaimRequiresWorkIDOrRefs(t *testing.T) {
+	ctx := contextWithUser(t.Context(), 7, "client-a")
+	ctx = context.WithValue(ctx, ctxSite, "kungal")
+	cat := &Catalog{Claims: &catsvc.ClaimLifecycleService{}}
+	_, err := cat.CreateClaim(ctx, "", "", "", nil)
+	p, ok := err.(*problem.Problem)
+	if !ok || p.Code != problem.CodeValidationFailed {
+		t.Fatalf("%v", err)
+	}
+	_, err = cat.CreateClaim(ctx, "", "", "", []repr.Ref{{Source: "vndb", ExternalID: "v1"}})
+	if p, ok = err.(*problem.Problem); !ok || p.Code != problem.CodeValidationFailed {
+		t.Fatalf("refs without display_name %v", err)
+	}
+	_, err = cat.ListMyClaims(ctx, collect.Query{Cursor: "not-an-event-id"})
+	if p, ok = err.(*problem.Problem); !ok || p.Code != problem.CodeInvalidCursor {
+		t.Fatalf("cursor %v", err)
 	}
 }
 

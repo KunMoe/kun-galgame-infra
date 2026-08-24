@@ -24,7 +24,7 @@ type Options struct {
 	Works            WorksFunc
 	Catalog          *Catalog
 	LookupCredential func(ctx context.Context, rawToken string) (*devapi.Credential, error)
-	LookupUser       func(ctx context.Context, rawToken string) (uid int64, clientID string, err error)
+	LookupUser       func(ctx context.Context, rawToken string) (UserIdentity, error)
 	LookupSite       func(ctx context.Context, clientID string) (string, error)
 }
 

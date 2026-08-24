@@ -293,6 +293,25 @@ components:
         - state
         - display_name
       type: object
+    ClaimRefBody:
+      additionalProperties: true
+      properties:
+        external_id:
+          description: Verbatim upstream id. Must not be used as a discriminant beyond exact match.
+          maxLength: 256
+          minLength: 1
+          type: string
+        source:
+          description: Open vocabulary source key such as vndb. Must not be used as a discriminant.
+          maxLength: 64
+          minLength: 1
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+      required:
+        - source
+        - external_id
+      type: object
     Company:
       additionalProperties: true
       properties:
@@ -592,9 +611,14 @@ components:
           readOnly: true
           type: string
         display_name:
-          description: Required to mint a new work. Must not be used as a discriminant.
+          description: Required to mint when refs do not match. Must not be used as a discriminant.
           maxLength: 512
           type: string
+        refs:
+          description: source:external_id anchors. Used when work_id is absent.
+          items:
+            $ref: "#/components/schemas/ClaimRefBody"
+          type: array
         site_work_id:
           description: The site's own work id.
           maxLength: 20
@@ -10636,6 +10660,81 @@ paths:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
       summary: Moderation claim queue
+      tags:
+        - moderation
+  /v2/moderation/claims/{id}:
+    get:
+      description: id is the catalog work id. Site-fenced. Requires a user access token bound to a catalog site.
+      operationId: getModerationClaim
+      parameters:
+        - description: Catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimRecord"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "401":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unauthorized
+        "403":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Forbidden
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Get one moderation claim
       tags:
         - moderation
   /v2/moderation/claims/{id}/decisions:
