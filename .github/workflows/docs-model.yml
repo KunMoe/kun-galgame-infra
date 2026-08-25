@@ -31,6 +31,7 @@ on:
       - "docs/catalog/public-openapi.yaml"
       - "docs/catalog/openapi.yaml"
       - "docs/news/public-openapi.yaml"
+      - "docs/store/public-openapi.yaml"
       - "apps/developer/scripts/sync-specs.mjs"
       - "apps/developer/scripts/faces.mjs"
       - "apps/developer/scripts/gen-llms.mjs"

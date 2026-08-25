@@ -1,0 +1,118 @@
+components:
+  schemas:
+    CampaignView:
+      additionalProperties: false
+      properties:
+        id:
+          description: Campaign id; pair it with the coupon link when you render the offer
+          format: int64
+          type: integer
+        name:
+          description: Human-readable campaign name, safe to show to readers
+          type: string
+      required:
+        - id
+        - name
+      type: object
+    EnvelopePurchaseLinks:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePurchaseLinks.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PurchaseLinks"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    HouseError:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/HouseError.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data: {}
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    PurchaseLinks:
+      additionalProperties: false
+      properties:
+        campaign:
+          $ref: "#/components/schemas/CampaignView"
+          description: The campaign coupon_url belongs to, or null when no campaign is running
+        coupon_url:
+          description: Short link to the coupon claim page, or null when no campaign is running
+          type:
+            - string
+            - "null"
+        product_id:
+          description: The DLsite product number that was asked for, echoed back
+          type: string
+        purchase_url:
+          description: Short link to send readers to. Belongs to your application alone; use it verbatim
+          type: string
+      required:
+        - product_id
+        - purchase_url
+        - coupon_url
+        - campaign
+      type: object
+info:
+  title: NextMoe Open API — Store
+  version: 1.0.0
+openapi: 3.1.0
+paths:
+  /v1/store/purchase-links/{product_id}:
+    get:
+      description: "Returns a short link that belongs to YOUR application, not a shared one: every calling site gets its own alias for the same product so the clicks can be attributed back to it. Send readers to purchase_url as-is — it is the only URL that gets counted, and a bare affiliate URL bypasses the counter entirely. coupon_url and campaign are null whenever no coupon campaign is running. Clicks are de-duplicated: one (link, JST calendar day, fingerprint) counts once, where the fingerprint is SHA-256 of the client IP and User-Agent. That de-duplication is a commitment we made to DLsite, not a knob. Links are minted lazily on first request and then stable forever, so calling this per page render is fine, but caching the result on your side is cheaper. Each application may mint links for a bounded number of distinct products; asking for more returns 403."
+      operationId: getStorePurchaseLinks
+      parameters:
+        - description: "DLsite product number: RJ###### (doujin) or VJ###### (commercial), 6-8 digits"
+          in: path
+          name: product_id
+          required: true
+          schema:
+            description: "DLsite product number: RJ###### (doujin) or VJ###### (commercial), 6-8 digits"
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePurchaseLinks"
+          description: OK
+          headers:
+            Cache-Control:
+              schema:
+                description: Always 'private' — the links are keyed to the calling application and must never enter a shared cache
+                type: string
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Your site's own DLsite purchase link for one product, plus the coupon link when a campaign is running
+      tags:
+        - store-public

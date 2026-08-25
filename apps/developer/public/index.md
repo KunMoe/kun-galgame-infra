@@ -25,6 +25,7 @@
 - API 密钥（`Authorization: Bearer nm_live_…`）——在 https://developer.nextmoe.dev 控制台自助创建应用与密钥，自助可勾选的 scope 只有 catalog:read。
 - 用户访问令牌（`Authorization: Bearer <access token>`）——游玩时长与编辑提案两个 API 读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是 API 密钥。
 - news:read 是授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定。在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。
+- store:read 同为授权制：分销链接按调用站签发，谁能拿由平台逐个决定。在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/store 一律 403。
 - `/v1/catalog/stats` 不要任何凭据，匿名即可调。
 
 ## 三步开始

@@ -26,6 +26,7 @@ import (
 	"api/internal/platform/devapi"
 	"api/internal/platform/permissions"
 	siteModel "api/internal/platform/site/model"
+	storeModel "api/internal/platform/store/model"
 
 	"gorm.io/gorm"
 )
@@ -228,6 +229,18 @@ func getAllModels() []any {
 		// role's permissions but never cut below the code floor.
 		&permissions.RolePermissionOverride{},
 		&permissions.PermissionAuditLog{},
+
+		// DLsite distribution face (/v1/store, wave 02 of the store track,
+		// 2026-08-25). Four brand-new tables, no pre-existing rows to convert:
+		// the two link tables map (calling site, product|campaign) → the short
+		// link minted for it, store_campaigns is the coupon-campaign window
+		// (rows inserted by hand — there is no admin face yet), and
+		// store_link_daily_stats caches the redirector's JST-day click buckets
+		// so the portal and settlement read this database instead of fanning out.
+		&storeModel.PurchaseLink{},
+		&storeModel.CouponLink{},
+		&storeModel.Campaign{},
+		&storeModel.LinkDailyStat{},
 
 		// Job registry observability
 		&jobsModel.JobRun{},

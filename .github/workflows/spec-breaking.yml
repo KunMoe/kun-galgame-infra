@@ -32,6 +32,7 @@ on:
       - "docs/catalog/public-openapi.yaml"
       - "docs/catalog/v2-openapi.yaml"
       - "docs/news/public-openapi.yaml"
+      - "docs/store/public-openapi.yaml"
       - "docs/community/openapi.yaml"
       - "docs/trust/openapi.yaml"
       - "docs/trust/admin-openapi.yaml"
@@ -93,6 +94,7 @@ jobs:
             docs/catalog/admin-openapi.yaml
             docs/catalog/public-openapi.yaml
             docs/news/public-openapi.yaml
+            docs/store/public-openapi.yaml
             docs/community/openapi.yaml
             docs/trust/openapi.yaml
             docs/trust/admin-openapi.yaml

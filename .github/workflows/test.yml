@@ -66,6 +66,7 @@ jobs:
           go run ./cmd/gen-openapi -catalog-public -o ../../docs/catalog/public-openapi.yaml
           go run ./cmd/gen-openapi -catalog-v2 -o ../../docs/catalog/v2-openapi.yaml
           go run ./cmd/gen-openapi -news-public -o ../../docs/news/public-openapi.yaml
+          go run ./cmd/gen-openapi -store-public -o ../../docs/store/public-openapi.yaml
           go run ./cmd/gen-openapi -community -o ../../docs/community/openapi.yaml
           go run ./cmd/gen-openapi -trust -o ../../docs/trust/openapi.yaml
           go run ./cmd/gen-openapi -trust-admin -o ../../docs/trust/admin-openapi.yaml
@@ -75,7 +76,7 @@ jobs:
           # still green. Every gen-openapi flag that has a committed output belongs
           # here — an ungated spec is worse than an absent one, because it looks checked.
           go run ./cmd/gen-openapi -ai-admin -o ../../docs/ai/admin-openapi.yaml
-          git diff --exit-code -- ../../docs/artifact/ ../../docs/catalog/ ../../docs/community/ ../../docs/trust/ ../../docs/ai/ ../../docs/news/
+          git diff --exit-code -- ../../docs/artifact/ ../../docs/catalog/ ../../docs/community/ ../../docs/trust/ ../../docs/ai/ ../../docs/news/ ../../docs/store/
 
   integration:
     name: integration (postgres + meilisearch)

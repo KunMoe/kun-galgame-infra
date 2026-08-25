@@ -16,7 +16,7 @@ export const DEV_TIER_LABELS: Record<string, string> = {
 
 export const DEV_MINTABLE_SCOPES = ['catalog:read'] as const
 
-export const DEV_GRANTABLE_SCOPES = ['news:read'] as const
+export const DEV_GRANTABLE_SCOPES = ['news:read', 'store:read'] as const
 
 // Mirrors devapi's maxScopeAppMessageLen, which counts runes — so does the
 // browser's maxlength (UTF-16 code units for BMP text), and the two agree for

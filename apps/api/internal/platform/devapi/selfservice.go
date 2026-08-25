@@ -31,7 +31,7 @@ var selfServiceScopes = []string{ScopeCatalogRead}
 // partners authorised NextMoe's index, not whoever asks us for it, so who
 // carries news:read stays our decision — the application only mechanises the
 // paperwork, it does not make the scope self-service.
-var grantableScopes = []string{ScopeNewsRead}
+var grantableScopes = []string{ScopeNewsRead, ScopeStoreRead}
 
 var (
 	ErrAppLimitReached = errors.New("devapi: application limit reached")

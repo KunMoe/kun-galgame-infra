@@ -16,6 +16,7 @@ export const API_HOST = 'https://api.nextmoe.dev'
 export const PUBLIC_SPEC = join(REPO_ROOT, 'docs/catalog/public-openapi.yaml')
 export const CATALOG_SPEC = join(REPO_ROOT, 'docs/catalog/openapi.yaml')
 export const NEWS_SPEC = join(REPO_ROOT, 'docs/news/public-openapi.yaml')
+export const STORE_SPEC = join(REPO_ROOT, 'docs/store/public-openapi.yaml')
 export const V2_SPEC = join(REPO_ROOT, 'docs/catalog/v2-openapi.yaml')
 
 // A face is a path prefix plus the credential that prefix accepts. The spec
@@ -97,6 +98,26 @@ export const FACES = [
       '授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，所以 news:read 不是自助勾一下就有的。在开发者门户控制台提交申请并说明用途，批准后这一项就出现在铸密钥的可勾选项里；没有它的密钥调这三条路径一律 403。',
       '这是索引，不是转载：每条只有标题、摘要与题图，正文既不下发也不留存。每一项都恒带来源块与 source_url，读者要看全文只能回到媒体自己的站点——渲染时必须把来源与链接一并展示。',
       '撤回即不可寻址：我们撤下的、以及上游原文已消失的条目会从列表中消失，按 id 直取则 404。这个 404 是契约而不是查询失败，不要重试，也不要拿缓存副本顶上。'
+    ]
+  },
+  {
+    key: 'store',
+    label: '分销链接',
+    name: '分销链接 API（授权制）',
+    file: STORE_SPEC,
+    prefix: '/v1/store',
+    scope: () => 'store:read',
+    auth: {
+      kind: 'api_key',
+      curl: 'Authorization: Bearer nm_live_<YOUR_KEY>',
+      display: 'Authorization: Bearer nm_live_…',
+      note: '机器 API 密钥,但须带 store:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选'
+    },
+    notes: [
+      '一站一链：同一个商品，每个调用站拿到的短链都不一样，点击才归得到你站上。拿到 purchase_url 就原样用，别自己拼 DLsite 联盟地址——裸联盟链不经过计数器，等于这次点击白送。',
+      '去重是我们对 DLsite 的承诺，不是开关：同一条短链、同一个 JST 日、同一个指纹（IP 与 User-Agent 的 SHA-256）只算一次。刷次数刷不出量，只会让全生态的点击/销售比失真。',
+      '券链看活动：没有进行中的活动时 coupon_url 与 campaign 都是 null，前端要能在只有购买链接时正常渲染。',
+      '铸链是懒的、结果是稳的：第一次请求某个商品时才去铸短链，之后永远是同一条，所以自己缓存一份最省事。每个应用能铸链的不同商品数有上限，超了返回 403。'
     ]
   },
   {
@@ -278,6 +299,13 @@ export const FACE_GROUPS = {
       label: '资讯读面',
       ops: ['GET /v1/news', 'GET /v1/news/sources', 'GET /v1/news/{id}']
     }
+  ],
+  store: [
+    {
+      key: 'links',
+      label: '分销链接',
+      ops: ['GET /v1/store/purchase-links/{product_id}']
+    }
   ]
 }
 
@@ -299,4 +327,11 @@ export const USER_TOKEN_AUTH = {
   note: '用户授权后的访问令牌,不是 API 密钥'
 }
 
-export const EXPECTED_OPERATION_COUNTS = { catalog: 37, playtime: 5, edit: 6, news: 3, v2: 74 }
+export const EXPECTED_OPERATION_COUNTS = {
+  catalog: 37,
+  playtime: 5,
+  edit: 6,
+  news: 3,
+  store: 1,
+  v2: 74
+}
