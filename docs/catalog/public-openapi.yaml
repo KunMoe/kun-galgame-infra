@@ -1511,6 +1511,9 @@ components:
         height:
           format: int64
           type: integer
+        id:
+          format: int64
+          type: integer
         kind:
           type: string
         portrait_pinned:
@@ -1764,10 +1767,6 @@ components:
           type: integer
         thumbhash:
           type: string
-        violence:
-          description: 0 tame / 1 violent / 2 brutal; absent = no known assessment
-          format: int32
-          type: integer
         width:
           format: int64
           type: integer
@@ -4625,19 +4624,19 @@ paths:
               - content
               - meta
             type: string
-        - description: Opaque keyset cursor from a prior next_cursor; omit for the first page
+        - description: "Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"
           explode: false
           in: query
           name: cursor
           schema:
-            description: Opaque keyset cursor from a prior next_cursor; omit for the first page
+            description: "Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"
             type: string
-        - description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+        - description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400
           explode: false
           in: query
           name: limit
           schema:
-            description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400
             format: int64
             type: integer
         - description: true/1 = count r18 works in work_count (default false = excluded, matching what an sfw works?tag_id= call returns)
@@ -4654,12 +4653,12 @@ paths:
           schema:
             description: true/1 = only tags whose work_count is > 0 under the same nsfw setting (default false = every tag); total converges with the filter
             type: boolean
-        - description: Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row
+        - description: "Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"
           explode: false
           in: query
           name: ids
           schema:
-            description: Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row
+            description: "Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"
             type: string
       responses:
         "200":
@@ -4850,12 +4849,12 @@ paths:
           schema:
             description: YYYY-MM-DD, inclusive
             type: string
-        - description: Comma-separated work ids (max 100) — the batch-hydrate lane
+        - description: "Comma-separated work ids (max 100) — the batch-hydrate lane. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"
           explode: false
           in: query
           name: ids
           schema:
-            description: Comma-separated work ids (max 100) — the batch-hydrate lane
+            description: "Comma-separated work ids (max 100) — the batch-hydrate lane. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"
             type: string
         - description: id = ascending browse order (default); updated = newest-updated first
           explode: false
@@ -4867,19 +4866,19 @@ paths:
               - id
               - updated
             type: string
-        - description: Opaque keyset cursor from a prior next_cursor; omit for the first page
+        - description: "Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"
           explode: false
           in: query
           name: cursor
           schema:
-            description: Opaque keyset cursor from a prior next_cursor; omit for the first page
+            description: "Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"
             type: string
-        - description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+        - description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400
           explode: false
           in: query
           name: limit
           schema:
-            description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400
             format: int64
             type: integer
         - description: "true/1 = include r18 works (default false = dropped). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded"
@@ -5809,7 +5808,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/HouseError"
           description: Error
-      summary: Report up to 200 works in one call — the first-login library sync. Each item is accepted or rejected on its own and the response reports per-item outcomes; a single bad item never fails the batch. Requires playtime:write
+      summary: Report up to 200 works in one call — the first-login library sync. Each item is accepted or rejected on its own and the response reports per-item outcomes; a single bad item never fails the batch. Any app with a user access token may call this; playtime:write is not required.
       tags:
         - playtime
   /v1/playtime/by-ref/{source}/{externalID}:
@@ -5849,7 +5848,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/HouseError"
           description: Error
-      summary: Report playtime addressing the work by an external id the client already holds (vndb/dlsite/getchu/bangumi …) instead of a catalog work id. Only EXACT anchors resolve; the response echoes the resolved work_id, which the client should cache. 404 when nothing is anchored to that id. Requires playtime:write
+      summary: Report playtime addressing the work by an external id the client already holds (vndb/dlsite/getchu/bangumi …) instead of a catalog work id. Only EXACT anchors resolve; the response echoes the resolved work_id, which the client should cache. 404 when nothing is anchored to that id. Any app with a user access token may call this; playtime:write is not required.
       tags:
         - playtime
   /v1/playtime/mine:
@@ -5887,7 +5886,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/HouseError"
           description: Error
-      summary: Page the bearer token's own playtime rows in (updated_at) order — the sync-back leg for a second device. Hand `cursor` back as ?updated_since= to fetch only what changed. Requires playtime:read
+      summary: Page the bearer token's own playtime rows in (updated_at) order — the sync-back leg for a second device. Hand `cursor` back as ?updated_since= to fetch only what changed. Any app with a user access token may call this; playtime:read is not required.
       tags:
         - playtime
   /v1/playtime/works/{workID}:
@@ -5916,7 +5915,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/HouseError"
           description: Error
-      summary: The bearer token's own playtime on ONE work, folded across their applications (MAX minutes — two apps watching one save file are not two playthroughs). `playtime` is null when the user has never reported here; that is a 200, not a 404. This is the call a rating form makes to offer 'you played 30h — attach it?'. Requires playtime:read
+      summary: The bearer token's own playtime on ONE work, folded across their applications (MAX minutes — two apps watching one save file are not two playthroughs). `playtime` is null when the user has never reported here; that is a 200, not a 404. This is the call a rating form makes to offer 'you played 30h — attach it?'. Any app with a user access token may call this; playtime:read is not required.
       tags:
         - playtime
     put:
@@ -5950,6 +5949,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/HouseError"
           description: Error
-      summary: "Report the bearer token's own playtime on a work. The body carries the ABSOLUTE cumulative total in minutes, never a delta — re-sending the same number is a no-op, which makes the call safe to retry. Keyed by (user, work, client): a second app of the same user reports alongside, not over. Requires playtime:write"
+      summary: "Report the bearer token's own playtime on a work. The body carries the ABSOLUTE cumulative total in minutes, never a delta — re-sending the same number is a no-op, which makes the call safe to retry. Keyed by (user, work, client): a second app of the same user reports alongside, not over. Any app with a user access token may call this; playtime:write is not required."
       tags:
         - playtime

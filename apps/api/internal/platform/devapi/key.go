@@ -47,6 +47,10 @@ func VerifyKeyHash(presented, storedHash string) bool {
 func KeyMetadata(plaintext string) (prefix, last4 string) {
 	env, body := "", plaintext
 	switch {
+	case strings.HasPrefix(plaintext, V2LivePrefix):
+		env, body = V2LivePrefix, plaintext[len(V2LivePrefix):]
+	case strings.HasPrefix(plaintext, V2TestPrefix):
+		env, body = V2TestPrefix, plaintext[len(V2TestPrefix):]
 	case strings.HasPrefix(plaintext, LivePrefix):
 		env, body = LivePrefix, plaintext[len(LivePrefix):]
 	case strings.HasPrefix(plaintext, TestPrefix):
@@ -66,7 +70,7 @@ func KeyMetadata(plaintext string) (prefix, last4 string) {
 }
 
 func HasKeyPrefix(raw string) bool {
-	return strings.HasPrefix(raw, LivePrefix) || strings.HasPrefix(raw, TestPrefix)
+	return HasV1KeyPrefix(raw) || IsV2KeyPrefix(raw)
 }
 
 func base62Encode(b []byte) string {

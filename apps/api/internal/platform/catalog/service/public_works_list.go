@@ -28,6 +28,7 @@ type WorksListFilter struct {
 	IDs            []int64
 	NSFW           bool
 	Sort           string
+	OLang          PublicOLang
 	Include        WorksListInclude
 	Fields         PublicFields
 }
@@ -119,6 +120,10 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 			args = append(args, f.ReleasedBefore)
 		}
 	}
+	if pred, pargs := f.OLang.predicate(); pred != "" {
+		where = append(where, pred)
+		args = append(args, pargs...)
+	}
 	if len(f.IDs) > 0 {
 		where = append(where, "w.id IN ?")
 		args = append(args, f.IDs)
@@ -144,8 +149,8 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 	}
 
 	q := `SELECT w.id, w.medium_id, w.display_name, w.olang, w.content_rating, w.site, w.product_work_id, w.claim_state, w.updated_at
-		FROM catalog_work w WHERE ` + strings.Join(where, " AND ") + " " + order + " LIMIT ?"
-	args = append(args, limit)
+		FROM catalog_work w WHERE ` + strings.Join(where, " AND ") + " " + order
+	q, args, paginated := applyBrowseLimit(q, args, limit, f.IDs)
 
 	var rows []struct {
 		ID          int64
@@ -193,7 +198,7 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 		}
 	}
 	out := dto.PublicWorksListData{Items: items}
-	if len(rows) == limit {
+	if paginated && len(rows) == limit {
 		last := rows[len(rows)-1]
 		c := publicCursor{Sort: lane, ID: last.ID}
 		if lane == "updated" {

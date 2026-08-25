@@ -56,7 +56,7 @@ type candidate struct {
 	Gloss      Glossary `gorm:"-"`
 }
 
-func loadCandidates(ctx context.Context, db *gorm.DB, reg registry, pop Population, src SourceLang, top, limit int) ([]candidate, error) {
+func loadCandidates(ctx context.Context, db *gorm.DB, reg registry, pop Population, src SourceLang, top, limit int, workIDs []int64) ([]candidate, error) {
 	if src == "" {
 		src = SourceJa
 	}
@@ -68,19 +68,28 @@ func loadCandidates(ctx context.Context, db *gorm.DB, reg registry, pop Populati
 		lastResortGate = `
 		  AND NOT EXISTS (SELECT 1 FROM catalog_work_intro j WHERE j.work_id = b.id AND j.lang = 'ja')`
 	}
-	unlimited := top <= 0
+	// A named list is the whole request, so the popularity ceiling stops
+	// applying: --work-ids with the default --top 5000 would take the 5,000
+	// most popular of the list and report a clean run over the rest.
+	unlimited := top <= 0 || len(workIDs) > 0
 	sitePredicate, err := sitePredicateFor(pop)
 	if err != nil {
 		return nil, err
 	}
-	limitClause := ` LIMIT ?`
+	idGate := ``
 	args := []any{reg.galgameMedium, string(src),
 		reg.dlsiteSource, model.PopularityMetricDownloads,
-		reg.dlsiteSource, model.PopularityMetricWishlist,
-		top}
+		reg.dlsiteSource, model.PopularityMetricWishlist}
+	if len(workIDs) > 0 {
+		idGate = `
+		  AND b.id IN (?)`
+		args = append(args, workIDs)
+	}
+	limitClause := ` LIMIT ?`
 	if unlimited {
 		limitClause = ``
-		args = args[:len(args)-1]
+	} else {
+		args = append(args, top)
 	}
 	q := db.WithContext(ctx).Raw(`
 		WITH pool AS (
@@ -116,7 +125,7 @@ func loadCandidates(ctx context.Context, db *gorm.DB, reg registry, pop Populati
 		LEFT JOIN has_zh_source hs ON hs.work_id = b.id
 		LEFT JOIN mzh ON mzh.work_id = b.id
 		LEFT JOIN pop ON pop.work_id = b.id
-		WHERE hs.work_id IS NULL`+lastResortGate+`
+		WHERE hs.work_id IS NULL`+lastResortGate+idGate+`
 		ORDER BY COALESCE(pop.dl, pop.wl, 0) DESC, b.id ASC`+limitClause,
 		args...)
 	var out []candidate

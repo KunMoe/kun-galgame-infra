@@ -1,7 +1,7 @@
 <script setup lang="ts">
 interface Target {
-  kind: 'characters' | 'names' | 'labels' | 'works'
-  id: number
+  kind: 'characters' | 'credit-names' | 'companies' | 'works'
+  id: string
 }
 interface Trait {
   id: number
@@ -30,14 +30,14 @@ const open = computed({
 
 const KIND_LABEL: Record<Target['kind'], string> = {
   characters: '角色',
-  names: '名义',
-  labels: '厂牌 / 社团',
+  'credit-names': '名义',
+  companies: '厂牌 / 社团',
   works: '作品'
 }
 const KIND_QUERY: Record<Target['kind'], Record<string, string>> = {
-  characters: { include: 'works', spoilers: '2' },
-  names: { include: 'credits' },
-  labels: { include: 'works' },
+  characters: { view: 'full' },
+  'credit-names': {},
+  companies: {},
   works: { include: 'relations,credits' }
 }
 
@@ -55,16 +55,20 @@ watch(target, async (t) => {
   try {
     const qs = new URLSearchParams({
       ...KIND_QUERY[t.kind],
-      ...(props.nsfw && { nsfw: '1' })
+      ...(props.nsfw && { nsfw: 'true' })
     }).toString()
-    const resp = await $fetch<{ code: number; data: unknown }>(
-      `/relay/v1/catalog/${t.kind}/${t.id}?${qs}`,
+    const resp = await $fetch<Record<string, unknown>>(
+      `/relay/v2/catalog/${t.kind}/${t.id}?${qs}`,
       { headers: { Authorization: `Bearer ${props.apiKey.trim()}` } }
     )
-    data.value = (resp.data as Record<string, unknown>) ?? null
+    data.value = resp ?? null
   } catch (e) {
-    const err = e as { data?: { message?: string }; statusCode?: number }
-    error.value = err.data?.message ?? `请求失败（${err.statusCode ?? '网络错误'}）`
+    const err = e as { data?: { detail?: string; title?: string; message?: string }; statusCode?: number }
+    error.value =
+      err.data?.detail ??
+      err.data?.title ??
+      err.data?.message ??
+      `请求失败（${err.statusCode ?? '网络错误'}）`
   } finally {
     loading.value = false
   }

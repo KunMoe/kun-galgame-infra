@@ -48,6 +48,7 @@ var worksSearchFacetAttr = map[string]string{
 	"claimed":        "claimed",
 	"tag_id":         "tag_ids",
 	"label_id":       "label_ids",
+	"company_id":     "label_ids",
 	"engine_id":      "engine_ids",
 	"series_id":      "series_ids",
 	"source":         "source_keys",

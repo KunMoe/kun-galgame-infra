@@ -19,6 +19,9 @@ func CORS(frontendOrigin string) fiber.Handler {
 	}
 
 	return cors.New(cors.Config{
+		Next: func(c fiber.Ctx) bool {
+			return strings.HasPrefix(c.Path(), "/v2")
+		},
 		AllowOrigins: origins,
 		AllowMethods: []string{
 			fiber.MethodGet,

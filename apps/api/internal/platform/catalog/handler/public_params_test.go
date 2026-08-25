@@ -128,6 +128,94 @@ func TestPublicWorksListIDsFilter(t *testing.T) {
 	assert.Equal(t, 200, code, "100 ids is the ceiling, not one past it")
 }
 
+func seedPublicTags(t *testing.T, db *gorm.DB, n int) []int64 {
+	t.Helper()
+	for _, tbl := range []string{"catalog_tag_intro", "catalog_work_tag", "catalog_tag_source_map", "catalog_tag"} {
+		require.NoError(t, db.Exec("TRUNCATE "+tbl+" RESTART IDENTITY CASCADE").Error)
+	}
+	ids := make([]int64, 0, n)
+	for i := 0; i < n; i++ {
+		tag := model.CatalogTag{Name: "hydrate-" + itoa(int64(i)), Tier: model.TagTierCore, Kind: model.TagKindContent}
+		require.NoError(t, db.Create(&tag).Error)
+		ids = append(ids, tag.ID)
+	}
+	return ids
+}
+
+func csvIDs(ids []int64) string {
+	parts := make([]string, len(ids))
+	for i, id := range ids {
+		parts[i] = itoa(id)
+	}
+	return strings.Join(parts, ",")
+}
+
+func TestPublicListIDsDoesNotPaginate(t *testing.T) {
+	lanes := []struct {
+		name     string
+		seed     func(*testing.T, *gorm.DB, int) []int64
+		app      func(*gorm.DB) *fiber.App
+		path     string
+		hasTotal bool
+	}{
+		{name: "works", seed: seedPublicWorks, app: publicApp, path: "/v1/catalog/works"},
+		{name: "tags", seed: seedPublicTags, app: taxonomyApp, path: "/v1/catalog/tags", hasTotal: true},
+	}
+	for _, ln := range lanes {
+		t.Run(ln.name, func(t *testing.T) {
+			db := openCatalogTestDB(t)
+			ids := ln.seed(t, db, 25)
+			app := ln.app(db)
+			csv := csvIDs(ids)
+
+			t.Run("returns every hit with empty next_cursor", func(t *testing.T) {
+				code, body := getJSON(t, app, ln.path+"?ids="+csv)
+				require.Equal(t, 200, code)
+				data := body["data"].(map[string]any)
+				items := data["items"].([]any)
+				assert.Len(t, items, 25, "more ids than the default page size must all come back in one response")
+				assert.Nil(t, data["next_cursor"], "ids= does not paginate, so next_cursor is empty")
+				got := make([]int64, len(items))
+				for i, it := range items {
+					got[i] = int64(it.(map[string]any)["id"].(float64))
+				}
+				assert.Equal(t, ids, got, "the hydrate lane returns every matching id")
+				if ln.hasTotal {
+					assert.EqualValues(t, 25, data["total"], "total still counts the ids-filtered population")
+				}
+			})
+
+			t.Run("full default page does not emit next_cursor", func(t *testing.T) {
+				code, body := getJSON(t, app, ln.path+"?ids="+csvIDs(ids[:20]))
+				require.Equal(t, 200, code)
+				data := body["data"].(map[string]any)
+				assert.Len(t, data["items"].([]any), 20, "all 20 requested ids come back")
+				assert.Nil(t, data["next_cursor"], "exactly default-page-size hits must not look like a paginated full page")
+			})
+
+			t.Run("limit does not truncate", func(t *testing.T) {
+				code, body := getJSON(t, app, ln.path+"?ids="+csv+"&limit=5")
+				require.Equal(t, 200, code)
+				data := body["data"].(map[string]any)
+				assert.Len(t, data["items"].([]any), 25, "a limit smaller than the id count must not truncate")
+				assert.Nil(t, data["next_cursor"], "ids= does not paginate, so next_cursor is empty")
+			})
+
+			t.Run("malformed limit is still 400", func(t *testing.T) {
+				code, body := getJSON(t, app, ln.path+"?ids="+csvIDs(ids[:2])+"&limit=5oo")
+				require.Equal(t, 400, code)
+				assert.Equal(t, msgBadLimit, body["message"])
+			})
+
+			t.Run("cursor with ids is 400", func(t *testing.T) {
+				code, body := getJSON(t, app, ln.path+"?ids="+csvIDs(ids[:2])+"&cursor=abc")
+				require.Equal(t, 400, code)
+				assert.Equal(t, msgBadIDsCursor, body["message"])
+			})
+		})
+	}
+}
+
 func TestWorksListClaimStateVocabulary(t *testing.T) {
 	db := openCatalogTestDB(t)
 	seedPublicWorks(t, db, 3)

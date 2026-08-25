@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
 
 	"api/internal/platform/catalog/editspec"
 
@@ -17,7 +15,7 @@ import (
 // with source text. An existing derived row means the panel already ran.
 var candidatePanelWorksSQL = `
 	WITH zhi AS (
-		SELECT DISTINCT ON (work_id) work_id, intro
+		SELECT DISTINCT ON (work_id) work_id, intro, updated_at
 		FROM catalog_work_intro
 		WHERE lang = 'zh-Hans' AND length(intro) >= 200
 		ORDER BY work_id, source_id
@@ -47,10 +45,11 @@ var candidatePanelWorksSQL = `
 	    WHERE s.character_id = wc.character_id AND s.lang = 'zh-Hans' AND s.provenance = 0)
 	  AND NOT EXISTS (
 	    SELECT 1 FROM catalog_character_intro d
-	    WHERE d.character_id = wc.character_id AND d.lang = 'zh-Hans' AND d.source_id = 18)
-	ORDER BY w.id, wc.character_id`
+	    WHERE d.character_id = wc.character_id AND d.lang = 'zh-Hans' AND d.source_id = 18)`
 
-func loadPanelCandidateWorks(ctx context.Context, db *gorm.DB, limit, offset int) ([]candidateWork, error) {
+func loadPanelCandidateWorks(ctx context.Context, db *gorm.DB, o candidateOpts) ([]candidateWork, error) {
+	sql := candidatePanelWorksSQL + sinceClause(o.Since) + `
+	ORDER BY w.id, wc.character_id`
 	var rows []struct {
 		WorkID      int64  `gorm:"column:work_id"`
 		Intro       string `gorm:"column:intro"`
@@ -59,7 +58,7 @@ func loadPanelCandidateWorks(ctx context.Context, db *gorm.DB, limit, offset int
 		ZhName      string `gorm:"column:zh_name"`
 		Incumbent   string `gorm:"column:incumbent"`
 	}
-	if err := db.WithContext(ctx).Raw(candidatePanelWorksSQL).Scan(&rows).Error; err != nil {
+	if err := db.WithContext(ctx).Raw(sql, sinceArgs(o.Since)...).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("load panel candidate works: %w", err)
 	}
 	var out []candidateWork
@@ -72,16 +71,7 @@ func loadPanelCandidateWorks(ctx context.Context, db *gorm.DB, limit, offset int
 			CharacterID: r.CharacterID, Name: r.DisplayName, ZhName: r.ZhName, Incumbent: r.Incumbent,
 		})
 	}
-	if offset > 0 {
-		if offset >= len(out) {
-			return nil, nil
-		}
-		out = out[offset:]
-	}
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
-	}
-	return out, nil
+	return window(out, o), nil
 }
 
 type panelVote int
@@ -92,10 +82,24 @@ const (
 	voteEqual
 )
 
+// comparison is one vote to cast: which passage serves better as this
+// character's introduction. ChallengerFirst decides which one is shown as A,
+// so a position bias cannot decide the verdict.
+type comparison struct {
+	Name            string
+	Incumbent       string
+	Challenger      string
+	ChallengerFirst bool
+}
+
+type comparisonResult struct {
+	Vote panelVote
+	Err  error
+}
+
 type panelJudge interface {
-	// Compare returns which of the two zh passages serves better as the
-	// character's introduction.
-	Compare(ctx context.Context, name, incumbent, challenger string, challengerFirst bool) (panelVote, error)
+	// CompareBatch answers one vote per comparison, in order.
+	CompareBatch(ctx context.Context, batch []comparison) []comparisonResult
 }
 
 const panelVotes = 3
@@ -116,94 +120,27 @@ func panelVerdict(votes []panelVote) bool {
 	return incumbent == 0 && challenger >= 2
 }
 
-const judgeSystemPrompt = `你在为视觉小说(galgame)数据库挑选更好的一段中文角色介绍。给你角色名和两段候选文本 A、B。
+const judgeSystemPrompt = `你在为视觉小说(galgame)数据库挑选更好的一段中文角色介绍。每个条目给出角色名和两段候选文本 A、B。
 判据(按重要性):
 1. 介绍性:说明角色的身份、性格、外貌或与他人的关系。纯剧情叙述、只在事件中顺带提到角色的文本不合格。
 2. 信息量:具体、有内容,不是空话。
 3. 通顺自然的中文;机翻腔、辞不达意、残缺句是硬伤。
-两段都合格且相当时输出 equal。只输出严格 JSON:{"winner":"A"} 或 {"winner":"B"} 或 {"winner":"equal"},不要解释。`
+两段都合格且相当时输出 equal。每项的 winner 取值只能是 "A"、"B"、"equal" 三者之一。`
 
-func (t *httpExtractor) Compare(ctx context.Context, name, incumbent, challenger string, challengerFirst bool) (panelVote, error) {
-	first, second := incumbent, challenger
-	if challengerFirst {
-		first, second = challenger, incumbent
-	}
-	user := fmt.Sprintf("角色:%s\n\nA:\n%s\n\nB:\n%s", name, first, second)
-	body := map[string]any{
-		"model":       t.model,
-		"max_tokens":  t.maxTokens,
-		"temperature": 0,
-		"messages": []map[string]string{
-			{"role": "system", "content": judgeSystemPrompt},
-			{"role": "user", "content": user},
-		},
-	}
-	raw, err := json.Marshal(body)
-	if err != nil {
-		return voteEqual, err
-	}
-	data, err := t.postChat(ctx, raw)
-	if err != nil {
-		return voteEqual, err
-	}
-	var cr struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-			FinishReason string `json:"finish_reason"`
-		} `json:"choices"`
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(data, &cr); err != nil {
-		return voteEqual, fmt.Errorf("decode judge response: %w", err)
-	}
-	if cr.Error != nil {
-		return voteEqual, fmt.Errorf("gateway error: %s", cr.Error.Message)
-	}
-	if len(cr.Choices) == 0 {
-		return voteEqual, fmt.Errorf("gateway returned no choices")
-	}
-	if fr := cr.Choices[0].FinishReason; fr != "" && fr != "stop" {
-		return voteEqual, fmt.Errorf("judge finished with finish_reason=%q", fr)
-	}
-	winner, err := parseJudgeWinner(cr.Choices[0].Message.Content)
-	if err != nil {
-		return voteEqual, err
-	}
+// voteOf maps the judge's answer back onto the two passages. Anything but
+// A/B/equal lands on equal, and the batch lane turns that into an error.
+func voteOf(winner string, challengerFirst bool) panelVote {
 	switch winner {
-	case "equal":
-		return voteEqual, nil
 	case "A":
 		if challengerFirst {
-			return voteChallenger, nil
+			return voteChallenger
 		}
-		return voteIncumbent, nil
+		return voteIncumbent
 	case "B":
 		if challengerFirst {
-			return voteIncumbent, nil
+			return voteIncumbent
 		}
-		return voteChallenger, nil
+		return voteChallenger
 	}
-	return voteEqual, fmt.Errorf("judge answered %q", winner)
-}
-
-func parseJudgeWinner(s string) (string, error) {
-	s = strings.TrimSpace(s)
-	s = strings.TrimPrefix(s, "```json")
-	s = strings.TrimPrefix(s, "```")
-	s = strings.TrimSuffix(s, "```")
-	var out struct {
-		Winner string `json:"winner"`
-	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(s)), &out); err != nil {
-		return "", fmt.Errorf("judge output is not the expected JSON: %w", err)
-	}
-	w := strings.TrimSpace(out.Winner)
-	if w != "A" && w != "B" && w != "equal" {
-		return "", fmt.Errorf("judge answered %q", w)
-	}
-	return w, nil
+	return voteEqual
 }

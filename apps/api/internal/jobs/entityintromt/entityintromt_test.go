@@ -144,16 +144,16 @@ func TestDecide(t *testing.T) {
 	const text = "テスト用の紹介文"
 	hash := hashSource(text)
 
-	dec, h := decide(candidate{Text: text})
+	dec, h := decide(candidate{Text: text}, false)
 	assert.Equal(t, decInsert, dec, "no machine row yet")
 	assert.Equal(t, hash, h)
 
 	id := int64(7)
-	dec, _ = decide(candidate{Text: text, MZhID: &id, MZhSrcHash: &hash})
+	dec, _ = decide(candidate{Text: text, MZhID: &id, MZhSrcHash: &hash}, false)
 	assert.Equal(t, decSkipSame, dec, "machine row with the same source hash")
 
 	stale := hashSource("older text")
-	dec, h = decide(candidate{Text: text, MZhID: &id, MZhSrcHash: &stale})
+	dec, h = decide(candidate{Text: text, MZhID: &id, MZhSrcHash: &stale}, false)
 	assert.Equal(t, decRetrans, dec, "machine row whose source has changed")
 	assert.Equal(t, hash, h, "the hash written back is always the CURRENT source's")
 }
@@ -200,7 +200,7 @@ func TestLoadCandidates_SourcePreference(t *testing.T) {
 	blank := mkCharacter(t, "blank")
 	mkCharIntro(t, blank, "ja", "   \n  ", lo)
 
-	cands, err := loadCandidates(ctx, testDB, lane, 0, 0)
+	cands, err := loadCandidates(ctx, testDB, lane, 0, 0, nil)
 	require.NoError(t, err)
 
 	byID := map[int64]candidate{}

@@ -6,10 +6,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"api/internal/infrastructure/cache"
 	"api/internal/infrastructure/database"
+	"api/internal/middleware"
+	"api/internal/platform/apiv2/problem"
 	"api/pkg/config"
 
 	"github.com/gofiber/fiber/v3"
@@ -72,6 +75,8 @@ func New(cfg *config.Config, opts Options) (*App, error) {
 			Private: true,
 		},
 	})
+	// First on purpose: a recover registered later still lets panics drop the connection with no 500.
+	a.Fiber.Use(middleware.Recover())
 
 	return a, nil
 }
@@ -111,6 +116,10 @@ func (a *App) Run(host string, port int) error {
 }
 
 func errorHandler(c fiber.Ctx, err error) error {
+	if strings.HasPrefix(c.Path(), "/v2") {
+		return problem.WriteFiberError(c, err)
+	}
+
 	code := fiber.StatusInternalServerError
 	message := "Internal Server Error"
 

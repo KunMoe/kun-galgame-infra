@@ -10,7 +10,8 @@
 
 - **白名单暴露**:只把精选的只读端点放进 `api.nextmoe.dev/v1/…`;internal / admin / 写端点**永不**进入公开路由(物理上不挂到公开路由组)。**wave 207 收窄措辞**:被禁的是**注册表 / 编辑写面**——改注册行、认领、merge、审核队列这一族,它们至今一条都不在公开路由上。`/v1/playtime` 是**唯一**的公开写面,且写的**不是注册表**而是调用方自己的游玩记录:凭据是**用户自己的 Bearer 令牌**(不是机器 API key),一个用户只写得到自己那几行,见 §3.8。
 - **URL 版本化** `/v1/`:一旦有了无法协调破坏性变更的外部开发者,版本化与弃用策略从"过早优化"变成"硬需求"。
-- **弃用策略**:破坏性变更必须升 `/v2/`;字段级弃用走 `Deprecation` / `Sunset` 响应头 + 门户公告 + 不少于 N 个月窗口。
+- **弃用策略(v1)**:字段级弃用走 `Deprecation` / `Sunset` 响应头 + 门户公告 + 不少于 N 个月窗口。主版本退役从 **v2 GA** 起算，不是从 `/v2` 上线起算。
+- **`/v2` preview(2026-08-23)**:`/v2` 已经挂在 `cmd/catalog` 上，契约由 `docs/catalog/v2-openapi.yaml` 从真实路由生成。**preview 期间允许破坏性变更**（含删除与改名），合法性来自「不向第三方签发 `/v2` 凭证」：控制台只给 `dev_tier=internal` 的应用铸造 `nmk_live_` / `nmk_test_`（定长 37，CRC32 校验位）；存量 `nm_live_` 钥匙继续只对 `/v1` 有效。spec `info.x-stability: preview`。门户顶部有 preview 横幅。**这一段与上一句「破坏必须升 v2」字面冲突时，preview 规则优先**——否则我们又在违反自己发布的政策。GA 由平台宣布（判据：kungal / 摸鱼 / letmoe 迁完且 letmoe 真实上线），届时启用 oasdiff 破坏门、撤横幅、向第三方开放 `nmk_` 凭证，并给 v1 落 `Deprecation`/`Sunset`。客户端契约三句见门户 [/docs/design](https://developer.nextmoe.dev/docs/design)。
 - **路径命名空间 = 面**:`/v1/catalog/*`、`/v1/galgame/*`,未来 `/v1/manga/*` 等。galgame 的领域词表(officials/tags/engines/series)全部收进 `/v1/galgame/` 之下,给未来媒介留干净的顶层命名空间。**(galgame 面已于 2026-07-30 摘牌,整族落 `410 Gone`;该命名空间原则不变。)wave 207 更正**:在产的面现在是**两个**——`/v1/catalog`(**37 op**,wave 213 波 1 加了十二条作品子资源;机器 API key:`X-API-Key`,或 `Authorization: Bearer nm_live_…`)与 `/v1/playtime`(5 op,**用户**访问令牌:`Authorization: Bearer <OAuth access token>`,见 §3.8),冻结 spec 合计 42 op。它们同进程(`cmd/catalog`)挂载但**凭据体系不同**,不要写成一句「公开面用 API key」。
 - **公开投影与内部契约解耦**:公开面是从既有 Huma spec 精选出的**独立 spec**;内部 S2S/站点契约继续自由演进,互不牵制。
 
@@ -166,13 +167,13 @@
 
 **playtime 面**(后端 = `cmd/catalog` 同进程挂载;**平台第二个公开面,也是第一个用「用户 Bearer 令牌」而非 API key 认证的公开面**——语义与错误面详见 §3.8):
 
-| 公开端点(`/v1`) | scope | 说明 |
+| 公开端点(`/v1`) | 凭据 | 说明 |
 |---|---|---|
-| `PUT /v1/playtime/works/{workID}` | `playtime:write` | 上报**自己**在某作品上的游玩时长。body `{minutes, status?, last_played_at?}`,`minutes` 是**绝对累计值(分钟),永远不是增量**——重发同一个数是 no-op,故该调用**可安全重试**。按 `(user, work, client)` 三元组落行:同一用户的第二个 App **并排写**而不是覆盖。作品非 LIVE / 不存在 → 404 |
-| `PUT /v1/playtime/by-ref/{source}/{externalID}` | `playtime:write` | 同上,但用客户端手里已有的**外部 id** 寻址(`vndb`/`dlsite`/`getchu`/`bangumi`…),免去先跑一趟 lookup。**只认 exact 锚**;响应回显解析出的 `work_id`(带 `resolved_from`),客户端应缓存它。源键未知 / 无锚 → 404 |
-| `POST /v1/playtime/batch` | `playtime:write` | 首次登录的**库同步**:一次最多 200 条,每条可用 `work_id` **或** `source`+`external_id` 寻址。**逐条判定**——响应给 `{accepted, refused, results[]}`,`results[i]` 带 `{index, status(ok\|not_found\|rejected), work_id, error}`;**一条坏数据永不带崩整批**(不是事务) |
-| `GET /v1/playtime/mine` | `playtime:read` | 分页拉**自己**的全部记录,按 `updated_at` 升序;`updated_since=`(RFC 3339)只取该时刻之后变化的行,`limit` 1-200 缺省 200。响应的 `cursor` 就是本页最后一行的 `updated_at`,**原样回填成下一次的 `updated_since=`** 即增量续拉——第二台设备的回灌腿 |
-| `GET /v1/playtime/works/{workID}` | `playtime:read` | 自己在**某一部**作品上的记录,**跨自己的多个 App 折叠**:`minutes` 取 **MAX**(两个 App 盯同一份存档不是两周目),`status` 取那一行的状态但**任一行 finished 即整体 finished**,`last_played_at` 取最新,另给 `clients` = 折叠了几个 App。从未上报过 → `data` 为 **`null` 且是 200,不是 404**(评分表单据此问「你玩了 30 小时,要附上吗?」) |
+| `PUT /v1/playtime/works/{workID}` | 用户令牌(任意 app) | 上报**自己**在某作品上的游玩时长。body `{minutes, status?, last_played_at?}`,`minutes` 是**绝对累计值(分钟),永远不是增量**——重发同一个数是 no-op,故该调用**可安全重试**。按 `(user, work, client)` 三元组落行:同一用户的第二个 App **并排写**而不是覆盖。作品非 LIVE / 不存在 → 404。**不需要** `playtime:write` |
+| `PUT /v1/playtime/by-ref/{source}/{externalID}` | 用户令牌(任意 app) | 同上,但用客户端手里已有的**外部 id** 寻址(`vndb`/`dlsite`/`getchu`/`bangumi`…),免去先跑一趟 lookup。**只认 exact 锚**;响应回显解析出的 `work_id`(带 `resolved_from`),客户端应缓存它。源键未知 / 无锚 → 404 |
+| `POST /v1/playtime/batch` | 用户令牌(任意 app) | 首次登录的**库同步**:一次最多 200 条,每条可用 `work_id` **或** `source`+`external_id` 寻址。**逐条判定**——响应给 `{accepted, refused, results[]}`,`results[i]` 带 `{index, status(ok\|not_found\|rejected), work_id, error}`;**一条坏数据永不带崩整批**(不是事务) |
+| `GET /v1/playtime/mine` | 用户令牌(任意 app) | 分页拉**自己**的全部记录,按 `updated_at` 升序;`updated_since=`(RFC 3339)只取该时刻之后变化的行,`limit` 1-200 缺省 200。响应的 `cursor` 就是本页最后一行的 `updated_at`,**原样回填成下一次的 `updated_since=`** 即增量续拉——第二台设备的回灌腿。**不需要** `playtime:read` |
+| `GET /v1/playtime/works/{workID}` | 用户令牌(任意 app) | 自己在**某一部**作品上的记录,**跨自己的多个 App 折叠**:`minutes` 取 **MAX**(两个 App 盯同一份存档不是两周目),`status` 取那一行的状态但**任一行 finished 即整体 finished**,`last_played_at` 取最新,另给 `clients` = 折叠了几个 App。从未上报过 → `data` 为 **`null` 且是 200,不是 404**(评分表单据此问「你玩了 30 小时,要附上吗?」) |
 
 ### 3.2.1 D7 投影约定(2026-07-29 A2-1a 落账)
 
@@ -576,7 +577,7 @@ Content-Type: application/json
 | 凭据 | 机器 API key:`X-API-Key: nm_live_…`(或 `Authorization: Bearer nm_live_…`) | **用户** OAuth 访问令牌:`Authorization: Bearer <access token>` |
 | 主体 | 一把 key = 一个应用,与人无关 | 令牌里的**那一个用户**;写谁的行由令牌推导,请求里**没有** uid 参数 |
 | 门 | key 有效性 + tier + 日配额 | JWT/JWKS 验签 → 令牌须**带用户身份**,否则 401;须**绑定 OAuth client**(`client_id`),否则 403 |
-| scope | `catalog:read` | `playtime:read` / `playtime:write`,**两者都可在开发者门户自助申请**(与 `openid`/`profile`/`email` 同属 self-service 名单) |
+| scope | `catalog:read` | **无。**`playtime:read` / `playtime:write` 不再判定。任何已开通用户登录的应用,用它签出的用户令牌即可读写该用户自己的时长。这两个 scope 仍可出现在同意页(旧授权 URL 不 400),但缺它们不再 403 |
 | 限流 | key 级配额 | **每 (client, user) 每分钟 120 次**,超出 429;Redis 不可用时**fail-open** |
 
 - **令牌必须绑 client 不是形式主义**:记录按 `(user, work, client)` 三元组落行,`client_id` 是主键的一部分。没有它就没有「这条是哪个 App 报的」,读面的跨 App 折叠也就无从谈起——所以无 client 绑定的令牌(例如站内直接登录换来的那种)在本面一律 403,而不是悄悄写进一个空 client。
@@ -593,7 +594,7 @@ Content-Type: application/json
 **它如何回到公开面(以及如何不回)**
 
 - **只有 `finished` 的行进公开聚合**(`playing`/`dropped`/`on_hold` 与 `<10` 分钟的行一并剔除):聚合作业先按用户折叠(同用户多 client 取 MAX),再对用户取**中位数**,**至少 3 个上报用户**才写出一行,落 `catalog_work_playtime` 的 `nextmoe` 源。它出现在 catalog 面 `works/{id}` 的 `playtimes[]` 里,与 vndb / erogamescape 的同名块**同形同源键规则**(`source=nextmoe`)。
-- **个人行永不上公开面**:公开面看得到的只有那个中位数与上报人数;谁玩了多久只有本人的 `playtime:read` 令牌读得到。
+- **个人行永不上公开面**:公开面看得到的只有那个中位数与上报人数;谁玩了多久只有本人的用户令牌读得到。
 
 **与 MCP 的关系**:playtime 面**刻意不进 MCP 工具面**,理由见 [09 §4](./09-mcp-server.md)。
 

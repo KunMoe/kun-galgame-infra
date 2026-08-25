@@ -22,7 +22,7 @@ export const DOCS_FACE_META: Record<
     icon: 'lucide:timer',
     label: '游玩时长',
     tagline:
-      '用户自己的游玩时长：上报（单条 / 用外部 id 定位 / 批量）与回拉。用用户授权后的访问令牌，不是 API 密钥；一个用户只读写得到自己的记录。'
+      '用户自己的游玩时长：上报（单条 / 用外部 id 定位 / 批量）与回拉。用用户访问令牌，不是 API 密钥。任何已开通用户登录的应用都可以调用，不需要 playtime:read / playtime:write；一个用户只读写得到自己的记录。'
   },
   edit: {
     icon: 'lucide:pencil',
@@ -36,6 +36,13 @@ export const DOCS_FACE_META: Record<
     tagline:
       '合作媒体的 Galgame 资讯索引：标题、摘要、题图与回源链接，正文不下发。密钥须带 news:read，该权限授权制——登录门户后在控制台申请，批准后即可自助勾选。',
     badge: '授权制'
+  },
+  v2: {
+    icon: 'lucide:sparkles',
+    label: 'API v2',
+    tagline:
+      'NextMoe 公开 API v2（preview）。无信封、RFC 9457 错误、字符串 id、keyset 游标。应用密钥是 nmk_live_（CRC32 校验位）；preview 期间只签发给 internal 档应用。第三方继续用 /v1。',
+    badge: 'preview'
   }
 }
 

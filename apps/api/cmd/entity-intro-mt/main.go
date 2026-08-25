@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"api/internal/jobs/entityintromt"
@@ -25,7 +27,15 @@ func main() {
 	delayMS := flag.Int("delay-ms", 0, "rate-limit delay between real gateway calls (ms)")
 	mock := flag.Bool("mock", false, "REHEARSAL ONLY: offline deterministic mock translator (no network; obvious marker output)")
 	workers := flag.Int("workers", 1, "apply-mode concurrency (per-request latency dominates)")
+	force := flag.Bool("force", false, "retranslate rows whose src_hash already matches — the prompt is not in the hash, so a prompt change needs this")
+	entityIDs := flag.String("entity-ids", "", "comma-separated entity ids for --lane; the named list IS the population")
 	flag.Parse()
+
+	ids, err := parseEntityIDs(*entityIDs)
+	if err != nil {
+		slog.Error("--entity-ids", "error", err)
+		os.Exit(2)
+	}
 
 	logger.Init("development")
 
@@ -53,8 +63,10 @@ func main() {
 
 	st, err := entityintromt.Run(context.Background(), tr, entityintromt.Opts{
 		DSN: *dsn, Apply: *apply, Lane: *lane, Limit: *limit, Offset: *offset,
-		Delay:   time.Duration(*delayMS) * time.Millisecond,
-		Workers: *workers,
+		Delay:     time.Duration(*delayMS) * time.Millisecond,
+		Workers:   *workers,
+		Force:     *force,
+		EntityIDs: ids,
 	})
 	if err != nil {
 		slog.Error("run failed", "error", err)
@@ -123,6 +135,22 @@ func modelSuffix(m string) string {
 		return ""
 	}
 	return " · " + m
+}
+
+func parseEntityIDs(csv string) ([]int64, error) {
+	var out []int64
+	for _, f := range strings.Split(csv, ",") {
+		f = strings.TrimSpace(f)
+		if f == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(f, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%q is not an entity id", f)
+		}
+		out = append(out, id)
+	}
+	return out, nil
 }
 
 func envOr(key, fallback string) string {

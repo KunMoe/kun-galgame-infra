@@ -109,6 +109,7 @@ type ProposalFilter struct {
 	ProposerUID int64
 	Status      int16
 	Limit       int
+	BeforeID    int64
 }
 
 func (e *Engine) ListProposals(ctx context.Context, f ProposalFilter) ([]Proposal, error) {
@@ -133,6 +134,9 @@ func (e *Engine) ListProposalsWithTotal(ctx context.Context, f ProposalFilter) (
 	if f.Status >= 0 {
 		q = q.Where("status = ?", f.Status)
 	}
+	if f.BeforeID > 0 {
+		q = q.Where("id < ?", f.BeforeID)
+	}
 	limit := f.Limit
 	if limit <= 0 || limit > 200 {
 		limit = 50
@@ -146,6 +150,18 @@ func (e *Engine) ListProposalsWithTotal(ctx context.Context, f ProposalFilter) (
 		return nil, 0, err
 	}
 	return out, total, nil
+}
+
+func (e *Engine) RevisionByID(ctx context.Context, id int64) (*Revision, error) {
+	var rev Revision
+	err := e.db.WithContext(ctx).First(&rev, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrRevisionNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &rev, nil
 }
 
 func (e *Engine) ListRevisions(ctx context.Context, entityType string, entityID int64, limit int) ([]Revision, error) {

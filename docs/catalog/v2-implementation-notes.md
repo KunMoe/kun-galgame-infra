@@ -1,0 +1,88 @@
+# v2 implementation notes (preview)
+
+This page records **binds that differ from `refs/api-v2`**. It is not a substitute for the design spec. Code + `docs/catalog/v2-openapi.yaml` are the machine-readable contract.
+
+Date: 2026-08-24. Branch: `v2-stage0` landing on `main` as preview (stage 8). v1 is unchanged. GA / v1 sunset are not this merge.
+
+## Done on this branch
+
+- Protocol, problems, vocabularies, collection contract, repr types, CI gates G1–G16.
+- Catalog read: works (list/detail/12 subs), companies+graph, tags, series, engines, releases, characters, credit-names, persons, traits, search, calendar, changes, redirects, stats, schemas/{object}, news.
+- `GET /v2/catalog/works` binds 05 §6.1 filters (`q=`, `company_id=`, `tag_id=`, `series_id=`, `engine_id=`, `olang=`, dates, claim/content axes). `q=` / search sorts / `facets=` use Meili (`WorksSearch`); other filter combinations use the live registry (`WorksList`). `sort=relevance` requires `q=`.
+- `GET /v2/catalog/characters/{id}/appearances` is the character reverse-lookup collection (roster_role, spoiler, voices). Company reverse lookup is `works?company_id=`. Staff reverse lookup stays `credit-names/{id}/credits`.
+- Character `view=full` carries D30 attributes (`gender`, `birthday` as `MM-DD`, measurements, `blood_type` as `a|b|ab|o`, `instance_of_id`). `description` / `extra` / `field_provenance` stay out, as D30.
+- `/v2/me/playtimes` GET/PUT/DELETE and POST 207 batch; `/v2/me/cover-votes` GET/PUT/DELETE.
+- `/v2/me/claims` list (keyset on last claim-event id)/create/get/withdraw; `/v2/me/proposals` list/create/get/patch/amend.
+- `/v2/moderation/claims` queue + GET by id + decisions; `/v2/moderation/proposals` queue + decisions; reverts; snapshots. Queue and GET are site-fenced (`SITE_NOT_BOUND` when the token client has no catalog site).
+- User token on `/v2/me` and `/v2/moderation`, not an application key; `private, no-store`. JWT `roles` are copied into the handler context so `HasPerm` matches v1.
+
+## Spec deviations (with reason)
+
+1. **`series` and `traits` `refs=`** — `catalog_external_ref` has no entity_type for series or trait (`constants.go` entity types stop at engine=8). Unknown refs go to `missing[]`. Not a new table.
+
+2. **Character full fields use `omitempty`** — D30 says unrecorded is JSON `null`. `view=basic` must not emit those keys (default-thin). Unrecorded values on `view=full` are therefore omitted rather than `null`. Same projection trick as work `include=` blocks.
+
+3. **Trait JSON uses `is_sexual`, not `sexual`** — G8: `Screenshot.sexual` is `*string` (`safe|suggestive|explicit`). A bool cannot share the property name. Work tags already use `is_sexual`.
+
+4. **Cover vote is `up` only** — v1 stores one ballot per (user, work). There is no down column. `vote=down` is 422.
+
+5. **Playtime GET empty is 404** — v1 returned 200 + null. v2 has no envelope; a missing row is `NOT_FOUND`.
+
+6. **Playtime delete** — v1 had no DELETE. v2 DELETE removes `catalog_user_playtime` rows for that (user, work). Additive service method, existing table.
+
+7. **`blood_type` public tokens are lowercase** (`a|b|ab|o`) per 04-representation. D30's table wrote `A|B|AB|O` as domain letters; the editing engine stores int16. Public JSON follows 04.
+
+8. **Claim POST mint needs `display_name`** — D33. `SubmitWork` cannot mint without `catalog.work.display_name`. `refs` that miss `catalog_external_ref` become `catalog.work.links` URLs via the existing source URL templates. `work_id` and `refs` both absent is 422 even if `display_name` is present.
+
+9. **Moderation queues and `/v2/me/proposals` are keyset-paginated** on event/proposal id (`cur_` + over-fetch).
+
+10. **Works list `include=` hydrates the list-capable subset** (`titles`, `intros`, `companies`, `ratings`, `covers` slots, `refs`). Other FULL_SET tokens stay on detail / sub-resources. SQL `include_total` is omitted (search path returns Meili `total`). Facets on the SQL browse path return empty buckets; named facet counts come from Meili.
+
+11. **`release_status=` is not bound** on `GET /v2/catalog/works`. It is in 05 §6.1; v1 list did not have it either. Calendar remains the status filter.
+
+12. **Character reverse lookup is `/characters/{id}/appearances`**, not `works?character_id=`. Appearance rows carry edge metadata the works collection cannot. This fills the 03 hole left when S2S `characters/{id}/works` was 410'd.
+
+## Stage 6 write
+
+| Route | Bind |
+|---|---|
+| `POST /v2/me/playtimes` | 207 list of playtime-or-problem items |
+| `POST /v2/me/claims` | `work_id` → `Act(claim)`; else `refs` → `LookupEntityID` then claim or mint with `display_name` + links |
+| `GET/PATCH /v2/me/claims/{id}` | `{id}` is catalog work id. PATCH `{state:withdrawn}` + If-Match |
+| `GET/POST /v2/me/proposals` | `editing.Engine` |
+| `GET/PATCH /v2/me/proposals/{id}` | PATCH withdraw or amend; If-Match |
+| `POST /v2/me/proposals/{id}/amendments` | `AmendProposal` + If-Match |
+| `GET /v2/moderation/claims/{id}` | Site-fenced `ClaimByWorkID` |
+| `POST /v2/moderation/claims/{id}/decisions` | approve/decline + If-Match |
+| `GET /v2/moderation/proposals` | open proposals, `SITE_NOT_BOUND` without a catalog site |
+| `POST /v2/moderation/proposals/{id}/decisions` | merge/decline + If-Match |
+| `POST /v2/moderation/reverts` | `revision_id` loads `edit_revision` then `Revert` |
+| `GET /v2/moderation/snapshots/{object}/{id}` | `CurrentSnapshot` |
+
+`content_limit` on claim POST is not stored (no column on the claim row). Omit it.
+
+## Stage 7–8 (this repo)
+
+- **MCP** — `cmd/mcp` loads `GET /v2/catalog/openapi.json` (or `KUN_MCP_OPENAPI_PATH`) and registers one read-only tool per GET on `/v2/catalog`, `/v2/news`, `/v2/problems`, `/v2/vocabularies`. Tool name = operationId. `nmk_` keys only. G10 compares tool params ⊇ HTTP query/path params.
+- **SDK check** — `internal/platform/apiv2/sdk` Go client compiles and hits problems/vocabularies/works. TypeScript twin is the portal docs-model + explore relay.
+- **Portal** — `apps/developer` documents the v2 face from `docs/catalog/v2-openapi.yaml`, HTML problem pages at `/problems/{domain}/{kebab}`, vocabularies, design principles, preview banner. Explore and landing relay `/v2`.
+- **Keys** — `/v2` rejects `nm_live_` / `nm_test_`. Internal-tier mint/rotate issues `nmk_live_` / `nmk_test_` with CRC32. v1 still accepts both generations (malformed `nmk_` rejected offline).
+- **Edge** — `docker-compose.prod.yml` routes `Host(api.nextmoe.dev) && PathPrefix(/v2)` to catalog. Landing this branch on `main` deploys that router with the catalog image. The developer portal and MCP compose projects stay manual.
+
+## Stage 9–10 (not code-completeable here)
+
+- **9 GA** — user announcement after kungal / moyu / letmoe migrate and letmoe is actually live. Then enable G12, freeze default masks and error codes, drop the preview banner, issue `nmk_` to third parties, notify the 17 owners.
+- **10 v1 410** — Deprecation/Sunset from GA, brownout, then `/v1/**` 410. Do not start the clock from preview.
+
+## Tests that exist
+
+- Spec-driven: `TestContractHitsEverySpecOperation` hits every registered op; undeclared status fails.
+- Gates G2–G16 on the generated OpenAPI document.
+- Per-bind unit tests for mapping, unbound 503, auth 401, NSFW, cursor, schema `field_type`.
+- Live DB: `handler/live_*_test.go` (requires track `TEST_DATABASE_DSN`). One 200 GET per bound read, write happy paths, then a spec walk against the live app.
+
+News and search 200 paths need the news DB and Meilisearch. With those unbound, those ops return declared 503.
+
+When a test database is assigned, run:
+
+`GOMAXPROCS=8 go test -count=1 -p 1 ./internal/platform/apiv2/handler/ -run 'TestLive|TestContract|TestMe|TestClaims'`

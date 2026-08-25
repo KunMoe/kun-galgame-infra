@@ -22,6 +22,7 @@ type LabelsListFilter struct {
 	Kind     *int16
 	NSFW     bool
 	HasWorks bool
+	IDs      []int64
 }
 
 type TagsListFilter struct {
@@ -34,6 +35,7 @@ type TagsListFilter struct {
 
 type EnginesListFilter struct {
 	NSFW bool
+	IDs  []int64
 }
 
 func (s *PublicService) LabelsList(ctx context.Context, f LabelsListFilter, cursor string, limit int) (dto.PublicLabelsListData, error) {
@@ -54,12 +56,15 @@ func (s *PublicService) LabelsList(ctx context.Context, f LabelsListFilter, curs
 		where = append(where, pred)
 		args = append(args, pargs...)
 	}
+	if len(f.IDs) > 0 {
+		where = append(where, "id IN ?")
+		args = append(args, f.IDs)
+	}
 	filterWhere, filterArgs := append([]string(nil), where...), append([]any(nil), args...)
 	if cur.ID > 0 {
 		where = append(where, "id > ?")
 		args = append(args, cur.ID)
 	}
-	args = append(args, limit+taxonomyOverFetch)
 
 	var rows []struct {
 		ID          int64
@@ -68,12 +73,16 @@ func (s *PublicService) LabelsList(ctx context.Context, f LabelsListFilter, curs
 		LogoHash    string
 	}
 	q := `SELECT id, display_name, kind, logo_hash FROM catalog_label WHERE ` +
-		strings.Join(where, " AND ") + ` ORDER BY id ASC LIMIT ?`
+		strings.Join(where, " AND ") + ` ORDER BY id ASC`
+	q, args, paginated := applyBrowseLimit(q, args, limit+taxonomyOverFetch, f.IDs)
 	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
 		return dto.PublicLabelsListData{}, err
 	}
 
-	rows, more := taxonomyTrim(rows, limit)
+	var more bool
+	if paginated {
+		rows, more = taxonomyTrim(rows, limit)
+	}
 	ids := make([]int64, len(rows))
 	for i, r := range rows {
 		ids[i] = r.ID
@@ -163,7 +172,6 @@ func (s *PublicService) TagsList(ctx context.Context, f TagsListFilter, cursor s
 		where = append(where, "id > ?")
 		args = append(args, cur.ID)
 	}
-	args = append(args, limit+taxonomyOverFetch)
 
 	var rows []struct {
 		ID   int64
@@ -171,12 +179,16 @@ func (s *PublicService) TagsList(ctx context.Context, f TagsListFilter, cursor s
 		Tier int16
 		Kind int16
 	}
-	q := `SELECT id, name, tier, kind FROM catalog_tag ` + whereClause(where) + ` ORDER BY id ASC LIMIT ?`
+	q := `SELECT id, name, tier, kind FROM catalog_tag ` + whereClause(where) + ` ORDER BY id ASC`
+	q, args, paginated := applyBrowseLimit(q, args, limit+taxonomyOverFetch, f.IDs)
 	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
 		return dto.PublicTagsListData{}, err
 	}
 
-	rows, more := taxonomyTrim(rows, limit)
+	var more bool
+	if paginated {
+		rows, more = taxonomyTrim(rows, limit)
+	}
 	ids := make([]int64, len(rows))
 	for i, r := range rows {
 		ids[i] = r.ID
@@ -212,11 +224,15 @@ func (s *PublicService) EnginesList(ctx context.Context, f EnginesListFilter, cu
 
 	var where []string
 	var args []any
+	if len(f.IDs) > 0 {
+		where = append(where, "id IN ?")
+		args = append(args, f.IDs)
+	}
+	filterWhere, filterArgs := append([]string(nil), where...), append([]any(nil), args...)
 	if cur.ID > 0 {
 		where = append(where, "id > ?")
 		args = append(args, cur.ID)
 	}
-	args = append(args, limit+taxonomyOverFetch)
 
 	var rows []struct {
 		ID          int64
@@ -224,12 +240,16 @@ func (s *PublicService) EnginesList(ctx context.Context, f EnginesListFilter, cu
 		Description string
 		Aliases     datatypes.JSON
 	}
-	q := `SELECT id, name, description, aliases FROM catalog_engine ` + whereClause(where) + ` ORDER BY id ASC LIMIT ?`
+	q := `SELECT id, name, description, aliases FROM catalog_engine ` + whereClause(where) + ` ORDER BY id ASC`
+	q, args, paginated := applyBrowseLimit(q, args, limit+taxonomyOverFetch, f.IDs)
 	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
 		return dto.PublicEnginesListData{}, err
 	}
 
-	rows, more := taxonomyTrim(rows, limit)
+	var more bool
+	if paginated {
+		rows, more = taxonomyTrim(rows, limit)
+	}
 	ids := make([]int64, len(rows))
 	for i, r := range rows {
 		ids[i] = r.ID
@@ -245,7 +265,7 @@ func (s *PublicService) EnginesList(ctx context.Context, f EnginesListFilter, cu
 			Description: r.Description, Aliases: engineAliases(r.Aliases),
 		}
 	}
-	if out.Total, err = s.taxonomyTotal(ctx, "catalog_engine", nil, nil); err != nil {
+	if out.Total, err = s.taxonomyTotal(ctx, "catalog_engine", filterWhere, filterArgs); err != nil {
 		return dto.PublicEnginesListData{}, err
 	}
 	out.NextCursor = taxonomyNextCursor(taxonomyLaneEngines, ids, more)
@@ -425,6 +445,13 @@ func clampBrowseLimit(limit int) int {
 		return 100
 	}
 	return limit
+}
+
+func applyBrowseLimit(q string, args []any, bound int, ids []int64) (string, []any, bool) {
+	if len(ids) > 0 {
+		return q, args, false
+	}
+	return q + " LIMIT ?", append(args, bound), true
 }
 
 const taxonomyOverFetch = 1

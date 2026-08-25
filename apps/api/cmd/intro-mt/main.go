@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"api/internal/jobs/intromt"
@@ -26,7 +28,16 @@ func main() {
 	delayMS := flag.Int("delay-ms", 0, "rate-limit delay between real gateway calls (ms)")
 	mock := flag.Bool("mock", false, "REHEARSAL ONLY: offline deterministic mock translator (no network; obvious marker output)")
 	workers := flag.Int("workers", 1, "apply-mode concurrency (per-request latency dominates; 8 ≈ 10 req/min, far under gateway rate limits)")
+	workIDs := flag.String("work-ids", "", "comma-separated work ids — the named list IS the population, so --top stops applying")
+	force := flag.Bool("force", false, "retranslate even when src_hash is unchanged (the prompt is not in the hash, so a prompt rewrite needs this)")
+	effort := flag.String("effort", "", "reasoning effort: low | medium | high (empty = the gateway's own default; a reasoning model needs low or it thinks for minutes about a translation)")
 	flag.Parse()
+
+	ids, err := parseWorkIDs(*workIDs)
+	if err != nil {
+		slog.Error("--work-ids", "error", err)
+		os.Exit(2)
+	}
 
 	logger.Init("development")
 
@@ -43,6 +54,7 @@ func main() {
 		} else {
 			ht := intromt.NewHTTPTranslator(*llmBase, *llmToken, *model, *maxTokens)
 			ht.SetSourceLang(intromt.SourceLang(*sourceLang))
+			ht.SetEffort(*effort)
 			if !ht.Configured() {
 				fmt.Printf("BLOCKED: LLM gateway not configured (need --llm-base + --llm-token, or KUN_INTRO_MT_LLM_* / KUN_AI_UPSTREAM_*).\n" +
 					"This is a designed precondition for a real --apply, not a failure. Use --mock for the offline write-path rehearsal.\n")
@@ -56,6 +68,7 @@ func main() {
 	st, err := intromt.Run(context.Background(), tr, intromt.Opts{
 		DSN: *dsn, Apply: *apply, Population: intromt.Population(*population),
 		SourceLang: intromt.SourceLang(*sourceLang), Top: *top, Limit: *limit,
+		WorkIDs: ids, Force: *force,
 		Delay:   time.Duration(*delayMS) * time.Millisecond,
 		Workers: *workers,
 	})
@@ -117,6 +130,26 @@ func modelSuffix(m string) string {
 		return ""
 	}
 	return " · " + m
+}
+
+func parseWorkIDs(csv string) ([]int64, error) {
+	csv = strings.TrimSpace(csv)
+	if csv == "" {
+		return nil, nil
+	}
+	var out []int64
+	for _, f := range strings.Split(csv, ",") {
+		f = strings.TrimSpace(f)
+		if f == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(f, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%q is not a work id", f)
+		}
+		out = append(out, id)
+	}
+	return out, nil
 }
 
 func envOr(key, fallback string) string {

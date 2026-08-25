@@ -19,15 +19,38 @@ useSeoMeta({
 // allowlist does not carry developer.nextmoe.dev — a browser fetch straight at
 // the absolute URL is blocked on every client-side navigation to this page.
 // Same-origin relay instead, the pattern /explore already uses.
-const { data: stats } = await useFetch<{ code: number; data: CatalogStats }>(
-  '/relay/v1/catalog/stats',
+interface V2Stats {
+  object?: string
+  works?: number
+  companies?: number
+  characters?: number
+  credit_names?: number
+  persons?: number
+}
+
+const { data: stats } = await useFetch<CatalogStats | V2Stats>(
+  '/relay/v2/catalog/stats',
   { key: 'landing-catalog-stats', timeout: 5000 }
 )
 
 const counts = computed(() => {
-  const s = stats.value
-  if (!s || s.code !== 0 || !s.data) return null
-  return s.data
+  const s = stats.value as (CatalogStats & V2Stats) | null
+  if (!s) return null
+  if ('works' in s && typeof s.works === 'object' && s.works && 'total' in s.works) {
+    return s as CatalogStats
+  }
+  if (typeof s.works === 'number') {
+    return {
+      works: { total: s.works, by_medium: [] },
+      entities: {
+        labels: s.companies ?? 0,
+        characters: s.characters ?? 0,
+        credit_names: s.credit_names ?? 0,
+        persons: s.persons ?? 0
+      }
+    } satisfies CatalogStats
+  }
+  return null
 })
 
 const formatCount = (n: number): string => {
