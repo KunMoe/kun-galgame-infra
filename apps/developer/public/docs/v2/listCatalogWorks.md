@@ -1,4 +1,4 @@
-# List catalog works · Public API v2（preview）
+# List catalog works · Public API v2
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -15,7 +15,7 @@ List catalog works
 
 Keyset-paginated work collection. q= switches to search (sort defaults to relevance). company_id=/tag_id=/series_id= filter the live registry when q= is absent. Requires an application key. view/include/fields/ids/refs/facets follow the v2 collection contract.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 

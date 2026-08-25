@@ -1,8 +1,8 @@
-# v2 implementation notes (preview)
+# v2 implementation notes
 
 This page records **binds that differ from `refs/api-v2`**. It is not a substitute for the design spec. Code + `docs/catalog/v2-openapi.yaml` are the machine-readable contract.
 
-Date: 2026-08-24. Branch: `v2-stage0` landing on `main` as preview (stage 8). v1 is unchanged. GA / v1 sunset are not this merge.
+Date: 2026-08-24, GA declared 2026-08-25 (stage 9). v1 is unchanged; the v1 sunset is still not scheduled here.
 
 ## Done on this branch
 
@@ -84,14 +84,14 @@ Date: 2026-08-24. Branch: `v2-stage0` landing on `main` as preview (stage 8). v1
 
 - **MCP** — `cmd/mcp` loads `GET /v2/catalog/openapi.json` (or `KUN_MCP_OPENAPI_PATH`) and registers one read-only tool per GET on `/v2/catalog`, `/v2/news`, `/v2/problems`, `/v2/vocabularies`. Tool name = operationId. `nmk_` keys only. G10 compares tool params ⊇ HTTP query/path params.
 - **SDK check** — `internal/platform/apiv2/sdk` Go client compiles and hits problems/vocabularies/works. TypeScript twin is the portal docs-model + explore relay.
-- **Portal** — `apps/developer` documents the v2 face from `docs/catalog/v2-openapi.yaml`, HTML problem pages at `/problems/{domain}/{kebab}`, vocabularies, design principles, preview banner. Explore and landing relay `/v2`.
-- **Keys** — `/v2` rejects `nm_live_` / `nm_test_`. Internal-tier mint/rotate issues `nmk_live_` / `nmk_test_` with CRC32. v1 still accepts both generations (malformed `nmk_` rejected offline).
+- **Portal** — `apps/developer` documents the v2 face from `docs/catalog/v2-openapi.yaml`, HTML problem pages at `/problems/{domain}/{kebab}`, vocabularies, design principles. Explore and landing relay `/v2`.
+- **Keys** — `/v2` rejects `nm_live_` / `nm_test_`. Mint and rotate issue `nmk_live_` / `nmk_test_` with CRC32 for every tier (GA); rotation upgrades a v1 key to `nmk_`. v1 still accepts both generations (malformed `nmk_` rejected offline).
 - **Edge** — `docker-compose.prod.yml` routes `Host(api.nextmoe.dev) && PathPrefix(/v2)` to catalog. Landing this branch on `main` deploys that router with the catalog image. The developer portal and MCP compose projects stay manual.
 
-## Stage 9–10 (not code-completeable here)
+## Stage 9–10
 
-- **9 GA** — user announcement after kungal / moyu / letmoe migrate and letmoe is actually live. Then enable G12, freeze default masks and error codes, drop the preview banner, issue `nmk_` to third parties, notify the 17 owners.
-- **10 v1 410** — Deprecation/Sunset from GA, brownout, then `/v1/**` 410. Do not start the clock from preview.
+- **9 GA — declared 2026-08-25.** Landed with it: `nmk_` minting opened to every dev tier (rotation of a v1 key returns `nmk_`), the portal preview banner and every preview qualifier dropped, `info.version 2.0.0` / `x-stability: stable`, and `docs/catalog/v2-openapi.yaml` added to the `specs=` list in `spec-breaking.yml` (G12). That last one is the whole gate: the file was already in the workflow's trigger `paths` but not in `specs=`, so oasdiff had never actually diffed it — a v2 spec that looked checked and was not. Default masks and the existing error-code registry entries are frozen from this date. Still open: notify the 17 owners.
+- **10 v1 410** — Deprecation/Sunset counted from GA (2026-08-25), brownout, then `/v1/**` 410.
 
 ## Tests that exist
 

@@ -505,7 +505,7 @@ wave 176-179 把人类的**写**搬完了;本波搬的是搬完写之后还留�
 - S2S:`go run ./cmd/gen-openapi -catalog -o docs/catalog/openapi.yaml`(OpenAPI 3.1)。
 - admin:`go run ./cmd/gen-openapi -catalog-admin -o docs/catalog/admin-openapi.yaml`。
 - public(`/v1/catalog` + `/v1/playtime`):`go run ./cmd/gen-openapi -catalog-public -o docs/catalog/public-openapi.yaml`——CI 的 freeze 门(test.yml)一直冻着它,此前只是本清单漏列;它另有 oasdiff 破坏门与 developer 门户 docs-model 门两个下游。
-- v2 preview(Huma 真路由:`/v2/problems` `/v2/vocabularies` `/v2/catalog/works` 与绑定的详情/stats/news):`go run ./cmd/gen-openapi -catalog-v2 -o docs/catalog/v2-openapi.yaml`。
+- v2(Huma 真路由:`/v2/problems` `/v2/vocabularies` `/v2/catalog/works` 与绑定的详情/stats/news):`go run ./cmd/gen-openapi -catalog-v2 -o docs/catalog/v2-openapi.yaml`。
 - 契约以生成的 spec 为准(Huma code-first,DTO 即契约);本 markdown 是语义说明。
 
 ## 7. 运维注记
