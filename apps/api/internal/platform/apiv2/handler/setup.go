@@ -54,7 +54,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	cfg.OpenAPIPath = ""
 	cfg.DocsPath = ""
 	cfg.SchemasPath = ""
-	cfg.Info.Description = "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no application required. The shape evolves additively; a breaking change to this document fails CI."
+	cfg.Info.Description = "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no approval required. The shape evolves additively; a breaking change to this document fails CI."
 	cfg.Info.Extensions = map[string]any{"x-stability": "stable"}
 
 	api := humafiber.New(app, cfg)
