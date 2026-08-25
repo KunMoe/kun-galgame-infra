@@ -9,7 +9,7 @@
 
 **署名**：目前阶段使用 NextMoe·未萌 API，可以将 API 的名字标记为『鲲 Galgame 论坛』（如果你使用 Galgame 数据）或『LetMoe·一启萌』（如果你使用同人游戏数据）。
 
-本文件内联全部 125 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
+本文件内联全部 131 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
 
 ## 数据来源（六源）
 
@@ -1201,7 +1201,7 @@ curl "https://api.nextmoe.dev/v1/news/1" \
 
 - 路径前缀：`/v2`
 - 凭据：Authorization: Bearer nmk_live_…（v2 应用密钥。preview 期间只签发给 internal 档应用）
-- 端点数：74
+- 端点数：80
 
 > preview：形状还可以改，包括删除与改名。第三方拿不到 /v2 凭证，继续用 /v1。
 
@@ -1714,6 +1714,59 @@ curl "https://api.nextmoe.dev/v2/catalog/persons/value/credit-names" \
   -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
+### GET /v2/catalog/proposals
+
+Edit proposal history
+
+Filed proposals, newest first. proposer_uid=+state=merged with include_total=true is the per-contributor tally. This face publishes no patch and no decision note. Requires an application key.
+
+- 所属 API：Public API v2（preview）（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：catalog:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. amendments is the only token on this face. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated proposal ids, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `sort` | query | 否 | string | filed_desc is the only key. Closed. |
+| `object` | query | 否 | string | Closed family filter: work, company, character, release, tag, engine, series. |
+| `entity_id` | query | 否 | string | Catalog id of one entity. Requires object=. |
+| `site` | query | 否 | string | Tenant key. Open vocabulary; unknown values match nothing. |
+| `proposer_uid` | query | 否 | string | The claiming site's own user id of the proposer. Not a catalog id. |
+| `state` | query | 否 | string | Closed: open, merged, declined, withdrawn. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/catalog/proposals" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+### GET /v2/catalog/proposals/{id}
+
+One proposal
+
+Public transparency view: proposer, state, target entity and timestamps. include=amendments adds the amendment chain. Requires an application key.
+
+- 所属 API：Public API v2（preview）（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：catalog:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | path | 是 | string | Proposal id. |
+| `include` | query | 否 | string | Comma-separated blocks. amendments is the only token on this face. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `view` | query | 否 | string | basic (default) or full. full adds amendments. |
+| `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/catalog/proposals/value" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
 ### GET /v2/catalog/redirects
 
 Entity merge feed
@@ -1782,6 +1835,59 @@ A catalog release. Merged ids are 404 ENTITY_MERGED. r18 parent works are 404 wi
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/releases/value" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+### GET /v2/catalog/revisions
+
+Entity revision history
+
+Every merged edit, newest first by default. sort=recorded_asc walks the same collection oldest-first by id, which is the shape a mirror or a contributor tally reads with a watermark. object=+entity_id= narrows to one entity's history. Requires an application key.
+
+- 所属 API：Public API v2（preview）（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：catalog:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. diff is the only token. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated revision ids, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `sort` | query | 否 | string | recorded_desc (default) or recorded_asc. Closed. |
+| `object` | query | 否 | string | Closed family filter: work, company, character, release, tag, engine, series. |
+| `entity_id` | query | 否 | string | Catalog id of one entity. Requires object=. |
+| `site` | query | 否 | string | Tenant key. Open vocabulary; unknown values match nothing. |
+| `actor_uid` | query | 否 | string | The claiming site's own user id of the actor. Not a catalog id. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/catalog/revisions" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+### GET /v2/catalog/revisions/{id}
+
+One revision
+
+include=diff adds the field-level change set against diff_base, or against the preceding revision when diff_base is absent. This id is what POST /v2/moderation/reverts takes. Requires an application key.
+
+- 所属 API：Public API v2（preview）（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：catalog:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | path | 是 | string | Revision id. |
+| `include` | query | 否 | string | Comma-separated blocks. diff is the only token. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `view` | query | 否 | string | basic (default) or full. full adds diff. |
+| `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. |
+| `diff_base` | query | 否 | string | Revision id to diff against. Requires include=diff. Absent means the preceding revision of the same entity. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/catalog/revisions/value" \
   -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
@@ -2462,9 +2568,9 @@ curl "https://api.nextmoe.dev/v2/me/claims/value" \
 
 ### PATCH /v2/me/claims/{id}
 
-Withdraw a claim
+Move a claim the caller owns
 
-PATCH {state: withdrawn}. If-Match required. Requires a user access token.
+PATCH {state: live|pending|withdrawn}. live publishes a draft without review, pending submits it for review, withdrawn returns it to draft. The owner may act, and an unowned claim is adopted by its first claimant. If-Match required. Requires a user access token bound to a catalog site.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -2479,7 +2585,7 @@ PATCH {state: withdrawn}. If-Match required. Requires a user access token.
 curl -X PATCH "https://api.nextmoe.dev/v2/me/claims/value" \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"state":"withdrawn"}'
+  -d '{"state":"live"}'
 ```
 
 ### GET /v2/me/cover-votes
@@ -2536,6 +2642,23 @@ Withdraw a cover vote
 
 ```bash
 curl -X DELETE "https://api.nextmoe.dev/v2/me/cover-votes/value" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### POST /v2/me/edit-images
+
+Upload an image for an edit proposal
+
+multipart/form-data with preset and file. Returns the hash an edit proposal carries in a cover or screenshot row. Requires a user access token bound to a catalog site.
+
+- 所属 API：Public API v2（preview）（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：无需凭据
+
+无参数。
+
+```bash
+curl -X POST "https://api.nextmoe.dev/v2/me/edit-images" \
   -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
@@ -2687,6 +2810,8 @@ Requires a user access token.
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Proposal id. |
+| `include` | query | 否 | string | Comma-separated blocks: amendments, patch. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `view` | query | 否 | string | basic (default) or full. full adds amendments and patch. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/me/proposals/value" \
@@ -2791,7 +2916,7 @@ curl "https://api.nextmoe.dev/v2/moderation/claims/value" \
 
 Decide a claim
 
-decision=approve|decline. If-Match required.
+decision=approve|decline|ban|unban. unban restores the state the claim was hidden from. If-Match required, and the ETag comes from GET /v2/moderation/claims/{id}. Requires the catalog.claim.review permission.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -2799,7 +2924,7 @@ decision=approve|decline. If-Match required.
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | path | 是 | string | Subject id. |
+| `id` | path | 是 | string | Catalog work id. |
 | `If-Match` | header | 否 | string | Current ETag. Required. |
 
 ```bash
@@ -2838,6 +2963,27 @@ curl "https://api.nextmoe.dev/v2/moderation/proposals" \
   -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
+### GET /v2/moderation/proposals/{id}
+
+Get one moderation proposal
+
+Site-fenced. include=patch adds the proposed and effective patches a decision is taken on. The ETag is the validator POST /v2/moderation/proposals/{id}/decisions takes as If-Match.
+
+- 所属 API：Public API v2（preview）（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：无需凭据
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | path | 是 | string | Proposal id. |
+| `include` | query | 否 | string | Comma-separated blocks: amendments, patch. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `view` | query | 否 | string | basic (default) or full. full adds amendments and patch. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/moderation/proposals/value" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
 ### POST /v2/moderation/proposals/{id}/decisions
 
 Decide a proposal
@@ -2850,14 +2996,14 @@ decision=merge|decline. If-Match required.
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | path | 是 | string | Subject id. |
+| `id` | path | 是 | string | Proposal id. |
 | `If-Match` | header | 否 | string | Current ETag. Required. |
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v2/moderation/proposals/value/decisions" \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"decision":"approve"}'
+  -d '{"decision":"merge"}'
 ```
 
 ### POST /v2/moderation/reverts

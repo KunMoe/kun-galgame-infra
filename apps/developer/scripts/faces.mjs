@@ -299,4 +299,4 @@ export const USER_TOKEN_AUTH = {
   note: '用户授权后的访问令牌,不是 API 密钥'
 }
 
-export const EXPECTED_OPERATION_COUNTS = { catalog: 37, playtime: 5, edit: 6, news: 3, v2: 74 }
+export const EXPECTED_OPERATION_COUNTS = { catalog: 37, playtime: 5, edit: 6, news: 3, v2: 80 }

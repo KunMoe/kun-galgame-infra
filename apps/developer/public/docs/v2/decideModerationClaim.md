@@ -13,7 +13,7 @@
 
 Decide a claim
 
-decision=approve|decline. If-Match required.
+decision=approve|decline|ban|unban. unban restores the state the claim was hidden from. If-Match required, and the ETag comes from GET /v2/moderation/claims/{id}. Requires the catalog.claim.review permission.
 
 - 所属 API：Public API v2（preview）（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -21,7 +21,7 @@ decision=approve|decline. If-Match required.
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | path | 是 | string | Subject id. |
+| `id` | path | 是 | string | Catalog work id. |
 | `If-Match` | header | 否 | string | Current ETag. Required. |
 
 ```bash

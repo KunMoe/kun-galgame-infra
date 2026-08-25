@@ -22,6 +22,8 @@ Requires a user access token.
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Proposal id. |
+| `include` | query | 否 | string | Comma-separated blocks: amendments, patch. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `view` | query | 否 | string | basic (default) or full. full adds amendments and patch. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/me/proposals/value" \
