@@ -105,6 +105,74 @@ func TestTwoSitesGetDistinctLinksForOneProduct(t *testing.T) {
 	}
 }
 
+// A shortener that stopped honouring reuse:false hands every client the same
+// alias. Without the alias unique index both rows accept it and the two sites'
+// clicks merge into one bucket — a settlement that is wrong with nothing to
+// show for it. The constraint turns that into a refused mint someone notices.
+func TestACollapsedAliasIsRefusedNotQuietlyShared(t *testing.T) {
+	svc, _ := newFixture(t, 5000)
+	ctx := context.Background()
+
+	if _, err := svc.PurchaseLinks(ctx, "site-a", "RJ100001"); err != nil {
+		t.Fatalf("site-a: %v", err)
+	}
+
+	var first model.PurchaseLink
+	if err := testDB.Where("client_id = ?", "site-a").Take(&first).Error; err != nil {
+		t.Fatalf("read site-a row: %v", err)
+	}
+
+	fakeCollapsed := storetest.NewFakeShortener()
+	t.Cleanup(fakeCollapsed.Close)
+	fakeCollapsed.StickyAlias = first.Alias
+	collapsed := New(testDB, fakeCollapsed.Client("slk_test"), Options{
+		AffTemplateManiax: tmplManiax, AffTemplatePro: tmplPro, LinkQuotaPerClient: 5000,
+	})
+
+	if _, err := collapsed.PurchaseLinks(ctx, "site-b", "RJ100001"); err == nil {
+		t.Fatal("site-b got a link carrying site-a's alias; attribution collapsed silently")
+	}
+	var rows int64
+	if err := testDB.Model(&model.PurchaseLink{}).Where("alias = ?", first.Alias).Count(&rows).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if rows != 1 {
+		t.Errorf("rows sharing alias %q = %d, want 1", first.Alias, rows)
+	}
+
+	// The same guard on the coupon table.
+	now := time.Now()
+	campaignID := seedCampaign(t, "券", "https://dlsite.test/coupon", now.Add(-time.Hour), now.Add(time.Hour))
+	if _, err := svc.PurchaseLinks(ctx, "site-c", "RJ100002"); err != nil {
+		t.Fatalf("site-c: %v", err)
+	}
+	var couponRow model.CouponLink
+	if err := testDB.Where("client_id = ?", "site-c").Take(&couponRow).Error; err != nil {
+		t.Fatalf("read site-c coupon row: %v", err)
+	}
+	if couponRow.CampaignID != campaignID {
+		t.Fatalf("coupon row campaign = %d, want %d", couponRow.CampaignID, campaignID)
+	}
+
+	fakeCollapsed.StickyAlias = couponRow.Alias
+	if _, err := collapsed.PurchaseLinks(ctx, "site-d", "RJ100003"); err == nil {
+		t.Fatal("site-d got a coupon link carrying site-c's alias")
+	}
+	// The two indexes are per table, so site-d's PURCHASE row was allowed to
+	// take the same alias string a coupon row holds; only the coupon leg
+	// collided. A shared index would have stopped this insert instead, and the
+	// assertion above would pass for the wrong reason.
+	var purchaseDupes int64
+	if err := testDB.Model(&model.PurchaseLink{}).
+		Where("client_id = ? AND alias = ?", "site-d", couponRow.Alias).
+		Count(&purchaseDupes).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if purchaseDupes != 1 {
+		t.Errorf("site-d purchase rows holding %q = %d, want 1", couponRow.Alias, purchaseDupes)
+	}
+}
+
 func TestVJUsesProTemplate(t *testing.T) {
 	svc, fake := newFixture(t, 5000)
 

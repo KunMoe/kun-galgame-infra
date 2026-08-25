@@ -46,6 +46,11 @@ type FakeShortener struct {
 	// MintFails makes POST /s2s/links answer 503, standing in for the shortener
 	// being down.
 	MintFails bool
+
+	// StickyAlias makes every mint return the same alias, standing in for a
+	// shortener that stopped honouring reuse:false. Only the alias unique
+	// indexes catch that, so the suite needs a way to produce it.
+	StickyAlias string
 }
 
 func NewFakeShortener() *FakeShortener {
@@ -101,11 +106,15 @@ func (f *FakeShortener) handleMint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	f.seq++
-	alias := fmt.Sprintf("a%d", f.seq)
+	id := f.seq
+	alias := fmt.Sprintf("a%d", id)
+	if f.StickyAlias != "" {
+		alias = f.StickyAlias
+	}
 	f.mu.Unlock()
 
 	writeJSON(w, shortener.Link{
-		ID:       int64(f.seq),
+		ID:       int64(id),
 		Alias:    alias,
 		ShortURL: "https://s.test/" + alias,
 		Reused:   false,
