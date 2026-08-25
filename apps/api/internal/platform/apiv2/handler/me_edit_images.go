@@ -18,12 +18,6 @@ var editImagePresets = map[string]string{
 	"screenshot": "catalog_screenshot",
 }
 
-// v1 stamps every editor upload with the kungal namespace regardless of which
-// site the token belongs to; the image service's refping scope is keyed off the
-// catalog client, not this string, so v2 keeps the same value rather than
-// re-attributing existing objects.
-const editImageSubPrefix = "kungal:"
-
 func (c *Catalog) UploadEditImage(ctx context.Context, preset, filename string, body io.Reader) (repr.EditImage, error) {
 	if c == nil || c.Uploads == nil {
 		return repr.EditImage{}, problem.New(problem.CodeServiceUnavailable, "", "", "the editor image upload leg is not configured.")
@@ -32,7 +26,8 @@ func (c *Catalog) UploadEditImage(ctx context.Context, preset, filename string, 
 	if err != nil {
 		return repr.EditImage{}, err
 	}
-	if _, serr := requireSite(ctx); serr != nil {
+	site, serr := requireSite(ctx)
+	if serr != nil {
 		return repr.EditImage{}, serr
 	}
 	target, ok := editImagePresets[preset]
@@ -42,7 +37,7 @@ func (c *Catalog) UploadEditImage(ctx context.Context, preset, filename string, 
 			Detail: "expected one of: cover, screenshot"}}
 		return repr.EditImage{}, p
 	}
-	res, uerr := c.Uploads(ctx, body, filename, target, editImageSubPrefix+strconv.FormatInt(uid, 10))
+	res, uerr := c.Uploads(ctx, body, filename, target, site+":"+strconv.FormatInt(uid, 10))
 	if uerr != nil {
 		return repr.EditImage{}, editImageErr(uerr)
 	}

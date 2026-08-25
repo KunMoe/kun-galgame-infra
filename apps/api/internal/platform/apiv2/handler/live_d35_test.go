@@ -406,7 +406,7 @@ func TestLiveEditImageUpload(t *testing.T) {
 	require.Equal(t, 201, status, string(body))
 	require.Equal(t, "https://img.example.dev/image/9f3c", header.Get("Location"))
 	require.Equal(t, "catalog_cover", gotPreset, "the v2 preset token must map onto the image service's own preset")
-	require.Equal(t, "kungal:"+idstr(liveUID), gotSub)
+	require.Equal(t, liveSite+":"+idstr(liveUID), gotSub)
 	require.Equal(t, "cover.png", gotName)
 
 	var rec struct {

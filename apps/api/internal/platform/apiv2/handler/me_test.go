@@ -3,14 +3,17 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"api/internal/platform/apiv2/collect"
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
 	catsvc "api/internal/platform/catalog/service"
+	"api/pkg/imageclient"
 
 	"github.com/stretchr/testify/require"
 )
@@ -109,6 +112,27 @@ func TestCoverVoteUnbound(t *testing.T) {
 	p, ok := err.(*problem.Problem)
 	if !ok || p.Code != problem.CodeServiceUnavailable {
 		t.Fatalf("%v", err)
+	}
+}
+
+func TestEditImageSubCarriesTheTokenSite(t *testing.T) {
+	ctx := contextWithUser(t.Context(), 7, "moyu-client")
+	ctx = context.WithValue(ctx, ctxSite, "moyu")
+
+	var gotSub string
+	cat := &Catalog{Uploads: func(_ context.Context, _ io.Reader, _, _, sub string) (*imageclient.UploadResult, error) {
+		gotSub = sub
+		return &imageclient.UploadResult{Hash: "h", URL: "u"}, nil
+	}}
+	if _, err := cat.UploadEditImage(ctx, "cover", "c.png", strings.NewReader("x")); err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	require.Equal(t, "moyu:7", gotSub)
+
+	if _, err := (&Catalog{Uploads: cat.Uploads}).UploadEditImage(
+		contextWithUser(t.Context(), 7, "no-site-client"), "cover", "c.png", strings.NewReader("x"),
+	); err == nil {
+		t.Fatal("a token whose client is not bound to a site must not upload")
 	}
 }
 
