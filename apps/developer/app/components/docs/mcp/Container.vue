@@ -115,7 +115,7 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
         MCP 层自身<strong class="text-foreground">零鉴权、零计量</strong>逻辑——鉴权、tier、
         NSFW 可见性、限流、日配额与用量统计全部复用同一套端点、记在同一把密钥上：一次工具调用在
         <code class="font-mono text-xs text-foreground">/dev/usage</code>
-        里与一次直连 <code class="font-mono text-xs text-foreground">/v2</code> 请求毫无区别。preview 期间只要 internal 档签发的 nmk_ 密钥。
+        里与一次直连 <code class="font-mono text-xs text-foreground">/v2</code> 请求毫无区别。任何应用在门户自助铸造的 nmk_ 密钥都能用，不需要申请。
       </p>
     </section>
 

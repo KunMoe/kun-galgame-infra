@@ -1,0 +1,21 @@
+# Declared breaking changes for docs/catalog/v2-openapi.yaml.
+#
+# oasdiff --err-ignore matches by SUBSTRING: an entry suppresses a breaking
+# change when the entry line CONTAINS oasdiff's own error text verbatim
+# ("in API <METHOD> <path> <description>"), so prose may surround an entry but
+# never interrupt it. Lines that match nothing — this header included — are
+# inert. Removing an entry re-arms the gate for that change.
+#
+# D35 (2026-08-25, the GA wave — the first change through this gate for v2):
+# the two moderation decision routes shared one Go input struct, so each
+# advertised the OTHER route's decision values. The shared enum said
+# approve|decline|merge on both operations while the doc string partitioned
+# them ("Claim: approve or decline. Proposal: merge or decline.") and the
+# services rejected the cross values at runtime as invalid decisions. D35
+# splits the input per route, so each enum now lists exactly what its route
+# accepts (claims additionally gained ban|unban — additive, no entry). Nothing
+# a working client could send stopped working; a value that was schema-valid
+# but always rejected is now rejected one layer earlier, by the schema.
+
+in API POST /v2/moderation/claims/{id}/decisions removed the enum value `merge` of the request property `decision`
+in API POST /v2/moderation/proposals/{id}/decisions removed the enum value `approve` of the request property `decision`

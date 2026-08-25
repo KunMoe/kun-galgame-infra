@@ -168,7 +168,7 @@ func TestLiveWrites200(t *testing.T) {
 	status, _, body = liveDo(t, env, http.MethodGet, "/v2/moderation/claims/"+idstr(fx.Pending), liveUserToken, "")
 	require.Equal(t, 200, status, string(body))
 
-	etag := `"c` + idstr(fx.Pending) + `"`
+	etag := liveETag(t, env, "/v2/moderation/claims/"+idstr(fx.Pending), liveUserToken)
 	status, _, body = liveDo(t, env, http.MethodPost, "/v2/moderation/claims/"+idstr(fx.Pending)+"/decisions", liveUserToken,
 		`{"decision":"approve","note":"ok"}`)
 	// missing If-Match

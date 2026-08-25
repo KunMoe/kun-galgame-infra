@@ -308,6 +308,15 @@ export const problems = [
     "type": "https://developer.nextmoe.dev/problems/me/invalid-state-transition"
   },
   {
+    "code": "CLAIM_NOT_OWNED",
+    "domain": "me",
+    "kebab": "claim-not-owned",
+    "status": 403,
+    "title": "Claim not owned",
+    "description": "The claim has an owner and it is another user. Only the owner may publish, submit, or withdraw it; an unowned claim is adopted by its first claimant.",
+    "type": "https://developer.nextmoe.dev/problems/me/claim-not-owned"
+  },
+  {
     "code": "PERMISSION_REQUIRED",
     "domain": "moderation",
     "kebab": "permission-required",
@@ -322,7 +331,7 @@ export const problems = [
     "kebab": "tenant-mismatch",
     "status": 403,
     "title": "Tenant mismatch",
-    "description": "The target does not belong to this moderator's catalog site.",
+    "description": "The target does not belong to the caller's catalog site.",
     "type": "https://developer.nextmoe.dev/problems/moderation/tenant-mismatch"
   },
   {

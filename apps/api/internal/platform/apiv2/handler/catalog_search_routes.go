@@ -11,7 +11,7 @@ import (
 )
 
 type searchInput struct {
-	collectionInput
+	CollectionInput
 	Q      string `query:"q" maxLength:"512" doc:"Search string. Empty runs a popularity-ordered listing of that family."`
 	Object string `query:"object" maxLength:"32" doc:"Required family: work, character, credit_name, company, tag."`
 	Locale string `query:"locale" maxLength:"8" doc:"zh or ja. Ignored for works. Must not be used as a discriminant."`
@@ -39,7 +39,7 @@ func searchCatalog(cat *Catalog) func(context.Context, *searchInput) (*listSearc
 		if in == nil {
 			in = &searchInput{}
 		}
-		q, err := parseCatalogList(ctx, &in.collectionInput, collect.SearchSpec())
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.SearchSpec())
 		if err != nil {
 			return nil, err
 		}

@@ -3,13 +3,16 @@ package handler
 import (
 	"context"
 	"errors"
+	"slices"
 	"strconv"
+	"strings"
 
 	"api/internal/platform/apiv2/collect"
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
 	"api/internal/platform/catalog/editspec"
 	catmodel "api/internal/platform/catalog/model"
+	catalogPerm "api/internal/platform/catalog/perm"
 	catsvc "api/internal/platform/catalog/service"
 )
 
@@ -247,6 +250,71 @@ func claimEventCursor(raw string) (int64, error) {
 	return n, nil
 }
 
+// draft is the v1 withdraw target and stayed accepted alongside the spec's
+// withdrawn; both name the same executor action.
+var meClaimTransitions = []struct {
+	Token  string
+	Action catsvc.ClaimAction
+}{
+	{"live", catsvc.ClaimActionPublish},
+	{"pending", catsvc.ClaimActionSubmit},
+	{"withdrawn", catsvc.ClaimActionWithdraw},
+	{"draft", catsvc.ClaimActionWithdraw},
+}
+
+func meClaimAction(state string) (catsvc.ClaimAction, bool) {
+	for _, t := range meClaimTransitions {
+		if t.Token == state {
+			return t.Action, true
+		}
+	}
+	return "", false
+}
+
+func allowedClaimTargets(current string) []string {
+	var out []string
+	for _, t := range meClaimTransitions {
+		if t.Token == "draft" {
+			continue
+		}
+		from, known := catsvc.TransitionRule(t.Action)
+		if !known {
+			continue
+		}
+		if slices.Contains(from, current) {
+			out = append(out, t.Token)
+		}
+	}
+	return out
+}
+
+func claimTransitionProblem(current, target string) *problem.Problem {
+	allowed := allowedClaimTargets(current)
+	detail := "this claim is in state " + current + "; "
+	if len(allowed) == 0 {
+		detail += "no state transition is available to its owner from here"
+	} else {
+		detail += "the owner may move it to " + strings.Join(allowed, " or ")
+	}
+	p := problem.New(problem.CodeInvalidStateTransition, "", "", detail+", not "+target+".")
+	p.Errors = []problem.FieldError{{Pointer: "/state", Reason: problem.ReasonNotAllowedValue, Detail: detail}}
+	return p
+}
+
+func (c *Catalog) claimForWrite(ctx context.Context, workID int64, site string) (repr.ClaimRecord, error) {
+	row, err := c.Claims.ClaimByWorkID(ctx, workID, site)
+	if err != nil {
+		return repr.ClaimRecord{}, err
+	}
+	if row == nil {
+		return repr.ClaimRecord{}, problem.New(problem.CodeNotFound, "", "", "No claim with this id.")
+	}
+	return claimRecordFrom(*row), nil
+}
+
+// The pre-read is site-fenced, not owner-fenced: v1's executor lets the FIRST
+// claimant adopt an unowned machine-imported draft, and gating on ownership here
+// made adopt-and-publish — the highest-frequency claim write — 404 instead.
 func (c *Catalog) PatchClaim(ctx context.Context, workID int64, state, ifMatch string) (repr.ClaimRecord, error) {
 	if c == nil || c.Claims == nil {
 		return repr.ClaimRecord{}, problem.New(problem.CodeServiceUnavailable, "", "", "claims are not bound.")
@@ -255,23 +323,33 @@ func (c *Catalog) PatchClaim(ctx context.Context, workID int64, state, ifMatch s
 	if err != nil {
 		return repr.ClaimRecord{}, err
 	}
-	cur, gerr := c.GetMyClaim(ctx, workID)
+	site, serr := requireSite(ctx)
+	if serr != nil {
+		return repr.ClaimRecord{}, serr
+	}
+	cur, gerr := c.claimForWrite(ctx, workID, site)
 	if gerr != nil {
 		return repr.ClaimRecord{}, gerr
 	}
 	if err := requireIfMatch(ifMatch, claimETag(cur)); err != nil {
 		return repr.ClaimRecord{}, err
 	}
-	if state != "withdrawn" && state != "draft" {
-		return repr.ClaimRecord{}, problem.New(problem.CodeInvalidStateTransition, "", "", "this patch only withdraws a claim.")
+	action, known := meClaimAction(state)
+	if !known {
+		p := problem.New(problem.CodeValidationFailed, "", "", "state is not a claim transition the owner may request.")
+		p.Errors = []problem.FieldError{{Pointer: "/state", Reason: problem.ReasonUnknownValue,
+			Detail: "expected one of: live, pending, withdrawn"}}
+		return repr.ClaimRecord{}, p
 	}
-	_, aerr := c.Claims.Act(ctx, catsvc.ClaimActionParams{
-		WorkID: workID, Action: catsvc.ClaimActionWithdraw, Site: siteFrom(ctx), ActorUID: uid, RequireOwner: true,
-	})
-	if aerr != nil {
+	if from, ok := catsvc.TransitionRule(action); ok && !slices.Contains(from, cur.State) {
+		return repr.ClaimRecord{}, claimTransitionProblem(cur.State, state)
+	}
+	if _, aerr := c.Claims.Act(ctx, catsvc.ClaimActionParams{
+		WorkID: workID, Action: action, Site: site, ActorUID: uid, RequireOwner: true,
+	}); aerr != nil {
 		return repr.ClaimRecord{}, claimWriteErr(aerr)
 	}
-	return c.GetMyClaim(ctx, workID)
+	return c.claimForWrite(ctx, workID, site)
 }
 
 func (c *Catalog) DecideClaim(ctx context.Context, workID int64, decision, note, ifMatch string) (repr.DecisionRecord, error) {
@@ -286,18 +364,29 @@ func (c *Catalog) DecideClaim(ctx context.Context, workID int64, decision, note,
 	if serr != nil {
 		return repr.DecisionRecord{}, serr
 	}
-	if err := requireIfMatch(ifMatch, `"`+"c"+repr.ID(workID)+`"`); err != nil {
+	if !catalogPerm.Resolver.Can(rolesFrom(ctx), catalogPerm.ClaimReview) {
+		return repr.DecisionRecord{}, problem.New(problem.CodePermissionRequired, "", "",
+			"deciding a claim requires the "+string(catalogPerm.ClaimReview)+" permission.")
+	}
+	cur, gerr := c.claimForWrite(ctx, workID, site)
+	if gerr != nil {
+		return repr.DecisionRecord{}, gerr
+	}
+	if err := requireIfMatch(ifMatch, claimETag(cur)); err != nil {
 		return repr.DecisionRecord{}, err
 	}
-	var action catsvc.ClaimAction
-	switch decision {
-	case "approve":
-		action = catsvc.ClaimActionApprove
-	case "decline":
-		action = catsvc.ClaimActionDecline
-	default:
-		p := problem.New(problem.CodeValidationFailed, "", "", "decision must be approve or decline.")
-		p.Errors = []problem.FieldError{{Pointer: "/decision", Reason: problem.ReasonUnknownValue, Detail: "approve or decline"}}
+	action, known := moderationClaimAction(decision)
+	if !known {
+		p := problem.New(problem.CodeValidationFailed, "", "", "decision must be approve, decline, ban, or unban.")
+		p.Errors = []problem.FieldError{{Pointer: "/decision", Reason: problem.ReasonUnknownValue,
+			Detail: "expected one of: approve, decline, ban, unban"}}
+		return repr.DecisionRecord{}, p
+	}
+	if from, ok := catsvc.TransitionRule(action); ok && !slices.Contains(from, cur.State) {
+		p := problem.New(problem.CodeInvalidStateTransition, "", "",
+			"this claim is in state "+cur.State+"; "+decision+" applies to "+strings.Join(from, " or ")+".")
+		p.Errors = []problem.FieldError{{Pointer: "/decision", Reason: problem.ReasonNotAllowedValue,
+			Detail: "claim state is " + cur.State}}
 		return repr.DecisionRecord{}, p
 	}
 	res, aerr := c.Claims.Act(ctx, catsvc.ClaimActionParams{
@@ -307,6 +396,21 @@ func (c *Catalog) DecideClaim(ctx context.Context, workID int64, decision, note,
 		return repr.DecisionRecord{}, claimWriteErr(aerr)
 	}
 	return repr.DecisionRecord{Object: "decision", ID: repr.ID(res.EventID), Decision: decision, Note: note}, nil
+}
+
+func moderationClaimAction(decision string) (catsvc.ClaimAction, bool) {
+	switch decision {
+	case "approve":
+		return catsvc.ClaimActionApprove, true
+	case "decline":
+		return catsvc.ClaimActionDecline, true
+	case "ban":
+		return catsvc.ClaimActionBan, true
+	case "unban":
+		return catsvc.ClaimActionUnban, true
+	default:
+		return "", false
+	}
 }
 
 func claimETag(rec repr.ClaimRecord) string {
@@ -324,6 +428,15 @@ func claimWriteErr(err error) error {
 	var trans *catsvc.ClaimTransitionError
 	if errors.As(err, &trans) {
 		return problem.New(problem.CodeInvalidStateTransition, "", "", trans.Error())
+	}
+	var notOwned *catsvc.ClaimNotOwnedError
+	if errors.As(err, &notOwned) {
+		return problem.New(problem.CodeClaimNotOwned, "", "",
+			"this claim belongs to another user; only its owner may move it.")
+	}
+	var otherSite *catsvc.ClaimOwnershipError
+	if errors.As(err, &otherSite) {
+		return problem.New(problem.CodeTenantMismatch, "", "", otherSite.Error())
 	}
 	switch {
 	case errors.Is(err, catsvc.ErrClaimReasonRequired), errors.Is(err, catsvc.ErrSubmitDisplayNameRequired),

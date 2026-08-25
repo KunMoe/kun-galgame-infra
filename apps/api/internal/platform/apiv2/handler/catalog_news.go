@@ -59,8 +59,8 @@ func registerNews(api huma.API, cat *Catalog) {
 	}, getNewsItem(cat))
 }
 
-func listNews(cat *Catalog) func(context.Context, *collectionInput) (*listNewsOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listNewsOutput, error) {
+func listNews(cat *Catalog) func(context.Context, *CollectionInput) (*listNewsOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listNewsOutput, error) {
 		q, err := collect.Parse(rawFrom(in), collect.NewsSpec())
 		if err != nil {
 			return nil, withIdent(ctx, err)

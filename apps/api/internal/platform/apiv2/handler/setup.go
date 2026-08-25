@@ -50,12 +50,12 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	app.Use(catalogAuth(opt.LookupCredential))
 	app.Use(userAuth(opt.LookupUser, opt.LookupSite))
 
-	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0-preview")
+	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0")
 	cfg.OpenAPIPath = ""
 	cfg.DocsPath = ""
 	cfg.SchemasPath = ""
-	cfg.Info.Description = "NextMoe public API v2. Preview: any change is allowed, including deletions and renames. Third parties are not issued /v2 credentials."
-	cfg.Info.Extensions = map[string]any{"x-stability": "preview"}
+	cfg.Info.Description = "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no approval required. The shape evolves additively; a breaking change to this document fails CI."
+	cfg.Info.Extensions = map[string]any{"x-stability": "stable"}
 
 	api := humafiber.New(app, cfg)
 	api.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
@@ -106,7 +106,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 		if doc.Info.Extensions == nil {
 			doc.Info.Extensions = map[string]any{}
 		}
-		doc.Info.Extensions["x-stability"] = "preview"
+		doc.Info.Extensions["x-stability"] = "stable"
 	}
 	if len(doc.Servers) == 0 {
 		doc.Servers = []*huma.Server{{
@@ -133,9 +133,16 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.Person{}, repr.Trait{}, repr.Measurements{}, repr.NameCredit{}, repr.NameCreditRole{}, repr.Appearance{},
 			repr.UserPlaytime{}, repr.CoverVote{}, repr.ClaimRecord{},
 			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.DecisionRecord{}, repr.SnapshotRecord{},
+			repr.Revision{}, repr.FieldDiff{}, repr.Amendment{}, repr.EditImage{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}
+		// Registering a multipart operation makes huma register its own FormFile
+		// struct as a named component that nothing $refs — the multipart body
+		// gets an inline {type: string, format: binary} instead. Left in place
+		// its four undocumented Go fields fail G2 and G14, which is how it was
+		// found.
+		delete(doc.Components.Schemas.Map(), "FormFile")
 		for _, schema := range doc.Components.Schemas.Map() {
 			markClosedEnums(schema)
 			forceObjectOpen(schema)

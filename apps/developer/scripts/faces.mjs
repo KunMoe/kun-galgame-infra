@@ -102,7 +102,7 @@ export const FACES = [
   {
     key: 'v2',
     label: 'API v2',
-    name: 'Public API v2（preview）',
+    name: 'Public API v2',
     file: V2_SPEC,
     prefix: '/v2',
     scope: (_method, path) => {
@@ -123,7 +123,7 @@ export const FACES = [
       kind: 'api_key',
       curl: 'Authorization: Bearer nmk_live_<YOUR_KEY>',
       display: 'Authorization: Bearer nmk_live_…',
-      note: 'v2 应用密钥。preview 期间只签发给 internal 档应用'
+      note: 'v2 应用密钥,门户自助铸造,无需申请'
     },
     autoGroups: [
       { key: 'meta', label: '注册表', match: /^\/v2\/(problems|vocabularies)/ },
@@ -133,7 +133,7 @@ export const FACES = [
       { key: 'moderation', label: '审核', match: /^\/v2\/moderation/ }
     ],
     notes: [
-      'preview：形状还可以改，包括删除与改名。第三方拿不到 /v2 凭证，继续用 /v1。',
+      '正式公开：形状按 additive-only 演进，删除与改名由 CI 的 oasdiff 门拦下。第三方在门户自助铸 nmk_ 密钥即可调用，不需要申请。',
       '/v2/me/playtimes 与 /v1/playtime 一样：用户令牌即可，不需要 playtime:read / playtime:write。任何已开通用户登录的应用都可以调用。',
       '错误体是 RFC 9457 application/problem+json。type URI 解析到本站 /problems/{domain}/{kebab-code}。',
       '客户端必须忽略未知字段、容忍开放词表中未见过的取值，并为未知错误 code 准备一个按 HTTP status 的兜底分支。'
@@ -299,4 +299,4 @@ export const USER_TOKEN_AUTH = {
   note: '用户授权后的访问令牌,不是 API 密钥'
 }
 
-export const EXPECTED_OPERATION_COUNTS = { catalog: 37, playtime: 5, edit: 6, news: 3, v2: 74 }
+export const EXPECTED_OPERATION_COUNTS = { catalog: 37, playtime: 5, edit: 6, news: 3, v2: 80 }

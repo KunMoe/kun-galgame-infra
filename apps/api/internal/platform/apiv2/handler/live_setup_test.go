@@ -123,6 +123,7 @@ func liveCatalog(t *testing.T) *liveEnv {
 			Claims:     catsvc.NewClaimLifecycleService(db),
 			Engine:     editing.NewEngine(db, reg),
 		}
+		cat.EditHistory = catsvc.NewEditHistoryService(db)
 		app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
 		SetupWith(app, Options{
 			Store:   liveUnlimitedStore{},
@@ -168,10 +169,15 @@ func liveCatalog(t *testing.T) *liveEnv {
 }
 
 func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFix, error) {
+	// The edit_* tables belong in this list: catalog_work restarts its identity
+	// on every run while edit_revision did not, so run N+1's fresh work id
+	// inherited run N's revision chain and the entity's history read back with
+	// another run's snapshots.
 	if err := db.Exec(`TRUNCATE
 		catalog_claim_event, catalog_external_ref, catalog_work_cover, catalog_release,
 		catalog_work, catalog_label, catalog_tag, catalog_series, catalog_engine,
-		catalog_character, catalog_credit_name, catalog_person, catalog_character_trait
+		catalog_character, catalog_credit_name, catalog_person, catalog_character_trait,
+		edit_revision, edit_proposal, edit_proposal_amendment
 		RESTART IDENTITY CASCADE`).Error; err != nil {
 		return liveFix{}, err
 	}
@@ -319,6 +325,20 @@ func liveDo(t *testing.T, env *liveEnv, method, path, token, body string) (int, 
 	raw, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	return resp.StatusCode, resp.Header.Get("Content-Type"), raw
+}
+
+func liveETag(t *testing.T, env *liveEnv, path, token string) string {
+	t.Helper()
+	req := httptest.NewRequest("GET", path, nil)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := env.app.Test(req)
+	require.NoError(t, err)
+	require.Equal(t, 200, resp.StatusCode, path)
+	tag := resp.Header.Get("ETag")
+	require.NotEmpty(t, tag, "no ETag on "+path)
+	return tag
 }
 
 func liveDoHeader(t *testing.T, env *liveEnv, method, path, token, body string, extra map[string]string) (int, string, []byte) {

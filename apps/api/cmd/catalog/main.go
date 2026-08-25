@@ -321,16 +321,18 @@ func setupPublicCatalog(
 			return cl.CatalogSite, nil
 		},
 		Catalog: &v2handler.Catalog{
-			Public:     publicSvc,
-			Resolve:    resolveSvc,
-			StatsSvc:   statsSvc,
-			News:       newsSvc,
-			Searcher:   searcher,
-			EditTypes:  editRegistry,
-			Playtime:   playtimeSvc,
-			CoverVotes: coverVoteSvc,
-			Claims:     claimSvc,
-			Engine:     editEngine,
+			Public:      publicSvc,
+			Resolve:     resolveSvc,
+			StatsSvc:    statsSvc,
+			News:        newsSvc,
+			Searcher:    searcher,
+			EditTypes:   editRegistry,
+			Playtime:    playtimeSvc,
+			CoverVotes:  coverVoteSvc,
+			Claims:      claimSvc,
+			Engine:      editEngine,
+			EditHistory: service.NewEditHistoryService(catalogDB.DB()),
+			Uploads:     v2handler.EditImageUpload(editUpload),
 		},
 	})
 	v2spec, err := json.Marshal(v2API.OpenAPI())

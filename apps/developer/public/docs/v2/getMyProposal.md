@@ -1,4 +1,4 @@
-# Get one of my proposals · Public API v2（preview）
+# Get one of my proposals · Public API v2
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -15,13 +15,15 @@ Get one of my proposals
 
 Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Proposal id. |
+| `include` | query | 否 | string | Comma-separated blocks: amendments, patch. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `view` | query | 否 | string | basic (default) or full. full adds amendments and patch. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/me/proposals/value" \

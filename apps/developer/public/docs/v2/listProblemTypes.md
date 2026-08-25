@@ -1,4 +1,4 @@
-# List every top-level error code · Public API v2（preview）
+# List every top-level error code · Public API v2
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -15,7 +15,7 @@ List every top-level error code
 
 The closed registry of top-level error codes. Keyset-paginated. Unauthenticated.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：无需凭据
 
