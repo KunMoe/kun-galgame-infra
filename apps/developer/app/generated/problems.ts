@@ -342,5 +342,23 @@ export const problems = [
     "title": "Decision already made",
     "description": "This item has already been decided. detail names who decided and when.",
     "type": "https://developer.nextmoe.dev/problems/moderation/decision-already-made"
+  },
+  {
+    "code": "SOURCE_NOT_YOURS",
+    "domain": "news",
+    "kebab": "source-not-yours",
+    "status": 403,
+    "title": "Source not yours",
+    "description": "The named news source is not bound to this user. A source that does not exist is not distinguished, so source names cannot be enumerated.",
+    "type": "https://developer.nextmoe.dev/problems/news/source-not-yours"
+  },
+  {
+    "code": "SOURCE_INACTIVE",
+    "domain": "news",
+    "kebab": "source-inactive",
+    "status": 422,
+    "title": "Source inactive",
+    "description": "The news source is bound correctly but has been deactivated. detail names who to ask to restore it.",
+    "type": "https://developer.nextmoe.dev/problems/news/source-inactive"
   }
 ] as const

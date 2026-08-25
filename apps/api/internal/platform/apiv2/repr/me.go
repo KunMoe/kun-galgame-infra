@@ -63,6 +63,21 @@ type SnapshotRecord struct {
 	FieldValues map[string]any `json:"field_values" doc:"Registered field keys to current values. Empty object if none."`
 }
 
+type NewsSubmission struct {
+	_           struct{}   `json:"-" additionalProperties:"true"`
+	Object      string     `json:"object" enum:"news_submission" doc:"Type discriminant. Always news_submission."`
+	ID          string     `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"News item id. Same id space as /v2/news."`
+	Source      NewsSource `json:"source" doc:"The source row that grants this submission."`
+	Lane        string     `json:"lane" enum:"news,column" doc:"Which of the source's two sections this item belongs to."`
+	Status      string     `json:"status" enum:"pending,published,rejected,withdrawn" doc:"Moderation lifecycle state. POST always lands on pending."`
+	Title       string     `json:"title" maxLength:"512" doc:"Must not be used as a discriminant."`
+	Summary     string     `json:"summary" maxLength:"200" doc:"Lede, at most 200 runes. Must not be used as a discriminant."`
+	SourceURL   string     `json:"source_url" format:"uri" maxLength:"1024" doc:"Canonical link to the original item."`
+	BannerHash  string     `json:"banner_hash" maxLength:"64" pattern:"^([0-9a-f]{64})?$" doc:"Image-service content hash of the banner. Empty string when there is none."`
+	PublishedAt string     `json:"published_at" format:"date-time" maxLength:"32" doc:"RFC 3339 UTC."`
+	WorkIDs     []string   `json:"work_ids" doc:"Catalog work ids linked by hand. Empty array, never null."`
+}
+
 type CoverVote struct {
 	_       struct{} `json:"-" additionalProperties:"true"`
 	Object  string   `json:"object" enum:"cover_vote" doc:"Type discriminant. Always cover_vote."`

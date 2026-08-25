@@ -21,6 +21,7 @@ type Catalog struct {
 	Resolve     *catsvc.ResolveService
 	StatsSvc    *catsvc.StatsService
 	News        *newssvc.PublicService
+	NewsWrite   *newssvc.SubmissionService
 	Searcher    *catsearch.Indexer
 	EditTypes   *editing.Registry
 	Playtime    *catsvc.UserPlaytimeService

@@ -158,7 +158,7 @@ var registry = []Vocabulary{
 		v("catalog", "Catalog", "Catalog-face errors."),
 		v("me", "Me", "User-facing /v2/me errors."),
 		v("moderation", "Moderation", "Moderation-face errors."),
-		v("news", "News", "News-face errors. The domain exists so the type URI namespace is reserved; the catalog of codes in this domain is empty."),
+		v("news", "News", "News-face errors. Both codes come from the source-row-as-grant model on /v2/me/news."),
 	}),
 	open("sources", []Value{
 		v("user", "User", "Manual curation, not an import source."),

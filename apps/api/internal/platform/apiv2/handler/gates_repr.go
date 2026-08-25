@@ -16,6 +16,11 @@ var g8Exceptions = map[string]bool{
 	"source":     true, // news_item.source is a news_source object; Image/Ref/Intro.source is the open sources key
 	"companies":  true, // catalog_stats.companies is a count; work.companies is the include block
 	"characters": true, // catalog_stats.characters is a count; work.characters is the include block
+	// news_submission.status is the item's lifecycle stage, the same concept 07 §2.1
+	// admits for `state`; the news write face is contractually spelled `status`
+	// (06 §7.2 / 03 §2.4). Problem.status and playtime_batch_item.status are HTTP
+	// status codes and stay integers.
+	"status": true,
 }
 
 func CheckG7toG16(doc *huma.OpenAPI) []string {
