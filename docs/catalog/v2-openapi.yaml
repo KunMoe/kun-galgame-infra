@@ -5137,6 +5137,94 @@ paths:
       description: One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. Requires an application key. ids= is not accepted.
       operationId: listCatalogCalendar
       parameters:
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+            maxLength: 8
+            type: string
+        - description: basic (default) or full. Closed vocabulary.
+          explode: false
+          in: query
+          name: view
+          schema:
+            description: basic (default) or full. Closed vocabulary.
+            maxLength: 16
+            type: string
+        - description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+          explode: false
+          in: query
+          name: include
+          schema:
+            description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+            maxLength: 1024
+            type: string
+        - description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+            maxLength: 1024
+            type: string
+        - description: "Comma-separated ids, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: ids
+          schema:
+            description: "Comma-separated ids, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: refs
+          schema:
+            description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: true to include total. Only true or false.
+          explode: false
+          in: query
+          name: include_total
+          schema:
+            description: true to include total. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+          explode: false
+          in: query
+          name: facets
+          schema:
+            description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+            maxLength: 512
+            type: string
+        - description: Closed per-collection sort key.
+          explode: false
+          in: query
+          name: sort
+          schema:
+            description: Closed per-collection sort key.
+            maxLength: 32
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
         - description: "Dated month window YYYY-MM. Default: current month in Asia/Tokyo."
           explode: false
           in: query
@@ -6089,6 +6177,94 @@ paths:
       description: Keyset-paginated credited names. q= filters by name. Requires an application key. ids=/refs= is a batch lane and does not paginate.
       operationId: listCatalogCreditNames
       parameters:
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+            maxLength: 8
+            type: string
+        - description: basic (default) or full. Closed vocabulary.
+          explode: false
+          in: query
+          name: view
+          schema:
+            description: basic (default) or full. Closed vocabulary.
+            maxLength: 16
+            type: string
+        - description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+          explode: false
+          in: query
+          name: include
+          schema:
+            description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+            maxLength: 1024
+            type: string
+        - description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+            maxLength: 1024
+            type: string
+        - description: "Comma-separated ids, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: ids
+          schema:
+            description: "Comma-separated ids, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: refs
+          schema:
+            description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: true to include total. Only true or false.
+          explode: false
+          in: query
+          name: include_total
+          schema:
+            description: true to include total. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+          explode: false
+          in: query
+          name: facets
+          schema:
+            description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+            maxLength: 512
+            type: string
+        - description: Closed per-collection sort key.
+          explode: false
+          in: query
+          name: sort
+          schema:
+            description: Closed per-collection sort key.
+            maxLength: 32
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
         - description: Name search. Empty lists by id. Must not be used as a discriminant.
           explode: false
           in: query
@@ -7239,6 +7415,94 @@ paths:
       description: Redirects from merged-away ids, oldest first. Keyset-paginated. object= restricts to one family. Requires an application key. ids= is not accepted.
       operationId: listCatalogRedirects
       parameters:
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+            maxLength: 8
+            type: string
+        - description: basic (default) or full. Closed vocabulary.
+          explode: false
+          in: query
+          name: view
+          schema:
+            description: basic (default) or full. Closed vocabulary.
+            maxLength: 16
+            type: string
+        - description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+          explode: false
+          in: query
+          name: include
+          schema:
+            description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+            maxLength: 1024
+            type: string
+        - description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+            maxLength: 1024
+            type: string
+        - description: "Comma-separated ids, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: ids
+          schema:
+            description: "Comma-separated ids, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: refs
+          schema:
+            description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: true to include total. Only true or false.
+          explode: false
+          in: query
+          name: include_total
+          schema:
+            description: true to include total. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+          explode: false
+          in: query
+          name: facets
+          schema:
+            description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+            maxLength: 512
+            type: string
+        - description: Closed per-collection sort key.
+          explode: false
+          in: query
+          name: sort
+          schema:
+            description: Closed per-collection sort key.
+            maxLength: 32
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
         - description: "Restrict to one family. Closed: work, release, character, credit_name, person, company, tag, engine."
           explode: false
           in: query
@@ -7892,6 +8156,94 @@ paths:
       description: Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= and ids= are not accepted.
       operationId: searchCatalog
       parameters:
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+            maxLength: 8
+            type: string
+        - description: basic (default) or full. Closed vocabulary.
+          explode: false
+          in: query
+          name: view
+          schema:
+            description: basic (default) or full. Closed vocabulary.
+            maxLength: 16
+            type: string
+        - description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+          explode: false
+          in: query
+          name: include
+          schema:
+            description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+            maxLength: 1024
+            type: string
+        - description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+            maxLength: 1024
+            type: string
+        - description: "Comma-separated ids, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: ids
+          schema:
+            description: "Comma-separated ids, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: refs
+          schema:
+            description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: true to include total. Only true or false.
+          explode: false
+          in: query
+          name: include_total
+          schema:
+            description: true to include total. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+          explode: false
+          in: query
+          name: facets
+          schema:
+            description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+            maxLength: 512
+            type: string
+        - description: Closed per-collection sort key.
+          explode: false
+          in: query
+          name: sort
+          schema:
+            description: Closed per-collection sort key.
+            maxLength: 32
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
         - description: Search string. Empty runs a popularity-ordered listing of that family.
           explode: false
           in: query
@@ -11085,6 +11437,94 @@ paths:
       description: The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token. Any app may call this; playtime:read is not required.
       operationId: listMyPlaytimes
       parameters:
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+            maxLength: 8
+            type: string
+        - description: basic (default) or full. Closed vocabulary.
+          explode: false
+          in: query
+          name: view
+          schema:
+            description: basic (default) or full. Closed vocabulary.
+            maxLength: 16
+            type: string
+        - description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+          explode: false
+          in: query
+          name: include
+          schema:
+            description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+            maxLength: 1024
+            type: string
+        - description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+            maxLength: 1024
+            type: string
+        - description: "Comma-separated ids, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: ids
+          schema:
+            description: "Comma-separated ids, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: refs
+          schema:
+            description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: true to include total. Only true or false.
+          explode: false
+          in: query
+          name: include_total
+          schema:
+            description: true to include total. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+          explode: false
+          in: query
+          name: facets
+          schema:
+            description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+            maxLength: 512
+            type: string
+        - description: Closed per-collection sort key.
+          explode: false
+          in: query
+          name: sort
+          schema:
+            description: Closed per-collection sort key.
+            maxLength: 32
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
         - description: Comma-separated work ids, max 100. Batch read, no pagination.
           explode: false
           in: query
@@ -11464,6 +11904,94 @@ paths:
       description: state= filters open/merged/declined/withdrawn. Requires a user access token.
       operationId: listMyProposals
       parameters:
+        - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+          explode: false
+          in: query
+          name: cursor
+          schema:
+            description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
+            maxLength: 512
+            type: string
+        - description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped.
+            maxLength: 8
+            type: string
+        - description: basic (default) or full. Closed vocabulary.
+          explode: false
+          in: query
+          name: view
+          schema:
+            description: basic (default) or full. Closed vocabulary.
+            maxLength: 16
+            type: string
+        - description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+          explode: false
+          in: query
+          name: include
+          schema:
+            description: Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE.
+            maxLength: 1024
+            type: string
+        - description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept.
+            maxLength: 1024
+            type: string
+        - description: "Comma-separated ids, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: ids
+          schema:
+            description: "Comma-separated ids, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+          explode: false
+          in: query
+          name: refs
+          schema:
+            description: "Comma-separated source:external_id, max 100. Batch lane: no pagination."
+            maxLength: 4096
+            type: string
+        - description: true to include total. Only true or false.
+          explode: false
+          in: query
+          name: include_total
+          schema:
+            description: true to include total. Only true or false.
+            maxLength: 8
+            type: string
+        - description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+          explode: false
+          in: query
+          name: facets
+          schema:
+            description: Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET.
+            maxLength: 512
+            type: string
+        - description: Closed per-collection sort key.
+          explode: false
+          in: query
+          name: sort
+          schema:
+            description: Closed per-collection sort key.
+            maxLength: 32
+            type: string
+        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
         - description: open, pending, merged, declined, withdrawn.
           explode: false
           in: query

@@ -433,6 +433,31 @@ func TestLiveEditImageUpload(t *testing.T) {
 	require.Equal(t, 422, status, string(body))
 }
 
+func TestLiveCreditNamesBatchLane(t *testing.T) {
+	env := liveCatalog(t)
+
+	status, _, body := liveDo(t, env, http.MethodGet,
+		"/v2/catalog/credit-names?ids="+idstr(env.fx.Credit)+",999999999", liveAppKey, "")
+	require.Equal(t, 200, status, string(body))
+	var page struct {
+		Object string `json:"object"`
+		Items  []struct {
+			Object string `json:"object"`
+			ID     string `json:"id"`
+		} `json:"items"`
+		NextCursor *string   `json:"next_cursor"`
+		Total      *int64    `json:"total"`
+		Missing    *[]string `json:"missing"`
+	}
+	require.NoError(t, json.Unmarshal(body, &page))
+	require.Len(t, page.Items, 1, string(body))
+	require.Equal(t, idstr(env.fx.Credit), page.Items[0].ID)
+	require.Nil(t, page.NextCursor, "the batch lane does not paginate")
+	require.Nil(t, page.Total)
+	require.NotNil(t, page.Missing, string(body))
+	require.Equal(t, []string{"999999999"}, *page.Missing)
+}
+
 func strings13(s string, n int) string {
 	out := make([]byte, n)
 	for i := range out {

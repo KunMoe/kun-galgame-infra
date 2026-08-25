@@ -12,7 +12,7 @@ import (
 )
 
 type listPlaytimesInput struct {
-	collectionInput
+	CollectionInput
 	WorkIDs string `query:"work_ids" maxLength:"4096" doc:"Comma-separated work ids, max 100. Batch read, no pagination."`
 }
 type listPlaytimesOutput struct {
@@ -104,7 +104,7 @@ func listMyPlaytimes(cat *Catalog) func(context.Context, *listPlaytimesInput) (*
 		if in == nil {
 			in = &listPlaytimesInput{}
 		}
-		q, err := parseCatalogList(ctx, &in.collectionInput, collect.PlaytimeSpec())
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.PlaytimeSpec())
 		if err != nil {
 			return nil, err
 		}
@@ -213,8 +213,8 @@ type listClaimsOutput struct {
 	Body repr.List[repr.ClaimRecord]
 }
 
-func listMyClaims(cat *Catalog) func(context.Context, *collectionInput) (*listClaimsOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listClaimsOutput, error) {
+func listMyClaims(cat *Catalog) func(context.Context, *CollectionInput) (*listClaimsOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listClaimsOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.ClaimSpec())
 		if err != nil {
 			return nil, err
@@ -227,8 +227,8 @@ func listMyClaims(cat *Catalog) func(context.Context, *collectionInput) (*listCl
 	}
 }
 
-func listModerationClaims(cat *Catalog) func(context.Context, *collectionInput) (*listClaimsOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listClaimsOutput, error) {
+func listModerationClaims(cat *Catalog) func(context.Context, *CollectionInput) (*listClaimsOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listClaimsOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.ClaimSpec())
 		if err != nil {
 			return nil, err

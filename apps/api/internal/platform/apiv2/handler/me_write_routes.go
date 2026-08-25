@@ -148,7 +148,7 @@ type getClaimOutput struct {
 	Body repr.ClaimRecord
 }
 type listProposalsInput struct {
-	collectionInput
+	CollectionInput
 	State string `query:"state" maxLength:"16" doc:"open, pending, merged, declined, withdrawn."`
 }
 type listProposalsOutput struct {
@@ -296,7 +296,7 @@ func listMyProposals(cat *Catalog) func(context.Context, *listProposalsInput) (*
 		if in == nil {
 			in = &listProposalsInput{}
 		}
-		q, err := parseCatalogList(ctx, &in.collectionInput, collect.ClaimSpec())
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.ClaimSpec())
 		if err != nil {
 			return nil, err
 		}
@@ -439,8 +439,8 @@ func decideModerationClaim(cat *Catalog) func(context.Context, *decideClaimInput
 	}
 }
 
-func listModerationProposals(cat *Catalog) func(context.Context, *collectionInput) (*listProposalsOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listProposalsOutput, error) {
+func listModerationProposals(cat *Catalog) func(context.Context, *CollectionInput) (*listProposalsOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listProposalsOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.ClaimSpec())
 		if err != nil {
 			return nil, err

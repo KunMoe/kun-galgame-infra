@@ -10,11 +10,13 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 )
 
-// These two structs repeat the collection parameters instead of embedding a
-// shared one on purpose: huma v2.38 does not walk anonymous embedded structs
-// when it collects query parameters, so an embedded set is dropped from the
-// spec AND never bound — cursor, limit and sort silently stop working while the
-// endpoint still answers 200. listWorksInput repeats them for the same reason.
+// These two structs repeat the collection parameters instead of embedding
+// CollectionInput because their doc strings are deliberately face-specific
+// (include=diff here, include=amendments there, a per-face sort vocabulary).
+// The earlier reason recorded here — "huma does not walk anonymous embedded
+// structs" — was wrong: huma walks them fine, it skipped the old unexported
+// collectionInput because an embed of an unexported type is an unexported
+// field. listWorksInput repeats them for the face-specific-doc reason too.
 //
 // Neither face carries an nsfw= axis: they emit ids and field keys, never
 // titles, covers or prose, and the two mirror crons read them ascending by id.
