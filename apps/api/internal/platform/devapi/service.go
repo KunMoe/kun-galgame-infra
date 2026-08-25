@@ -99,15 +99,14 @@ type MintKeyInput struct {
 }
 
 func (s *AdminService) MintKey(ctx context.Context, clientID string, in MintKeyInput, createdBy uint) (*DeveloperAPIKey, string, error) {
-	app, err := s.repo.GetApp(ctx, clientID)
-	if err != nil {
+	if _, err := s.repo.GetApp(ctx, clientID); err != nil {
 		return nil, "", err
 	}
 	scopes := in.Scopes
 	if len(scopes) == 0 {
 		scopes = []string{ScopeCatalogRead}
 	}
-	key, plaintext, err := s.buildKeyWithNSFW(clientID, in.Name, in.Test, scopes, false, createdBy, app.DevTier == TierInternal)
+	key, plaintext, err := s.buildKeyWithNSFW(clientID, in.Name, in.Test, scopes, false, createdBy)
 	if err != nil {
 		return nil, "", err
 	}
@@ -135,12 +134,8 @@ func (s *AdminService) RotateKey(ctx context.Context, keyID, createdBy uint) (*D
 	if len(old.Scopes) > 0 {
 		_ = json.Unmarshal(old.Scopes, &scopes)
 	}
-	v2 := IsV2KeyPrefix(old.KeyPrefix)
-	if app, aerr := s.repo.GetApp(ctx, old.ClientID); aerr == nil && app != nil && app.DevTier == TierInternal {
-		v2 = true
-	}
 	test := strings.HasPrefix(old.KeyPrefix, TestPrefix) || strings.HasPrefix(old.KeyPrefix, V2TestPrefix)
-	newKey, plaintext, err := s.buildKeyWithNSFW(old.ClientID, old.Name, test, scopes, old.NSFWAllowed, createdBy, v2)
+	newKey, plaintext, err := s.buildKeyWithNSFW(old.ClientID, old.Name, test, scopes, old.NSFWAllowed, createdBy)
 	if err != nil {
 		return nil, "", err
 	}
@@ -180,22 +175,8 @@ func (s *AdminService) GetKeyForClient(ctx context.Context, clientID string, key
 	return key, nil
 }
 
-func (s *AdminService) buildKey(clientID, name string, test bool, scopes []string, createdBy uint) (*DeveloperAPIKey, string, error) {
-	return s.buildKeyWithNSFW(clientID, name, test, scopes, false, createdBy, false)
-}
-
-func (s *AdminService) buildKeyWithNSFW(clientID, name string, test bool, scopes []string, nsfw bool, createdBy uint, v2 bool) (*DeveloperAPIKey, string, error) {
-	var plaintext string
-	var err error
-	if v2 {
-		plaintext, err = GenerateV2Key(!test)
-	} else {
-		prefix := LivePrefix
-		if test {
-			prefix = TestPrefix
-		}
-		plaintext, err = GenerateKey(prefix)
-	}
+func (s *AdminService) buildKeyWithNSFW(clientID, name string, test bool, scopes []string, nsfw bool, createdBy uint) (*DeveloperAPIKey, string, error) {
+	plaintext, err := GenerateV2Key(!test)
 	if err != nil {
 		return nil, "", err
 	}

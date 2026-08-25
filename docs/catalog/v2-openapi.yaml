@@ -5126,10 +5126,10 @@ components:
         - is_machine
       type: object
 info:
-  description: "NextMoe public API v2. Preview: any change is allowed, including deletions and renames. Third parties are not issued /v2 credentials."
+  description: "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no application required. The shape evolves additively; a breaking change to this document fails CI."
   title: NextMoe Public API v2
-  version: 2.0.0-preview
-  x-stability: preview
+  version: 2.0.0
+  x-stability: stable
 openapi: 3.1.0
 paths:
   /v2/catalog/calendar:

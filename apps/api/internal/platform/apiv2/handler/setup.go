@@ -50,12 +50,12 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	app.Use(catalogAuth(opt.LookupCredential))
 	app.Use(userAuth(opt.LookupUser, opt.LookupSite))
 
-	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0-preview")
+	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0")
 	cfg.OpenAPIPath = ""
 	cfg.DocsPath = ""
 	cfg.SchemasPath = ""
-	cfg.Info.Description = "NextMoe public API v2. Preview: any change is allowed, including deletions and renames. Third parties are not issued /v2 credentials."
-	cfg.Info.Extensions = map[string]any{"x-stability": "preview"}
+	cfg.Info.Description = "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no application required. The shape evolves additively; a breaking change to this document fails CI."
+	cfg.Info.Extensions = map[string]any{"x-stability": "stable"}
 
 	api := humafiber.New(app, cfg)
 	api.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
@@ -106,7 +106,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 		if doc.Info.Extensions == nil {
 			doc.Info.Extensions = map[string]any{}
 		}
-		doc.Info.Extensions["x-stability"] = "preview"
+		doc.Info.Extensions["x-stability"] = "stable"
 	}
 	if len(doc.Servers) == 0 {
 		doc.Servers = []*huma.Server{{

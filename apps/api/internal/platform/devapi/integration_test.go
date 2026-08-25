@@ -242,6 +242,58 @@ func TestKeyLifecycle(t *testing.T) {
 	}
 }
 
+func TestEveryTierMintsV2Keys(t *testing.T) {
+	cleanup(t)
+	svc, repo := newService(t)
+	ctx := context.Background()
+
+	for _, tier := range []string{TierFree, TierTrusted, TierInternal} {
+		clientID := "devapitest_ga_" + tier
+		makeApp(t, clientID, true)
+		if err := testDB.Model(&siteModel.OAuthClient{}).Where("id = ?", clientID).
+			Update("dev_tier", tier).Error; err != nil {
+			t.Fatalf("set tier %s: %v", tier, err)
+		}
+		_, live, err := svc.MintKey(ctx, clientID, MintKeyInput{Name: "live"}, 1)
+		if err != nil {
+			t.Fatalf("mint %s: %v", tier, err)
+		}
+		if !strings.HasPrefix(live, V2LivePrefix) || !ValidV2Key(live) {
+			t.Errorf("tier %s minted %q, want a valid %s key", tier, live[:min(len(live), 9)], V2LivePrefix)
+		}
+		_, test, err := svc.MintKey(ctx, clientID, MintKeyInput{Name: "test", Test: true}, 1)
+		if err != nil {
+			t.Fatalf("mint test %s: %v", tier, err)
+		}
+		if !strings.HasPrefix(test, V2TestPrefix) || !ValidV2Key(test) {
+			t.Errorf("tier %s minted %q, want a valid %s key", tier, test[:min(len(test), 9)], V2TestPrefix)
+		}
+	}
+
+	const legacyClient = "devapitest_ga_legacy"
+	makeApp(t, legacyClient, true)
+	raw, err := GenerateKey(LivePrefix)
+	if err != nil {
+		t.Fatalf("generate v1 key: %v", err)
+	}
+	kp, last4 := KeyMetadata(raw)
+	legacy := &DeveloperAPIKey{
+		ClientID: legacyClient, Name: "legacy", KeyHash: HashKey(raw),
+		KeyPrefix: kp, Last4: last4,
+		Scopes: datatypes.JSON([]byte(`["catalog:read"]`)), CreatedByUserID: 1,
+	}
+	if err := repo.CreateKey(ctx, legacy); err != nil {
+		t.Fatalf("create legacy key: %v", err)
+	}
+	_, rotated, err := svc.RotateKey(ctx, legacy.ID, 1)
+	if err != nil {
+		t.Fatalf("rotate legacy: %v", err)
+	}
+	if !IsV2KeyPrefix(rotated) || !ValidV2Key(rotated) {
+		t.Errorf("rotating a v1 key returned %q, want a valid nmk_ key", rotated[:min(len(rotated), 9)])
+	}
+}
+
 func TestRevokeBustsCache(t *testing.T) {
 	cleanup(t)
 	const clientID = "devapitest_bust"

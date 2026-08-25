@@ -235,7 +235,7 @@ func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error
 		}
 		if devapi.HasV1KeyPrefix(token) {
 			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
-				"v1 application keys are not accepted on /v2 during preview."))
+				"v1 application keys are not accepted on /v2; mint a v2 key (nmk_) in the developer portal."))
 		}
 		if !devapi.IsV2KeyPrefix(token) || !devapi.ValidV2Key(token) {
 			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
