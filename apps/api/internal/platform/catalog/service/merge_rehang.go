@@ -165,6 +165,8 @@ func rehangEntity(tx *gorm.DB, reg *editing.Registry, entityType int16, src, dst
 			                     WHERE x.character_id = ? AND x.lang = i.lang AND x.source_id = i.source_id)`,
 				[]any{dst, src, dst}, false},
 			{`DELETE FROM catalog_character_intro WHERE character_id = ?`, []any{src}, false},
+			// Kept-verdict cache, not data: dropped rather than repointed.
+			{`DELETE FROM catalog_character_intro_panel_verdict WHERE character_id = ?`, []any{src}, false},
 			{`UPDATE catalog_character_trait_link t SET character_id = ? WHERE t.character_id = ?
 			    AND NOT EXISTS (SELECT 1 FROM catalog_character_trait_link x
 			                     WHERE x.character_id = ? AND x.trait_id = t.trait_id)`,
@@ -284,6 +286,9 @@ func workFacetStmts(src, dst int64) []mergeStmt {
 		    FROM catalog_user_playtime s
 		    WHERE d.work_id = ? AND s.work_id = ?
 		      AND s.actor_uid = d.actor_uid AND s.client_id = d.client_id`, []any{dst, src}, false},
+		// Kept-verdict cache, not data: rows are re-derivable, so a merge drops
+		// them instead of repointing (the pair is re-judged once if it recurs).
+		{`DELETE FROM catalog_character_intro_panel_verdict WHERE work_id = ?`, []any{src}, false},
 	}
 	for _, f := range []struct {
 		table string

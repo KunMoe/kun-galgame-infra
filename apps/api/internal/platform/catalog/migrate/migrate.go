@@ -42,11 +42,12 @@ func Run(db *gorm.DB) error {
 		&model.CatalogLabelIntro{}, // multilingual label intros (refs/proj/83 E2b)
 		&model.CatalogCharacter{},
 		&model.CatalogCharacterAlias{},
-		&model.CatalogCharacterIntro{},       // multilingual character intros (step 65 field PR C1)
-		&model.CatalogCharacterTrait{},       // VNDB trait vocabulary (step 93)
-		&model.CatalogCharacterTraitParent{}, // trait hierarchy DAG edges (step 93, raw material)
-		&model.CatalogCharacterTraitLink{},   // character×trait links (step 93, ~2.9M rows)
-		&model.CatalogPersonIntro{},          // multilingual person intros (step 65 field PR C1)
+		&model.CatalogCharacterIntro{},             // multilingual character intros (step 65 field PR C1)
+		&model.CatalogCharacterIntroPanelVerdict{}, // P3 panel kept-verdict cache (wave 214 deferred item)
+		&model.CatalogCharacterTrait{},             // VNDB trait vocabulary (step 93)
+		&model.CatalogCharacterTraitParent{},       // trait hierarchy DAG edges (step 93, raw material)
+		&model.CatalogCharacterTraitLink{},         // character×trait links (step 93, ~2.9M rows)
+		&model.CatalogPersonIntro{},                // multilingual person intros (step 65 field PR C1)
 
 		// Polymorphic infrastructure (no FKs by design).
 		&model.CatalogRedirect{},
