@@ -96,6 +96,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	registerCatalog(api, opt.Catalog)
 	registerMe(api, opt.Catalog)
 	registerMeWrite(api, opt.Catalog)
+	registerMeNews(api, opt.Catalog)
 	huma.NewError = prevErr
 	annotateSpec(api.OpenAPI())
 	return api
@@ -134,6 +135,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.UserPlaytime{}, repr.CoverVote{}, repr.ClaimRecord{},
 			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.DecisionRecord{}, repr.SnapshotRecord{},
 			repr.Revision{}, repr.FieldDiff{}, repr.Amendment{}, repr.EditImage{},
+			repr.NewsSubmission{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}

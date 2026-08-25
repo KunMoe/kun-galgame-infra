@@ -74,6 +74,17 @@ func NewsSpec() Spec {
 	}
 }
 
+func NewsSubmissionSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields: []string{
+			"object", "id", "source", "lane", "status", "title", "summary",
+			"source_url", "banner_hash", "published_at", "work_ids",
+		},
+	}
+}
+
 func CompanySpec() Spec {
 	return Spec{
 		Sort:    []string{"id"},

@@ -170,6 +170,7 @@ func main() {
 	// catalog container over a face nobody is calling yet.
 	var newsSvc *newsService.PublicService
 	var newsAdminSvc *newsService.AdminService
+	var newsWriteSvc *newsService.SubmissionService
 	if newsDB, err := database.NewPostgresDB(cfg.NewsDatabase); err != nil {
 		slog.Warn("news db connect failed — /v1/news degraded to 503", "dbname", cfg.NewsDatabase.DBName, "error", err)
 	} else {
@@ -180,6 +181,7 @@ func main() {
 		}()
 		newsSvc = newsService.NewPublicService(newsDB.DB(), cfg.ImageService.CDNBase)
 		newsAdminSvc = newsService.NewAdminService(newsDB.DB(), cfg.ImageService.CDNBase)
+		newsWriteSvc = newsService.NewSubmissionService(newsDB.DB())
 	}
 
 	// The moderation face is the human half of the gate 月幕 asked for. It is a
@@ -196,7 +198,7 @@ func main() {
 	adminNews.Post("/items/:id/decision", newsAdminH.Decide)
 
 	setupPublicCatalog(application, cfg, catalogDB, readSvc, resolveSvc, searcher, statsSvc,
-		clientRepo, tokenVerifier, devStore, devCache, newsSvc, editRegistry, playtimeSvc, coverVoteSvc, claimSvc, editEngine)
+		clientRepo, tokenVerifier, devStore, devCache, newsSvc, newsWriteSvc, editRegistry, playtimeSvc, coverVoteSvc, claimSvc, editEngine)
 
 	galgameapp.MountRetiredPublic(application)
 
@@ -243,6 +245,7 @@ func setupPublicCatalog(
 	store devapi.Store,
 	devCache *cache.RedisCache,
 	newsSvc *newsService.PublicService,
+	newsWriteSvc *newsService.SubmissionService,
 	editRegistry *editing.Registry,
 	playtimeSvc *service.UserPlaytimeService,
 	coverVoteSvc *service.CoverVoteService,
@@ -325,6 +328,7 @@ func setupPublicCatalog(
 			Resolve:     resolveSvc,
 			StatsSvc:    statsSvc,
 			News:        newsSvc,
+			NewsWrite:   newsWriteSvc,
 			Searcher:    searcher,
 			EditTypes:   editRegistry,
 			Playtime:    playtimeSvc,

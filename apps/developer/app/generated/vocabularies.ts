@@ -502,7 +502,7 @@ export const vocabularies = [
       {
         "value": "news",
         "display_name": "News",
-        "description": "News-face errors. The domain exists so the type URI namespace is reserved; the catalog of codes in this domain is empty."
+        "description": "News-face errors. Both codes come from the source-row-as-grant model on /v2/me/news."
       }
     ]
   },

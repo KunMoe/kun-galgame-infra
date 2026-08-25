@@ -21,6 +21,10 @@ import (
 	srcb "api/internal/platform/catalog/srcbangumi"
 	"api/internal/platform/devapi"
 	"api/internal/platform/editing"
+	newsmigrate "api/internal/platform/news/migrate"
+	newsmodel "api/internal/platform/news/model"
+	"api/internal/platform/news/newstest"
+	newssvc "api/internal/platform/news/service"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
@@ -39,16 +43,30 @@ var (
 	liveSite      = "kungal"
 )
 
-type liveUnlimitedStore struct{}
+// liveUnlimitedStore never rate-limits, but it does remember: without a real
+// Get/Set the Idempotency-Key replay path is dead code in every live test, and
+// a POST that mints a second row on retry would pass unnoticed.
+type liveUnlimitedStore struct {
+	mu   sync.Mutex
+	kept map[string][]byte
+}
 
-func (liveUnlimitedStore) Incr(context.Context, string, time.Duration) (int64, error) {
+func (*liveUnlimitedStore) Incr(context.Context, string, time.Duration) (int64, error) {
 	return 1, nil
 }
-func (liveUnlimitedStore) Decr(context.Context, string) error { return nil }
-func (liveUnlimitedStore) Get(context.Context, string) ([]byte, error) {
-	return nil, nil
+func (*liveUnlimitedStore) Decr(context.Context, string) error { return nil }
+func (s *liveUnlimitedStore) Get(_ context.Context, key string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.kept[key], nil
 }
-func (liveUnlimitedStore) Set(context.Context, string, []byte, time.Duration) error {
+func (s *liveUnlimitedStore) Set(_ context.Context, key string, value []byte, _ time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.kept == nil {
+		s.kept = map[string][]byte{}
+	}
+	s.kept[key] = value
 	return nil
 }
 
@@ -65,8 +83,11 @@ type liveFix struct {
 	Company, Tag, Series, Engine       int64
 	Release, Character, Person, Credit int64
 	Trait, Cover                       int64
+	NewsItem                           int64
 	AnchorExt                          string
 }
+
+const liveNewsSource = "moyu"
 
 type liveEnv struct {
 	app *fiber.App
@@ -105,6 +126,10 @@ func liveCatalog(t *testing.T) *liveEnv {
 			liveErr = err
 			return
 		}
+		if err := newsmigrate.Run(db); err != nil {
+			liveErr = err
+			return
+		}
 		read := catsvc.NewReadService(db)
 		resolve := catsvc.NewResolveService(repository.NewRedirectRepository(db))
 		pub := catsvc.NewPublicService(db, read, resolve, "")
@@ -122,11 +147,13 @@ func liveCatalog(t *testing.T) *liveEnv {
 			CoverVotes: catsvc.NewCoverVoteService(db),
 			Claims:     catsvc.NewClaimLifecycleService(db),
 			Engine:     editing.NewEngine(db, reg),
+			News:       newssvc.NewPublicService(db, "https://image.example.test/image"),
+			NewsWrite:  newssvc.NewSubmissionService(db),
 		}
 		cat.EditHistory = catsvc.NewEditHistoryService(db)
 		app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
 		SetupWith(app, Options{
-			Store:   liveUnlimitedStore{},
+			Store:   &liveUnlimitedStore{},
 			Catalog: cat,
 			LookupCredential: func(_ context.Context, raw string) (*devapi.Credential, error) {
 				switch raw {
@@ -304,7 +331,38 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 	fx.Cover = cv.ID
+
+	newsID, nerr := seedLiveNews(db)
+	if nerr != nil {
+		return fx, nerr
+	}
+	fx.NewsItem = newsID
 	return fx, nil
+}
+
+// seedLiveNews leaves ONE published item behind for the spec walk to address.
+// Nothing may mutate it: the walk sends PATCH {} at it, which must stay a
+// validation refusal rather than a state change.
+func seedLiveNews(db *gorm.DB) (int64, error) {
+	if err := newstest.Truncate(db); err != nil {
+		return 0, err
+	}
+	if err := db.Exec(`
+		INSERT INTO news_source (key, display_name, homepage_url, attribution, publisher_uid, column_url, active)
+		VALUES (?, 'Moyu', 'https://example.test', 'attribution text', ?, '', true)
+		ON CONFLICT (key) DO UPDATE SET publisher_uid = EXCLUDED.publisher_uid, active = true`,
+		liveNewsSource, liveUID).Error; err != nil {
+		return 0, err
+	}
+	item := newsmodel.NewsItem{
+		SourceKey: liveNewsSource, Lane: newsmodel.LaneNews, ExternalID: "seed-published",
+		Title: "Seeded", Preview: "Seeded lede", SourceURL: "https://example.test/seed",
+		PublishedAt: time.Now().UTC(), Status: newsmodel.StatusPublished,
+	}
+	if err := db.Create(&item).Error; err != nil {
+		return 0, err
+	}
+	return item.ID, nil
 }
 
 func liveDo(t *testing.T, env *liveEnv, method, path, token, body string) (int, string, []byte) {
@@ -405,6 +463,8 @@ func liveSubstitute(path string, fx liveFix) string {
 		id = fx.Work
 	case strings.Contains(path, "/snapshots/"):
 		id = fx.Work
+	case strings.Contains(path, "/news"):
+		id = fx.NewsItem
 	}
 	path = strings.ReplaceAll(path, "{code}", problem.CodeRateLimited)
 	path = strings.ReplaceAll(path, "{name}", "medium")
