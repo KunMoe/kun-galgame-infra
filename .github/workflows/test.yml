@@ -23,10 +23,14 @@ on:
   push:
     paths:
       - "apps/api/**"
+      - "apps/developer/app/generated/problems.ts"
+      - "apps/developer/app/generated/vocabularies.ts"
       - ".github/workflows/test.yml"
   pull_request:
     paths:
       - "apps/api/**"
+      - "apps/developer/app/generated/problems.ts"
+      - "apps/developer/app/generated/vocabularies.ts"
       - ".github/workflows/test.yml"
 
 permissions:
@@ -75,7 +79,14 @@ jobs:
           # still green. Every gen-openapi flag that has a committed output belongs
           # here — an ungated spec is worse than an absent one, because it looks checked.
           go run ./cmd/gen-openapi -ai-admin -o ../../docs/ai/admin-openapi.yaml
-          git diff --exit-code -- ../../docs/artifact/ ../../docs/catalog/ ../../docs/community/ ../../docs/trust/ ../../docs/ai/ ../../docs/news/
+          # Same trap as -ai-admin, different generator: cmd/gen-v2-portal writes
+          # the portal's problems.ts / vocabularies.ts from the Go registries, and
+          # no gate ran it — a new problem code without the regen left the code's
+          # type URI pointing at a portal page that 404s. docs-model.yml cannot
+          # cover this (sync-specs.mjs never writes these two files), so the
+          # code -> generated-TS arm lives here with the other Go-side exports.
+          go run ./cmd/gen-v2-portal -o ../developer/app/generated
+          git diff --exit-code -- ../../docs/artifact/ ../../docs/catalog/ ../../docs/community/ ../../docs/trust/ ../../docs/ai/ ../../docs/news/ ../developer/app/generated/problems.ts ../developer/app/generated/vocabularies.ts
 
   integration:
     name: integration (postgres + meilisearch)
