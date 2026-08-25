@@ -36,10 +36,43 @@ func proposalFrom(p *editing.Proposal) repr.ProposalRecord {
 	if st == "" {
 		st = "open"
 	}
-	return repr.ProposalRecord{
+	rec := repr.ProposalRecord{
 		Object: "proposal", ID: repr.ID(p.ID), State: st,
-		EntityType: p.EntityType, EntityID: repr.ID(p.EntityID), Note: p.Note,
+		TargetObject: schemaObject(p.EntityType),
+		EntityType:   p.EntityType, EntityID: repr.ID(p.EntityID), Note: p.Note,
+		ProposerUID: repr.ID(p.ProposerUID), Site: p.Site,
+		BaseRevisionSeq: p.BaseRevisionSeq,
+		DecidedByUID:    idPtr(p.DecidedByUID),
+		CreatedAt:       rfc3339(p.CreatedAt), UpdatedAt: rfc3339(p.UpdatedAt),
 	}
+	if p.DecidedAt != nil {
+		at := rfc3339(*p.DecidedAt)
+		rec.DecidedAt = &at
+	}
+	return rec
+}
+
+// The decision note is the reviewer's internal reasoning and is the one field
+// the v1 proposal view carries that the public transparency face must not.
+func (c *Catalog) proposalDetail(ctx context.Context, id int64, include []string) (repr.ProposalRecord, string, error) {
+	prop, amendments, effective, err := c.Engine.GetProposal(ctx, id)
+	if err != nil {
+		return repr.ProposalRecord{}, "", proposalErr(err)
+	}
+	rec := proposalFrom(prop)
+	if hasToken(include, "amendments") {
+		list := amendmentsFrom(amendments)
+		rec.Amendments = &list
+	}
+	if hasToken(include, "patch") {
+		patch := decodeJSONObject(prop.Patch)
+		rec.Patch = &patch
+		if effective == nil {
+			effective = map[string]any{}
+		}
+		rec.EffectivePatch = &effective
+	}
+	return rec, proposalETag(prop), nil
 }
 
 func proposalETag(p *editing.Proposal) string {
@@ -86,7 +119,7 @@ func (c *Catalog) ListMyProposals(ctx context.Context, q collect.Query, state st
 	return finishList(items, next, total, q, nil), nil
 }
 
-func (c *Catalog) GetMyProposal(ctx context.Context, id int64) (repr.ProposalRecord, string, error) {
+func (c *Catalog) GetMyProposal(ctx context.Context, id int64, include []string) (repr.ProposalRecord, string, error) {
 	if c == nil || c.Engine == nil {
 		return repr.ProposalRecord{}, "", problem.New(problem.CodeServiceUnavailable, "", "", "proposals are not bound.")
 	}
@@ -94,14 +127,36 @@ func (c *Catalog) GetMyProposal(ctx context.Context, id int64) (repr.ProposalRec
 	if err != nil {
 		return repr.ProposalRecord{}, "", err
 	}
-	p, _, _, gerr := c.Engine.GetProposal(ctx, id)
-	if gerr != nil {
-		return repr.ProposalRecord{}, "", proposalErr(gerr)
+	rec, etag, derr := c.proposalDetail(ctx, id, include)
+	if derr != nil {
+		return repr.ProposalRecord{}, "", derr
 	}
-	if p.ProposerUID != uid {
+	if rec.ProposerUID != repr.ID(uid) {
 		return repr.ProposalRecord{}, "", problem.New(problem.CodeNotFound, "", "", "No proposal with this id.")
 	}
-	return proposalFrom(p), proposalETag(p), nil
+	return rec, etag, nil
+}
+
+func (c *Catalog) GetModerationProposal(ctx context.Context, id int64, include []string) (repr.ProposalRecord, string, error) {
+	if c == nil || c.Engine == nil {
+		return repr.ProposalRecord{}, "", problem.New(problem.CodeServiceUnavailable, "", "", "proposals are not bound.")
+	}
+	if _, _, err := requireUser(ctx); err != nil {
+		return repr.ProposalRecord{}, "", err
+	}
+	site, serr := requireSite(ctx)
+	if serr != nil {
+		return repr.ProposalRecord{}, "", serr
+	}
+	rec, etag, derr := c.proposalDetail(ctx, id, include)
+	if derr != nil {
+		return repr.ProposalRecord{}, "", derr
+	}
+	if rec.Site != site {
+		return repr.ProposalRecord{}, "", problem.New(problem.CodeTenantMismatch, "", "",
+			"this proposal was filed on another catalog site.")
+	}
+	return rec, etag, nil
 }
 
 func (c *Catalog) CreateProposal(ctx context.Context, entityType, entityID string, patch map[string]any, note string) (repr.ProposalRecord, error) {
@@ -332,6 +387,39 @@ func proposalErr(err error) error {
 	case errors.Is(err, editing.ErrEmptyPatch), errors.Is(err, editing.ErrEmptyDelta):
 		p := problem.New(problem.CodeValidationFailed, "", "", err.Error())
 		p.Errors = []problem.FieldError{{Pointer: "/patch", Reason: problem.ReasonRequired, Detail: err.Error()}}
+		return p
+	case errors.Is(err, editing.ErrNoEffectiveChanges):
+		p := problem.New(problem.CodeValidationFailed, "", "", err.Error())
+		p.Errors = []problem.FieldError{{Pointer: "/patch", Reason: problem.ReasonNotAllowedValue, Detail: err.Error()}}
+		return p
+	// A trusted proposer's edit auto-merges on creation, so the very next decide
+	// lands on a closed proposal. Unmapped this surfaced as a 500.
+	case errors.Is(err, editing.ErrNotOpen):
+		return problem.New(problem.CodeDecisionAlreadyMade, "", "", err.Error())
+	case errors.Is(err, editing.ErrNotProposer):
+		return problem.New(problem.CodePermissionRequired, "", "", err.Error())
+	}
+	var conflict *editing.ConflictError
+	if errors.As(err, &conflict) {
+		p := problem.New(problem.CodeValidationFailed, "", "", conflict.Error())
+		for _, key := range conflict.Keys {
+			p.Errors = append(p.Errors, problem.FieldError{
+				Pointer: "/patch/" + key, Reason: problem.ReasonInconsistentWith,
+				Detail: "another revision changed this key since the proposal was written",
+			})
+		}
+		return p
+	}
+	var unknownField *editing.UnknownFieldError
+	if errors.As(err, &unknownField) {
+		p := problem.New(problem.CodeValidationFailed, "", "", unknownField.Error())
+		p.Errors = []problem.FieldError{{Pointer: "/patch/" + unknownField.Key, Reason: problem.ReasonUnknownValue, Detail: unknownField.Error()}}
+		return p
+	}
+	var lockedField *editing.LockedFieldError
+	if errors.As(err, &lockedField) {
+		p := problem.New(problem.CodeValidationFailed, "", "", lockedField.Error())
+		p.Errors = []problem.FieldError{{Pointer: "/patch/" + lockedField.Key, Reason: problem.ReasonImmutable, Detail: lockedField.Error()}}
 		return p
 	}
 	var perm *editing.PermissionError

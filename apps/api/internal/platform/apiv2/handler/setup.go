@@ -133,9 +133,16 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.Person{}, repr.Trait{}, repr.Measurements{}, repr.NameCredit{}, repr.NameCreditRole{}, repr.Appearance{},
 			repr.UserPlaytime{}, repr.CoverVote{}, repr.ClaimRecord{},
 			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.DecisionRecord{}, repr.SnapshotRecord{},
+			repr.Revision{}, repr.FieldDiff{}, repr.Amendment{}, repr.EditImage{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}
+		// Registering a multipart operation makes huma register its own FormFile
+		// struct as a named component that nothing $refs — the multipart body
+		// gets an inline {type: string, format: binary} instead. Left in place
+		// its four undocumented Go fields fail G2 and G14, which is how it was
+		// found.
+		delete(doc.Components.Schemas.Map(), "FormFile")
 		for _, schema := range doc.Components.Schemas.Map() {
 			markClosedEnums(schema)
 			forceObjectOpen(schema)

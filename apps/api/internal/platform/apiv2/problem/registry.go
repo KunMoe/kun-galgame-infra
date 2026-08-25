@@ -71,6 +71,7 @@ const (
 	CodeReleaseCreationDisabled     = "RELEASE_CREATION_DISABLED"
 	CodeAlreadyExists               = "ALREADY_EXISTS"
 	CodeInvalidStateTransition      = "INVALID_STATE_TRANSITION"
+	CodeClaimNotOwned               = "CLAIM_NOT_OWNED"
 	CodePermissionRequired          = "PERMISSION_REQUIRED"
 	CodeTenantMismatch              = "TENANT_MISMATCH"
 	CodeDecisionAlreadyMade         = "DECISION_ALREADY_MADE"
@@ -126,8 +127,9 @@ var Codes = []Def{
 	{CodeReleaseCreationDisabled, DomainMe, http.StatusForbidden, "Release creation disabled", "The proposal tried to create a release. This is a product constraint, not a defect."},
 	{CodeAlreadyExists, DomainMe, http.StatusConflict, "Already exists", "The same subject already has a live record for this target."},
 	{CodeInvalidStateTransition, DomainMe, http.StatusConflict, "Invalid state transition", "The current state does not allow this transition. detail names the current state and the legal targets."},
+	{CodeClaimNotOwned, DomainMe, http.StatusForbidden, "Claim not owned", "The claim has an owner and it is another user. Only the owner may publish, submit, or withdraw it; an unowned claim is adopted by its first claimant."},
 	{CodePermissionRequired, DomainModeration, http.StatusForbidden, "Permission required", "The token lacks the permission this decision needs."},
-	{CodeTenantMismatch, DomainModeration, http.StatusForbidden, "Tenant mismatch", "The target does not belong to this moderator's catalog site."},
+	{CodeTenantMismatch, DomainModeration, http.StatusForbidden, "Tenant mismatch", "The target does not belong to the caller's catalog site."},
 	{CodeDecisionAlreadyMade, DomainModeration, http.StatusConflict, "Decision already made", "This item has already been decided. detail names who decided and when."},
 }
 

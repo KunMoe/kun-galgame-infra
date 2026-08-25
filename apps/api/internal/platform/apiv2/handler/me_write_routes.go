@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"api/internal/platform/apiv2/collect"
+	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -33,9 +34,16 @@ func registerMeWrite(api huma.API, cat *Catalog) {
 	}, getMyClaim(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "patchMyClaim", Method: http.MethodPatch, Path: "/v2/me/claims/{id}",
-		Summary: "Withdraw a claim", Description: "PATCH {state: withdrawn}. If-Match required. Requires a user access token.",
-		Tags: me, Errors: writeErrs, SkipValidateParams: true,
+		Summary:     "Move a claim the caller owns",
+		Description: "PATCH {state: live|pending|withdrawn}. live publishes a draft without review, pending submits it for review, withdrawn returns it to draft. The owner may act, and an unowned claim is adopted by its first claimant. If-Match required. Requires a user access token bound to a catalog site.",
+		Tags:        me, Errors: writeErrs, SkipValidateParams: true,
 	}, patchMyClaim(cat))
+	huma.Register(api, huma.Operation{
+		OperationID: "uploadMyEditImage", Method: http.MethodPost, Path: "/v2/me/edit-images",
+		Summary:     "Upload an image for an edit proposal",
+		Description: "multipart/form-data with preset and file. Returns the hash an edit proposal carries in a cover or screenshot row. Requires a user access token bound to a catalog site.",
+		Tags:        me, Errors: writeErrs, DefaultStatus: http.StatusCreated, SkipValidateParams: true,
+	}, uploadMyEditImage(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "listMyProposals", Method: http.MethodGet, Path: "/v2/me/proposals",
 		Summary: "List my proposals", Description: "state= filters open/merged/declined/withdrawn. Requires a user access token.",
@@ -68,14 +76,21 @@ func registerMeWrite(api huma.API, cat *Catalog) {
 	}, getModerationClaim(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "decideModerationClaim", Method: http.MethodPost, Path: "/v2/moderation/claims/{id}/decisions",
-		Summary: "Decide a claim", Description: "decision=approve|decline. If-Match required.",
-		Tags: mod, Errors: writeErrs, DefaultStatus: http.StatusCreated, SkipValidateParams: true,
+		Summary:     "Decide a claim",
+		Description: "decision=approve|decline|ban|unban. unban restores the state the claim was hidden from. If-Match required, and the ETag comes from GET /v2/moderation/claims/{id}. Requires the catalog.claim.review permission.",
+		Tags:        mod, Errors: writeErrs, DefaultStatus: http.StatusCreated, SkipValidateParams: true,
 	}, decideModerationClaim(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "listModerationProposals", Method: http.MethodGet, Path: "/v2/moderation/proposals",
 		Summary: "Moderation proposal queue", Description: "Open proposals on the token site.",
 		Tags: mod, Errors: errs, SkipValidateParams: true,
 	}, listModerationProposals(cat))
+	huma.Register(api, huma.Operation{
+		OperationID: "getModerationProposal", Method: http.MethodGet, Path: "/v2/moderation/proposals/{id}",
+		Summary:     "Get one moderation proposal",
+		Description: "Site-fenced. include=patch adds the proposed and effective patches a decision is taken on. The ETag is the validator POST /v2/moderation/proposals/{id}/decisions takes as If-Match.",
+		Tags:        mod, Errors: errs, SkipValidateParams: true,
+	}, getModerationProposal(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "decideModerationProposal", Method: http.MethodPost, Path: "/v2/moderation/proposals/{id}/decisions",
 		Summary: "Decide a proposal", Description: "decision=merge|decline. If-Match required.",
@@ -125,10 +140,13 @@ type patchClaimInput struct {
 	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Catalog work id."`
 	IfMatch string `header:"If-Match" doc:"Current ETag. Required."`
 	Body    struct {
-		State string `json:"state" enum:"withdrawn,draft" doc:"withdrawn maps to the withdraw action."`
+		State string `json:"state" enum:"live,pending,withdrawn,draft" doc:"live publishes a draft, pending submits it for review, withdrawn returns a live or pending claim to draft. draft is the older spelling of withdrawn."`
 	}
 }
-type getClaimOutput struct{ Body repr.ClaimRecord }
+type getClaimOutput struct {
+	ETag string `header:"ETag" doc:"Opaque validator. Send it back as If-Match to move this claim."`
+	Body repr.ClaimRecord
+}
 type listProposalsInput struct {
 	collectionInput
 	State string `query:"state" maxLength:"16" doc:"open, pending, merged, declined, withdrawn."`
@@ -145,9 +163,14 @@ type createProposalInput struct {
 	}
 }
 type getProposalInput struct {
-	ID string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Proposal id."`
+	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Proposal id."`
+	Include string `query:"include" maxLength:"1024" doc:"Comma-separated blocks: amendments, patch. Unknown token is 400 UNKNOWN_INCLUDE."`
+	View    string `query:"view" maxLength:"16" doc:"basic (default) or full. full adds amendments and patch."`
 }
-type getProposalOutput struct{ Body repr.ProposalRecord }
+type getProposalOutput struct {
+	ETag string `header:"ETag" doc:"Opaque validator. Send it back as If-Match to amend, withdraw, or decide this proposal."`
+	Body repr.ProposalRecord
+}
 type patchProposalInput struct {
 	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Proposal id."`
 	IfMatch string `header:"If-Match" doc:"Current ETag. Required."`
@@ -165,12 +188,20 @@ type amendProposalInput struct {
 		Note  string         `json:"note,omitempty" maxLength:"2000" doc:"Must not be used as a discriminant."`
 	}
 }
-type decideInput struct {
-	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Subject id."`
+type decideClaimInput struct {
+	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Catalog work id."`
 	IfMatch string `header:"If-Match" doc:"Current ETag. Required."`
 	Body    struct {
-		Decision string `json:"decision" enum:"approve,decline,merge" doc:"Claim: approve or decline. Proposal: merge or decline."`
-		Note     string `json:"note,omitempty" maxLength:"2000" doc:"Must not be used as a discriminant. Required to decline a claim."`
+		Decision string `json:"decision" enum:"approve,decline,ban,unban" doc:"approve publishes a pending claim, decline sends it back, ban hides it from any state, unban restores the state it was hidden from."`
+		Note     string `json:"note,omitempty" maxLength:"2000" doc:"Must not be used as a discriminant. Required to decline."`
+	}
+}
+type decideProposalInput struct {
+	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Proposal id."`
+	IfMatch string `header:"If-Match" doc:"Current ETag. Required."`
+	Body    struct {
+		Decision string `json:"decision" enum:"merge,decline" doc:"merge writes the effective patch and records a revision. decline closes the proposal."`
+		Note     string `json:"note,omitempty" maxLength:"2000" doc:"Must not be used as a discriminant."`
 	}
 }
 type decideOutput struct{ Body repr.DecisionRecord }
@@ -222,7 +253,7 @@ func createMyClaim(cat *Catalog) func(context.Context, *createClaimInput) (*getC
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &getClaimOutput{Body: rec}, nil
+		return &getClaimOutput{ETag: claimETag(rec), Body: rec}, nil
 	}
 }
 
@@ -239,7 +270,7 @@ func getMyClaim(cat *Catalog) func(context.Context, *getClaimInput) (*getClaimOu
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &getClaimOutput{Body: rec}, nil
+		return &getClaimOutput{ETag: claimETag(rec), Body: rec}, nil
 	}
 }
 
@@ -256,7 +287,7 @@ func patchMyClaim(cat *Catalog) func(context.Context, *patchClaimInput) (*getCla
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &getClaimOutput{Body: rec}, nil
+		return &getClaimOutput{ETag: claimETag(rec), Body: rec}, nil
 	}
 }
 
@@ -290,6 +321,14 @@ func createMyProposal(cat *Catalog) func(context.Context, *createProposalInput) 
 	}
 }
 
+func proposalInclude(ctx context.Context, view, include string) ([]string, error) {
+	q, perr := collect.Parse(collect.Raw{View: view, Include: include}, collect.ProposalSpec())
+	if perr != nil {
+		return nil, withIdent(ctx, perr)
+	}
+	return q.Include, nil
+}
+
 func getMyProposal(cat *Catalog) func(context.Context, *getProposalInput) (*getProposalOutput, error) {
 	return func(ctx context.Context, in *getProposalInput) (*getProposalOutput, error) {
 		if in == nil {
@@ -299,11 +338,36 @@ func getMyProposal(cat *Catalog) func(context.Context, *getProposalInput) (*getP
 		if !ok {
 			return nil, catalogErr(ctx, problemInvalidID(in.ID))
 		}
-		rec, _, err := cat.GetMyProposal(ctx, id)
+		include, ierr := proposalInclude(ctx, in.View, in.Include)
+		if ierr != nil {
+			return nil, ierr
+		}
+		rec, etag, err := cat.GetMyProposal(ctx, id, include)
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &getProposalOutput{Body: rec}, nil
+		return &getProposalOutput{ETag: etag, Body: rec}, nil
+	}
+}
+
+func getModerationProposal(cat *Catalog) func(context.Context, *getProposalInput) (*getProposalOutput, error) {
+	return func(ctx context.Context, in *getProposalInput) (*getProposalOutput, error) {
+		if in == nil {
+			in = &getProposalInput{}
+		}
+		id, ok := repr.ParseID(in.ID)
+		if !ok {
+			return nil, catalogErr(ctx, problemInvalidID(in.ID))
+		}
+		include, ierr := proposalInclude(ctx, in.View, in.Include)
+		if ierr != nil {
+			return nil, ierr
+		}
+		rec, etag, err := cat.GetModerationProposal(ctx, id, include)
+		if err != nil {
+			return nil, catalogErr(ctx, err)
+		}
+		return &getProposalOutput{ETag: etag, Body: rec}, nil
 	}
 }
 
@@ -354,14 +418,14 @@ func getModerationClaim(cat *Catalog) func(context.Context, *getClaimInput) (*ge
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &getClaimOutput{Body: rec}, nil
+		return &getClaimOutput{ETag: claimETag(rec), Body: rec}, nil
 	}
 }
 
-func decideModerationClaim(cat *Catalog) func(context.Context, *decideInput) (*decideOutput, error) {
-	return func(ctx context.Context, in *decideInput) (*decideOutput, error) {
+func decideModerationClaim(cat *Catalog) func(context.Context, *decideClaimInput) (*decideOutput, error) {
+	return func(ctx context.Context, in *decideClaimInput) (*decideOutput, error) {
 		if in == nil {
-			in = &decideInput{}
+			in = &decideClaimInput{}
 		}
 		id, ok := repr.ParseID(in.ID)
 		if !ok {
@@ -389,10 +453,10 @@ func listModerationProposals(cat *Catalog) func(context.Context, *collectionInpu
 	}
 }
 
-func decideModerationProposal(cat *Catalog) func(context.Context, *decideInput) (*decideOutput, error) {
-	return func(ctx context.Context, in *decideInput) (*decideOutput, error) {
+func decideModerationProposal(cat *Catalog) func(context.Context, *decideProposalInput) (*decideOutput, error) {
+	return func(ctx context.Context, in *decideProposalInput) (*decideOutput, error) {
 		if in == nil {
-			in = &decideInput{}
+			in = &decideProposalInput{}
 		}
 		id, ok := repr.ParseID(in.ID)
 		if !ok {
@@ -416,6 +480,44 @@ func revertModeration(cat *Catalog) func(context.Context, *revertInput) (*getPro
 			return nil, catalogErr(ctx, err)
 		}
 		return &getProposalOutput{Body: rec}, nil
+	}
+}
+
+type editImageForm struct {
+	Preset string `form:"preset" required:"true" enum:"cover,screenshot" doc:"Which editor slot these bytes are for."`
+	// Not an image/* contentType list: mime.Writer's CreateFormFile stamps every
+	// part application/octet-stream, so a narrower list rejects the exact client
+	// this face exists for. The image service validates the bytes it is given.
+	File huma.FormFile `form:"file" required:"true" contentType:"application/octet-stream" doc:"The image bytes. The ceiling is the service's own body limit, not a field constraint."`
+}
+
+type uploadEditImageInput struct {
+	RawBody huma.MultipartFormFiles[editImageForm]
+}
+
+type uploadEditImageOutput struct {
+	Location string `header:"Location" doc:"Absolute URL of the stored image."`
+	Body     repr.EditImage
+}
+
+func uploadMyEditImage(cat *Catalog) func(context.Context, *uploadEditImageInput) (*uploadEditImageOutput, error) {
+	return func(ctx context.Context, in *uploadEditImageInput) (*uploadEditImageOutput, error) {
+		if in == nil {
+			in = &uploadEditImageInput{}
+		}
+		form := in.RawBody.Data()
+		if form == nil || !form.File.IsSet {
+			p := problem.New(problem.CodeValidationFailed, "", "", "a multipart file part named file is required.")
+			p.Errors = []problem.FieldError{{Pointer: "/file", Reason: problem.ReasonRequired,
+				Detail: "send multipart/form-data with a file part"}}
+			return nil, catalogErr(ctx, p)
+		}
+		defer form.File.Close()
+		rec, err := cat.UploadEditImage(ctx, form.Preset, form.File.Filename, form.File)
+		if err != nil {
+			return nil, catalogErr(ctx, err)
+		}
+		return &uploadEditImageOutput{Location: rec.URL, Body: rec}, nil
 	}
 }
 
