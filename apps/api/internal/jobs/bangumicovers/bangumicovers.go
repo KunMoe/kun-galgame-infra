@@ -18,13 +18,14 @@ import (
 const defaultTimeout = 60 * time.Second
 
 type Opts struct {
-	Apply         bool
-	Limit         int
-	Offset        int
-	DSN           string
-	BangumiMirror string
-	ImageBaseURL  string
-	UploadGap     time.Duration
+	Apply          bool
+	Limit          int
+	Offset         int
+	DSN            string
+	BangumiMirror  string
+	ImageBaseURL   string
+	UploadGap      time.Duration
+	AllowLandscape bool
 }
 
 type imageUploader interface {
@@ -34,16 +35,17 @@ type imageUploader interface {
 }
 
 type counters struct {
-	coverUploaded  int
-	coverWould     int
-	coverExists    int
-	coverLandscape int
-	coverNoDims    int
-	coverMissing   int
-	coverRejected  int
-	coverRefused   int
-	coverDedup     int
-	errors         int
+	coverUploaded    int
+	coverWould       int
+	coverExists      int
+	coverLandscape   int
+	coverLandscapeOK int
+	coverNoDims      int
+	coverMissing     int
+	coverRejected    int
+	coverRefused     int
+	coverDedup       int
+	errors           int
 }
 
 type runner struct {
@@ -155,8 +157,11 @@ func (r *runner) process(ctx context.Context, opts Opts, cands []candidate, d *d
 			continue
 		}
 		if !e.portrait() {
-			r.c.coverLandscape++
-			continue
+			if !opts.AllowLandscape {
+				r.c.coverLandscape++
+				continue
+			}
+			r.c.coverLandscapeOK++
 		}
 		if r.writeCover(ctx, opts.BangumiMirror, c, e, opts.Apply) {
 			return true
@@ -174,6 +179,7 @@ func (r *runner) summary(opts Opts, candidates int) map[string]any {
 			"would_upload":    r.c.coverWould,
 			"already_exists":  r.c.coverExists,
 			"landscape_skip":  r.c.coverLandscape,
+			"landscape_used":  r.c.coverLandscapeOK,
 			"no_dims_skip":    r.c.coverNoDims,
 			"missing_file":    r.c.coverMissing,
 			"rejected":        r.c.coverRejected,
