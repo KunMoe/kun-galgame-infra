@@ -17337,6 +17337,211 @@ export const docsModel: DocsModel = {
               "curl": "curl \"https://api.nextmoe.dev/v1/store/purchase-links/value\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
             }
           ]
+        },
+        {
+          "key": "stats",
+          "label": "点击统计",
+          "operations": [
+            {
+              "id": "getStoreStatsMe",
+              "method": "get",
+              "path": "/v1/store/me/stats",
+              "summary": "Your application's own click counts, per link per JST day",
+              "description": "Per-day totals and de-duplicated uniques for every link this application has minted, purchase and coupon alike — the kind field tells them apart, and product_id / campaign_id say which link a row belongs to. Days are JST calendar days because the settlement month is DLsite's JST calendar month. The range is a closed interval of at most 92 days and defaults to the last 30. Days with no clicks are omitted entirely. uniques is the number settlement uses; total is the raw click count before de-duplication. The counts are synchronised from the redirector hourly, so the current day is always partial.",
+              "scope": "store:read",
+              "params": [
+                {
+                  "name": "from",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "First JST day to report, YYYY-MM-DD (inclusive). Defaults to 29 days before 'to'"
+                },
+                {
+                  "name": "to",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Last JST day to report, YYYY-MM-DD (inclusive). Defaults to today in JST"
+                }
+              ],
+              "responses": [
+                {
+                  "status": "200",
+                  "description": "OK",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "by_kind",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Totals split into purchase and coupon",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "kind",
+                                  "doc": "Omitted on the grand total",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "total",
+                                  "required": true,
+                                  "doc": "Clicks in the range, before de-duplication",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "uniques",
+                                  "required": true,
+                                  "doc": "De-duplicated clicks in the range",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "from",
+                            "required": true,
+                            "doc": "First JST day covered, inclusive",
+                            "type": "string"
+                          },
+                          {
+                            "name": "rows",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "One row per link per day; days with no clicks are absent",
+                            "type": "array",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "campaign_id",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "The campaign id for a coupon row; null on a purchase row",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "date",
+                                  "required": true,
+                                  "doc": "JST calendar day, YYYY-MM-DD",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "kind",
+                                  "required": true,
+                                  "doc": "purchase (a product link) or coupon (a campaign's claim link)",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "product_id",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "The DLsite product number for a purchase row; null on a coupon row",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "total",
+                                  "required": true,
+                                  "doc": "Clicks that day, before de-duplication",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "uniques",
+                                  "required": true,
+                                  "doc": "Distinct (day, fingerprint) clicks that day — the number settlement uses",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "to",
+                            "required": true,
+                            "doc": "Last JST day covered, inclusive",
+                            "type": "string"
+                          },
+                          {
+                            "name": "totals",
+                            "required": true,
+                            "type": "object",
+                            "children": [
+                              {
+                                "name": "kind",
+                                "doc": "Omitted on the grand total",
+                                "type": "string"
+                              },
+                              {
+                                "name": "total",
+                                "required": true,
+                                "doc": "Clicks in the range, before de-duplication",
+                                "format": "int64",
+                                "type": "integer"
+                              },
+                              {
+                                "name": "uniques",
+                                "required": true,
+                                "doc": "De-duplicated clicks in the range",
+                                "format": "int64",
+                                "type": "integer"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "status": "default",
+                  "description": "Error",
+                  "schema": {
+                    "type": "object",
+                    "children": [
+                      {
+                        "name": "code",
+                        "required": true,
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "data",
+                        "type": "object"
+                      },
+                      {
+                        "name": "message",
+                        "required": true,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "curl": "curl \"https://api.nextmoe.dev/v1/store/me/stats\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+            }
+          ]
         }
       ]
     },

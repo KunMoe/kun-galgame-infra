@@ -20,6 +20,16 @@ type purchaseLinksOutput struct {
 	Body         Envelope[service.PurchaseLinks]
 }
 
+type meStatsInput struct {
+	From string `query:"from" doc:"First JST day to report, YYYY-MM-DD (inclusive). Defaults to 29 days before 'to'"`
+	To   string `query:"to" doc:"Last JST day to report, YYYY-MM-DD (inclusive). Defaults to today in JST"`
+}
+
+type meStatsOutput struct {
+	CacheControl string `header:"Cache-Control" doc:"Always 'private' — these are the calling application's own numbers"`
+	Body         Envelope[service.MyStats]
+}
+
 // SetupStorePublicSpec describes the /v1/store face. The handlers are stubs:
 // the face is served by the fiber handlers in this package, and this exists to
 // export the contract (cmd/gen-openapi -store-public → docs/store/public-openapi.yaml).
@@ -49,6 +59,18 @@ func SetupStorePublicSpec(app *fiber.App) huma.API {
 	}, func(context.Context, *purchaseLinksInput) (*purchaseLinksOutput, error) {
 		return &purchaseLinksOutput{}, nil
 	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "getStoreStatsMe", Method: http.MethodGet, Path: "/v1/store/me/stats",
+		Summary: "Your application's own click counts, per link per JST day",
+		Description: "Per-day totals and de-duplicated uniques for every link this application has minted, purchase and " +
+			"coupon alike — the kind field tells them apart, and product_id / campaign_id say which link a row belongs " +
+			"to. Days are JST calendar days because the settlement month is DLsite's JST calendar month. The range is a " +
+			"closed interval of at most 92 days and defaults to the last 30. Days with no clicks are omitted entirely. " +
+			"uniques is the number settlement uses; total is the raw click count before de-duplication. The counts are " +
+			"synchronised from the redirector hourly, so the current day is always partial.",
+		Tags: tags,
+	}, func(context.Context, *meStatsInput) (*meStatsOutput, error) { return &meStatsOutput{}, nil })
 
 	return api
 }

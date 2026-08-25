@@ -9,7 +9,7 @@
 
 **署名**：目前阶段使用 NextMoe·未萌 API，可以将 API 的名字标记为『鲲 Galgame 论坛』（如果你使用 Galgame 数据）或『LetMoe·一启萌』（如果你使用同人游戏数据）。
 
-本文件内联全部 126 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
+本文件内联全部 127 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
 
 ## 数据来源（六源）
 
@@ -1202,7 +1202,7 @@ curl "https://api.nextmoe.dev/v1/news/1" \
 
 - 路径前缀：`/v1/store`
 - 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,但须带 store:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选）
-- 端点数：1
+- 端点数：2
 
 > 一站一链：同一个商品，每个调用站拿到的短链都不一样，点击才归得到你站上。拿到 purchase_url 就原样用，别自己拼 DLsite 联盟地址——裸联盟链不经过计数器，等于这次点击白送。
 
@@ -1211,6 +1211,8 @@ curl "https://api.nextmoe.dev/v1/news/1" \
 > 券链看活动：没有进行中的活动时 coupon_url 与 campaign 都是 null，前端要能在只有购买链接时正常渲染。
 
 > 铸链是懒的、结果是稳的：第一次请求某个商品时才去铸短链，之后永远是同一条，所以自己缓存一份最省事。每个应用能铸链的不同商品数有上限，超了返回 403。
+
+## 分销链接
 
 ### GET /v1/store/purchase-links/{product_id}
 
@@ -1228,6 +1230,28 @@ Returns a short link that belongs to YOUR application, not a shared one: every c
 
 ```bash
 curl "https://api.nextmoe.dev/v1/store/purchase-links/value" \
+  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+```
+
+## 点击统计
+
+### GET /v1/store/me/stats
+
+Your application's own click counts, per link per JST day
+
+Per-day totals and de-duplicated uniques for every link this application has minted, purchase and coupon alike — the kind field tells them apart, and product_id / campaign_id say which link a row belongs to. Days are JST calendar days because the settlement month is DLsite's JST calendar month. The range is a closed interval of at most 92 days and defaults to the last 30. Days with no clicks are omitted entirely. uniques is the number settlement uses; total is the raw click count before de-duplication. The counts are synchronised from the redirector hourly, so the current day is always partial.
+
+- 所属 API：分销链接 API（授权制）（/v1/store）
+- 鉴权：Authorization: Bearer nm_live_…
+- scope：store:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `from` | query | 否 | string | First JST day to report, YYYY-MM-DD (inclusive). Defaults to 29 days before 'to' |
+| `to` | query | 否 | string | Last JST day to report, YYYY-MM-DD (inclusive). Defaults to today in JST |
+
+```bash
+curl "https://api.nextmoe.dev/v1/store/me/stats" \
   -H "Authorization: Bearer nm_live_<YOUR_KEY>"
 ```
 

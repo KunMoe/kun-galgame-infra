@@ -457,6 +457,7 @@ func setupPublicCatalog(
 		devapi.RequireScope(devapi.ScopeStoreRead),
 	)
 	v1store.Get("/purchase-links/:product_id", storeH.PurchaseLinks)
+	v1store.Get("/me/stats", storeH.MyStats)
 
 	flushDone := make(chan struct{})
 	go func() {

@@ -34,7 +34,7 @@
 - [游玩时长 API](https://developer.nextmoe.dev/docs/playtime.md)：`/v1/playtime`，5 个端点，凭据 Authorization: Bearer <用户访问令牌>。
 - [编辑提案 API](https://developer.nextmoe.dev/docs/edit.md)：`/api/v1/user/catalog/edit`，6 个端点，凭据 Authorization: Bearer <用户访问令牌>。
 - [资讯 API（授权制）](https://developer.nextmoe.dev/docs/news.md)：`/v1/news`，3 个端点，凭据 Authorization: Bearer nm_live_…。
-- [分销链接 API（授权制）](https://developer.nextmoe.dev/docs/store.md)：`/v1/store`，1 个端点，凭据 Authorization: Bearer nm_live_…。
+- [分销链接 API（授权制）](https://developer.nextmoe.dev/docs/store.md)：`/v1/store`，2 个端点，凭据 Authorization: Bearer nm_live_…。
 - [Public API v2（preview）](https://developer.nextmoe.dev/docs/v2.md)：`/v2`，74 个端点，凭据 Authorization: Bearer nmk_live_…。
 
 ## 页面 Markdown 索引

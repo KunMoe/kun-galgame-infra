@@ -2,6 +2,7 @@ package handler
 
 import (
 	stderrors "errors"
+	"time"
 
 	"api/internal/platform/store/service"
 	"api/pkg/errors"
@@ -15,6 +16,7 @@ const (
 	msgQuota        = "this application has minted the maximum number of purchase links"
 	msgShortener    = "link shortener unavailable — no link was issued"
 	msgOffline      = "store link service is not configured"
+	msgBadRange     = "from/to must be YYYY-MM-DD JST days, from <= to, at most 92 days apart"
 
 	// Every response is keyed to the calling application, so a shared cache
 	// holding one site's short links and serving them to another would hand the
@@ -66,4 +68,25 @@ func (h *PublicHandler) PurchaseLinks(c fiber.Ctx) error {
 	default:
 		return response.InternalError(c, errors.ErrInternalServer)
 	}
+}
+
+func (h *PublicHandler) MyStats(c fiber.Ctx) error {
+	c.Set("Cache-Control", cachePrivate)
+	if h.svc == nil {
+		return response.Error(c, fiber.StatusServiceUnavailable, errors.ErrStoreUnconfigured, msgOffline)
+	}
+	clientID, ok := clientFromCtx(c)
+	if !ok {
+		return response.Unauthorized(c, errors.ErrAuthUnauthorized)
+	}
+
+	from, to, err := service.ResolveRange(time.Now(), c.Query("from"), c.Query("to"))
+	if err != nil {
+		return response.Error(c, fiber.StatusUnprocessableEntity, errors.ErrInvalidParam, msgBadRange)
+	}
+	data, err := h.svc.MyStats(c.Context(), clientID, from, to)
+	if err != nil {
+		return response.InternalError(c, errors.ErrInternalServer)
+	}
+	return response.Success(c, data)
 }

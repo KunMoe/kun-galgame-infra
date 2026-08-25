@@ -305,6 +305,11 @@ export const FACE_GROUPS = {
       key: 'links',
       label: '分销链接',
       ops: ['GET /v1/store/purchase-links/{product_id}']
+    },
+    {
+      key: 'stats',
+      label: '点击统计',
+      ops: ['GET /v1/store/me/stats']
     }
   ]
 }
@@ -332,6 +337,6 @@ export const EXPECTED_OPERATION_COUNTS = {
   playtime: 5,
   edit: 6,
   news: 3,
-  store: 1,
+  store: 2,
   v2: 74
 }

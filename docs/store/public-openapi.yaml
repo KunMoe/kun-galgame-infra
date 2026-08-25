@@ -14,6 +14,27 @@ components:
         - id
         - name
       type: object
+    EnvelopeMyStats:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopeMyStats.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/MyStats"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
     EnvelopePurchaseLinks:
       additionalProperties: false
       properties:
@@ -55,6 +76,39 @@ components:
         - code
         - message
       type: object
+    MyStats:
+      additionalProperties: false
+      properties:
+        by_kind:
+          description: Totals split into purchase and coupon
+          items:
+            $ref: "#/components/schemas/StatTotal"
+          type:
+            - array
+            - "null"
+        from:
+          description: First JST day covered, inclusive
+          type: string
+        rows:
+          description: One row per link per day; days with no clicks are absent
+          items:
+            $ref: "#/components/schemas/StatRow"
+          type:
+            - array
+            - "null"
+        to:
+          description: Last JST day covered, inclusive
+          type: string
+        totals:
+          $ref: "#/components/schemas/StatTotal"
+          description: Grand total over the range
+      required:
+        - from
+        - to
+        - rows
+        - totals
+        - by_kind
+      type: object
     PurchaseLinks:
       additionalProperties: false
       properties:
@@ -78,11 +132,105 @@ components:
         - coupon_url
         - campaign
       type: object
+    StatRow:
+      additionalProperties: false
+      properties:
+        campaign_id:
+          description: The campaign id for a coupon row; null on a purchase row
+          format: int64
+          type:
+            - integer
+            - "null"
+        date:
+          description: JST calendar day, YYYY-MM-DD
+          type: string
+        kind:
+          description: purchase (a product link) or coupon (a campaign's claim link)
+          type: string
+        product_id:
+          description: The DLsite product number for a purchase row; null on a coupon row
+          type:
+            - string
+            - "null"
+        total:
+          description: Clicks that day, before de-duplication
+          format: int64
+          type: integer
+        uniques:
+          description: Distinct (day, fingerprint) clicks that day — the number settlement uses
+          format: int64
+          type: integer
+      required:
+        - kind
+        - product_id
+        - campaign_id
+        - date
+        - total
+        - uniques
+      type: object
+    StatTotal:
+      additionalProperties: false
+      properties:
+        kind:
+          description: Omitted on the grand total
+          type: string
+        total:
+          description: Clicks in the range, before de-duplication
+          format: int64
+          type: integer
+        uniques:
+          description: De-duplicated clicks in the range
+          format: int64
+          type: integer
+      required:
+        - total
+        - uniques
+      type: object
 info:
   title: NextMoe Open API — Store
   version: 1.0.0
 openapi: 3.1.0
 paths:
+  /v1/store/me/stats:
+    get:
+      description: Per-day totals and de-duplicated uniques for every link this application has minted, purchase and coupon alike — the kind field tells them apart, and product_id / campaign_id say which link a row belongs to. Days are JST calendar days because the settlement month is DLsite's JST calendar month. The range is a closed interval of at most 92 days and defaults to the last 30. Days with no clicks are omitted entirely. uniques is the number settlement uses; total is the raw click count before de-duplication. The counts are synchronised from the redirector hourly, so the current day is always partial.
+      operationId: getStoreStatsMe
+      parameters:
+        - description: First JST day to report, YYYY-MM-DD (inclusive). Defaults to 29 days before 'to'
+          explode: false
+          in: query
+          name: from
+          schema:
+            description: First JST day to report, YYYY-MM-DD (inclusive). Defaults to 29 days before 'to'
+            type: string
+        - description: Last JST day to report, YYYY-MM-DD (inclusive). Defaults to today in JST
+          explode: false
+          in: query
+          name: to
+          schema:
+            description: Last JST day to report, YYYY-MM-DD (inclusive). Defaults to today in JST
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeMyStats"
+          description: OK
+          headers:
+            Cache-Control:
+              schema:
+                description: Always 'private' — these are the calling application's own numbers
+                type: string
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Your application's own click counts, per link per JST day
+      tags:
+        - store-public
   /v1/store/purchase-links/{product_id}:
     get:
       description: "Returns a short link that belongs to YOUR application, not a shared one: every calling site gets its own alias for the same product so the clicks can be attributed back to it. Send readers to purchase_url as-is — it is the only URL that gets counted, and a bare affiliate URL bypasses the counter entirely. coupon_url and campaign are null whenever no coupon campaign is running. Clicks are de-duplicated: one (link, JST calendar day, fingerprint) counts once, where the fingerprint is SHA-256 of the client IP and User-Agent. That de-duplication is a commitment we made to DLsite, not a knob. Links are minted lazily on first request and then stable forever, so calling this per page render is fine, but caching the result on your side is cheaper. Each application may mint links for a bounded number of distinct products; asking for more returns 403."

@@ -11,7 +11,7 @@
 
 - 路径前缀：`/v1/store`
 - 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,但须带 store:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选）
-- 端点数：1
+- 端点数：2
 
 ## 使用须知
 
@@ -22,7 +22,13 @@
 
 ## 端点
 
+### 分销链接
+
 - `GET /v1/store/purchase-links/{product_id}` — Your site's own DLsite purchase link for one product, plus the coupon link when a campaign is running [详情](https://developer.nextmoe.dev/docs/store/getStorePurchaseLinks.md)
+
+### 点击统计
+
+- `GET /v1/store/me/stats` — Your application's own click counts, per link per JST day [详情](https://developer.nextmoe.dev/docs/store/getStoreStatsMe.md)
 
 ---
 本页来源 · NextMoe 开发者平台 · https://developer.nextmoe.dev/docs/store
