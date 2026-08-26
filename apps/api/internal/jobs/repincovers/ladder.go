@@ -1,10 +1,14 @@
 package repincovers
 
-import "sort"
+import (
+	"sort"
+
+	"api/internal/platform/catalog/model"
+)
 
 const upscaleTarget = 1080
 
-const nsfwSexualFloor int16 = 2
+const nsfwSexualFloor = model.SexualExplicit
 
 const tierIneligible = 99
 
