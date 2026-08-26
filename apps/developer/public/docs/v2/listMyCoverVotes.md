@@ -16,7 +16,7 @@ List my cover votes
 Every cover the bearer has voted up. Requires a user access token.
 
 - 所属 API：Public API v2（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 无参数。

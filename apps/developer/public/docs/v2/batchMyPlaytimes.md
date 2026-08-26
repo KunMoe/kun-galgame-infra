@@ -16,7 +16,7 @@ Batch write playtimes
 207 Multi-Status. Each item is a playtime or a problem. Requires a user access token. Any app may call this; playtime:write is not required.
 
 - 所属 API：Public API v2（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 无参数。

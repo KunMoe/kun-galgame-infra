@@ -14,34 +14,16 @@ export const DEV_TIER_LABELS: Record<string, string> = {
   internal: 'Internal（内部）'
 }
 
-export const DEV_MINTABLE_SCOPES = ['catalog:read'] as const
+export const DEV_MINTABLE_SCOPES = ['catalog:read', 'store:read'] as const
 
-export const DEV_GRANTABLE_SCOPES = ['news:read', 'store:read'] as const
-
-// Mirrors devapi's maxScopeAppMessageLen, which counts runes — so does the
-// browser's maxlength (UTF-16 code units for BMP text), and the two agree for
-// everything a form like this receives.
-export const DEV_SCOPE_APP_MESSAGE_MAX = 2000
-
-export const DEV_SCOPE_APP_STATUS_LABELS: Record<string, string> = {
-  pending: '待审核',
-  approved: '已批准',
-  declined: '已拒绝'
-}
-
-export const DEV_SCOPE_APP_STATUS_COLORS: Record<
-  string,
-  'warning' | 'success' | 'danger'
-> = {
-  pending: 'warning',
-  approved: 'success',
-  declined: 'danger'
-}
+// What a fresh mint dialog pre-ticks. store:read is mintable but deliberately
+// not defaulted: it opens per-site link minting with a per-app product cap, so
+// holding it should be the caller's explicit choice.
+export const DEV_DEFAULT_SCOPES = ['catalog:read'] as const
 
 export const DEV_CAP_APP_CREATE = 'app.create'
 export const DEV_CAP_APP_MANAGE = 'app.manage'
 export const DEV_CAP_KEY_MINT = 'key.mint'
-export const DEV_CAP_SCOPE_APPLY = 'scope.apply'
 
 // A row written before the approval flow existed carries an empty status and is
 // a live application, so the portal must read it as approved rather than as an

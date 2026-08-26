@@ -25,27 +25,8 @@ export const DEV_TIER_LIMITS: Record<
 
 export const DEV_MINTABLE_SCOPES = ['catalog:read'] as const
 
-// Mirrors devapi's maxScopeAppMessageLen (counted in runes server-side).
-export const DEV_SCOPE_APP_REASON_MAX = 2000
-
-// devapi's maxAppReviewNoteLen is defined as maxScopeAppMessageLen — one cap,
-// two review surfaces.
-export const DEV_APP_REVIEW_NOTE_MAX = DEV_SCOPE_APP_REASON_MAX
-
-export const DEV_SCOPE_APP_STATUS_LABELS: Record<string, string> = {
-  pending: '待审核',
-  approved: '已批准',
-  declined: '已拒绝',
-}
-
-export const DEV_SCOPE_APP_STATUS_COLORS: Record<
-  string,
-  'warning' | 'success' | 'danger'
-> = {
-  pending: 'warning',
-  approved: 'success',
-  declined: 'danger',
-}
+// Mirrors devapi's maxAppReviewNoteLen (counted in runes server-side).
+export const DEV_APP_REVIEW_NOTE_MAX = 2000
 
 export const DEV_APP_STATUS_TABS = [
   { id: 'enabled', label: '已启用', icon: 'lucide:check' },

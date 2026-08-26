@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sort"
 	"testing"
 	"time"
@@ -132,7 +133,7 @@ func TestUpstreamGetPassthrough(t *testing.T) {
 	defer srv.Close()
 
 	up := NewUpstream(srv.URL)
-	q := newQuery()
+	q := url.Values{}
 	q.Set("q", "スモーク")
 	status, body, err := up.Get(context.Background(), "/v1/catalog/search", q, "Bearer nm_live_k")
 	if err != nil {
@@ -186,7 +187,7 @@ func TestUpstreamGetTimeout(t *testing.T) {
 	up := NewUpstream(srv.URL)
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-	if _, _, err := up.Get(ctx, "/v1/catalog/search", newQuery(), "Bearer nm_live_k"); err == nil {
+	if _, _, err := up.Get(ctx, "/v1/catalog/search", url.Values{}, "Bearer nm_live_k"); err == nil {
 		t.Fatal("expected a timeout error, got nil")
 	}
 }

@@ -1,159 +1,142 @@
-// The MCP tool roster, in one place. Plain .mjs because both consumers must
-// read the SAME list: docs/mcp/Container.vue renders it, and
-// scripts/gen-llms.mjs (bare node, no TS loader) writes docs/mcp.md from it.
-// The news tools carried `grant: true` (news:read is granted, not self-served)
-// until the MCP server was rebuilt from the /v2 spec: its news tools call
-// /v2/news, which takes no credential at all. The flag outlived the cutover and
-// the page rendered a 授权制 badge one paragraph under prose saying the badge
-// no longer applied. news:read still gates /v1/news — that face keeps it.
+// The roster itself is derived, never hand-kept: cmd/gen-v2-portal runs the
+// same mcpface.ToolsFromSpec the MCP server registers with and writes
+// app/generated/mcp-tools.mjs. This file adds only the Chinese one-liner, keyed
+// by operationId, and refuses to load when the two sides disagree.
+//
+// The assertion is why it exists. The previous roster was a hand-written list
+// that still named v1-era tools (catalog_search, news_list, …) months after the
+// server had switched to v2 operationIds, and nothing caught it because nothing
+// compared the two. Plain .mjs because both consumers must read the SAME list:
+// docs/mcp/Container.vue renders it, and scripts/gen-llms.mjs (bare node, no TS
+// loader) writes docs/mcp.md from it.
 
-export const MCP_TOOLS = [
-  {
-    name: 'catalog_search',
-    desc: '按名字搜身份图谱实体：names（人物名义）/ characters / labels / works（跨媒介作品标题，r18 需 nsfw=true）。'
-  },
-  {
-    name: 'catalog_work_get',
-    desc: '按 catalog work id 取注册行，include=credits,relations 并取子块。'
-  },
-  {
-    name: 'catalog_lookup_external',
-    desc: '外部 id 反查（如 source=vndb, external_id=v19658）——手握外部 id 时首选。'
-  },
-  {
-    name: 'catalog_name_get',
-    desc: '按 id 取名义（credit-name 同人格分组），include=credits 附署名作品与角色。'
-  },
-  {
-    name: 'catalog_label_get',
-    desc: '按 id 取厂牌 / 社团（include=works 附归属作品）。'
-  },
-  {
-    name: 'catalog_character_get',
-    desc: '按 id 取角色（traits 按 spoilers=0-2 分级；nsfw 控 r18 作品与 sexual 系 traits）。'
-  },
-  {
-    name: 'catalog_works_list',
-    desc: '批量浏览 / 过滤作品注册表（评级 / 厂牌 / 标签 / 系列 / 平台 / 发售窗，keyset 分页，ids= 批量水合）。'
-  },
-  {
-    name: 'catalog_changes',
-    desc: '增量同步变更流——存下 next_cursor，下次轮询只拿变化的部分。'
-  },
-  {
-    name: 'catalog_tag_get',
-    desc: '按 id 取正典标签（跨源标签词表），include=works 附携带作品。'
-  },
-  {
-    name: 'catalog_works_search',
-    desc: '作品产品检索：自由文本 + works-list 全过滤集，五档排序、可选 facets 分面计数、page 分页（组合「查询 + 过滤」时优先用它，纯名字检索用 catalog_search）。'
-  },
-  {
-    name: 'catalog_calendar',
-    desc: '发售月历单月（缺省为当前 Asia/Tokyo 月；olang 缺省收敛到 ja + zh* 族，olang=all 放开）。'
-  },
-  {
-    name: 'catalog_calendar_pending',
-    desc: '月历「知年不知月」桶（缺省为当前 Asia/Tokyo 年）。'
-  },
-  {
-    name: 'catalog_calendar_tba',
-    desc: '月历「已公布未定档」全局桶。'
-  },
-  {
-    name: 'catalog_labels_list',
-    desc: '浏览厂牌 / 社团词表本身（kind 过滤，每行带 nsfw 感知 work_count）——用来发现 label id。'
-  },
-  {
-    name: 'catalog_tags_list',
-    desc: '浏览正典标签词表本身（tier / kind 过滤）——用来发现 tag id 再喂给作品过滤。'
-  },
-  {
-    name: 'catalog_engines_list',
-    desc: '浏览引擎词表本身——用来发现 engine id 再喂给 catalog_works_search。'
-  },
-  {
-    name: 'catalog_engine_get',
-    desc: '按 id 取引擎记录（名称 + nsfw 感知 work_count + 跨源 refs）。'
-  },
-  {
-    name: 'catalog_series_list',
-    desc: '浏览系列词表本身（source= 泳道过滤：curated / derived / dlsite，每行带 nsfw 感知 work_count）——系列不进搜索索引，这是发现 series id 的唯一入口。'
-  },
-  {
-    name: 'catalog_series_get',
-    desc: '按 id 取系列（身份 + 源锚 + 简介），include_works 附成员作品并按阅读顺序排列——回答「这个系列按什么顺序玩」。'
-  },
-  {
-    name: 'catalog_stats',
-    desc: '全库计数：各媒介 LIVE 作品数 + 身份家族总量（无参数）。'
-  },
-  {
-    name: 'catalog_label_relation_graph',
-    desc: '一次拿到一个厂牌周围的整个会社家族（母公司 / 子品牌 / 文库 / 继承），nodes[] + edges[]。catalog_label_get 的 relations[] 只有一跳，问「某社旗下有哪些牌子」用这个。服务端封顶 depth 4 / 60 节点，不分页。'
-  },
-  {
-    name: 'catalog_releases',
-    desc: '发售动态的 release 粒度：每一条发售行各自成项，移植版 / 复刻 / 中文化都看得见（calendar 只把作品放在最早发售月且只显示一次）。可按日期区间、平台、发行语言、版本类型、官方性过滤；is_first 分辨首发与再版。'
-  },
-  {
-    name: 'catalog_work_covers',
-    desc: '作品的封面块（单块分页，只要这一块时优先于 catalog_work_get）。CDN 渲染不了的行在分页前就被丢掉，所以短页 = 块取完了，不是被过滤了。只要两个展示位用 catalog_work_get 的 cover_slots。'
-  },
-  {
-    name: 'catalog_work_screenshots',
-    desc: '作品的截图块（单块分页，带尺寸与 thumbhash）。每行各自带 sexual / violence 等级——此面只报告不过滤，渲染门由调用方自己把。'
-  },
-  {
-    name: 'catalog_work_tags',
-    desc: '作品的源标签块（单块分页，count DESC → name → source）。命中正典映射的行带 canonical_id / tier / kind 与 nsfw 感知 work_count，未映射的行不带；`spoilers=0-2` 设标签剧透上限（超限行整行剔除、不占页位）。'
-  },
-  {
-    name: 'catalog_work_characters',
-    desc: '作品的角色花名册块（单块分页，main → secondary → appears → 仅署名项，带配音署名）。此面**不设**剧透上限、也**没有** spoilers 参数——每行自带 spoiler 等级，由调用方分级。'
-  },
-  {
-    name: 'catalog_work_credits',
-    desc: '作品的职员署名块，按 role 分组。**分页按署名行不按组**：跨页的 role 会在两页各出现一次、各带该页的切片，拼页时要按 role_key 合并组。'
-  },
-  {
-    name: 'catalog_work_releases',
-    desc: '作品的发售行块（单块分页，release id 升序，各带源锚与自己的 labels[]——移植版 / 英文版各自的发行商在这里）。跨作品的发售时间线用 catalog_releases。'
-  },
-  {
-    name: 'catalog_work_intros',
-    desc: '作品的简介块（单块分页，一语言一行）。选举同母面：源写的胜过机翻的，机翻行是**打标**不是隐藏——引用成「官方说法」前先看标。'
-  },
-  {
-    name: 'catalog_work_ratings',
-    desc: '作品的分源评分块（单块分页，带完整投票直方图与离散度——works-list 的 ratings 块会把这些丢掉）。分数留在各源原生标尺，永不混算成一个数。'
-  },
-  {
-    name: 'catalog_work_relations',
-    desc: '作品的关联作品块（单块分页）——catalog_work_get 只在 `include=relations` 时才给。不带 nsfw 时 r18 关联端是**整条丢弃**而非置空，next_offset 数的是幸存行。续作 / FD 也能经 catalog_work_get 的 series_siblings（传递闭包）拿到。'
-  },
-  {
-    name: 'catalog_work_series',
-    desc: '作品所属系列块（单块分页）。member_count 是系列的**全部**成员数而非本页——顺着它用 catalog_works_list series_id= 或 catalog_series_get include_works（后者才给阅读顺序）。'
-  },
-  {
-    name: 'catalog_work_links',
-    desc: '作品的非身份外链块（官网 / Steam / X 等，单块分页）。这些是**地址不是锚**，身份锚在 catalog_work_get 的 refs[]；dlsite / dmm 这类无法由裸 code 还原商店 URL 的源按设计不在此面，仍从 refs[] 走。'
-  },
-  {
-    name: 'catalog_work_engines',
-    desc: '作品的引擎块（单块分页，每行带 nsfw 感知 work_count = 该调用方用 catalog_works_search engine_id= 真能翻到的作品数）。'
-  },
-  {
-    name: 'news_list',
-    desc: '合作媒体的 Galgame 资讯索引（按来源 / 泳道 / 关联作品 / 发布时间窗过滤，keyset 分页）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。'
-  },
-  {
-    name: 'news_sources',
-    desc: '资讯来源注册表：每家媒体的 key、名称、主页、专栏入口，以及该渲染的归属文案。无参数。'
-  },
-  {
-    name: 'news_get',
-    desc: '按 id 取单条资讯。已撤回的、上游原文已消失的条目返回 404——这是契约不是查不到，别重试，也别拿缓存副本顶上。'
-  }
-]
+import { mcpTools } from '../app/generated/mcp-tools.mjs'
+
+const DESCRIPTIONS = {
+  searchCatalog:
+    '按名字跨家族搜身份图谱：object= 选家族（works / characters / credit-names / companies …），命中行是 search_result，各带 target_object 说明它是什么。r18 需 nsfw=true；不接受 cursor= 与 ids=。',
+  getCatalogWork:
+    '按 id 取作品注册行，include=credits,relations 并取子块。被合并的 id 返回 404 ENTITY_MERGED 并在 Link rel=canonical 里给继任者；r18 不带 nsfw=true 同样是 404。',
+  listCatalogWorks:
+    '浏览 / 过滤作品注册表（评级 / 公司 / 标签 / 系列 / 引擎 / 平台 / 发售窗，keyset 分页，ids=/refs= 批量水合）。带 q= 时整条转为检索并按相关度排序——「查询 + 过滤」与「纯过滤」在 v2 是同一条路径。',
+  listCatalogChanges:
+    '增量同步变更流：近期更新过的作品，最旧优先。存下 next_cursor，下次轮询只拿变化的部分。',
+  getCatalogCreditName:
+    '按 id 取一个署名（credit name）——这是名字不是人；尚未挂到人物身份上时 person_id 为 null。',
+  listCatalogCreditNames:
+    'keyset 分页浏览署名注册表，q= 按名字过滤。ids=/refs= 是批量水合泳道，不分页。',
+  getCatalogCreditNameCredits:
+    '一个署名被记在哪些作品上，offset 游标分页——问「这个名字做过什么」用它。',
+  getCatalogPerson:
+    '按 id 取人物身份：它把同一个人用过的多个署名聚成一个人格。被合并的 id 返回 404 ENTITY_MERGED。',
+  listCatalogPersons:
+    'keyset 分页浏览人物身份注册表。ids=/refs= 是批量水合泳道，不分页。',
+  getCatalogPersonCreditNames:
+    '一个人物身份名下的全部署名。人物与署名是两层：身份在这里，某个署名各自的作品在 getCatalogCreditNameCredits。',
+  getCatalogCharacter:
+    '按 id 取角色；view=full 追加性别、生日、三围、血型与 instance_of_id。nsfw 同时控 r18 作品与 sexual 系 traits 的可见性。',
+  listCatalogCharacters:
+    'keyset 分页浏览角色注册表。ids=/refs= 是批量水合泳道，不分页。',
+  getCatalogCharacterAppearances:
+    '一个角色出演的全部作品，各带 roster_role、剧透等级与配音署名，offset 游标分页。',
+  getCatalogCompany:
+    '按 id 取公司 / 厂牌 / 社团注册行（v1 的 labels）。被合并的 id 返回 404 ENTITY_MERGED。',
+  listCatalogCompanies:
+    '浏览公司 / 厂牌词表本身（v1 的 labels）——用来发现 company id 再喂给 listCatalogWorks 的 company_id=。',
+  getCatalogCompanyGraph:
+    '一次拿到一家公司周围的整个会社家族（母公司 / 子品牌 / 文库 / 继承），nodes[] + edges[] 有向。getCatalogCompany 的关联只有一跳，问「某社旗下有哪些牌子」用这个；反向边按设计不下发。',
+  getCatalogTag: '按 id 取正典标签——跨源标签词表的一行。',
+  listCatalogTags:
+    '浏览正典标签词表本身——用来发现 tag id 再喂给 listCatalogWorks 的 tag_id=。',
+  getCatalogTrait: '按 id 取角色特征词表的一行。',
+  listCatalogTraits:
+    '浏览角色特征词表本身——用来发现 trait id。refs= 对它不解析：特征没有外部锚类型。',
+  getCatalogEngine: '按 id 取引擎记录（名称与跨源 refs）。',
+  listCatalogEngines:
+    '浏览引擎词表本身——用来发现 engine id 再喂给 listCatalogWorks 的 engine_id=。',
+  getCatalogSeries:
+    '按 id 取系列（身份、源锚与简介）；成员作品用 listCatalogWorks 的 series_id= 取——回答「这个系列按什么顺序玩」。',
+  listCatalogSeries:
+    '浏览系列词表本身。系列不进搜索索引，这是发现 series id 的唯一入口；refs= 对它不解析：系列没有外部锚类型。',
+  getCatalogRelease:
+    '按 id 取单条发售行。被合并的 id 返回 404 ENTITY_MERGED；母作品是 r18 时，不带 nsfw=true 也是 404。',
+  listCatalogReleases:
+    '发售动态的 release 粒度：每一条发售行各自成项，移植版 / 复刻 / 中文化都看得见（月历只把作品放在最早发售月且只显示一次）。缺省按日期倒序。',
+  listCatalogCalendar:
+    '发售月历：month= / year= 选窗口，precision= 与 status= 在「已定档到月」「只知年」「已公布未定档」三个视图间切换——v1 的三条月历路径在 v2 是这一条。不接受 ids=。',
+  getCatalogStats: '全库计数：各家族 LIVE 实体总量。无参数，无需凭据。',
+  getCatalogWorkCovers:
+    '作品的封面块（单块 cursor 分页，与 include=covers 同一批行）。只要这一块时优先于 getCatalogWork；CDN 渲染不了的行在分页前就被丢掉，所以短页是「块取完了」而不是「被过滤了」。',
+  getCatalogWorkScreenshots:
+    '作品的截图块（单块 cursor 分页，带尺寸与 thumbhash）。每行各自带 sexual / violence 等级——此面只报告不过滤，渲染门由调用方自己把。',
+  getCatalogWorkTags:
+    '作品的源标签块（单块 cursor 分页）。命中正典映射的行带 canonical id 与 tier / kind，未映射的行不带。',
+  getCatalogWorkCharacters:
+    '作品的角色花名册块（单块 cursor 分页，带 roster_role 与配音署名）。此面不设剧透上限——每行自带 spoiler 等级，由调用方分级。',
+  getCatalogWorkCredits:
+    '作品的职员署名块，按 role 分组。分页按署名行不按组：跨页的 role 会在两页各出现一次、各带该页的切片，拼页时要按 role 合并组。',
+  getCatalogWorkReleases:
+    '作品的发售行块（单块 cursor 分页，各带源锚与自己的发行公司——移植版 / 英文版各自的发行商在这里）。跨作品的发售时间线用 listCatalogReleases。',
+  getCatalogWorkIntros:
+    '作品的简介块（单块 cursor 分页，一语言一行）。源写的胜过机翻的，机翻行是打标不是隐藏——把它引用成「官方说法」前先看标。',
+  getCatalogWorkRatings:
+    '作品的分源评分块（单块 cursor 分页，带完整投票直方图与离散度）。分数留在各源原生标尺，永不混算成一个数。',
+  getCatalogWorkRelations:
+    '作品的关联作品块（单块 cursor 分页）。不带 nsfw 时 r18 关联端是整条丢弃而非置空，页里数的是幸存行。',
+  getCatalogWorkSeries:
+    '作品所属系列块（单块 cursor 分页）。member_count 是系列的全部成员数而非本页——顺着它用 listCatalogWorks 的 series_id= 或 getCatalogSeries。',
+  getCatalogWorkLinks:
+    '作品的非身份外链块（官网 / Steam / X 等，单块 cursor 分页）。这些是地址不是锚，身份锚在 getCatalogWork 的 refs[]；dlsite / dmm 这类无法由裸 code 还原商店 URL 的源按设计不在此面。',
+  getCatalogWorkEngines:
+    '作品的引擎块（单块 cursor 分页，与 include=engines 同一批行）。',
+  listCatalogRevisions:
+    '已合入的编辑修订流，缺省最新优先；sort=recorded_asc 按 id 从旧到新走同一个集合，这是镜像与贡献统计该用的姿态（配一条水位线）。object= + entity_id= 收敛到单个实体的历史。',
+  getCatalogRevision:
+    '按 id 取单条修订；include=diff 追加相对 diff_base（缺省为前一条）的字段级变更集。',
+  listCatalogProposals:
+    '已提交的编辑提案流，最新优先。proposer_uid= + state=merged + include_total=true 就是按贡献者的合入计数。此面不下发 patch，也不下发审核意见。',
+  getCatalogProposal:
+    '按 id 取单条提案的公开透明视图：提案人、状态、目标实体与时间戳；include=amendments 追加修订链。',
+  listCatalogRedirects:
+    '合并去向流：被合并掉的 id 指向哪个继任者，最旧优先。存下游标增量消费，就能把本地副本里的死 id 换成活的。object= 收敛到单个家族；不接受 ids=。',
+  getCatalogSchema:
+    '一个实体家族的可编辑字段 schema 与 include 令牌全集（含 FULL_SET）。无需凭据，且不评估调用方权限——它描述的是形状，不是许可。',
+  listNews:
+    '合作媒体的 Galgame 资讯索引（keyset 分页，无需凭据）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。',
+  listNewsSources:
+    '资讯来源注册表：每家媒体的名称、主页、专栏入口，以及该渲染的归属文案。无参数，无需凭据。',
+  getNewsItem:
+    '按 id 取单条资讯。已撤回的、上游原文已消失的条目返回 404——这是契约不是查不到，别重试，也别拿缓存副本顶上。',
+  listProblemTypes:
+    '错误码注册表：/v2 全部顶层 code 的封闭清单，keyset 分页，无需凭据。',
+  getProblemType:
+    '按 code 取单条错误码定义。未知 code 返回 404 而不是 422——路径参数是查找键，不是封闭枚举。',
+  listProblemReasons:
+    '字段级 reason 的封闭清单，无需凭据。这里的取值永远不会作为顶层 code 出现。',
+  listVocabularies:
+    '已发布词表清单（封闭词表与 seed-open 词表），keyset 分页，无需凭据。',
+  getVocabulary: '按 name 取一个词表的全部已发布取值。未知 name 返回 404。'
+}
+
+const undescribed = mcpTools
+  .filter((t) => !DESCRIPTIONS[t.name])
+  .map((t) => t.name)
+const orphaned = Object.keys(DESCRIPTIONS).filter(
+  (name) => !mcpTools.some((t) => t.name === name)
+)
+if (undescribed.length || orphaned.length) {
+  throw new Error(
+    'shared/mcp-tools.mjs is out of step with app/generated/mcp-tools.mjs — ' +
+      `missing a description for [${undescribed.join(', ')}], ` +
+      `and describing tools the server does not register: [${orphaned.join(', ')}]. ` +
+      'Regenerate with `go run ./cmd/gen-v2-portal -o ../developer/app/generated` and edit DESCRIPTIONS.'
+  )
+}
+
+export const MCP_TOOLS = mcpTools.map((t) => ({
+  name: t.name,
+  method: t.method,
+  path: t.path,
+  needsKey: t.needs_key,
+  desc: DESCRIPTIONS[t.name]
+}))

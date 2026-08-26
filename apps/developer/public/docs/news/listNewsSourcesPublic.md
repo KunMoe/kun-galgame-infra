@@ -1,4 +1,4 @@
-# The source registry: display name, homepage, column entry point, publisher uid, and the attribution text to render · 资讯 API（授权制）
+# The source registry: display name, homepage, column entry point, publisher uid, and the attribution text to render · 资讯 API
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -15,9 +15,9 @@ The source registry: display name, homepage, column entry point, publisher uid, 
 
 For pages that render one standing attribution block. It does NOT replace the per-item source block — an item taken on its own must still carry its own attribution.
 
-- 所属 API：资讯 API（授权制）（/v1/news）
+- 所属 API：资讯 API（/v1/news）
 - 鉴权：Authorization: Bearer nmk_live_…
-- scope：news:read
+- scope：无需凭据
 
 无参数。
 

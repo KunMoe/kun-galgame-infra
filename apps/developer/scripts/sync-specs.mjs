@@ -19,7 +19,7 @@
  * The galgame face was dropped at wave 146 (2026-07-30): its /v1/galgame
  * projection was delisted and its spec deleted.
  *
- * Four spec files, six faces. `public-openapi.yaml` carries catalog (API-key,
+ * Five spec files, six faces. `public-openapi.yaml` carries catalog (API-key,
  * read-only) and playtime (user-token; no playtime scope required). Modelling
  * those as one face published five playtime operations as `catalog:read` with
  * an `nm_live_` key in the curl sample — a credential that face rejects.
@@ -27,8 +27,9 @@
  * `/api/v1/user/catalog/edit` and names every op under that prefix as include
  * or exclude. The rest of that spec (S2S, claims, covers, submit) is a
  * first-party surface and is not portal-documented. `news/public-openapi.yaml`
- * and `store/public-openapi.yaml` are the fourth and fifth faces, API-key faces
- * whose scopes are grant-only.
+ * is the fourth face, an API-key face that requires no particular scope (it was
+ * grant-only until the news:read retirement on 2026-08-25), and
+ * `store/public-openapi.yaml` is the fifth, an API-key face gated by store:read.
  *
  * Operation GROUPING is derived here, not in the specs: the OpenAPI tags put
  * every operation of a face in one bucket (`catalog-public`, `playtime`, …),
@@ -220,7 +221,7 @@ const authForPath = (faceDef, path) => {
   return faceDef.auth
 }
 
-const buildOperation = (method, path, op, { schemas, scope, auth }) => {
+const buildOperation = (method, path, op, { schemas, scope, auth, faceAuth }) => {
   const params = buildParams(op.parameters)
 
   let requestBody
@@ -250,7 +251,13 @@ const buildOperation = (method, path, op, { schemas, scope, auth }) => {
     summary: op.summary || '',
     ...(op.description && { description: op.description }),
     scope: override ? '' : scope,
-    ...(override && { auth: override }),
+    // Whatever departs from the face default must land in the model — the
+    // renderers fall back to face.auth for an op without its own. Until
+    // 2026-08-26 only OPERATION_AUTH_OVERRIDES was emitted, so every
+    // credential-free /v2 operation's page and Markdown twin printed the face's
+    // "Bearer nmk_live_…" line, and /v2/me printed a machine key for a face
+    // that takes a user token.
+    ...(effective !== faceAuth && { auth: effective }),
     params,
     ...(requestBody && { requestBody }),
     responses,
@@ -314,7 +321,8 @@ const buildFace = (faceDef, specs) => {
         buildOperation(method, path, op, {
           schemas,
           scope: scopeFn,
-          auth
+          auth,
+          faceAuth: faceDef.auth
         })
       )
     }

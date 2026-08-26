@@ -4,7 +4,6 @@ import {
   DEV_APP_REVIEW_LABELS,
   DEV_CAP_APP_MANAGE,
   DEV_CAP_KEY_MINT,
-  DEV_CAP_SCOPE_APPLY,
   DEV_DISABLED_HINT,
   DEV_TIER_COLORS,
   DEV_TIER_LABELS,
@@ -45,9 +44,6 @@ const policy = (capability: string) =>
 
 const manageDisabled = computed(() => policy(DEV_CAP_APP_MANAGE) === 'disabled')
 const mintDisabled = computed(() => policy(DEV_CAP_KEY_MINT) === 'disabled')
-const scopeApplyDisabled = computed(
-  () => policy(DEV_CAP_SCOPE_APPLY) === 'disabled'
-)
 
 const reviewStatus = computed(() => app.value?.review_status ?? '')
 const underReview = computed(() => isAppUnderReview(reviewStatus.value))
@@ -382,7 +378,6 @@ const askDeactivate = () => {
     <KeysMintModal
       v-model:open="showMintModal"
       :client-id="clientId"
-      :scope-apply-disabled="scopeApplyDisabled"
       @minted="handleMinted"
     />
 

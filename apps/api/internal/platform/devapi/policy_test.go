@@ -34,7 +34,7 @@ func TestPolicyRegistryIsComplete(t *testing.T) {
 		}
 	}
 
-	want := []string{CapabilityAppCreate, CapabilityAppManage, CapabilityKeyMint, CapabilityScopeApply}
+	want := []string{CapabilityAppCreate, CapabilityAppManage, CapabilityKeyMint}
 	for _, key := range want {
 		if !seen[key] {
 			t.Errorf("capability %q is missing from the matrix", key)
@@ -44,9 +44,9 @@ func TestPolicyRegistryIsComplete(t *testing.T) {
 		t.Errorf("matrix holds %d capabilities, want exactly %v", len(seen), want)
 	}
 
-	// The three scope tiers stay in gateForScope with their own tests. If they
-	// ever appear here too, one decision has two sources of truth.
-	for _, sc := range append(append([]string{}, selfServiceScopes...), grantableScopes...) {
+	// Which scopes a key may carry stays in selfServiceScopes with its own
+	// tests. If one ever appears here too, one decision has two sources of truth.
+	for _, sc := range selfServiceScopes {
 		if seen[sc] {
 			t.Errorf("scope %q must not be a policy capability", sc)
 		}
@@ -59,7 +59,7 @@ func TestPolicyValidation(t *testing.T) {
 	}
 	// approval is meaningful only for app.create: there is nothing to queue for
 	// review when an owner edits an app or mints a key.
-	for _, capability := range []string{CapabilityAppManage, CapabilityKeyMint, CapabilityScopeApply} {
+	for _, capability := range []string{CapabilityAppManage, CapabilityKeyMint} {
 		if err := validatePolicy(capability, PolicyApproval); err != ErrInvalidPolicyMode {
 			t.Errorf("%s=approval = %v, want ErrInvalidPolicyMode", capability, err)
 		}
@@ -148,7 +148,6 @@ func TestPolicyOverrideTakesEffectAndResets(t *testing.T) {
 
 func TestPolicyDisabledGatesSelfService(t *testing.T) {
 	cleanupSelf(t)
-	cleanupScopeApps(t)
 	cleanupPolicies(t)
 	svc, admin, _, _ := newSelfService(t)
 	ctx := context.Background()
@@ -187,13 +186,6 @@ func TestPolicyDisabledGatesSelfService(t *testing.T) {
 	}
 	if err := svc.DeactivateApp(ctx, owner, app.ID); err != ErrCapabilityDisabled {
 		t.Errorf("deactivate under app.manage=disabled = %v, want ErrCapabilityDisabled", err)
-	}
-
-	if err := admin.SetPolicy(ctx, CapabilityScopeApply, PolicyDisabled, actor); err != nil {
-		t.Fatalf("disable scope.apply: %v", err)
-	}
-	if _, err := svc.ApplyForScope(ctx, owner, ScopeNewsRead, "let me in"); err != ErrCapabilityDisabled {
-		t.Errorf("apply under scope.apply=disabled = %v, want ErrCapabilityDisabled", err)
 	}
 
 	if err := admin.SetPolicy(ctx, CapabilityAppCreate, PolicyDisabled, actor); err != nil {

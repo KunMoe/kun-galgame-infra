@@ -72,34 +72,27 @@
 
 它与 API key 的 scope 白名单(`selfServiceScopes`,2026-08-18 起只剩 `catalog:read`)**故意分开**:两者管的是不同凭证。一个说机器 key 匿名能干什么,另一个说应用**能向人要什么**。合并就等于让只读 key 的白名单去决定同意页的政策。
 
-### 9.3 授权制 scope 的申请通道(2026-08-18)
+### 9.3 授权制 scope 的申请通道(2026-08-18 建,2026-08-25 退役)
 
-`/dev/*` 自助面新增两条端点,把 `news:read` 的"联系平台"变成门户里的一次申请:
+这条通道存在过一周。它把 `news:read` 的"联系平台"变成门户里的一次申请:自助面两条端点(`POST` / `GET /api/v1/dev/scope-applications`)、管理侧三条(`/api/v1/admin/devapi/scope-applications*`)、铸密钥对话框里的授权制条目(`components/keys/ScopeApplyModal.vue`)、管理台的「Scope 申请审核」面板(`components/devapi/ScopeApplications.vue`),以及承载它们的 `devapi_scope_applications` 表。
 
-| 端点 | 说明 |
-|---|---|
-| `POST /api/v1/dev/scope-applications` | body `{scope, message}`,scope 必须 ∈ `grantableScopes`(现为 `news:read`) |
-| `GET /api/v1/dev/scope-applications` | 当前用户的全部申请及状态 |
+**整条通道于 2026-08-25 删除**,连同它唯一的申请对象:`/v1/news` 不再检查 scope,一把有效的机器 key 就够了,而同一批内容在 `/v2/news` 上匿名可读已有一段时间。审批队列因此没有任何东西可决——留着它只是让人排队等一个必然的"是"。裁定与备查清单见 [02 §3.9](./02-public-api.md)。
 
-管理侧三条(`/api/v1/admin/devapi/scope-applications*`)与状态机、`(user, scope)` 唯一语义、三档铸 key 判据见 [02 §3.9](./02-public-api.md)。
-
-**门户 UI**:铸密钥对话框(`components/keys/MintModal.vue`)的自助复选框下方多一行授权制条目——已批准即普通复选框,未申请 / 待审 / 被拒则复选框禁用并就地给出状态与「申请授权」按钮(`components/keys/ScopeApplyModal.vue`)。**审批不追加 scope 到已有 key**:批准后要重新铸一把带 `news:read` 的密钥,对话框那一行就是这件事发生的地方。
-
-**管理台**:`apps/web` 的 `/devapi` 页新增「Scope 申请审核」面板(`components/devapi/ScopeApplications.vue`),列 pending(可切"看全部"),批准 / 拒绝(拒绝须填理由,理由原样回执给申请人)。
+铸密钥对话框现在只剩自助复选框一组(`components/keys/MintModal.vue`);管理台 `/devapi` 页少了审核面板那一节。
 
 ### 9.4 平台策略矩阵 + 应用审批流(2026-08-18)
 
 到本节前,门户的自助面是**无级别的**:注册即建应用、建完即启用、启用即能铸 key。这在只有我们自己用的时候是对的默认;一旦第三方真的进来,平台就需要一个能在**不改代码、不改部署**的前提下收紧或临时关停某一步的旋钮。本节把这个旋钮做成一张矩阵。
 
-**矩阵**(四能力 × 允许的 mode,判据表见 [02 §3.10](./02-public-api.md)):`app.create`(自助 / 需审批 / 关闭)、`app.manage`、`key.mint`、`scope.apply`(后三者只有自助 / 关闭)。默认全开 —— **平台出厂是开放的,策略只做收紧**,所以任何一行缺 override 都等于今天的行为,升级这一波对现有开发者是零可见变化。
+**矩阵**(能力 × 允许的 mode,判据表见 [02 §3.10](./02-public-api.md)):`app.create`(自助 / 需审批 / 关闭)、`app.manage`、`key.mint`(后两者只有自助 / 关闭)。本波起手是四能力,第四行 `scope.apply` 随 §9.3 于 2026-08-25 退役。默认全开 —— **平台出厂是开放的,策略只做收紧**,所以任何一行缺 override 都等于今天的行为,升级这一波对现有开发者是零可见变化。
 
 **吊销永远不入闸**。关掉 `key.mint` 的场景是「先别再发新钥匙了」,不是「谁也别想止损」;把 revoke 一起关掉会让一次泄漏在策略打开之前无法收敛。
 
-**为什么是 ren-only**:改矩阵不是日常运营动作(那是 `devapi.manage` 管的:调 tier、配额、审 scope 申请),而是**改平台对外承诺**——「现在还能不能自助注册」这句话对所有第三方同时生效。故新增 `devapi.policy_manage`,**只进 ren 捆**且标 `non_delegable`(先例:`oauth.permissions.manage`)。管理台的矩阵对 admin **可见但只读**,并明示「仅 ren 可改」——看得见才知道当下是什么政策,看不见只会让人反复去问。
+**为什么是 ren-only**:改矩阵不是日常运营动作(那是 `devapi.manage` 管的:调 tier、配额、审应用),而是**改平台对外承诺**——「现在还能不能自助注册」这句话对所有第三方同时生效。故新增 `devapi.policy_manage`,**只进 ren 捆**且标 `non_delegable`(先例:`oauth.permissions.manage`)。管理台的矩阵对 admin **可见但只读**,并明示「仅 ren 可改」——看得见才知道当下是什么政策,看不见只会让人反复去问。
 
 **审批流**只加了三个状态、没有第四个:`approved` / `pending` / `declined`。`withdraw`(申请人撤回)**故意不做**——待审的申请撤回等价于停用一个从未启用的应用,而 `declined` → resubmit 已经覆盖了「想改了再来」这条真实路径;多一个状态就多一组迁移与四处 UI 分支,换不到任何新能力。
 
-**门户表现**(`apps/developer`):dashboard 拉 `GET /dev/policies` → `approval` 时创建对话框顶部挂提示、提交后回执「已提交,等待平台审核」;`disabled` 时创建按钮禁用并说明原因。应用卡片与详情页对 `pending` / `declined` 挂状态 chip;`declined` 展示拒绝理由 + 「重新提交」按钮(→ resubmit 端点),两态都**隐藏「停用」**并在密钥区写「审核通过后可铸造密钥」。`key.mint=disabled` → 铸造 / 轮换禁用(吊销照常);`app.manage=disabled` → 编辑 / 停用禁用;`scope.apply=disabled` → 「申请授权」禁用。
+**门户表现**(`apps/developer`):dashboard 拉 `GET /dev/policies` → `approval` 时创建对话框顶部挂提示、提交后回执「已提交,等待平台审核」;`disabled` 时创建按钮禁用并说明原因。应用卡片与详情页对 `pending` / `declined` 挂状态 chip;`declined` 展示拒绝理由 + 「重新提交」按钮(→ resubmit 端点),两态都**隐藏「停用」**并在密钥区写「审核通过后可铸造密钥」。`key.mint=disabled` → 铸造 / 轮换禁用(吊销照常);`app.manage=disabled` → 编辑 / 停用禁用。
 
 **管理台表现**(`apps/web`):`/devapi` 页顶部为策略矩阵卡(`components/devapi/PolicyMatrix.vue`,改动走确认弹窗;选中「默认」那格即 `DELETE` 掉 override 行),应用列表加状态过滤(`enabled` / `pending` / `declined` / `disabled` / `all`,缺省 `enabled` 兼容现状)并在卡片上显示 review 状态,`components/devapi/PendingApps.vue` 是待审应用面板(通过 / 拒绝,拒绝须填理由)。新页 `/devapi/keys`(`components/devapi/Keys.vue`)是**跨全部应用的密钥清单**:按状态与应用过滤、分页,只展示前缀与后四位等元数据,行动作 rotate / revoke 直接复用既有 per-app 端点 —— 这一页刻意**不新增编辑端点**,「编辑 token」在这个平台上从来就只有轮换与吊销两个动作。
 

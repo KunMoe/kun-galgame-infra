@@ -16,7 +16,7 @@ List my playtimes
 The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token. Any app may call this; playtime:read is not required.
 
 - 所属 API：Public API v2（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |

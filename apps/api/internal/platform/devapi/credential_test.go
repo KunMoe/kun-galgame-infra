@@ -5,20 +5,20 @@ import (
 	"testing"
 )
 
-// The news feed republishes two partners' content under our byline, and both
-// authorised our downstream specifically. Who holds a key is therefore the gate.
-// 2026-08-18 mechanised the paperwork (an application a key owner files in the
-// portal) WITHOUT loosening the gate: the scope must never enter
-// selfServiceScopes, and an unapproved owner must still be refused.
-func TestScopeNewsReadSelfServiceExcluded(t *testing.T) {
+// news:read used to be grant-only: an owner filed an application, we approved
+// it, and only then could the scope be ticked. 2026-08-25 retired that whole
+// machinery — /v1/news takes any valid key — so the scope is now exactly as
+// mintable as any other string nobody offers, which is not at all. The constant
+// stays because live keys still carry the literal in their scopes jsonb.
+func TestScopeNewsReadRetired(t *testing.T) {
 	if ScopeNewsRead != "news:read" {
 		t.Errorf("ScopeNewsRead = %q, want %q", ScopeNewsRead, "news:read")
 	}
 	if slices.Contains(selfServiceScopes, ScopeNewsRead) {
-		t.Errorf("selfServiceScopes must NOT contain %q — news keys are granted by us, never self-issued", ScopeNewsRead)
+		t.Errorf("selfServiceScopes must NOT contain %q — no route reads it any more", ScopeNewsRead)
 	}
-	if got := gateForScope(ScopeNewsRead); got != scopeGateGrant {
-		t.Errorf("gateForScope(news:read) = %v, want scopeGateGrant", got)
+	if err := checkMintScopes([]string{ScopeNewsRead}); err != ErrScopeNotAllowed {
+		t.Errorf("minting news:read = %v, want ErrScopeNotAllowed", err)
 	}
 }
 
@@ -28,11 +28,24 @@ func TestScopeGalgameReadRetired(t *testing.T) {
 	if slices.Contains(selfServiceScopes, ScopeGalgameRead) {
 		t.Errorf("selfServiceScopes must NOT contain %q — the galgame face retired at wave 146", ScopeGalgameRead)
 	}
-	if got := gateForScope(ScopeGalgameRead); got != scopeGateDenied {
-		t.Errorf("gateForScope(galgame:read) = %v, want scopeGateDenied", got)
+	if err := checkMintScopes([]string{ScopeGalgameRead}); err != ErrScopeNotAllowed {
+		t.Errorf("minting galgame:read = %v, want ErrScopeNotAllowed", err)
 	}
-	if want := []string{ScopeCatalogRead}; !slices.Equal(selfServiceScopes, want) {
+	if want := []string{ScopeCatalogRead, ScopeStoreRead}; !slices.Equal(selfServiceScopes, want) {
 		t.Errorf("selfServiceScopes = %v, want %v", selfServiceScopes, want)
+	}
+}
+
+// store:read was born grant-only beside news:read, and the machinery that
+// handed it out retired the day after it shipped. Owner decision 2026-08-26:
+// the scope is self-service — /v1/store still checks it on every request, but
+// holding it is the caller's own choice, not an approval.
+func TestScopeStoreReadSelfService(t *testing.T) {
+	if ScopeStoreRead != "store:read" {
+		t.Errorf("ScopeStoreRead = %q, want %q", ScopeStoreRead, "store:read")
+	}
+	if err := checkMintScopes([]string{ScopeStoreRead}); err != nil {
+		t.Errorf("minting store:read = %v, want it accepted", err)
 	}
 }
 
@@ -43,11 +56,11 @@ func TestScopeGalgameWriteSelfServiceExcluded(t *testing.T) {
 	if slices.Contains(selfServiceScopes, ScopeGalgameWrite) {
 		t.Errorf("selfServiceScopes must NOT contain %q (D3: write is never self-service)", ScopeGalgameWrite)
 	}
-	if got := gateForScope(ScopeGalgameWrite); got != scopeGateDenied {
-		t.Errorf("gateForScope(galgame:write) = %v, want scopeGateDenied", got)
+	if err := checkMintScopes([]string{ScopeGalgameWrite}); err != ErrScopeNotAllowed {
+		t.Errorf("minting galgame:write = %v, want ErrScopeNotAllowed", err)
 	}
-	if got := gateForScope(ScopeCatalogRead); got != scopeGateSelfService {
-		t.Errorf("gateForScope(catalog:read) = %v, want scopeGateSelfService", got)
+	if err := checkMintScopes([]string{ScopeCatalogRead}); err != nil {
+		t.Errorf("minting catalog:read = %v, want it accepted", err)
 	}
 }
 

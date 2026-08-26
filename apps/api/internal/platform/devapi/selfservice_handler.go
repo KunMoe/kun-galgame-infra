@@ -35,8 +35,6 @@ func (h *SelfServiceHandler) Register(r fiber.Router) {
 	r.Delete("/apps/:client_id/keys/:id", h.RevokeKey)
 	r.Get("/apps/:client_id/usage", h.Usage)
 	r.Get("/usage", h.OwnerUsage)
-	r.Post("/scope-applications", h.ApplyForScope)
-	r.Get("/scope-applications", h.ListScopeApplications)
 }
 
 type createAppRequest struct {
@@ -254,10 +252,6 @@ func (h *SelfServiceHandler) MintKey(c fiber.Ctx) error {
 	if resp, handled := selfServicePolicyError(c, err); handled {
 		return resp
 	}
-	if goerrors.Is(err, ErrScopeNeedsGrant) {
-		return response.ForbiddenMsg(c, apperr.ErrForbidden,
-			"this scope is granted, not self-issued — apply for it in the developer portal and mint the key once it is approved")
-	}
 	if msg, bad := selfServiceBadRequest(err); bad {
 		return response.BadRequestMsg(c, apperr.ErrValidationFailed, msg)
 	}
@@ -392,13 +386,7 @@ func selfServiceBadRequest(err error) (string, bool) {
 	case goerrors.Is(err, ErrKeyLimitReached):
 		return "active key limit reached (max 5 per application)", true
 	case goerrors.Is(err, ErrScopeNotAllowed):
-		return "scope not permitted (want catalog:read)", true
-	case goerrors.Is(err, ErrScopeNotGrantable):
-		return "this scope is not applied for (want news:read)", true
-	case goerrors.Is(err, ErrScopeAppMessage):
-		return "message is required — tell us what the key is for", true
-	case goerrors.Is(err, ErrScopeAppMsgTooLong):
-		return "message too long (max 2000)", true
+		return "scope not permitted (want catalog:read or store:read)", true
 	case goerrors.Is(err, ErrNameRequired):
 		return "name is required", true
 	case goerrors.Is(err, ErrNameTooLong):

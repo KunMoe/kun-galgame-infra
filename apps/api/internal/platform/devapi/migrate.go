@@ -9,7 +9,27 @@ import (
 // Models returns the developer-platform models for AutoMigrate registration in
 // cmd/migrate (the developer-platform tables in kun_galgame_infra).
 func Models() []any {
-	return []any{&DeveloperAPIKey{}, &DeveloperAPIUsage{}, &ScopeApplication{}, &PolicyOverride{}}
+	return []any{&DeveloperAPIKey{}, &DeveloperAPIUsage{}, &PolicyOverride{}}
+}
+
+// DropScopeApplications removes devapi_scope_applications, retired on
+// 2026-08-25 together with the grant-only scope machinery: /v1/news stopped
+// asking for news:read, so nothing is applied for any more and no code reads the
+// table. Three production rows are discarded with it — one approved application
+// (user 2) and two still pending (users 12525 and 115587, the second filed on
+// 2026-08-26 while this retirement was already in flight) — because approval no
+// longer grants anything and a pending application has nothing left to be
+// decided. Keys
+// minted under the old rule keep the literal "news:read" in their scopes jsonb;
+// that string is inert history and is deliberately not cleaned out.
+//
+// Idempotent (IF EXISTS), which matters here: production runs the main-database
+// migration on every deploy since 85ea4ab, so this statement re-runs forever.
+func DropScopeApplications(db *gorm.DB) error {
+	if err := db.Exec(`DROP TABLE IF EXISTS devapi_scope_applications`).Error; err != nil {
+		return fmt.Errorf("devapi migrate: drop devapi_scope_applications: %w", err)
+	}
+	return nil
 }
 
 // AddOAuthClientDevColumns adds the developer-platform columns to an existing

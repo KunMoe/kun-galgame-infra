@@ -1,8 +1,6 @@
 package mcpface
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"net/http"
 	"strings"
 )
@@ -34,9 +32,4 @@ func validV2KeyForm(raw string) bool {
 		return false
 	}
 	return strings.HasPrefix(raw, "nmk_live_") || strings.HasPrefix(raw, "nmk_test_")
-}
-
-func keyFingerprint(token string) string {
-	sum := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(sum[:])[:8]
 }

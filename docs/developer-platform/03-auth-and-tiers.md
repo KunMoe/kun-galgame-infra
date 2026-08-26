@@ -29,7 +29,8 @@
   - `authorization_code` + PKCE:**代表某用户**(如代为投稿)。
 - **scope 词表**(按面命名,起步最小,可扩展):
   - `catalog:read`(公开读;未来 `manga:read` 等同构生长)
-  - `news:read`(合作媒体资讯索引;**授权制**——不能自助勾选,须经门户申请 + 平台审批,见 [02 §3.9](./02-public-api.md))
+  - `store:read`(DLsite 分销链接面 `/v1/store`;出生于 2026-08-25 的授权制 scope,随整档退役于 2026-08-26 转为自助勾选——请求时仍须携带,见 [02 §3.9](./02-public-api.md))
+  - ~~`news:read`~~(合作媒体资讯索引;2026-08-18 起是授权制 scope,2026-08-25 整档退役——`/v1/news` 现在只认「有一把有效 key」,任意 scope 均可,见 [02 §3.9](./02-public-api.md)。常量仍在代码里,只为让存量 key 行里的这个字面量仍能被读懂)
   - `galgame:submit` `user:read`(Phase 3)
   - ~~`galgame:read`~~(随 `/v1/galgame` 面于 wave 146 退役;常量仍在代码里,只为让历史 key 行与旧 `allowed_scopes` 仍能被读懂)
   - ~~`galgame:nsfw`~~(同上;NSFW 从来不由这个 scope 执法,见下条)
@@ -80,9 +81,9 @@ POST /oauth/apikey/introspect          (s2s, 仅内网/带 s2s 凭证)
 | **归属**(owner guard) | 这个应用是**调用者的**吗? | `oauth_clients.owner_user_id == uid` | 404(不泄露他人应用是否存在) |
 | **平台策略矩阵**([02 §3.10](./02-public-api.md)) | 这件事**现在还开放**给开发者自助做吗? | `devapi_policy_overrides` / 代码默认 | 403(capability 关闭)或 409(应用未过审) |
 
-**策略层永远排在归属之后**——否则「某功能已关闭」这句回答会告诉一个非 owner 目标应用确实存在。唯二例外是 `POST /dev/apps` 与 `POST /dev/scope-applications`:它们没有归属可判,策略即第一道。
+**策略层永远排在归属之后**——否则「某功能已关闭」这句回答会告诉一个非 owner 目标应用确实存在。唯一例外是 `POST /dev/apps`:它没有归属可判,策略即第一道。(`POST /dev/scope-applications` 曾是第二个例外,随授权制于 2026-08-25 退役。)
 
-策略层与 scope 三档([02 §3.9](./02-public-api.md))也不重叠:scope 决定**一把 key 能打开哪张面**,策略决定**开发者能不能自己铸这把 key**。前者写在凭据上,后者写在流程上。
+策略层与 scope 判据([02 §3.9](./02-public-api.md))也不重叠:scope 决定**一把 key 能打开哪张面**,策略决定**开发者能不能自己铸这把 key**。前者写在凭据上,后者写在流程上。
 
 ---
 

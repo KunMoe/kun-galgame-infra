@@ -158,6 +158,16 @@ func runPlatform(cfg *config.Config, args []string) {
 		os.Exit(1)
 	}
 
+	// Retire devapi_scope_applications: /v1/news stopped asking for news:read on
+	// 2026-08-25, so nothing is applied for. Runs after AutoMigrate for the same
+	// reason as the two drops above — the model is gone, but a stale binary that
+	// still carried it would otherwise recreate the table underneath us.
+	// See devapi.DropScopeApplications for what the discarded rows were.
+	if err := devapi.DropScopeApplications(gormDB); err != nil {
+		slog.Error("failed to drop the retired devapi scope applications table", "error", err)
+		os.Exit(1)
+	}
+
 	// At most one PENDING creator application per user (GORM can't express a
 	// partial unique index). Backstops the service-layer "one pending" guard.
 	if err := gormDB.Exec(`
@@ -211,16 +221,15 @@ func getAllModels() []any {
 		&siteModel.OAuthClient{},
 		&siteModel.Role{},
 
-		// Developer platform (NextMoe open API): API keys + usage rollup +
-		// grant-only scope applications (2026-08-18: news:read stopped being a
-		// hand-cut key and became an application a key owner files in the portal)
-		// + the platform policy matrix (2026-08-18: one row per capability that
-		// departs from the code default; no row = the default).
+		// Developer platform (NextMoe open API): API keys + usage rollup + the
+		// platform policy matrix (2026-08-18: one row per capability that departs
+		// from the code default; no row = the default). The grant-only scope
+		// applications added here on 2026-08-18 were dropped on 2026-08-25 — see
+		// devapi.DropScopeApplications, called after AutoMigrate below.
 		// The oauth_clients dev_* / dev_review_* columns are handled by
 		// devapi.AddOAuthClientDevColumns above (raw SQL, pre-AutoMigrate).
 		&devapi.DeveloperAPIKey{},
 		&devapi.DeveloperAPIUsage{},
-		&devapi.ScopeApplication{},
 		&devapi.PolicyOverride{},
 
 		// NOTE: artifact models (Artifact/Manifest) moved to the dedicated

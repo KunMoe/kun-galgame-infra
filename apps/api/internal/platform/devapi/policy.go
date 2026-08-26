@@ -12,10 +12,9 @@ import (
 )
 
 const (
-	CapabilityAppCreate  = "app.create"
-	CapabilityAppManage  = "app.manage"
-	CapabilityKeyMint    = "key.mint"
-	CapabilityScopeApply = "scope.apply"
+	CapabilityAppCreate = "app.create"
+	CapabilityAppManage = "app.manage"
+	CapabilityKeyMint   = "key.mint"
 )
 
 const (
@@ -41,9 +40,8 @@ type Capability struct {
 }
 
 // The whole policy matrix. Hand-maintained, and deliberately NOT a mirror of
-// everything a portal user can do: the three scope tiers (catalog:read
-// self-service, news:read by application, everything else refused) keep their
-// own mechanism in gateForScope with their own tests, and putting them here too
+// everything a portal user can do: which scopes a key may carry keeps its own
+// mechanism in selfServiceScopes with its own tests, and putting it here too
 // would give one decision two sources of truth. Key revocation is likewise
 // absent on purpose — it is the stop-loss action and must survive any policy.
 var capabilities = []Capability{
@@ -71,15 +69,6 @@ var capabilities = []Capability{
 		LabelEN: "Mint own keys",
 		DescZH:  "用户能否为自己的应用铸造与轮换密钥;吊销不受此项影响,任何时候都可用。",
 		DescEN:  "Whether an owner may mint and rotate keys on their own applications. Revocation is never gated.",
-		Modes:   []string{PolicySelfService, PolicyDisabled},
-		Default: PolicySelfService,
-	},
-	{
-		Key:     CapabilityScopeApply,
-		LabelZH: "自助申请授权 scope",
-		LabelEN: "Apply for granted scopes",
-		DescZH:  "用户能否提交授权制 scope(news:read / store:read)的申请。",
-		DescEN:  "Whether an owner may file an application for a granted scope (news:read, store:read).",
 		Modes:   []string{PolicySelfService, PolicyDisabled},
 		Default: PolicySelfService,
 	},

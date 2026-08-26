@@ -16,9 +16,10 @@ const (
 	AppReviewDeclined = "declined"
 )
 
-// Same cap as a scope application's message, and counted the same way: these
-// notes are written in Chinese, where a 2000-byte cap is ~666 characters.
-const maxAppReviewNoteLen = maxScopeAppMessageLen
+// Counted in runes, not bytes: these notes are written in Chinese, where a byte
+// cap of 2000 is really ~666 characters — a limit the UI and the error text both
+// promise as 2000.
+const maxAppReviewNoteLen = 2000
 
 const (
 	AppFilterEnabled  = "enabled"

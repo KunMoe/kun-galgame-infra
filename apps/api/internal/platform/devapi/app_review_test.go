@@ -362,7 +362,6 @@ func TestAdminListAllKeys(t *testing.T) {
 
 func TestSelfServiceReviewHTTPStatuses(t *testing.T) {
 	cleanupSelf(t)
-	cleanupScopeApps(t)
 	cleanupPolicies(t)
 	svc, admin, _, _ := newSelfService(t)
 	ctx := context.Background()

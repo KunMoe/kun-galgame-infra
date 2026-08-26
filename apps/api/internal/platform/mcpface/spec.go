@@ -2,6 +2,8 @@ package mcpface
 
 import (
 	"encoding/json"
+	"net/http"
+	"sort"
 	"strings"
 )
 
@@ -31,7 +33,9 @@ type specParam struct {
 
 type ToolDesc struct {
 	Name        string
+	Method      string
 	Path        string
+	Summary     string
 	Description string
 	Params      []string
 	Required    []string
@@ -80,7 +84,9 @@ func ToolsFromSpec(raw []byte) ([]ToolDesc, error) {
 		params := append([]specParam{}, item.Parameters...)
 		params = append(params, op.Parameters...)
 		td := ToolDesc{
-			Name: name, Path: path, Description: desc, NeedsKey: httpNeedsKey(path),
+			Name: name, Method: http.MethodGet, Path: path,
+			Summary: strings.TrimSpace(op.Summary), Description: desc,
+			NeedsKey: httpNeedsKey(path),
 		}
 		seen := map[string]bool{}
 		for _, p := range params {
@@ -95,5 +101,9 @@ func ToolsFromSpec(raw []byte) ([]ToolDesc, error) {
 		}
 		out = append(out, td)
 	}
+	// doc.Paths is a map, so the order this loop produced is random per process.
+	// cmd/gen-v2-portal writes a committed file from this slice and CI diffs it,
+	// which an unsorted slice fails on roughly every second run.
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil
 }

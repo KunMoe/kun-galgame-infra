@@ -16,7 +16,7 @@ List every field-level error reason
 The closed registry of field-level reasons. Unauthenticated. Values in this list never appear as top-level codes.
 
 - 所属 API：Public API v2（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 鉴权：无需凭据
 - scope：无需凭据
 
 无参数。

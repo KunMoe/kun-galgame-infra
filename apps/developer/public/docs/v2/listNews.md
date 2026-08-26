@@ -16,7 +16,7 @@ List news items
 Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are required on every item.
 
 - 所属 API：Public API v2（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 鉴权：无需凭据
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |

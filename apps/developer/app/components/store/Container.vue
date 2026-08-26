@@ -71,11 +71,11 @@ const tiles = computed(() => [
         点击才归得到你这里。活动期还会附带优惠券领取链接。
       </p>
       <p class="max-w-2xl text-sm leading-relaxed text-default-500">
-        这一项是授权制。先在控制台为密钥申请
+        先在控制台铸密钥时勾选
         <code class="rounded bg-default-100 px-1.5 py-0.5 font-mono text-xs">
           {{ STORE_SCOPE }}
         </code>
-        ,批准后调一次
+        ,然后调一次
         <code class="rounded bg-default-100 px-1.5 py-0.5 font-mono text-xs">
           GET /v1/store/purchase-links/{product_id}
         </code>
@@ -83,7 +83,7 @@ const tiles = computed(() => [
       </p>
       <div class="flex flex-wrap gap-3">
         <KunButton color="primary" size="md" @click="navigateTo('/dashboard')">
-          去控制台申请
+          去控制台铸密钥
           <KunIcon name="lucide:arrow-right" class="ml-1 size-4" />
         </KunButton>
         <KunButton variant="flat" size="md" @click="navigateTo('/docs/store')">
