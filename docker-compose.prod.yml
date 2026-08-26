@@ -480,6 +480,19 @@ services:
       traefik.http.routers.infra-news-pub-http.entrypoints: web
       traefik.http.routers.infra-news-pub-http.middlewares: redirect-to-https@file
       traefik.http.routers.infra-news-pub-http.service: infra-catalog-pub
+      # /v1/store — the DLsite distribution face (w02) shipped without claiming
+      # its prefix here despite the warning three comments up; post-deploy
+      # probes on 2026-08-26 answered Traefik's own "404 page not found".
+      # Reachability only; the face's key + store:read gate is the access
+      # control.
+      traefik.http.routers.infra-store-pub.rule: Host(`api.nextmoe.dev`) && PathPrefix(`/v1/store`)
+      traefik.http.routers.infra-store-pub.entrypoints: websecure
+      traefik.http.routers.infra-store-pub.tls.certresolver: letsencrypt
+      traefik.http.routers.infra-store-pub.service: infra-catalog-pub
+      traefik.http.routers.infra-store-pub-http.rule: Host(`api.nextmoe.dev`) && PathPrefix(`/v1/store`)
+      traefik.http.routers.infra-store-pub-http.entrypoints: web
+      traefik.http.routers.infra-store-pub-http.middlewares: redirect-to-https@file
+      traefik.http.routers.infra-store-pub-http.service: infra-catalog-pub
       # /v1/playtime — documented on the developer portal since launch, but no
       # router ever claimed the prefix. Probes on 2026-08-17 answered Traefik's
       # own "404 page not found". Reachability only; the face's JWT gate is the
