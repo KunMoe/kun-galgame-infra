@@ -1,14 +1,8 @@
 <script setup lang="ts">
-import {
-  DEV_DISABLED_HINT,
-  DEV_GRANTABLE_SCOPES,
-  DEV_MINTABLE_SCOPES,
-  DEV_SCOPE_APP_STATUS_COLORS,
-  DEV_SCOPE_APP_STATUS_LABELS
-} from '~/constants/dev'
-import type { DevKeyMinted, DevScopeApplication } from '~~/shared/types/dev'
+import { DEV_MINTABLE_SCOPES } from '~/constants/dev'
+import type { DevKeyMinted } from '~~/shared/types/dev'
 
-const props = defineProps<{ clientId: string; scopeApplyDisabled?: boolean }>()
+const props = defineProps<{ clientId: string }>()
 const emit = defineEmits<{ minted: [DevKeyMinted] }>()
 
 const open = defineModel<boolean>('open', { required: true })
@@ -20,41 +14,12 @@ const scopes = ref<string[]>([...DEV_MINTABLE_SCOPES])
 const error = ref('')
 const isLoading = ref(false)
 
-const applications = ref<DevScopeApplication[]>([])
-const applyScope = ref('')
-const applyOpen = ref(false)
-
-const loadApplications = async () => {
-  const res = await api.get<DevScopeApplication[]>('/dev/scope-applications')
-  applications.value = res.code === 0 && res.data ? res.data : []
-}
-
-const applicationFor = (scope: string) =>
-  applications.value.find((a) => a.scope === scope) ?? null
-
-const isGranted = (scope: string) => applicationFor(scope)?.status === 'approved'
-
-const handleFiled = (filed: DevScopeApplication) => {
-  applyOpen.value = false
-  applications.value = [
-    ...applications.value.filter((a) => a.scope !== filed.scope),
-    filed
-  ]
-  useKunMessage('申请已提交，等待平台审核', 'success')
-}
-
-const openApply = (scope: string) => {
-  applyScope.value = scope
-  applyOpen.value = true
-}
-
 watch(open, (val) => {
   if (!val) return
   name.value = ''
   test.value = false
   scopes.value = [...DEV_MINTABLE_SCOPES]
   error.value = ''
-  loadApplications()
 })
 
 const toggleScope = (s: string) => {
@@ -124,55 +89,6 @@ const handleSubmit = async () => {
             @update:model-value="toggleScope(s)"
           />
         </div>
-
-        <div
-          v-for="s in DEV_GRANTABLE_SCOPES"
-          :key="`grant-${s}`"
-          class="mt-2 rounded-lg border border-default-200 bg-content1 px-3 py-2"
-        >
-          <div class="flex flex-wrap items-center gap-2">
-            <KunCheckBox
-              :model-value="scopes.includes(s)"
-              :label="s"
-              color="primary"
-              :disabled="!isGranted(s)"
-              @update:model-value="toggleScope(s)"
-            />
-            <KunChip color="warning" variant="flat" size="xs">授权制</KunChip>
-            <KunChip
-              v-if="applicationFor(s)"
-              :color="DEV_SCOPE_APP_STATUS_COLORS[applicationFor(s)!.status]"
-              variant="flat"
-              size="xs"
-            >
-              {{ DEV_SCOPE_APP_STATUS_LABELS[applicationFor(s)!.status] }}
-            </KunChip>
-            <KunButton
-              v-if="!isGranted(s) && applicationFor(s)?.status !== 'pending'"
-              size="xs"
-              variant="flat"
-              color="primary"
-              class="ml-auto"
-              :disabled="scopeApplyDisabled"
-              @click="openApply(s)"
-            >
-              {{ applicationFor(s) ? '重新申请' : '申请授权' }}
-            </KunButton>
-          </div>
-          <p v-if="scopeApplyDisabled" class="mt-1 text-xs text-default-400">
-            {{ DEV_DISABLED_HINT }}：暂不接受新的 scope 授权申请。
-          </p>
-          <p
-            v-if="applicationFor(s)?.status === 'declined'"
-            class="mt-1 text-xs text-danger"
-          >
-            未获批准：{{ applicationFor(s)!.decline_reason }}
-          </p>
-          <p v-else-if="!isGranted(s)" class="mt-1 text-xs text-default-400">
-            只有 v1 的 /v1/news 需要它——/v2/news 与 MCP 上的资讯工具都不要任何凭据，先去那边看看是不是已经够用。
-            确实要 v1 的话，提交申请说明用途，批准后即可在这里自助勾选。
-          </p>
-        </div>
       </div>
 
       <div class="rounded-lg border border-default-200 p-3">
@@ -200,11 +116,5 @@ const handleSubmit = async () => {
         </KunButton>
       </div>
     </div>
-
-    <KeysScopeApplyModal
-      v-model:open="applyOpen"
-      :scope="applyScope"
-      @filed="handleFiled"
-    />
   </KunModal>
 </template>

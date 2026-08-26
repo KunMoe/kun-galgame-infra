@@ -34,8 +34,7 @@ export const DOCS_FACE_META: Record<
     icon: 'lucide:newspaper',
     label: '资讯',
     tagline:
-      '合作媒体的 Galgame 资讯索引：标题、摘要、题图与回源链接，正文不下发。这个 v1 面的密钥须带 news:read，该权限授权制——登录门户后在控制台申请，批准后即可自助勾选；同一份索引在 /v2/news 上无需任何凭据。',
-    badge: '授权制'
+      '合作媒体的 Galgame 资讯索引：标题、摘要、题图与回源链接，正文不下发。门户自助铸造的密钥即可调用，任意 scope 均可；免凭据的同一批内容在 /v2/news。'
   },
   store: {
     icon: 'lucide:shopping-bag',

@@ -125,10 +125,10 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
         每个工具对应一条公开 GET，工具名就是 OpenAPI
         <code class="font-mono text-xs">operationId</code>，参数集合就是 HTTP 的 query 与 path（含
         <code class="font-mono text-xs">view=</code> /
-        <code class="font-mono text-xs">fields=</code>）。完整契约见
+        <code class="font-mono text-xs">fields=</code>）。这份清单由
+        <code class="font-mono text-xs">cmd/gen-v2-portal</code>
+        从同一份 v2 OpenAPI 生成，与 server 注册的工具集逐条一致。完整契约见
         <NuxtLink to="/docs/v2" class="text-primary hover:underline">API v2 文档</NuxtLink>。
-        v2 资讯面无凭证，MCP 上 news 工具也不再要求
-        <code class="font-mono text-xs">news:read</code>。
       </p>
       <ul class="mt-4 space-y-2">
         <li
@@ -141,6 +141,12 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
           >
             {{ tool.name }}
           </code>
+          <span
+            v-if="!tool.needsKey"
+            class="w-fit shrink-0 rounded-full bg-success-50 px-2 py-1 text-xs font-medium text-success-600"
+          >
+            无需密钥
+          </span>
           <span class="text-sm text-default-500">{{ tool.desc }}</span>
         </li>
       </ul>

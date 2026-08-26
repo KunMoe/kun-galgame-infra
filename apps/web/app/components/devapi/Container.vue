@@ -191,8 +191,6 @@ const emptyHint = computed(() =>
 
     <DevapiPendingApps @reviewed="refreshAll" />
 
-    <DevapiScopeApplications />
-
     <DevapiEnableModal
       v-model:open="showEnableModal"
       :candidates="candidates"

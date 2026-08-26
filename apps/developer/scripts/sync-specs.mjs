@@ -27,8 +27,9 @@
  * `/api/v1/user/catalog/edit` and names every op under that prefix as include
  * or exclude. The rest of that spec (S2S, claims, covers, submit) is a
  * first-party surface and is not portal-documented. `news/public-openapi.yaml`
- * and `store/public-openapi.yaml` are the fourth and fifth faces, API-key faces
- * whose scopes are grant-only.
+ * is the fourth face, an API-key face that requires no particular scope (it was
+ * grant-only until the news:read retirement on 2026-08-25), and
+ * `store/public-openapi.yaml` is the fifth, an API-key face gated by store:read.
  *
  * Operation GROUPING is derived here, not in the specs: the OpenAPI tags put
  * every operation of a face in one bucket (`catalog-public`, `playtime`, …),

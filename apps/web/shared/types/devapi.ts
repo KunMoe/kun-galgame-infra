@@ -68,15 +68,3 @@ export interface DevKeyMinted extends DevKey {
   key: string
 }
 
-export interface DevScopeApplication {
-  id: number
-  user_id: number
-  scope: string
-  message: string
-  status: 'pending' | 'approved' | 'declined'
-  reviewer_id?: number
-  decline_reason: string
-  created_at: string
-  reviewed_at?: string
-}
-

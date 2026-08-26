@@ -17,7 +17,7 @@ export interface DevApp {
 
 export type DevPolicyMode = 'self_service' | 'approval' | 'disabled'
 
-// Keyed by capability (app.create / app.manage / key.mint / scope.apply).
+// Keyed by capability (app.create / app.manage / key.mint).
 export type DevPolicies = Record<string, DevPolicyMode>
 
 export interface DevKey {
@@ -35,16 +35,6 @@ export interface DevKey {
 
 export interface DevKeyMinted extends DevKey {
   key: string
-}
-
-export interface DevScopeApplication {
-  id: number
-  scope: string
-  message: string
-  status: 'pending' | 'approved' | 'declined'
-  decline_reason: string
-  created_at: string
-  reviewed_at?: string
 }
 
 export interface DevUsageDayFace {
