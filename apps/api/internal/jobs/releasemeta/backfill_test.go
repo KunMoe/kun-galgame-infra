@@ -2,6 +2,7 @@ package releasemeta
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -11,19 +12,21 @@ import (
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/seed"
 	srcb "api/internal/platform/catalog/srcbangumi"
+	srcv "api/internal/platform/catalog/srcvndb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/datatypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 var (
-	testDB      *gorm.DB
-	testDSN     string
-	dlTestDSN   string
-	egTestDSN   string
+	testDB    *gorm.DB
+	testDSN   string
+	dlTestDSN string
+	egTestDSN string
 )
 
 func TestMain(m *testing.M) {
@@ -48,11 +51,16 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "SKIP: src_bangumi schema failed: %v\n", err)
 		os.Exit(0)
 	}
+	if err := srcv.EnsureSchema(db); err != nil {
+		fmt.Fprintf(os.Stderr, "SKIP: src_vndb schema failed: %v\n", err)
+		os.Exit(0)
+	}
 	for _, ddl := range []string{
 		`CREATE SCHEMA IF NOT EXISTS releasemeta_dl`,
 		`CREATE TABLE IF NOT EXISTS releasemeta_dl.works (workno text PRIMARY KEY, regist_date timestamptz, age_category text)`,
 		`CREATE SCHEMA IF NOT EXISTS releasemeta_eg`,
 		`CREATE TABLE IF NOT EXISTS releasemeta_eg.games (id int PRIMARY KEY, sellday text)`,
+		`ALTER TABLE releasemeta_eg.games ADD COLUMN IF NOT EXISTS erogame boolean`,
 	} {
 		if err := db.Exec(ddl).Error; err != nil {
 			fmt.Fprintf(os.Stderr, "SKIP: fixture schema failed: %v\n", err)
@@ -69,6 +77,7 @@ func clean(t *testing.T) {
 	t.Helper()
 	for _, table := range []string{
 		"catalog_external_ref", "catalog_release", "catalog_work", "src_bangumi.subject",
+		"src_vndb.releases", "src_vndb.releases_vn",
 		"releasemeta_dl.works", "releasemeta_eg.games",
 	} {
 		require.NoError(t, testDB.Exec("TRUNCATE "+table+" RESTART IDENTITY CASCADE").Error)
@@ -125,6 +134,25 @@ func mkSubject(t *testing.T, id int64, date string, nsfw bool) {
 	}).Error)
 }
 
+func mkSubjectMeta(t *testing.T, id int64, nsfw bool, meta ...string) {
+	t.Helper()
+	tags, err := json.Marshal(meta)
+	require.NoError(t, err)
+	require.NoError(t, testDB.Create(&srcb.Subject{
+		ID: id, Type: 4, Name: fmt.Sprintf("subject-%d", id),
+		NSFW: nsfw, MetaTags: datatypes.JSON(tags),
+		ParserVersion: srcb.ParserVersion, IngestedAt: time.Now(),
+	}).Error)
+}
+
+func mkVndbRelease(t *testing.T, vid, rid string, minage *int16, hasEro, patch bool) {
+	t.Helper()
+	require.NoError(t, testDB.Create(&srcv.Release{
+		ID: rid, OLang: "ja", MinAge: minage, HasEro: hasEro, Patch: patch,
+	}).Error)
+	require.NoError(t, testDB.Create(&srcv.ReleaseVN{ID: rid, VID: vid, RType: "complete"}).Error)
+}
+
 func mkDlWork(t *testing.T, workno, regist, age string) {
 	t.Helper()
 	require.NoError(t, testDB.Exec(
@@ -135,6 +163,12 @@ func mkDlWork(t *testing.T, workno, regist, age string) {
 func mkEgGame(t *testing.T, id int64, sellday string) {
 	t.Helper()
 	require.NoError(t, testDB.Exec(`INSERT INTO releasemeta_eg.games (id, sellday) VALUES (?, ?)`, id, sellday).Error)
+}
+
+func mkEgErogame(t *testing.T, id int64, erogame bool) {
+	t.Helper()
+	require.NoError(t, testDB.Exec(
+		`INSERT INTO releasemeta_eg.games (id, sellday, erogame) VALUES (?, '', ?)`, id, erogame).Error)
 }
 
 func relDate(t *testing.T, id int64) (y, m, d *int16) {
@@ -301,7 +335,6 @@ func TestBackfillReleaseMeta(t *testing.T) {
 	mkReleaseAnchor(t, relRDlAll, "RJ000103", reg.dlsiteSource)
 	mkDlWork(t, "RJ000103", "", "1")
 
-
 	rBgm := mkWork(t, medium, "rating-bgm-nsfw", nil, nil, 0)
 	mkWorkAnchor(t, rBgm, "708", reg.bangumiSource, model.LinkKindExact)
 	mkSubject(t, 708, "", true)
@@ -314,6 +347,44 @@ func TestBackfillReleaseMeta(t *testing.T) {
 	relRRated := mkRelease(t, rRated, 2000, 1, 1)
 	mkReleaseAnchor(t, relRRated, "RJ000104", reg.dlsiteSource)
 	mkDlWork(t, "RJ000104", "", "2")
+
+	age18 := int16(18)
+	age0 := int16(0)
+
+	rVndb18 := mkWork(t, medium, "rating-vndb-minage", nil, nil, 0)
+	mkWorkAnchor(t, rVndb18, "v901", reg.vndbSource, model.LinkKindExact)
+	mkVndbRelease(t, "v901", "r901", &age18, false, false)
+
+	rVndbEro := mkWork(t, medium, "rating-vndb-ero", nil, nil, 0)
+	mkWorkAnchor(t, rVndbEro, "v902", reg.vndbSource, model.LinkKindExact)
+	mkVndbRelease(t, "v902", "r902", nil, true, false)
+
+	rVndbPatch := mkWork(t, medium, "rating-vndb-patch-only", nil, nil, 0)
+	mkWorkAnchor(t, rVndbPatch, "v903", reg.vndbSource, model.LinkKindExact)
+	mkVndbRelease(t, "v903", "r903", &age18, true, true)
+
+	rVndbSafe := mkWork(t, medium, "rating-vndb-all-ages", nil, nil, 0)
+	mkWorkAnchor(t, rVndbSafe, "v904", reg.vndbSource, model.LinkKindExact)
+	mkVndbRelease(t, "v904", "r904", &age0, false, false)
+
+	rVndbBeatsDl := mkWork(t, medium, "rating-vndb-beats-dl-allages", nil, nil, 0)
+	relVndbBeatsDl := mkRelease(t, rVndbBeatsDl, 2000, 1, 1)
+	mkReleaseAnchor(t, relVndbBeatsDl, "RJ000105", reg.dlsiteSource)
+	mkDlWork(t, "RJ000105", "", "1")
+	mkWorkAnchor(t, rVndbBeatsDl, "v905", reg.vndbSource, model.LinkKindExact)
+	mkVndbRelease(t, "v905", "r905", &age18, true, false)
+
+	rEgTrue := mkWork(t, medium, "rating-eg-erogame", nil, nil, 0)
+	mkWorkAnchor(t, rEgTrue, "611", reg.egSource, model.LinkKindExact)
+	mkEgErogame(t, 611, true)
+
+	rEgFalse := mkWork(t, medium, "rating-eg-not-erogame", nil, nil, 0)
+	mkWorkAnchor(t, rEgFalse, "612", reg.egSource, model.LinkKindExact)
+	mkEgErogame(t, 612, false)
+
+	rBgmMeta := mkWork(t, medium, "rating-bgm-meta-tag", nil, nil, 0)
+	mkWorkAnchor(t, rBgmMeta, "710", reg.bangumiSource, model.LinkKindExact)
+	mkSubjectMeta(t, 710, false, "游戏", "R18")
 
 	st, err := Run(ctx, runOpts(false))
 	require.NoError(t, err)
@@ -334,13 +405,15 @@ func TestBackfillReleaseMeta(t *testing.T) {
 	assert.Equal(t, 1, st.BgmDateBadDate)
 	assert.Equal(t, 1, st.BgmDatePartial)
 	assert.Equal(t, 2, st.BgmDatePlanned, "wBgmClaimed + wBgmPartial")
-	assert.Equal(t, 24, st.RatingCandidates, "every rating-0 work; rRated excluded")
+	assert.Equal(t, 32, st.RatingCandidates, "every rating-0 work; rRated excluded")
+	assert.Equal(t, 3, st.RatingVndbR18, "minage + has_ero + the dl-allages preemption")
 	assert.Equal(t, 1, st.RatingDlR18)
 	assert.Equal(t, 1, st.RatingDlSensitive)
 	assert.Equal(t, 1, st.RatingDlAllAges, "explicit all-ages verdict keeps the row at 0")
-	assert.Equal(t, 1, st.RatingBgmR18)
-	assert.Equal(t, 20, st.RatingNoVerdict)
-	assert.Equal(t, 3, st.RatingPlanned, "rDlAdult + rDlR15 + rBgm")
+	assert.Equal(t, 1, st.RatingEgR18)
+	assert.Equal(t, 2, st.RatingBgmR18, "nsfw flag + R18 meta_tag")
+	assert.Equal(t, 23, st.RatingNoVerdict)
+	assert.Equal(t, 8, st.RatingPlanned)
 	assert.Zero(t, st.DlDateFilled+st.EgDateFilled+st.BgmDateFilled+st.RatingFilled+
 		st.DlDateSkippedNonEmpty+st.EgDateSkippedNonEmpty+st.BgmDateSkippedNonEmpty+
 		st.RatingSkippedNonEmpty+st.Errors)
@@ -353,7 +426,7 @@ func TestBackfillReleaseMeta(t *testing.T) {
 	assert.Equal(t, 2, st.DlDateFilled)
 	assert.Equal(t, 4, st.EgDateFilled)
 	assert.Equal(t, 2, st.BgmDateFilled)
-	assert.Equal(t, 3, st.RatingFilled)
+	assert.Equal(t, 8, st.RatingFilled)
 	assert.Zero(t, st.DlDateSkippedNonEmpty+st.EgDateSkippedNonEmpty+st.BgmDateSkippedNonEmpty+
 		st.RatingSkippedNonEmpty+st.Errors)
 
@@ -377,13 +450,22 @@ func TestBackfillReleaseMeta(t *testing.T) {
 	assert.Equal(t, model.ContentRatingR18, workRating(t, rBgm))
 	assert.Equal(t, int16(0), workRating(t, rBgmFalse), "nsfw=false never infers a rating")
 	assert.Equal(t, model.ContentRatingR18, workRating(t, rRated), "non-zero rating untouched")
+	assert.Equal(t, model.ContentRatingR18, workRating(t, rVndb18))
+	assert.Equal(t, model.ContentRatingR18, workRating(t, rVndbEro))
+	assert.Equal(t, int16(0), workRating(t, rVndbPatch), "an 18+ patch is not the work's rating")
+	assert.Equal(t, int16(0), workRating(t, rVndbSafe))
+	assert.Equal(t, model.ContentRatingR18, workRating(t, rVndbBeatsDl),
+		"work-level vndb verdict outranks the 全年齢版 SKU's dlsite age")
+	assert.Equal(t, model.ContentRatingR18, workRating(t, rEgTrue))
+	assert.Equal(t, int16(0), workRating(t, rEgFalse), "erogame=false never infers a rating")
+	assert.Equal(t, model.ContentRatingR18, workRating(t, rBgmMeta))
 
 	st, err = Run(ctx, runOpts(true))
 	require.NoError(t, err)
 	assert.Equal(t, 3, st.DlDateCandidates, "only the unfillable three remain")
 	assert.Equal(t, 2, st.EgDateCandidates, "bad-date + missing-mirror remain")
 	assert.Equal(t, 2, st.BgmDateCandidates, "no-date + garbage remain")
-	assert.Equal(t, 21, st.RatingCandidates, "the three filled works left the set")
+	assert.Equal(t, 24, st.RatingCandidates, "the eight filled works left the set")
 	assert.Zero(t, st.DlDatePlanned+st.EgDatePlanned+st.BgmDatePlanned+st.RatingPlanned,
 		"second pass plans zero")
 	assert.Zero(t, st.DlDateFilled+st.EgDateFilled+st.BgmDateFilled+st.RatingFilled+st.Errors,
