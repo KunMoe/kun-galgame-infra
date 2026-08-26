@@ -17575,6 +17575,12 @@ export const docsModel: DocsModel = {
               "summary": "List every top-level error code",
               "description": "The closed registry of top-level error codes. Keyset-paginated. Unauthenticated.",
               "scope": "",
+              "auth": {
+                "kind": "none",
+                "curl": "",
+                "display": "无需凭据",
+                "note": "匿名可调 —— 目录规模是公开数字,不需要 API 密钥"
+              },
               "params": [
                 {
                   "name": "cursor",
@@ -18208,6 +18214,12 @@ export const docsModel: DocsModel = {
               "summary": "List every field-level error reason",
               "description": "The closed registry of field-level reasons. Unauthenticated. Values in this list never appear as top-level codes.",
               "scope": "",
+              "auth": {
+                "kind": "none",
+                "curl": "",
+                "display": "无需凭据",
+                "note": "匿名可调 —— 目录规模是公开数字,不需要 API 密钥"
+              },
               "params": [],
               "responses": [
                 {
@@ -18482,6 +18494,12 @@ export const docsModel: DocsModel = {
               "summary": "Get one top-level error code",
               "description": "Returns the registry entry for one code. Unknown codes are 404 NOT_FOUND, not 422 — the path parameter is a lookup key, not a closed enum.",
               "scope": "",
+              "auth": {
+                "kind": "none",
+                "curl": "",
+                "display": "无需凭据",
+                "note": "匿名可调 —— 目录规模是公开数字,不需要 API 密钥"
+              },
               "params": [
                 {
                   "name": "code",
@@ -18973,6 +18991,12 @@ export const docsModel: DocsModel = {
               "summary": "List published vocabularies",
               "description": "Closed and seed-open vocabularies. Keyset-paginated. Unauthenticated.",
               "scope": "",
+              "auth": {
+                "kind": "none",
+                "curl": "",
+                "display": "无需凭据",
+                "note": "匿名可调 —— 目录规模是公开数字,不需要 API 密钥"
+              },
               "params": [
                 {
                   "name": "cursor",
@@ -19602,6 +19626,12 @@ export const docsModel: DocsModel = {
               "summary": "Get one vocabulary",
               "description": "Returns every published value of one vocabulary. Unknown names are 404 NOT_FOUND.",
               "scope": "",
+              "auth": {
+                "kind": "none",
+                "curl": "",
+                "display": "无需凭据",
+                "note": "匿名可调 —— 目录规模是公开数字,不需要 API 密钥"
+              },
               "params": [
                 {
                   "name": "name",
@@ -46678,6 +46708,12 @@ export const docsModel: DocsModel = {
               "summary": "Editable-field schema for one family",
               "description": "Unauthenticated metadata: include tokens, FULL_SET, and editing-engine fields. Actor capabilities are not evaluated. Unknown object is 404 NOT_FOUND. schemas/release sets creation_disabled.",
               "scope": "",
+              "auth": {
+                "kind": "none",
+                "curl": "",
+                "display": "无需凭据",
+                "note": "匿名可调 —— 目录规模是公开数字,不需要 API 密钥"
+              },
               "params": [
                 {
                   "name": "object",
@@ -50258,6 +50294,12 @@ export const docsModel: DocsModel = {
               "summary": "Catalog totals",
               "description": "Live entity counts. Unauthenticated.",
               "scope": "",
+              "auth": {
+                "kind": "none",
+                "curl": "",
+                "display": "无需凭据",
+                "note": "匿名可调 —— 目录规模是公开数字,不需要 API 密钥"
+              },
               "params": [],
               "responses": [
                 {
@@ -72550,6 +72592,12 @@ export const docsModel: DocsModel = {
               "summary": "List news items",
               "description": "Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are required on every item.",
               "scope": "",
+              "auth": {
+                "kind": "none",
+                "curl": "",
+                "display": "无需凭据",
+                "note": "匿名可调 —— 目录规模是公开数字,不需要 API 密钥"
+              },
               "params": [
                 {
                   "name": "cursor",
@@ -73299,6 +73347,12 @@ export const docsModel: DocsModel = {
               "summary": "List news sources",
               "description": "Every attributed news source. Unauthenticated.",
               "scope": "",
+              "auth": {
+                "kind": "none",
+                "curl": "",
+                "display": "无需凭据",
+                "note": "匿名可调 —— 目录规模是公开数字,不需要 API 密钥"
+              },
               "params": [],
               "responses": [
                 {
@@ -73821,6 +73875,12 @@ export const docsModel: DocsModel = {
               "summary": "Get one news item",
               "description": "A published news item. Withdrawn items are 404. Unauthenticated. source and source_url are always present.",
               "scope": "",
+              "auth": {
+                "kind": "none",
+                "curl": "",
+                "display": "无需凭据",
+                "note": "匿名可调 —— 目录规模是公开数字,不需要 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -74535,6 +74595,12 @@ export const docsModel: DocsModel = {
               "summary": "List my claims",
               "description": "Claims the bearer submitted. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "cursor",
@@ -75552,6 +75618,12 @@ export const docsModel: DocsModel = {
               "summary": "Submit a claim",
               "description": "Mint or claim a work. Requires a user access token bound to a catalog site.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [],
               "requestBody": {
                 "type": "object",
@@ -76760,6 +76832,12 @@ export const docsModel: DocsModel = {
               "summary": "Get one of my claims",
               "description": "id is the catalog work id. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -77635,6 +77713,12 @@ export const docsModel: DocsModel = {
               "summary": "Move a claim the caller owns",
               "description": "PATCH {state: live|pending|withdrawn}. live publishes a draft without review, pending submits it for review, withdrawn returns it to draft. The owner may act, and an unowned claim is adopted by its first claimant. If-Match required. Requires a user access token bound to a catalog site.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -78833,6 +78917,12 @@ export const docsModel: DocsModel = {
               "summary": "List my cover votes",
               "description": "Every cover the bearer has voted up. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [],
               "responses": [
                 {
@@ -79667,6 +79757,12 @@ export const docsModel: DocsModel = {
               "summary": "Cast a cover vote",
               "description": "Only vote=up is stored. One ballot per work. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "cover_id",
@@ -80548,6 +80644,12 @@ export const docsModel: DocsModel = {
               "summary": "Withdraw a cover vote",
               "description": "204 with no body. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "cover_id",
@@ -81380,6 +81482,12 @@ export const docsModel: DocsModel = {
               "summary": "Upload an image for an edit proposal",
               "description": "multipart/form-data with preset and file. Returns the hash an edit proposal carries in a cover or screenshot row. Requires a user access token bound to a catalog site.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [],
               "responses": [
                 {
@@ -82604,6 +82712,12 @@ export const docsModel: DocsModel = {
               "summary": "List my news items",
               "description": "Items under the sources bound to the bearer, pending included. Keyset-paginated. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "cursor",
@@ -83693,6 +83807,12 @@ export const docsModel: DocsModel = {
               "summary": "Submit a news item",
               "description": "Always lands on pending: publishing is a human step. source must be bound to the bearer and active. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [],
               "requestBody": {
                 "type": "object",
@@ -84989,6 +85109,12 @@ export const docsModel: DocsModel = {
               "summary": "Get one of my news items",
               "description": "Carries an ETag for If-Match. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -85936,6 +86062,12 @@ export const docsModel: DocsModel = {
               "summary": "Edit or withdraw one of my news items",
               "description": "While pending, edits title/summary/source_url/banner_hash/work_ids and sends the item back for machine scoring. Once published the only legal transition is {\"status\":\"withdrawn\"} with If-Match. rejected is terminal.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -87231,6 +87363,12 @@ export const docsModel: DocsModel = {
               "summary": "List my playtimes",
               "description": "The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token. Any app may call this; playtime:read is not required.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "cursor",
@@ -88243,6 +88381,12 @@ export const docsModel: DocsModel = {
               "summary": "Batch write playtimes",
               "description": "207 Multi-Status. Each item is a playtime or a problem. Requires a user access token. Any app may call this; playtime:write is not required.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [],
               "requestBody": {
                 "type": "object",
@@ -89600,6 +89744,12 @@ export const docsModel: DocsModel = {
               "summary": "Get my playtime on one work",
               "description": "404 when the user has never reported. Requires a user access token. Any app may call this; playtime:read is not required.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "work_id",
@@ -90463,6 +90613,12 @@ export const docsModel: DocsModel = {
               "summary": "Replace my playtime on one work",
               "description": "Absolute minutes. Naturally idempotent. Requires a user access token. Any app may call this; playtime:write is not required.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "work_id",
@@ -91334,6 +91490,12 @@ export const docsModel: DocsModel = {
               "summary": "Delete my playtime on one work",
               "description": "204 with no body. Requires a user access token. Any app may call this; playtime:write is not required.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "work_id",
@@ -92166,6 +92328,12 @@ export const docsModel: DocsModel = {
               "summary": "List my proposals",
               "description": "state= filters open/merged/declined/withdrawn. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "cursor",
@@ -93331,6 +93499,12 @@ export const docsModel: DocsModel = {
               "summary": "File a proposal",
               "description": "Requires a user access token bound to a catalog site.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [],
               "requestBody": {
                 "type": "object",
@@ -94669,6 +94843,12 @@ export const docsModel: DocsModel = {
               "summary": "Get one of my proposals",
               "description": "Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -95699,6 +95879,12 @@ export const docsModel: DocsModel = {
               "summary": "Amend or withdraw a proposal",
               "description": "If-Match required. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -97042,6 +97228,12 @@ export const docsModel: DocsModel = {
               "summary": "Append an amendment",
               "description": "If-Match required. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -98396,6 +98588,12 @@ export const docsModel: DocsModel = {
               "summary": "Moderation claim queue",
               "description": "Pending claims. Requires a user access token with review authority.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "cursor",
@@ -99413,6 +99611,12 @@ export const docsModel: DocsModel = {
               "summary": "Get one moderation claim",
               "description": "id is the catalog work id. Site-fenced. Requires a user access token bound to a catalog site.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -100288,6 +100492,12 @@ export const docsModel: DocsModel = {
               "summary": "Decide a claim",
               "description": "decision=approve|decline|ban|unban. unban restores the state the claim was hidden from. If-Match required, and the ETag comes from GET /v2/moderation/claims/{id}. Requires the catalog.claim.review permission.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -101491,6 +101701,12 @@ export const docsModel: DocsModel = {
               "summary": "Moderation proposal queue",
               "description": "Open proposals on the token site.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "cursor",
@@ -102649,6 +102865,12 @@ export const docsModel: DocsModel = {
               "summary": "Get one moderation proposal",
               "description": "Site-fenced. include=patch adds the proposed and effective patches a decision is taken on. The ETag is the validator POST /v2/moderation/proposals/{id}/decisions takes as If-Match.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -103679,6 +103901,12 @@ export const docsModel: DocsModel = {
               "summary": "Decide a proposal",
               "description": "decision=merge|decline. If-Match required.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "id",
@@ -104880,6 +105108,12 @@ export const docsModel: DocsModel = {
               "summary": "Revert to a revision",
               "description": "Body names revision_id. Requires a user access token bound to a catalog site.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [],
               "requestBody": {
                 "type": "object",
@@ -106203,6 +106437,12 @@ export const docsModel: DocsModel = {
               "summary": "Current edit snapshot",
               "description": "Registered field values. Requires a user access token.",
               "scope": "",
+              "auth": {
+                "kind": "user_token",
+                "curl": "Authorization: Bearer <ACCESS_TOKEN>",
+                "display": "Authorization: Bearer <用户访问令牌>",
+                "note": "用户授权后的访问令牌,不是 API 密钥"
+              },
               "params": [
                 {
                   "name": "object",

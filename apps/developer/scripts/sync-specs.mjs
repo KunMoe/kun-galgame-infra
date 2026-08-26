@@ -221,7 +221,7 @@ const authForPath = (faceDef, path) => {
   return faceDef.auth
 }
 
-const buildOperation = (method, path, op, { schemas, scope, auth }) => {
+const buildOperation = (method, path, op, { schemas, scope, auth, faceAuth }) => {
   const params = buildParams(op.parameters)
 
   let requestBody
@@ -251,7 +251,13 @@ const buildOperation = (method, path, op, { schemas, scope, auth }) => {
     summary: op.summary || '',
     ...(op.description && { description: op.description }),
     scope: override ? '' : scope,
-    ...(override && { auth: override }),
+    // Whatever departs from the face default must land in the model — the
+    // renderers fall back to face.auth for an op without its own. Until
+    // 2026-08-26 only OPERATION_AUTH_OVERRIDES was emitted, so every
+    // credential-free /v2 operation's page and Markdown twin printed the face's
+    // "Bearer nmk_live_…" line, and /v2/me printed a machine key for a face
+    // that takes a user token.
+    ...(effective !== faceAuth && { auth: effective }),
     params,
     ...(requestBody && { requestBody }),
     responses,
@@ -315,7 +321,8 @@ const buildFace = (faceDef, specs) => {
         buildOperation(method, path, op, {
           schemas,
           scope: scopeFn,
-          auth
+          auth,
+          faceAuth: faceDef.auth
         })
       )
     }
