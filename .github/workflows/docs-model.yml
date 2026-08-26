@@ -35,6 +35,7 @@ on:
       # this gate and the drift landed on whoever next touched a listed path.
       - "docs/catalog/v2-openapi.yaml"
       - "docs/news/public-openapi.yaml"
+      - "docs/store/public-openapi.yaml"
       - "apps/developer/scripts/sync-specs.mjs"
       - "apps/developer/scripts/faces.mjs"
       - "apps/developer/scripts/gen-llms.mjs"

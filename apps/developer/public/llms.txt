@@ -25,14 +25,16 @@
 - 应用密钥（`Authorization: Bearer nmk_live_…`）——在 https://developer.nextmoe.dev 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 只有 catalog:read。/v2 只收 nmk_ 前缀的密钥，v1 两代都收。
 - 用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation（以及 v1 的游玩时长、编辑提案）读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。
 - news:read 只是 v1 资讯面的门：/v2/news 与 MCP 上的资讯工具都无需凭据，多数接入不必申请它。确实要调 /v1/news 的话，它是授权制——合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。
+- store:read 同为授权制：分销链接按调用站签发，谁能拿由平台逐个决定。在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/store 一律 403。
 - `/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 `/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。
 
-## 5 个 API
+## 6 个 API
 
 - [目录数据 API（只读）](https://developer.nextmoe.dev/docs/catalog.md)：`/v1/catalog`，37 个端点，凭据 Authorization: Bearer nmk_live_…。
 - [游玩时长 API](https://developer.nextmoe.dev/docs/playtime.md)：`/v1/playtime`，5 个端点，凭据 Authorization: Bearer <用户访问令牌>。
 - [编辑提案 API](https://developer.nextmoe.dev/docs/edit.md)：`/api/v1/user/catalog/edit`，6 个端点，凭据 Authorization: Bearer <用户访问令牌>。
 - [资讯 API（授权制）](https://developer.nextmoe.dev/docs/news.md)：`/v1/news`，3 个端点，凭据 Authorization: Bearer nmk_live_…。
+- [分销链接 API（授权制）](https://developer.nextmoe.dev/docs/store.md)：`/v1/store`，2 个端点，凭据 Authorization: Bearer nm_live_…。
 - [Public API v2](https://developer.nextmoe.dev/docs/v2.md)：`/v2`，84 个端点，凭据 Authorization: Bearer nmk_live_…。
 
 ## 页面 Markdown 索引
@@ -45,6 +47,7 @@
 - https://developer.nextmoe.dev/docs/playtime.md — 游玩时长 API
 - https://developer.nextmoe.dev/docs/edit.md — 编辑提案 API
 - https://developer.nextmoe.dev/docs/news.md — 资讯 API（授权制）
+- https://developer.nextmoe.dev/docs/store.md — 分销链接 API（授权制）
 - https://developer.nextmoe.dev/docs/v2.md — Public API v2
 - https://developer.nextmoe.dev/docs/mcp.md — AI / MCP 接入
 - https://developer.nextmoe.dev/docs/<face>/<operationId>.md — 单个端点

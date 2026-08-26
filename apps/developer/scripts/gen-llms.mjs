@@ -31,6 +31,8 @@ const AUTH_MODEL = [
   'news:read 只是 v1 资讯面的门：/v2/news 与 MCP 上的资讯工具都无需凭据，多数接入不必申请它。' +
     '确实要调 /v1/news 的话，它是授权制——合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，' +
     `在 ${SITE_URL} 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。`,
+  'store:read 同为授权制：分销链接按调用站签发，谁能拿由平台逐个决定。' +
+    `在 ${SITE_URL} 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/store 一律 403。`,
   '`/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 ' +
     '`/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。'
 ]

@@ -37,6 +37,13 @@ export const DOCS_FACE_META: Record<
       '合作媒体的 Galgame 资讯索引：标题、摘要、题图与回源链接，正文不下发。这个 v1 面的密钥须带 news:read，该权限授权制——登录门户后在控制台申请，批准后即可自助勾选；同一份索引在 /v2/news 上无需任何凭据。',
     badge: '授权制'
   },
+  store: {
+    icon: 'lucide:shopping-bag',
+    label: '分销链接',
+    tagline:
+      'DLsite 商品的分销短链：每个调用站拿到自己那一条，点击按 JST 日去重后归到你站上，活动期还会附带优惠券领取链接。密钥须带 store:read，该权限授权制——登录门户后在控制台申请。',
+    badge: '授权制'
+  },
   v2: {
     icon: 'lucide:sparkles',
     label: 'API v2',

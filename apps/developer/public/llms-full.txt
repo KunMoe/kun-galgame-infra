@@ -9,7 +9,7 @@
 
 **署名**：目前阶段使用 NextMoe·未萌 API，可以将 API 的名字标记为『鲲 Galgame 论坛』（如果你使用 Galgame 数据）或『LetMoe·一启萌』（如果你使用同人游戏数据）。
 
-本文件内联全部 135 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
+本文件内联全部 137 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
 
 ## 数据来源（六源）
 
@@ -27,6 +27,7 @@
 - 应用密钥（`Authorization: Bearer nmk_live_…`）——在 https://developer.nextmoe.dev 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 只有 catalog:read。/v2 只收 nmk_ 前缀的密钥，v1 两代都收。
 - 用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation（以及 v1 的游玩时长、编辑提案）读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。
 - news:read 只是 v1 资讯面的门：/v2/news 与 MCP 上的资讯工具都无需凭据，多数接入不必申请它。确实要调 /v1/news 的话，它是授权制——合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。
+- store:read 同为授权制：分销链接按调用站签发，谁能拿由平台逐个决定。在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/store 一律 403。
 - `/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 `/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。
 
 ---
@@ -1195,6 +1196,65 @@ The 404 is a contract, not a lookup failure: a withdrawn item must stop being ad
 ```bash
 curl "https://api.nextmoe.dev/v1/news/1" \
   -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+---
+
+# 分销链接 API（授权制）
+
+- 路径前缀：`/v1/store`
+- 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,但须带 store:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选）
+- 端点数：2
+
+> 一站一链：同一个商品，每个调用站拿到的短链都不一样，点击才归得到你站上。拿到 purchase_url 就原样用，别自己拼 DLsite 联盟地址——裸联盟链不经过计数器，等于这次点击白送。
+
+> 去重是我们对 DLsite 的承诺，不是开关：同一条短链、同一个 JST 日、同一个指纹（IP 与 User-Agent 的 SHA-256）只算一次。刷次数刷不出量，只会让全生态的点击/销售比失真。
+
+> 券链看活动：没有进行中的活动时 coupon_url 与 campaign 都是 null，前端要能在只有购买链接时正常渲染。
+
+> 铸链是懒的、结果是稳的：第一次请求某个商品时才去铸短链，之后永远是同一条，所以自己缓存一份最省事。每个应用能铸链的不同商品数有上限，超了返回 403。
+
+## 分销链接
+
+### GET /v1/store/purchase-links/{product_id}
+
+Your site's own DLsite purchase link for one product, plus the coupon link when a campaign is running
+
+Returns a short link that belongs to YOUR application, not a shared one: every calling site gets its own alias for the same product so the clicks can be attributed back to it. Send readers to purchase_url as-is — it is the only URL that gets counted, and a bare affiliate URL bypasses the counter entirely. coupon_url and campaign are null whenever no coupon campaign is running. Clicks are de-duplicated: one (link, JST calendar day, fingerprint) counts once, where the fingerprint is SHA-256 of the client IP and User-Agent. That de-duplication is a commitment we made to DLsite, not a knob. Links are minted lazily on first request and then stable forever, so calling this per page render is fine, but caching the result on your side is cheaper. Each application may mint links for a bounded number of distinct products; asking for more returns 403.
+
+- 所属 API：分销链接 API（授权制）（/v1/store）
+- 鉴权：Authorization: Bearer nm_live_…
+- scope：store:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `product_id` | path | 是 | string | DLsite product number: RJ###### (doujin) or VJ###### (commercial), 6-8 digits |
+
+```bash
+curl "https://api.nextmoe.dev/v1/store/purchase-links/value" \
+  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+```
+
+## 点击统计
+
+### GET /v1/store/me/stats
+
+Your application's own click counts, per link per JST day
+
+Per-day totals and de-duplicated uniques for every link this application has minted, purchase and coupon alike — the kind field tells them apart, and product_id / campaign_id say which link a row belongs to. Days are JST calendar days because the settlement month is DLsite's JST calendar month. The range is a closed interval of at most 92 days and defaults to the last 30. Days with no clicks are omitted entirely. uniques is the number settlement uses; total is the raw click count before de-duplication. The counts are synchronised from the redirector hourly, so the current day is always partial.
+
+- 所属 API：分销链接 API（授权制）（/v1/store）
+- 鉴权：Authorization: Bearer nm_live_…
+- scope：store:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `from` | query | 否 | string | First JST day to report, YYYY-MM-DD (inclusive). Defaults to 29 days before 'to' |
+| `to` | query | 否 | string | Last JST day to report, YYYY-MM-DD (inclusive). Defaults to today in JST |
+
+```bash
+curl "https://api.nextmoe.dev/v1/store/me/stats" \
+  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
 ```
 
 ---

@@ -3,6 +3,7 @@ export default defineEventHandler(async (event): Promise<unknown> => {
   const raw = event.context.params?.path ?? ''
   const path = new URL(raw, 'http://relay.local/').pathname.slice(1)
   const allowed =
+    path.startsWith('v1/store/') ||
     path.startsWith('v2/catalog/') ||
     path === 'v2/catalog' ||
     path.startsWith('v2/news/') ||
@@ -11,7 +12,10 @@ export default defineEventHandler(async (event): Promise<unknown> => {
     path.startsWith('v2/vocabularies')
   if (!allowed) {
     setResponseStatus(event, 404)
-    return { code: 404, message: 'only /v2 public reads are relayed' }
+    return {
+      code: 404,
+      message: 'only /v1/store/* and /v2 public reads are relayed'
+    }
   }
   const base = useRuntimeConfig(event).nextmoeApiBase
   const query = getQuery(event)

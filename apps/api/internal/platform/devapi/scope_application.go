@@ -24,7 +24,7 @@ const (
 const maxScopeAppMessageLen = 2000
 
 var (
-	ErrScopeNotGrantable   = errors.New("devapi: scope is not applied for (want news:read)")
+	ErrScopeNotGrantable   = errors.New("devapi: scope is not applied for (want news:read or store:read)")
 	ErrScopeAppMessage     = errors.New("devapi: message is required")
 	ErrScopeAppMsgTooLong  = errors.New("devapi: message too long (max 2000)")
 	ErrScopeAppPending     = errors.New("devapi: an application for this scope is already awaiting review")

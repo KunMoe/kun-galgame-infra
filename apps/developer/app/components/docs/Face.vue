@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DOCS_FACE_META } from '~/constants/docs'
+import { DEV_GRANTABLE_SCOPES } from '~/constants/dev'
 
 const route = useRoute()
 const { findFace, faceOperationCount } = useDocs()
@@ -12,6 +13,15 @@ if (!face.value) {
 
 const current = computed(() => face.value!)
 const meta = computed(() => DOCS_FACE_META[current.value.key])
+
+const grantScope = computed(() => {
+  const scopes = current.value.groups.flatMap((g) =>
+    g.operations.map((o) => o.scope)
+  )
+  return scopes.find((s) =>
+    (DEV_GRANTABLE_SCOPES as readonly string[]).includes(s)
+  )
+})
 
 useSeoMeta({
   title: () => `${current.value.name} · API 文档`,
@@ -80,6 +90,15 @@ useSeoMeta({
           去控制台申请
         </NuxtLink>
         ，铸密钥的对话框里就能提交，也能看到自己这份申请是待审、已批准还是被拒（含理由）。
+      </p>
+      <p
+        v-else-if="grantScope"
+        class="mt-3 text-sm text-default-500"
+      >
+        <NuxtLink to="/dashboard" class="text-primary hover:underline">
+          去控制台申请 {{ grantScope }}
+        </NuxtLink>
+        —— 铸密钥的对话框里就能提交，也能看到自己这份申请是待审、已批准还是被拒（含理由）。
       </p>
     </header>
 
