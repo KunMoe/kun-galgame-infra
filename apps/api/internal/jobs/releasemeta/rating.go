@@ -3,6 +3,7 @@ package releasemeta
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"api/internal/platform/catalog/editspec"
 	"api/internal/platform/catalog/model"
@@ -11,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func runRatingLane(ctx context.Context, db, dlDB *gorm.DB, w *writer, reg registry, opts Opts) error {
+func runRatingLane(ctx context.Context, db, dlDB, egDB *gorm.DB, w *writer, reg registry, opts Opts) error {
 	cands, err := loadRatingCandidates(ctx, db, opts.Limit, opts.Offset)
 	if err != nil {
 		return fmt.Errorf("load rating candidates: %w", err)
@@ -26,15 +27,27 @@ func runRatingLane(ctx context.Context, db, dlDB *gorm.DB, w *writer, reg regist
 	if err != nil {
 		return fmt.Errorf("load rating dlsite anchors: %w", err)
 	}
-	bgmNSFW, err := loadRatingBgmNSFW(ctx, db, reg)
+	vndbR18, err := loadRatingVndbR18(ctx, db, reg)
 	if err != nil {
-		return fmt.Errorf("load rating bgm nsfw: %w", err)
+		return fmt.Errorf("load rating vndb r18: %w", err)
+	}
+	egAnchors, err := loadRatingEgAnchors(ctx, db, reg)
+	if err != nil {
+		return fmt.Errorf("load rating eg anchors: %w", err)
+	}
+	bgmR18, err := loadRatingBgmR18(ctx, db, reg)
+	if err != nil {
+		return fmt.Errorf("load rating bgm r18: %w", err)
 	}
 
 	worknoSet := map[string]bool{}
+	egIDSet := map[int64]bool{}
 	for _, c := range cands {
 		if wn, ok := dlAnchors[c.WorkID]; ok {
 			worknoSet[wn] = true
+		}
+		for _, id := range egAnchors[c.WorkID] {
+			egIDSet[id] = true
 		}
 	}
 	worknos := make([]string, 0, len(worknoSet))
@@ -44,6 +57,14 @@ func runRatingLane(ctx context.Context, db, dlDB *gorm.DB, w *writer, reg regist
 	dlAges, err := loadDlsiteAges(ctx, dlDB, worknos)
 	if err != nil {
 		return fmt.Errorf("load dlsite mirror ages: %w", err)
+	}
+	egIDs := make([]int64, 0, len(egIDSet))
+	for id := range egIDSet {
+		egIDs = append(egIDs, id)
+	}
+	egErogame, err := loadEgErogame(ctx, egDB, egIDs)
+	if err != nil {
+		return fmt.Errorf("load eg mirror erogame: %w", err)
 	}
 
 	ratingWorkIDs := make([]int64, 0, len(cands))
@@ -63,7 +84,7 @@ func runRatingLane(ctx context.Context, db, dlDB *gorm.DB, w *writer, reg regist
 			st.RatingCuratedOverride++
 			continue
 		}
-		rating, source, ext, ok := decideRating(c, dlAnchors, dlAges, bgmNSFW, st)
+		rating, source, ext, ok := decideRating(c, dlAnchors, dlAges, vndbR18, egAnchors, egErogame, bgmR18, st)
 		if !ok {
 			st.RatingNoVerdict++
 			continue
@@ -78,8 +99,18 @@ func runRatingLane(ctx context.Context, db, dlDB *gorm.DB, w *writer, reg regist
 	return nil
 }
 
+// VNDB outranks the DLsite storefront age: the dlsite anchor is release-level,
+// so a 全年齢版 SKU's age "1" describes that edition, while the vndb verdict is
+// the work-level "an 18+ release exists". With dlsite first, such a work took
+// an all-ages verdict (written as nothing) and stayed 0 forever.
 func decideRating(c ratingCandidate, dlAnchors map[int64]string, dlAges map[string]string,
-	bgmNSFW map[int64]bool, st *Stats) (int16, string, string, bool) {
+	vndbR18 map[int64]bool, egAnchors map[int64][]int64, egErogame map[int64]bool,
+	bgmR18 map[int64]bool, st *Stats) (int16, string, string, bool) {
+
+	if vndbR18[c.WorkID] {
+		st.RatingVndbR18++
+		return model.ContentRatingR18, "vndb", "", true
+	}
 
 	if wn, ok := dlAnchors[c.WorkID]; ok {
 		switch dlAges[wn] {
@@ -95,15 +126,20 @@ func decideRating(c ratingCandidate, dlAnchors map[int64]string, dlAges map[stri
 		}
 	}
 
-	// ② was the wiki's editorial age_limit, read from galgame.age_limit for
-	// claimed works. Wave 149 dropped that table, so the lane is gone rather
-	// than merely unfilled. It had in fact stopped producing verdicts earlier:
-	// its claim test pinned site == "galgame_wiki", the literal wave 161
-	// renamed, so it silently matched nothing from then on. Removing it is
-	// behaviour-neutral; the numbering below keeps ③ so the priority ladder
-	// still reads against the spec.
+	// The wiki's editorial age_limit lane used to sit here, read from
+	// galgame.age_limit for claimed works. Wave 149 dropped that table, so the
+	// lane is gone rather than merely unfilled. It had in fact stopped
+	// producing verdicts earlier: its claim test pinned site == "galgame_wiki",
+	// the literal wave 161 renamed, so it silently matched nothing from then on.
 
-	if bgmNSFW[c.WorkID] {
+	for _, id := range egAnchors[c.WorkID] {
+		if egErogame[id] {
+			st.RatingEgR18++
+			return model.ContentRatingR18, "erogamescape", strconv.FormatInt(id, 10), true
+		}
+	}
+
+	if bgmR18[c.WorkID] {
 		st.RatingBgmR18++
 		return model.ContentRatingR18, "bangumi", "", true
 	}

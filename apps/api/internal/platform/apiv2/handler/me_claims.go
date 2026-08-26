@@ -200,6 +200,10 @@ func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayNa
 			editspec.FieldWorkDisplayName: displayName,
 			editspec.FieldWorkLinks:       links,
 		}
+		crefs := make([]catsvc.ClaimRef, 0, len(refs))
+		for _, r := range refs {
+			crefs = append(crefs, catsvc.ClaimRef{Source: r.Source, ExternalID: r.ExternalID})
+		}
 		product := int64(0)
 		if siteWorkID != "" {
 			if n, ok := repr.ParseID(siteWorkID); ok {
@@ -207,7 +211,8 @@ func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayNa
 			}
 		}
 		res, serr := c.Claims.SubmitWork(ctx, catsvc.SubmitWorkParams{
-			Site: site, ProductWorkID: product, ActorUID: uid, Fields: fields,
+			Site: site, ProductWorkID: product, ActorUID: uid,
+			ContentRating: c.Claims.DeriveContentRating(ctx, crefs), Fields: fields,
 		})
 		if serr != nil {
 			return repr.ClaimRecord{}, claimWriteErr(serr)
