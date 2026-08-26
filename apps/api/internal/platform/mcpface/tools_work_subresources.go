@@ -101,14 +101,14 @@ type workSubresourceInput struct {
 	ID     int  `json:"id" jsonschema:"The catalog work id (required) — the very id catalog_work_get takes."`
 	Limit  int  `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 100); above 100 is clamped, a non-positive value is a 400."`
 	Offset int  `json:"offset,omitempty" jsonschema:"Rows to skip."`
-	Nsfw   bool `json:"nsfw,omitempty" jsonschema:"true = include r18 (requires an API key with the NSFW capability; default false = hidden). It gates the WORK, not the rows: without it an r18 work 404s on every block, and a row's own sexual/violence level is reported rather than filtered on."`
+	Nsfw   bool `json:"nsfw,omitempty" jsonschema:"true = include r18 (default false = hidden). It gates the WORK, not the rows: without it an r18 work 404s on every block, and a row's own sexual/violence level is reported rather than filtered on."`
 }
 
 type workTagsInput struct {
 	ID       int  `json:"id" jsonschema:"The catalog work id (required) — the very id catalog_work_get takes."`
 	Limit    int  `json:"limit,omitempty" jsonschema:"Items per page 1-100 (default 100); above 100 is clamped, a non-positive value is a 400."`
 	Offset   int  `json:"offset,omitempty" jsonschema:"Rows to skip."`
-	Nsfw     bool `json:"nsfw,omitempty" jsonschema:"true = include r18 (requires an API key with the NSFW capability; default false = hidden). It gates the WORK and also decides work_count: an sfw caller's count excludes the r18 works it can never fetch."`
+	Nsfw     bool `json:"nsfw,omitempty" jsonschema:"true = include r18 (default false = hidden). It gates the WORK and also decides work_count: an sfw caller's count excludes the r18 works it can never fetch."`
 	Spoilers int  `json:"spoilers,omitempty" jsonschema:"Max tag spoiler level 0-2 (default 0 = safe). Rows above the ceiling are omitted entirely and consume no page slot, so raising it can change what a given offset points at."`
 }
 

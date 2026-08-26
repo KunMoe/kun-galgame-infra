@@ -93,11 +93,11 @@ const handleSubmit = async () => {
 
       <div class="rounded-lg border border-default-200 p-3">
         <div class="flex items-center gap-2 text-sm text-default-500">
-          <KunIcon name="lucide:shield-off" class="size-4 text-default-400" />
-          NSFW scope：Phase 1 暂不发放
+          <KunIcon name="lucide:info" class="size-4 text-default-400" />
+          NSFW 内容已全量公开，无需授权
         </div>
         <p class="mt-1 text-xs text-default-400">
-          — 当前所有密钥恒为 SFW 投影；NSFW 授权将在后续阶段开放。
+          — 任意密钥均可请求 nsfw=true；不传该参数时仍默认只返回 SFW 内容。
         </p>
       </div>
 

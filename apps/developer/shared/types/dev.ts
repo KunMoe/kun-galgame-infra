@@ -27,7 +27,6 @@ export interface DevKey {
   key_prefix: string
   last4: string
   scopes: string[]
-  nsfw_allowed: boolean
   expires_at?: string
   revoked_at?: string
   last_used_at?: string
