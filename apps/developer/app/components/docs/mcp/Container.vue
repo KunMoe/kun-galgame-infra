@@ -141,12 +141,6 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
           >
             {{ tool.name }}
           </code>
-          <span
-            v-if="tool.grant"
-            class="w-fit shrink-0 rounded-full bg-warning-50 px-2 py-1 text-xs font-medium text-warning-600"
-          >
-            授权制
-          </span>
           <span class="text-sm text-default-500">{{ tool.desc }}</span>
         </li>
       </ul>

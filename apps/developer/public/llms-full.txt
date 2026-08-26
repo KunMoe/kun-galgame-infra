@@ -26,7 +26,7 @@
 
 - 应用密钥（`Authorization: Bearer nmk_live_…`）——在 https://developer.nextmoe.dev 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 只有 catalog:read。/v2 只收 nmk_ 前缀的密钥，v1 两代都收。
 - 用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation（以及 v1 的游玩时长、编辑提案）读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。
-- news:read 是授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定。在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。/v2/news 不受此限，无需凭据。
+- news:read 只是 v1 资讯面的门：/v2/news 与 MCP 上的资讯工具都无需凭据，多数接入不必申请它。确实要调 /v1/news 的话，它是授权制——合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。
 - `/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 `/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。
 
 ---
@@ -1127,6 +1127,8 @@ curl -X POST "https://api.nextmoe.dev/api/v1/user/catalog/edit/proposals/1/withd
 - 路径前缀：`/v1/news`
 - 凭据：Authorization: Bearer nmk_live_…（机器 API 密钥,但须带 news:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选）
 - 端点数：3
+
+> 先看 /v2/news：同一份资讯索引在 v2 上无需任何凭据，MCP 上的资讯工具也一样。news:read 只是这个 v1 面的门，多数接入不必申请它。
 
 > 授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，所以 news:read 不是自助勾一下就有的。在开发者门户控制台提交申请并说明用途，批准后这一项就出现在铸密钥的可勾选项里；没有它的密钥调这三条路径一律 403。
 
@@ -3204,7 +3206,7 @@ curl "https://api.nextmoe.dev/v2/moderation/snapshots/value/value" \
 
 # AI / MCP 接入
 
-NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 https://mcp.nextmoe.dev/mcp，Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——每次工具调用就是一次对公开 /v1 端点的请求，鉴权、限流、配额与用量与直连毫无区别。
+NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 https://mcp.nextmoe.dev/mcp，Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——每次工具调用就是一次对公开 /v2 端点的请求，鉴权、限流、配额与用量与直连毫无区别；资讯、词表、错误码注册表与目录规模统计在这里同样不要凭据。
 
 ## 工具（37 个）
 
@@ -3242,6 +3244,6 @@ NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端�
 - `catalog_work_series`：作品所属系列块（单块分页）。member_count 是系列的**全部**成员数而非本页——顺着它用 catalog_works_list series_id= 或 catalog_series_get include_works（后者才给阅读顺序）。
 - `catalog_work_links`：作品的非身份外链块（官网 / Steam / X 等，单块分页）。这些是**地址不是锚**，身份锚在 catalog_work_get 的 refs[]；dlsite / dmm 这类无法由裸 code 还原商店 URL 的源按设计不在此面，仍从 refs[] 走。
 - `catalog_work_engines`：作品的引擎块（单块分页，每行带 nsfw 感知 work_count = 该调用方用 catalog_works_search engine_id= 真能翻到的作品数）。
-- `news_list`（授权制，需 news:read）：合作媒体的 Galgame 资讯索引（按来源 / 泳道 / 关联作品 / 发布时间窗过滤，keyset 分页）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。
-- `news_sources`（授权制，需 news:read）：资讯来源注册表：每家媒体的 key、名称、主页、专栏入口，以及该渲染的归属文案。无参数。
-- `news_get`（授权制，需 news:read）：按 id 取单条资讯。已撤回的、上游原文已消失的条目返回 404——这是契约不是查不到，别重试，也别拿缓存副本顶上。
+- `news_list`：合作媒体的 Galgame 资讯索引（按来源 / 泳道 / 关联作品 / 发布时间窗过滤，keyset 分页）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。
+- `news_sources`：资讯来源注册表：每家媒体的 key、名称、主页、专栏入口，以及该渲染的归属文案。无参数。
+- `news_get`：按 id 取单条资讯。已撤回的、上游原文已消失的条目返回 404——这是契约不是查不到，别重试，也别拿缓存副本顶上。

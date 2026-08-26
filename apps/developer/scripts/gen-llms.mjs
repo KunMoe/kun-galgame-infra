@@ -28,9 +28,9 @@ const AUTH_MODEL = [
     '/v2 只收 nmk_ 前缀的密钥，v1 两代都收。',
   '用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation（以及 v1 的游玩时长、编辑提案）' +
     '读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。',
-  'news:read 是授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定。' +
-    `在 ${SITE_URL} 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。` +
-    '/v2/news 不受此限，无需凭据。',
+  'news:read 只是 v1 资讯面的门：/v2/news 与 MCP 上的资讯工具都无需凭据，多数接入不必申请它。' +
+    '确实要调 /v1/news 的话，它是授权制——合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，' +
+    `在 ${SITE_URL} 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。`,
   '`/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 ' +
     '`/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。'
 ]
@@ -176,13 +176,14 @@ const mcpSection = () => {
     '',
     `NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 ${MCP_ENDPOINT}，` +
       'Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——' +
-      '每次工具调用就是一次对公开 /v1 端点的请求，鉴权、限流、配额与用量与直连毫无区别。',
+      '每次工具调用就是一次对公开 /v2 端点的请求，鉴权、限流、配额与用量与直连毫无区别；' +
+      '资讯、词表、错误码注册表与目录规模统计在这里同样不要凭据。',
     '',
     `## 工具（${MCP_TOOLS.length} 个）`,
     ''
   ]
   for (const tool of MCP_TOOLS) {
-    lines.push(`- \`${tool.name}\`${tool.grant ? '（授权制，需 news:read）' : ''}：${tool.desc}`)
+    lines.push(`- \`${tool.name}\`：${tool.desc}`)
   }
   lines.push('')
   return lines

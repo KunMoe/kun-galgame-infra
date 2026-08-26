@@ -169,7 +169,8 @@ const handleSubmit = async () => {
             未获批准：{{ applicationFor(s)!.decline_reason }}
           </p>
           <p v-else-if="!isGranted(s)" class="mt-1 text-xs text-default-400">
-            资讯 API 的权限由平台授予：提交申请说明用途，批准后即可在这里自助勾选。
+            只有 v1 的 /v1/news 需要它——/v2/news 与 MCP 上的资讯工具都不要任何凭据，先去那边看看是不是已经够用。
+            确实要 v1 的话，提交申请说明用途，批准后即可在这里自助勾选。
           </p>
         </div>
       </div>

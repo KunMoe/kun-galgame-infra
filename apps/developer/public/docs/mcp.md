@@ -9,7 +9,7 @@
 
 **署名**：目前阶段使用 NextMoe·未萌 API，可以将 API 的名字标记为『鲲 Galgame 论坛』（如果你使用 Galgame 数据）或『LetMoe·一启萌』（如果你使用同人游戏数据）。
 
-NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 https://mcp.nextmoe.dev/mcp，Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——每次工具调用就是一次对公开 /v1 端点的请求，鉴权、限流、配额与用量与直连毫无区别。
+NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 https://mcp.nextmoe.dev/mcp，Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——每次工具调用就是一次对公开 /v2 端点的请求，鉴权、限流、配额与用量与直连毫无区别；资讯、词表、错误码注册表与目录规模统计在这里同样不要凭据。
 
 ## 工具（37 个）
 
@@ -47,9 +47,9 @@ NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端�
 - `catalog_work_series`：作品所属系列块（单块分页）。member_count 是系列的**全部**成员数而非本页——顺着它用 catalog_works_list series_id= 或 catalog_series_get include_works（后者才给阅读顺序）。
 - `catalog_work_links`：作品的非身份外链块（官网 / Steam / X 等，单块分页）。这些是**地址不是锚**，身份锚在 catalog_work_get 的 refs[]；dlsite / dmm 这类无法由裸 code 还原商店 URL 的源按设计不在此面，仍从 refs[] 走。
 - `catalog_work_engines`：作品的引擎块（单块分页，每行带 nsfw 感知 work_count = 该调用方用 catalog_works_search engine_id= 真能翻到的作品数）。
-- `news_list`（授权制，需 news:read）：合作媒体的 Galgame 资讯索引（按来源 / 泳道 / 关联作品 / 发布时间窗过滤，keyset 分页）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。
-- `news_sources`（授权制，需 news:read）：资讯来源注册表：每家媒体的 key、名称、主页、专栏入口，以及该渲染的归属文案。无参数。
-- `news_get`（授权制，需 news:read）：按 id 取单条资讯。已撤回的、上游原文已消失的条目返回 404——这是契约不是查不到，别重试，也别拿缓存副本顶上。
+- `news_list`：合作媒体的 Galgame 资讯索引（按来源 / 泳道 / 关联作品 / 发布时间窗过滤，keyset 分页）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。
+- `news_sources`：资讯来源注册表：每家媒体的 key、名称、主页、专栏入口，以及该渲染的归属文案。无参数。
+- `news_get`：按 id 取单条资讯。已撤回的、上游原文已消失的条目返回 404——这是契约不是查不到，别重试，也别拿缓存副本顶上。
 
 ---
 本页来源 · NextMoe 开发者平台 · https://developer.nextmoe.dev/docs/mcp

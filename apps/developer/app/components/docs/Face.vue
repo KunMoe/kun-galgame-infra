@@ -72,10 +72,14 @@ useSeoMeta({
         v-if="current.key === 'news'"
         class="mt-3 text-sm text-default-500"
       >
-        <NuxtLink to="/dashboard" class="text-primary hover:underline">
-          去控制台申请 news:read
+        <NuxtLink to="/docs/v2" class="text-primary hover:underline">
+          /v2/news 无需任何凭据
         </NuxtLink>
-        —— 铸密钥的对话框里就能提交，也能看到自己这份申请是待审、已批准还是被拒（含理由）。
+        ——同一份资讯索引，直接调即可；news:read 只是这个 v1 面的门。真要 v1 的话，
+        <NuxtLink to="/dashboard" class="text-primary hover:underline">
+          去控制台申请
+        </NuxtLink>
+        ，铸密钥的对话框里就能提交，也能看到自己这份申请是待审、已批准还是被拒（含理由）。
       </p>
     </header>
 

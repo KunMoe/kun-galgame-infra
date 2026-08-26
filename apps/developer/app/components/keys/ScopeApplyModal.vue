@@ -47,7 +47,10 @@ const handleSubmit = async () => {
       <div>
         <h2 class="text-xl font-bold text-foreground">申请 {{ scope }}</h2>
         <p class="mt-1 text-sm text-default-500">
-          资讯来自合作媒体，它们授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定。
+          它只解锁 v1 的 /v1/news；同一份资讯在 /v2/news 上无需任何凭据，多数接入不必申请。
+        </p>
+        <p class="mt-1 text-sm text-default-500">
+          v1 面的资讯来自合作媒体，它们授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定。
           说清楚你要拿它做什么，我们审阅后批准或拒绝；批准后你就能自己给密钥勾上这一项。
         </p>
       </div>

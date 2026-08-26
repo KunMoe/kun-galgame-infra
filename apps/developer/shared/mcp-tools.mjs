@@ -1,9 +1,11 @@
 // The MCP tool roster, in one place. Plain .mjs because both consumers must
 // read the SAME list: docs/mcp/Container.vue renders it, and
 // scripts/gen-llms.mjs (bare node, no TS loader) writes docs/mcp.md from it.
-// `grant: true` marks the three news tools whose scope the platform grants —
-// losing that flag ships a page that tells an agent to call something it will
-// only ever get a 403 from.
+// The news tools carried `grant: true` (news:read is granted, not self-served)
+// until the MCP server was rebuilt from the /v2 spec: its news tools call
+// /v2/news, which takes no credential at all. The flag outlived the cutover and
+// the page rendered a 授权制 badge one paragraph under prose saying the badge
+// no longer applied. news:read still gates /v1/news — that face keeps it.
 
 export const MCP_TOOLS = [
   {
@@ -144,17 +146,14 @@ export const MCP_TOOLS = [
   },
   {
     name: 'news_list',
-    grant: true,
     desc: '合作媒体的 Galgame 资讯索引（按来源 / 泳道 / 关联作品 / 发布时间窗过滤，keyset 分页）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。'
   },
   {
     name: 'news_sources',
-    grant: true,
     desc: '资讯来源注册表：每家媒体的 key、名称、主页、专栏入口，以及该渲染的归属文案。无参数。'
   },
   {
     name: 'news_get',
-    grant: true,
     desc: '按 id 取单条资讯。已撤回的、上游原文已消失的条目返回 404——这是契约不是查不到，别重试，也别拿缓存副本顶上。'
   }
 ]
