@@ -14,7 +14,6 @@ type DeveloperAPIKey struct {
 	KeyPrefix       string         `gorm:"size:24;not null;index" json:"key_prefix"`
 	Last4           string         `gorm:"size:4;not null" json:"last4"`
 	Scopes          datatypes.JSON `gorm:"type:jsonb;not null" json:"scopes"`
-	NSFWAllowed     bool           `gorm:"not null" json:"nsfw_allowed"`
 	ExpiresAt       *time.Time     `json:"expires_at,omitempty"`
 	RevokedAt       *time.Time     `json:"revoked_at,omitempty"`
 	LastUsedAt      *time.Time     `json:"last_used_at,omitempty"`

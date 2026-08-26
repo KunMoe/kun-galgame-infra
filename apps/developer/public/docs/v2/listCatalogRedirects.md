@@ -31,7 +31,7 @@ Redirects from merged-away ids, oldest first. Keyset-paginated. object= restrict
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `object` | query | 否 | string | Restrict to one family. Closed: work, release, character, credit_name, person, company, tag, engine. |
 
 ```bash

@@ -76,29 +76,31 @@ func TestCatalogAuthLookupRejectsUnknownAndUnscopedKeys(t *testing.T) {
 	require.Equal(t, problem.CodeScopeRequired, p.Code)
 
 	status, p = authGET(t, app, "/v2/catalog/works?nsfw=true", sfw)
-	require.Equal(t, 403, status)
-	require.Equal(t, problem.CodeNSFWCapabilityRequired, p.Code)
+	require.Equal(t, 503, status)
+	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 }
 
-func TestCatalogAuthLookupHonoursNSFWCapability(t *testing.T) {
-	nsfw := mustV2Key(t)
+func TestCatalogAuthLookupAllowsNSFWForAnyKey(t *testing.T) {
+	plain := mustV2Key(t)
 	lookup := func(_ context.Context, raw string) (*devapi.Credential, error) {
-		if raw == nsfw {
-			return &devapi.Credential{
-				KeyID: 3, NSFWAllowed: true, Scopes: []string{devapi.ScopeCatalogRead},
-			}, nil
+		if raw == plain {
+			return &devapi.Credential{KeyID: 3, Scopes: []string{devapi.ScopeCatalogRead}}, nil
 		}
 		return nil, nil
 	}
 	app := testAppLookup(t, lookup)
 
-	status, p := authGET(t, app, "/v2/catalog/works?nsfw=true", nsfw)
+	status, p := authGET(t, app, "/v2/catalog/works?nsfw=true", plain)
 	require.Equal(t, 503, status)
 	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 
-	status, p = authGET(t, app, "/v2/catalog/works/1?nsfw=true", nsfw)
+	status, p = authGET(t, app, "/v2/catalog/works/1?nsfw=true", plain)
 	require.Equal(t, 503, status)
 	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
+
+	status, p = authGET(t, app, "/v2/catalog/works?nsfw=yes", plain)
+	require.Equal(t, 400, status)
+	require.Equal(t, problem.CodeInvalidParameter, p.Code)
 }
 
 func TestCatalogAuthLookupStoreFailureIs503(t *testing.T) {
@@ -110,9 +112,9 @@ func TestCatalogAuthLookupStoreFailureIs503(t *testing.T) {
 	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 }
 
-func TestCatalogAuthStubStillFailClosedForNSFW(t *testing.T) {
+func TestCatalogAuthStubServesNSFWWithoutACapability(t *testing.T) {
 	app := testApp(t)
 	status, p := authGET(t, app, "/v2/catalog/works?nsfw=true", "test")
-	require.Equal(t, 403, status)
-	require.Equal(t, problem.CodeNSFWCapabilityRequired, p.Code)
+	require.Equal(t, 503, status)
+	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 }

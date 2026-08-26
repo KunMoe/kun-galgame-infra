@@ -102,6 +102,15 @@ func runPlatform(cfg *config.Config, args []string) {
 		os.Exit(1)
 	}
 
+	// developer_api_keys.nsfw_allowed outlives the NSFW capability that owned
+	// it (retired 2026-08-25) and is no longer on the model, so it needs its
+	// DEFAULT back before the first key is minted without the column.
+	// Idempotent. See devapi.RestoreKeyNSFWDefault.
+	if err := devapi.RestoreKeyNSFWDefault(gormDB); err != nil {
+		slog.Error("failed to restore the developer key nsfw_allowed default", "error", err)
+		os.Exit(1)
+	}
+
 	// developer_api_usage.path (the matched route pattern) + the 4→5 column
 	// rebuild of idx_usage_day, for the same reason and one more: AutoMigrate
 	// never alters an index that already exists, so the widened unique key has

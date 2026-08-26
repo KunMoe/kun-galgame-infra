@@ -31,7 +31,7 @@ The bearer user's playtime rows. work_ids= is a batch read. Requires a user acce
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `work_ids` | query | 否 | string | Comma-separated work ids, max 100. Batch read, no pagination. |
 
 ```bash

@@ -32,7 +32,7 @@ type CollectionInput struct {
 	IncludeTotal string `query:"include_total" maxLength:"8" doc:"true to include total. Only true or false."`
 	Facets       string `query:"facets" maxLength:"512" doc:"Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET."`
 	Sort         string `query:"sort" maxLength:"32" doc:"Closed per-collection sort key."`
-	NSFW         string `query:"nsfw" maxLength:"8" doc:"true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."`
+	NSFW         string `query:"nsfw" maxLength:"8" doc:"true includes r18. false or absent hides r18. Only true or false."`
 }
 
 type listVocabOutput struct {
@@ -61,7 +61,7 @@ type listWorksInput struct {
 	IncludeTotal   string `query:"include_total" maxLength:"8" doc:"true to include total. Only true or false."`
 	Facets         string `query:"facets" maxLength:"512" doc:"Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET."`
 	Sort           string `query:"sort" maxLength:"32" doc:"Closed per-collection sort key."`
-	NSFW           string `query:"nsfw" maxLength:"8" doc:"true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."`
+	NSFW           string `query:"nsfw" maxLength:"8" doc:"true includes r18. false or absent hides r18. Only true or false."`
 	Q              string `query:"q" maxLength:"512" doc:"Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant."`
 	ContentRating  string `query:"content_rating" maxLength:"16" doc:"Closed: all_ages, sensitive, r18. r18 requires nsfw=true."`
 	Claimed        string `query:"claimed" maxLength:"8" doc:"true or false. Absent = no gate."`
@@ -155,11 +155,6 @@ func listWorks(src WorksFunc, cat *Catalog) func(context.Context, *listWorksInpu
 		}), collect.WorkSpec())
 		if err != nil {
 			return nil, withIdent(ctx, err)
-		}
-		if q.NSFW {
-			if p := refuseNSFW(ctx); p != nil {
-				return nil, p
-			}
 		}
 		filt, ferr := parseWorksFilter(in)
 		if ferr != nil {

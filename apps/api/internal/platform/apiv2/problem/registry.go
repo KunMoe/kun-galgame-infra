@@ -64,7 +64,6 @@ const (
 	CodeQuotaExceeded               = "QUOTA_EXCEEDED"
 	CodeInternalError               = "INTERNAL_ERROR"
 	CodeServiceUnavailable          = "SERVICE_UNAVAILABLE"
-	CodeNSFWCapabilityRequired      = "NSFW_CAPABILITY_REQUIRED"
 	CodeEntityMerged                = "ENTITY_MERGED"
 	CodeUserIdentityRequired        = "USER_IDENTITY_REQUIRED"
 	CodeSiteNotBound                = "SITE_NOT_BOUND"
@@ -122,7 +121,6 @@ var Codes = []Def{
 	{CodeQuotaExceeded, DomainPlatform, http.StatusTooManyRequests, "Quota exceeded", "The daily quota is exhausted. Retry-After is until the next window."},
 	{CodeInternalError, DomainPlatform, http.StatusInternalServerError, "Internal error", "A bug on our side, including the output of panic recovery."},
 	{CodeServiceUnavailable, DomainPlatform, http.StatusServiceUnavailable, "Service unavailable", "A dependency is unavailable. The request may be retried."},
-	{CodeNSFWCapabilityRequired, DomainCatalog, http.StatusForbidden, "NSFW capability required", "nsfw=true was requested and this credential does not have the capability. The request is refused, not degraded."},
 	{CodeEntityMerged, DomainCatalog, http.StatusNotFound, "Entity merged", "The entity was merged into another. object and current_id are present, and Link rel=canonical is sent."},
 	{CodeUserIdentityRequired, DomainMe, http.StatusForbidden, "User identity required", "An application key was used for an operation that needs a user token."},
 	{CodeSiteNotBound, DomainMe, http.StatusForbidden, "Site not bound", "The client behind the token is not bound to a catalog site."},

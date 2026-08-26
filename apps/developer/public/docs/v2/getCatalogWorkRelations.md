@@ -22,7 +22,7 @@ Related works. Same items as include=relations. Requires an application key.
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 

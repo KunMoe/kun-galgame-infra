@@ -272,10 +272,5 @@ func parseCatalogList(ctx context.Context, in *CollectionInput, spec collect.Spe
 	if err != nil {
 		return collect.Query{}, withIdent(ctx, err)
 	}
-	if q.NSFW {
-		if p := refuseNSFW(ctx); p != nil {
-			return collect.Query{}, p
-		}
-	}
 	return q, nil
 }

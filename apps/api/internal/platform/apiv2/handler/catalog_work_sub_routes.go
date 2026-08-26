@@ -13,7 +13,7 @@ import (
 
 type workSubInput struct {
 	ID     string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Decimal catalog work id."`
-	NSFW   string `query:"nsfw" maxLength:"8" doc:"true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."`
+	NSFW   string `query:"nsfw" maxLength:"8" doc:"true includes r18. false or absent hides r18. Only true or false."`
 	Cursor string `query:"cursor" maxLength:"512" doc:"Opaque keyset cursor from a prior next_cursor. Must start with cur_."`
 	Limit  string `query:"limit" maxLength:"8" doc:"Page size 1-100, default 20."`
 }
@@ -72,11 +72,6 @@ func parseWorkSub(ctx context.Context, in *workSubInput) (int64, bool, string, i
 	q, err := collect.Parse(collect.Raw{Cursor: in.Cursor, Limit: in.Limit, NSFW: in.NSFW}, collect.WorkSubSpec())
 	if err != nil {
 		return 0, false, "", 0, withIdent(ctx, err)
-	}
-	if q.NSFW {
-		if p := refuseNSFW(ctx); p != nil {
-			return 0, false, "", 0, p
-		}
 	}
 	return id, q.NSFW, q.Cursor, q.Limit, nil
 }

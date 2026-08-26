@@ -33,7 +33,6 @@ type Credential struct {
 	AppName       string   `json:"app_name"`
 	Tier          string   `json:"tier"`
 	Scopes        []string `json:"scopes"`
-	NSFWAllowed   bool     `json:"nsfw_allowed"`
 	RateOverride  int      `json:"rate_override"`
 	QuotaOverride int      `json:"quota_override"`
 }

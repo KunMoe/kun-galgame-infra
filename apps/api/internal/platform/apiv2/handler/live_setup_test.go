@@ -159,11 +159,11 @@ func liveCatalog(t *testing.T) *liveEnv {
 				switch raw {
 				case liveAppKey:
 					return &devapi.Credential{
-						KeyID: 1, NSFWAllowed: true, Scopes: []string{devapi.ScopeCatalogRead},
+						KeyID: 1, Scopes: []string{devapi.ScopeCatalogRead},
 					}, nil
 				case liveAppKeyB:
 					return &devapi.Credential{
-						KeyID: 2, NSFWAllowed: true, Scopes: []string{devapi.ScopeCatalogRead},
+						KeyID: 2, Scopes: []string{devapi.ScopeCatalogRead},
 					}, nil
 				default:
 					return nil, nil

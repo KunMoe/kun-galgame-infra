@@ -30,7 +30,6 @@ type AppConfig struct {
 	OwnerUserID    *uint
 	DevEnabled     *bool
 	DevTier        *string
-	DevNSFWAllowed *bool
 	DevRatePerMin  *int
 	DevQuotaDaily  *int
 }
@@ -60,9 +59,6 @@ func (s *AdminService) UpdateAppConfig(ctx context.Context, clientID string, cfg
 			return nil, ErrInvalidTier
 		}
 		fields["dev_tier"] = *cfg.DevTier
-	}
-	if cfg.DevNSFWAllowed != nil {
-		fields["dev_nsfw_allowed"] = *cfg.DevNSFWAllowed
 	}
 	if cfg.DevRatePerMin != nil {
 		fields["dev_rate_per_min"] = *cfg.DevRatePerMin
@@ -106,7 +102,7 @@ func (s *AdminService) MintKey(ctx context.Context, clientID string, in MintKeyI
 	if len(scopes) == 0 {
 		scopes = []string{ScopeCatalogRead}
 	}
-	key, plaintext, err := s.buildKeyWithNSFW(clientID, in.Name, in.Test, scopes, false, createdBy)
+	key, plaintext, err := s.buildKey(clientID, in.Name, in.Test, scopes, createdBy)
 	if err != nil {
 		return nil, "", err
 	}
@@ -135,7 +131,7 @@ func (s *AdminService) RotateKey(ctx context.Context, keyID, createdBy uint) (*D
 		_ = json.Unmarshal(old.Scopes, &scopes)
 	}
 	test := strings.HasPrefix(old.KeyPrefix, TestPrefix) || strings.HasPrefix(old.KeyPrefix, V2TestPrefix)
-	newKey, plaintext, err := s.buildKeyWithNSFW(old.ClientID, old.Name, test, scopes, old.NSFWAllowed, createdBy)
+	newKey, plaintext, err := s.buildKey(old.ClientID, old.Name, test, scopes, createdBy)
 	if err != nil {
 		return nil, "", err
 	}
@@ -175,7 +171,7 @@ func (s *AdminService) GetKeyForClient(ctx context.Context, clientID string, key
 	return key, nil
 }
 
-func (s *AdminService) buildKeyWithNSFW(clientID, name string, test bool, scopes []string, nsfw bool, createdBy uint) (*DeveloperAPIKey, string, error) {
+func (s *AdminService) buildKey(clientID, name string, test bool, scopes []string, createdBy uint) (*DeveloperAPIKey, string, error) {
 	plaintext, err := GenerateV2Key(!test)
 	if err != nil {
 		return nil, "", err
@@ -192,7 +188,6 @@ func (s *AdminService) buildKeyWithNSFW(clientID, name string, test bool, scopes
 		KeyPrefix:       kp,
 		Last4:           last4,
 		Scopes:          datatypes.JSON(scopesJSON),
-		NSFWAllowed:     nsfw,
 		CreatedByUserID: createdBy,
 	}, plaintext, nil
 }

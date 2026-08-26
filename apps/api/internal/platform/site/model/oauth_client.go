@@ -76,7 +76,6 @@ type OAuthClient struct {
 	OwnerUserID     *uint  `gorm:"index" json:"owner_user_id,omitempty"`
 	DevEnabled      bool   `gorm:"not null" json:"dev_enabled"`
 	DevTier         string `gorm:"size:20;not null" json:"dev_tier"`
-	DevNSFWAllowed  bool   `gorm:"not null" json:"dev_nsfw_allowed"`
 	DevRatePerMin   int    `gorm:"not null" json:"dev_rate_per_min"`
 	DevQuotaDaily   int    `gorm:"not null" json:"dev_quota_daily"`
 	DevReviewStatus string `gorm:"size:20;not null" json:"dev_review_status"`

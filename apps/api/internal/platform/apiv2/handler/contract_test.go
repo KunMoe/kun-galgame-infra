@@ -241,10 +241,10 @@ func TestWorksRequiresCredential(t *testing.T) {
 	require.NoError(t, err)
 	body, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	require.Equal(t, 403, resp.StatusCode)
+	require.Equal(t, 503, resp.StatusCode)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/problem+json")
 	require.NoError(t, json.Unmarshal(body, &p))
-	require.Equal(t, problem.CodeNSFWCapabilityRequired, p.Code)
+	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 
 	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/works/1?nsfw=yes", nil)
 	req.Header.Set("Authorization", "Bearer test")

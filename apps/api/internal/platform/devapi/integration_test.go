@@ -151,18 +151,113 @@ func newService(t *testing.T) (*AdminService, *Repository) {
 	return NewAdminService(repo, newMemStore()), repo
 }
 
+func columnDefault(t *testing.T, table, col string) *string {
+	t.Helper()
+	var def *string
+	if err := testDB.Raw(
+		`SELECT column_default FROM information_schema.columns
+		   WHERE table_schema='public' AND table_name=? AND column_name=?`, table, col,
+	).Scan(&def).Error; err != nil {
+		t.Fatalf("read default %s.%s: %v", table, col, err)
+	}
+	return def
+}
+
 func TestDevColumnDiscipline(t *testing.T) {
-	for _, col := range []string{"dev_enabled", "dev_tier", "dev_nsfw_allowed", "dev_rate_per_min", "dev_quota_daily"} {
-		var def *string
-		if err := testDB.Raw(
-			`SELECT column_default FROM information_schema.columns
-			   WHERE table_schema='public' AND table_name='oauth_clients' AND column_name=?`, col,
-		).Scan(&def).Error; err != nil {
-			t.Fatalf("read default %s: %v", col, err)
-		}
-		if def != nil {
+	for _, col := range []string{"dev_enabled", "dev_tier", "dev_rate_per_min", "dev_quota_daily"} {
+		if def := columnDefault(t, "oauth_clients", col); def != nil {
 			t.Errorf("oauth_clients.%s must have NO default (intent column), got %q", col, *def)
 		}
+	}
+}
+
+// The retired NSFW capability left two NOT NULL columns behind that no Go
+// struct writes any more, so the migration keeps a DEFAULT on them instead of
+// dropping it. Both halves are rebuilt in their pre-retirement shape here
+// rather than read off the live schema: a fresh database has neither column at
+// all (AutoMigrate builds both tables from models that no longer declare them),
+// so an unguarded read passes vacuously.
+func TestRetiredNSFWColumnsKeepTheirDefault(t *testing.T) {
+	cleanup(t)
+	tx := testDB.Begin()
+	if tx.Error != nil {
+		t.Fatalf("begin: %v", tx.Error)
+	}
+	defer tx.Rollback()
+
+	for _, s := range []string{
+		`ALTER TABLE oauth_clients DROP COLUMN IF EXISTS dev_nsfw_allowed`,
+		`ALTER TABLE oauth_clients ADD COLUMN dev_nsfw_allowed boolean NOT NULL DEFAULT false`,
+		`ALTER TABLE oauth_clients ALTER COLUMN dev_nsfw_allowed DROP DEFAULT`,
+		`ALTER TABLE developer_api_keys DROP COLUMN IF EXISTS nsfw_allowed`,
+		`ALTER TABLE developer_api_keys ADD COLUMN nsfw_allowed boolean NOT NULL DEFAULT false`,
+		`ALTER TABLE developer_api_keys ALTER COLUMN nsfw_allowed DROP DEFAULT`,
+	} {
+		if err := tx.Exec(s).Error; err != nil {
+			t.Fatalf("rebuild the pre-retirement shape %q: %v", s, err)
+		}
+	}
+
+	// Negative control: without the migration the writers that no longer know
+	// the column are refused outright, which is what makes the default
+	// load-bearing. The failing statement aborts the transaction, so it runs
+	// inside a savepoint — without one every later query is 25P02 instead.
+	if err := tx.SavePoint("before_nsfw_default").Error; err != nil {
+		t.Fatalf("savepoint: %v", err)
+	}
+	if err := tx.Exec(`INSERT INTO oauth_clients (id, name, secret, redirect_uris, grants, dev_enabled, dev_tier, dev_rate_per_min, dev_quota_daily, dev_review_status)
+		VALUES ('devapitest_nsfwdefault', 'x', 'x', '[]'::jsonb, '[]'::jsonb, false, 'free', 0, 0, 'approved')`).Error; err == nil {
+		t.Fatal("insert without dev_nsfw_allowed succeeded before the migration ran")
+	}
+	if err := tx.RollbackTo("before_nsfw_default").Error; err != nil {
+		t.Fatalf("rollback to savepoint: %v", err)
+	}
+
+	if err := AddOAuthClientDevColumns(tx); err != nil {
+		t.Fatalf("add columns: %v", err)
+	}
+	if err := RestoreKeyNSFWDefault(tx); err != nil {
+		t.Fatalf("restore key default: %v", err)
+	}
+	if err := RestoreKeyNSFWDefault(tx); err != nil {
+		t.Fatalf("restore key default is not idempotent: %v", err)
+	}
+
+	for _, tc := range []struct{ table, col string }{
+		{"oauth_clients", "dev_nsfw_allowed"},
+		{"developer_api_keys", "nsfw_allowed"},
+	} {
+		var def *string
+		if err := tx.Raw(
+			`SELECT column_default FROM information_schema.columns
+			   WHERE table_schema=current_schema() AND table_name=? AND column_name=?`, tc.table, tc.col,
+		).Scan(&def).Error; err != nil {
+			t.Fatalf("read default %s.%s: %v", tc.table, tc.col, err)
+		}
+		if def == nil {
+			t.Errorf("%s.%s has no writer left; it must keep a default", tc.table, tc.col)
+			continue
+		}
+		if !strings.HasPrefix(*def, "false") {
+			t.Errorf("%s.%s default = %q, want false", tc.table, tc.col, *def)
+		}
+	}
+
+	app := &siteModel.OAuthClient{
+		ID: "devapitest_nsfwdefault", Name: "x", Secret: "x",
+		RedirectURIs: datatypes.JSON([]byte("[]")),
+		Grants:       datatypes.JSON([]byte("[]")),
+		DevTier:      TierFree,
+	}
+	if err := tx.Create(app).Error; err != nil {
+		t.Fatalf("create an application the model can no longer describe fully: %v", err)
+	}
+	key := &DeveloperAPIKey{
+		ClientID: app.ID, Name: "k", KeyHash: "h", KeyPrefix: "nmk_test_", Last4: "abcd",
+		Scopes: datatypes.JSON([]byte(`["catalog:read"]`)), CreatedByUserID: 1,
+	}
+	if err := tx.Create(key).Error; err != nil {
+		t.Fatalf("mint a key against the retired column: %v", err)
 	}
 }
 
