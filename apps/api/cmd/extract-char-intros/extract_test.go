@@ -242,7 +242,11 @@ func (f *fakeJudge) CompareBatch(_ context.Context, batch []comparison) []compar
 
 func seedPanelFixture(t *testing.T) (workID, saya, rei int64) {
 	t.Helper()
-	require.NoError(t, testDB.Exec(`TRUNCATE catalog_work, catalog_character RESTART IDENTITY CASCADE`).Error)
+	// The verdict cache has no FK, so the CASCADE does not reach it — without
+	// the explicit truncate, a kept verdict recorded by one test suppresses the
+	// identical (RESTART IDENTITY) pair in the next.
+	require.NoError(t, testDB.Exec(`TRUNCATE catalog_work, catalog_character,
+		catalog_character_intro_panel_verdict RESTART IDENTITY CASCADE`).Error)
 	workID = seedWorkWithIntro(t, longIntro)
 	saya = seedRosterChar(t, workID, "沙耶")
 	rei = seedRosterChar(t, workID, "玲")
@@ -299,6 +303,47 @@ func TestRunPanelKeepsIncumbentOnSplit(t *testing.T) {
 	require.NoError(t, testDB.Raw(`SELECT count(*) FROM catalog_character_intro
 		WHERE character_id = ? AND source_id = ?`, saya, sourceDerived).Scan(&n).Error)
 	assert.Zero(t, n, "a split panel must not write the derived row")
+}
+
+func TestPanelKeptVerdictCacheSkipsUnchangedPair(t *testing.T) {
+	workID, saya, _ := seedPanelFixture(t)
+
+	ex := fakeExtractor{out: map[string]string{"沙耶": "主人公的青梅竹马,性格开朗,总是照顾身边的每一个人。"}}
+	judge := &fakeJudge{votes: []panelVote{voteIncumbent}}
+	require.NoError(t, run(context.Background(), testDB, ex, judge, opts{Apply: true, Panel: true}))
+
+	var row struct {
+		SrcHash       string `gorm:"column:src_hash"`
+		IncumbentHash string `gorm:"column:incumbent_hash"`
+	}
+	require.NoError(t, testDB.Raw(`SELECT src_hash, incumbent_hash
+		FROM catalog_character_intro_panel_verdict
+		WHERE work_id = ? AND character_id = ?`, workID, saya).Scan(&row).Error)
+	assert.Equal(t, hashText(longIntro), row.SrcHash)
+	assert.Equal(t, hashText("既有机翻介绍。"), row.IncumbentHash)
+
+	cands, err := loadPanelCandidateWorks(context.Background(), testDB, candidateOpts{})
+	require.NoError(t, err)
+	assert.Empty(t, cands, "an unchanged (intro, incumbent) pair is not re-judged")
+
+	require.NoError(t, testDB.Exec(`UPDATE catalog_work_intro SET intro = intro || '新的结尾。'
+		WHERE work_id = ?`, workID).Error)
+	cands, err = loadPanelCandidateWorks(context.Background(), testDB, candidateOpts{})
+	require.NoError(t, err)
+	require.Len(t, cands, 1, "a changed work intro re-admits the pair")
+	assert.Equal(t, saya, cands[0].Roster[0].CharacterID)
+}
+
+func TestPanelDryRunRecordsNoVerdict(t *testing.T) {
+	seedPanelFixture(t)
+
+	ex := fakeExtractor{out: map[string]string{"沙耶": "主人公的青梅竹马,性格开朗,总是照顾身边的每一个人。"}}
+	judge := &fakeJudge{votes: []panelVote{voteIncumbent}}
+	require.NoError(t, run(context.Background(), testDB, ex, judge, opts{Panel: true}))
+
+	var n int64
+	require.NoError(t, testDB.Raw(`SELECT count(*) FROM catalog_character_intro_panel_verdict`).Scan(&n).Error)
+	assert.Zero(t, n, "a dry run must not write verdicts")
 }
 
 func TestRunRefusesInventedPassages(t *testing.T) {
