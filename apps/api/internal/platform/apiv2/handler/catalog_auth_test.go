@@ -45,14 +45,14 @@ func mustV2Key(t *testing.T) string {
 
 func TestCatalogAuthLookupRejectsUnknownAndUnscopedKeys(t *testing.T) {
 	sfw := mustV2Key(t)
-	news := mustV2Key(t)
+	unscoped := mustV2Key(t)
 	missing := mustV2Key(t)
 	lookup := func(_ context.Context, raw string) (*devapi.Credential, error) {
 		switch raw {
 		case sfw:
 			return &devapi.Credential{KeyID: 1, Scopes: []string{devapi.ScopeCatalogRead}}, nil
-		case news:
-			return &devapi.Credential{KeyID: 2, Scopes: []string{devapi.ScopeNewsRead}}, nil
+		case unscoped:
+			return &devapi.Credential{KeyID: 2}, nil
 		default:
 			return nil, nil
 		}
@@ -71,7 +71,7 @@ func TestCatalogAuthLookupRejectsUnknownAndUnscopedKeys(t *testing.T) {
 	require.Equal(t, 401, status)
 	require.Equal(t, problem.CodeInvalidCredential, p.Code)
 
-	status, p = authGET(t, app, "/v2/catalog/works", news)
+	status, p = authGET(t, app, "/v2/catalog/works", unscoped)
 	require.Equal(t, 403, status)
 	require.Equal(t, problem.CodeScopeRequired, p.Code)
 

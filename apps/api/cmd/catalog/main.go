@@ -437,7 +437,6 @@ func setupPublicCatalog(
 		recordUsage("catalog"),
 		mw.RateLimit,
 		mw.Quota,
-		devapi.RequireScope(devapi.ScopeNewsRead),
 	)
 	v1news.Get("/sources", newsH.Sources)
 	v1news.Get("/", newsH.List)
