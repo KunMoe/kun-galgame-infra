@@ -103,15 +103,15 @@ export const FACES = [
   {
     key: 'store',
     label: '分销链接',
-    name: '分销链接 API（授权制）',
+    name: '分销链接 API',
     file: STORE_SPEC,
     prefix: '/v1/store',
     scope: () => 'store:read',
     auth: {
       kind: 'api_key',
-      curl: 'Authorization: Bearer nm_live_<YOUR_KEY>',
-      display: 'Authorization: Bearer nm_live_…',
-      note: '机器 API 密钥,但须带 store:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选'
+      curl: 'Authorization: Bearer nmk_live_<YOUR_KEY>',
+      display: 'Authorization: Bearer nmk_live_…',
+      note: '机器 API 密钥,但须带 store:read —— 铸密钥时自助勾选即可,无需申请'
     },
     notes: [
       '一站一链：同一个商品，每个调用站拿到的短链都不一样，点击才归得到你站上。拿到 purchase_url 就原样用，别自己拼 DLsite 联盟地址——裸联盟链不经过计数器，等于这次点击白送。',

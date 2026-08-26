@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DEV_MINTABLE_SCOPES } from '~/constants/dev'
+import { DEV_DEFAULT_SCOPES, DEV_MINTABLE_SCOPES } from '~/constants/dev'
 import type { DevKeyMinted } from '~~/shared/types/dev'
 
 const props = defineProps<{ clientId: string }>()
@@ -10,7 +10,7 @@ const api = useApi()
 
 const name = ref('')
 const test = ref(false)
-const scopes = ref<string[]>([...DEV_MINTABLE_SCOPES])
+const scopes = ref<string[]>([...DEV_DEFAULT_SCOPES])
 const error = ref('')
 const isLoading = ref(false)
 
@@ -18,7 +18,7 @@ watch(open, (val) => {
   if (!val) return
   name.value = ''
   test.value = false
-  scopes.value = [...DEV_MINTABLE_SCOPES]
+  scopes.value = [...DEV_DEFAULT_SCOPES]
   error.value = ''
 })
 
@@ -76,7 +76,7 @@ const handleSubmit = async () => {
       <div>
         <span class="mb-1 block text-sm font-medium text-default-500">
           Scope（权限范围）
-          <span class="text-xs text-default-400">— 默认全选公开只读 scope</span>
+          <span class="text-xs text-default-400">— 默认勾选公开只读 scope</span>
         </span>
         <div class="flex flex-wrap gap-2">
           <KunCheckBox

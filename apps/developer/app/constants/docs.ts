@@ -40,8 +40,7 @@ export const DOCS_FACE_META: Record<
     icon: 'lucide:shopping-bag',
     label: '分销链接',
     tagline:
-      'DLsite 商品的分销短链：每个调用站拿到自己那一条，点击按 JST 日去重后归到你站上，活动期还会附带优惠券领取链接。密钥须带 store:read，该权限授权制——登录门户后在控制台申请。',
-    badge: '授权制'
+      'DLsite 商品的分销短链：每个调用站拿到自己那一条，点击按 JST 日去重后归到你站上，活动期还会附带优惠券领取链接。密钥须带 store:read——铸密钥时自助勾选即可。'
   },
   v2: {
     icon: 'lucide:sparkles',

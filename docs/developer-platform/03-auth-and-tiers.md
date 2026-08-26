@@ -29,6 +29,7 @@
   - `authorization_code` + PKCE:**代表某用户**(如代为投稿)。
 - **scope 词表**(按面命名,起步最小,可扩展):
   - `catalog:read`(公开读;未来 `manga:read` 等同构生长)
+  - `store:read`(DLsite 分销链接面 `/v1/store`;出生于 2026-08-25 的授权制 scope,随整档退役于 2026-08-26 转为自助勾选——请求时仍须携带,见 [02 §3.9](./02-public-api.md))
   - ~~`news:read`~~(合作媒体资讯索引;2026-08-18 起是授权制 scope,2026-08-25 整档退役——`/v1/news` 现在只认「有一把有效 key」,任意 scope 均可,见 [02 §3.9](./02-public-api.md)。常量仍在代码里,只为让存量 key 行里的这个字面量仍能被读懂)
   - `galgame:submit` `user:read`(Phase 3)
   - ~~`galgame:read`~~(随 `/v1/galgame` 面于 wave 146 退役;常量仍在代码里,只为让历史 key 行与旧 `allowed_scopes` 仍能被读懂)

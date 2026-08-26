@@ -26,13 +26,16 @@ const (
 // /v1/galgame face retired to a 410 tombstone (wave 146): no live route consumes
 // it, so offering it minted a permission over nothing. news:read left it the
 // other way round on 2026-08-25 — the grant machinery retired and /v1/news now
-// takes any valid key, so there is nothing left to tick.
-var selfServiceScopes = []string{ScopeCatalogRead}
+// takes any valid key, so there is nothing left to tick. store:read joined on
+// 2026-08-26 as part of the same retirement: /v1/store still checks the scope
+// on every request, and with the application queue gone, ticking it here is the
+// only way anyone can hold it.
+var selfServiceScopes = []string{ScopeCatalogRead, ScopeStoreRead}
 
 var (
 	ErrAppLimitReached = errors.New("devapi: application limit reached")
 	ErrKeyLimitReached = errors.New("devapi: active key limit reached")
-	ErrScopeNotAllowed = errors.New("devapi: scope not permitted (want catalog:read)")
+	ErrScopeNotAllowed = errors.New("devapi: scope not permitted (want catalog:read or store:read)")
 	ErrNameRequired    = errors.New("devapi: name is required")
 	ErrNameTooLong     = errors.New("devapi: name too long (max 100)")
 	ErrDescTooLong     = errors.New("devapi: description too long (max 100)")

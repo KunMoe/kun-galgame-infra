@@ -30,8 +30,7 @@ const AUTH_MODEL = [
     '读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。',
   '资讯面不再是授权制（2026-08-25 退役）：/v1/news 只要一把有效密钥，' +
     '任意 scope 均可；news:read 不再存在申请或审批。/v2/news 则匿名即可调。',
-  'store:read 是授权制：分销链接按调用站签发，谁能拿由平台逐个决定。' +
-    `在 ${SITE_URL} 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/store 一律 403。`,
+  'store:read 自 2026-08-26 起自助：铸密钥时勾选即可，无需申请；没有它调 /v1/store 一律 403。',
   '`/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 ' +
     '`/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。'
 ]

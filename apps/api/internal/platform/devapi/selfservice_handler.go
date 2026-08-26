@@ -386,7 +386,7 @@ func selfServiceBadRequest(err error) (string, bool) {
 	case goerrors.Is(err, ErrKeyLimitReached):
 		return "active key limit reached (max 5 per application)", true
 	case goerrors.Is(err, ErrScopeNotAllowed):
-		return "scope not permitted (want catalog:read)", true
+		return "scope not permitted (want catalog:read or store:read)", true
 	case goerrors.Is(err, ErrNameRequired):
 		return "name is required", true
 	case goerrors.Is(err, ErrNameTooLong):

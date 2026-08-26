@@ -27,7 +27,7 @@
 - 应用密钥（`Authorization: Bearer nmk_live_…`）——在 https://developer.nextmoe.dev 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 只有 catalog:read。/v2 只收 nmk_ 前缀的密钥，v1 两代都收。
 - 用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation（以及 v1 的游玩时长、编辑提案）读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。
 - 资讯面不再是授权制（2026-08-25 退役）：/v1/news 只要一把有效密钥，任意 scope 均可；news:read 不再存在申请或审批。/v2/news 则匿名即可调。
-- store:read 是授权制：分销链接按调用站签发，谁能拿由平台逐个决定。在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/store 一律 403。
+- store:read 自 2026-08-26 起自助：铸密钥时勾选即可，无需申请；没有它调 /v1/store 一律 403。
 - `/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 `/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。
 
 ---
@@ -1198,10 +1198,10 @@ curl "https://api.nextmoe.dev/v1/news/1" \
 
 ---
 
-# 分销链接 API（授权制）
+# 分销链接 API
 
 - 路径前缀：`/v1/store`
-- 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,但须带 store:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选）
+- 凭据：Authorization: Bearer nmk_live_…（机器 API 密钥,但须带 store:read —— 铸密钥时自助勾选即可,无需申请）
 - 端点数：2
 
 > 一站一链：同一个商品，每个调用站拿到的短链都不一样，点击才归得到你站上。拿到 purchase_url 就原样用，别自己拼 DLsite 联盟地址——裸联盟链不经过计数器，等于这次点击白送。
@@ -1220,8 +1220,8 @@ Your site's own DLsite purchase link for one product, plus the coupon link when 
 
 Returns a short link that belongs to YOUR application, not a shared one: every calling site gets its own alias for the same product so the clicks can be attributed back to it. Send readers to purchase_url as-is — it is the only URL that gets counted, and a bare affiliate URL bypasses the counter entirely. coupon_url and campaign are null whenever no coupon campaign is running. Clicks are de-duplicated: one (link, JST calendar day, fingerprint) counts once, where the fingerprint is SHA-256 of the client IP and User-Agent. That de-duplication is a commitment we made to DLsite, not a knob. Links are minted lazily on first request and then stable forever, so calling this per page render is fine, but caching the result on your side is cheaper. Each application may mint links for a bounded number of distinct products; asking for more returns 403.
 
-- 所属 API：分销链接 API（授权制）（/v1/store）
-- 鉴权：Authorization: Bearer nm_live_…
+- 所属 API：分销链接 API（/v1/store）
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：store:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -1230,7 +1230,7 @@ Returns a short link that belongs to YOUR application, not a shared one: every c
 
 ```bash
 curl "https://api.nextmoe.dev/v1/store/purchase-links/value" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 点击统计
@@ -1241,8 +1241,8 @@ Your application's own click counts, per link per JST day
 
 Per-day totals and de-duplicated uniques for every link this application has minted, purchase and coupon alike — the kind field tells them apart, and product_id / campaign_id say which link a row belongs to. Days are JST calendar days because the settlement month is DLsite's JST calendar month. The range is a closed interval of at most 92 days and defaults to the last 30. Days with no clicks are omitted entirely. uniques is the number settlement uses; total is the raw click count before de-duplication. The counts are synchronised from the redirector hourly, so the current day is always partial.
 
-- 所属 API：分销链接 API（授权制）（/v1/store）
-- 鉴权：Authorization: Bearer nm_live_…
+- 所属 API：分销链接 API（/v1/store）
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：store:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -1252,7 +1252,7 @@ Per-day totals and de-duplicated uniques for every link this application has min
 
 ```bash
 curl "https://api.nextmoe.dev/v1/store/me/stats" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

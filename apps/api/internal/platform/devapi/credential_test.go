@@ -31,8 +31,21 @@ func TestScopeGalgameReadRetired(t *testing.T) {
 	if err := checkMintScopes([]string{ScopeGalgameRead}); err != ErrScopeNotAllowed {
 		t.Errorf("minting galgame:read = %v, want ErrScopeNotAllowed", err)
 	}
-	if want := []string{ScopeCatalogRead}; !slices.Equal(selfServiceScopes, want) {
+	if want := []string{ScopeCatalogRead, ScopeStoreRead}; !slices.Equal(selfServiceScopes, want) {
 		t.Errorf("selfServiceScopes = %v, want %v", selfServiceScopes, want)
+	}
+}
+
+// store:read was born grant-only beside news:read, and the machinery that
+// handed it out retired the day after it shipped. Owner decision 2026-08-26:
+// the scope is self-service — /v1/store still checks it on every request, but
+// holding it is the caller's own choice, not an approval.
+func TestScopeStoreReadSelfService(t *testing.T) {
+	if ScopeStoreRead != "store:read" {
+		t.Errorf("ScopeStoreRead = %q, want %q", ScopeStoreRead, "store:read")
+	}
+	if err := checkMintScopes([]string{ScopeStoreRead}); err != nil {
+		t.Errorf("minting store:read = %v, want it accepted", err)
 	}
 }
 

@@ -602,14 +602,16 @@ Content-Type: application/json
 
 | 档 | 名单 | 谁决定 | 铸 key 时 |
 |---|---|---|---|
-| 自助 | `selfServiceScopes` = `catalog:read` | 调用方自己 | 控制台直接勾 |
+| 自助 | `selfServiceScopes` = `catalog:read` / `store:read` | 调用方自己 | 控制台直接勾 |
 | 不可得 | 其余全部(`news:read` / `galgame:nsfw` / `galgame:write` / `galgame:read` …) | —— | 400 `ErrScopeNotAllowed` |
+
+**`store:read` 于 2026-08-26 进自助集**:它出生时(store 波,2026-08-25)是授权制的第二个租户;授权制整档退役后申请队列不复存在,自助勾选成为持有它的唯一路径。`/v1/store` 的请求时 scope 检查原样保留——没有它的 key 调分销面仍是 403。
 
 **`galgame:read` 于 2026-08-18 退出自助集**:`/v1/galgame` 面在 wave 146 整体退役为 `410 Gone`,该 scope 此后不被任何活路由消费。已发出的旧 key **不动、不失效**(那个 scope 本就打不开任何东西);两条铸 key 路径的空 scopes 默认改为 `[catalog:read]`。
 
 #### 授权制这一档的退役(2026-08-25)
 
-2026-08-18 到 2026-08-25 之间存在过第三档「授权制」:`grantableScopes` = `news:read`,由用户在门户提交申请、平台在管理台审批,批准后才能自助勾选。**整档连同它的表、端点与策略位一并退役**,理由是它已经无事可决:`/v2/news` 自 v2 面上线起就是匿名公开的,同一批内容在另一条路径上早已人人可读,而 `/v1/news` 还在对没走过审批队列的 key 回 403。
+2026-08-18 到 2026-08-25 之间存在过第三档「授权制」:`grantableScopes` = `news:read`(store 波曾在退役前一天把 `store:read` 一并列入),由用户在门户提交申请、平台在管理台审批,批准后才能自助勾选。**整档连同它的表、端点与策略位一并退役**,理由是它已经无事可决:`/v2/news` 自 v2 面上线起就是匿名公开的,同一批内容在另一条路径上早已人人可读,而 `/v1/news` 还在对没走过审批队列的 key 回 403。
 
 退役后:`/v1/news` **仍要求一把有效的机器 key**,但**任意 scope 均可**——它不再检查 scope,与请求根本不带 scope 等价。`ScopeNewsRead` 常量保留在代码里,因为存量 key 的 `scopes` jsonb 里仍有这个字面量,读历史需要这个名字;那些 key **不动、不失效**,那个字符串现在什么都不执法。
 
