@@ -14,7 +14,10 @@ const apps = computed(() => data.value ?? [])
 const isLoading = computed(() => status.value === 'pending')
 
 const busyId = ref<string | null>(null)
+// The app outlives the close so the panel still has a name to render while
+// KunModal's leave transition plays; `declineOpen` is what drives the dialog.
 const declining = ref<DevApp | null>(null)
+const declineOpen = ref(false)
 const declineReason = ref('')
 const declineError = ref('')
 
@@ -42,6 +45,7 @@ const openDecline = (app: DevApp) => {
   declining.value = app
   declineReason.value = ''
   declineError.value = ''
+  declineOpen.value = true
 }
 
 const submitDecline = async () => {
@@ -59,7 +63,7 @@ const submitDecline = async () => {
     )
     if (res.code === 0) {
       useKunMessage('已拒绝并回执理由', 'success')
-      declining.value = null
+      declineOpen.value = false
       await afterReview()
     } else {
       declineError.value = res.message || '拒绝失败'
@@ -141,12 +145,11 @@ const submitDecline = async () => {
     </div>
 
     <KunModal
-      v-if="declining"
-      :model-value="true"
+      v-model="declineOpen"
       size="md"
-      @update:model-value="declining = null"
+      :aria-label="declining ? `拒绝「${declining.name}」` : '拒绝申请'"
     >
-      <div class="space-y-4">
+      <div v-if="declining" class="space-y-4">
         <h2 class="text-xl font-bold text-foreground">
           拒绝「{{ declining.name }}」
         </h2>
@@ -169,7 +172,7 @@ const submitDecline = async () => {
           {{ declineError }}
         </div>
         <div class="flex justify-end gap-3">
-          <KunButton color="default" variant="flat" @click="declining = null">
+          <KunButton color="default" variant="flat" @click="declineOpen = false">
             取消
           </KunButton>
           <KunButton color="danger" @click="submitDecline">确认拒绝</KunButton>

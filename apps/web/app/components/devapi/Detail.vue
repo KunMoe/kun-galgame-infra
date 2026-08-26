@@ -217,7 +217,11 @@ const handleConfigUpdated = () => {
       :rotated="revealRotated"
     />
 
-    <KunModal v-model="confirmOpen" role="alertdialog">
+    <KunModal
+      v-model="confirmOpen"
+      role="alertdialog"
+      :aria-label="confirmDialog?.title ?? '确认'"
+    >
       <div class="space-y-4">
         <h2 class="text-xl font-bold text-foreground">{{ confirmDialog?.title }}</h2>
         <p class="text-sm text-default-500">{{ confirmDialog?.body }}</p>

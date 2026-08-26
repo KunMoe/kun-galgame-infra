@@ -70,7 +70,7 @@ const submit = async () => {
 </script>
 
 <template>
-  <KunModal :model-value="open" @update:model-value="close">
+  <KunModal :model-value="open" @update:model-value="close" aria-label="上传头像">
     <div class="space-y-4">
       <h2 class="text-foreground text-lg font-semibold">
         上传头像 — {{ user?.name }}

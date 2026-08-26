@@ -5,7 +5,11 @@ const open = defineModel<boolean>('open', { required: true })
 </script>
 
 <template>
-  <KunModal v-model="open" :is-dismissable="false">
+  <KunModal
+    v-model="open"
+    :is-dismissable="false"
+    :aria-label="rotated ? '密钥已轮换' : '密钥已生成'"
+  >
     <div class="space-y-4">
       <div class="flex items-center gap-3">
         <div class="flex size-10 items-center justify-center rounded-full bg-success-100">

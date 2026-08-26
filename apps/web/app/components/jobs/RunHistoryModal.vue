@@ -40,7 +40,7 @@ const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString('zh-CN') : '�
 </script>
 
 <template>
-  <KunModal v-model="open" size="lg">
+  <KunModal v-model="open" size="lg" aria-label="运行历史">
     <div class="space-y-4">
       <h2 class="text-foreground text-xl font-bold">
         运行历史

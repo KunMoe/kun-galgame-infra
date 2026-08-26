@@ -52,7 +52,7 @@ const confirmColor = computed(() =>
 </script>
 
 <template>
-  <KunModal v-model="open">
+  <KunModal v-model="open" :aria-label="actionLabel">
     <div class="space-y-4">
       <h2 class="text-foreground text-xl font-bold">{{ actionLabel }}</h2>
 

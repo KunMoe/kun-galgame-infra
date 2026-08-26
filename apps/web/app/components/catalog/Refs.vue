@@ -233,7 +233,7 @@ const confirmReject = async () => {
       :is-loading="isLoading"
     />
 
-    <KunModal v-model="rejectOpen">
+    <KunModal v-model="rejectOpen" aria-label="拒绝外部链接">
       <div class="space-y-4">
         <h2 class="text-foreground text-xl font-bold">拒绝外部链接</h2>
         <p class="text-default-500 text-sm">

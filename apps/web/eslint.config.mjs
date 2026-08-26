@@ -2,9 +2,11 @@ import withNuxt from './.nuxt/eslint.config.mjs'
 import a11y from 'eslint-plugin-vuejs-accessibility'
 
 export default withNuxt(
-  // Generated OpenAPI types (openapi-typescript) — never lint/format; the CI
-  // drift gate regenerates and diffs, so it must stay the tool's raw output.
-  { ignores: ['shared/types/generated/**'] },
+  // Auto-generated tool output — never lint/format (regenerate, don't edit):
+  // the openapi-typescript types, whose CI drift gate diffs the tool's raw
+  // output, and the inline-SVG icon registry, whose JSON.stringify quoting
+  // `eslint --fix` would rewrite and the next `pnpm icons` would undo.
+  { ignores: ['shared/types/generated/**', 'app/assets/kun-icons.ts'] },
   // Apply the a11y plugin's recommended rules to all .vue files.
   // Documentation: https://vue-a11y.github.io/eslint-plugin-vuejs-accessibility/
   a11y.configs['flat/recommended'],

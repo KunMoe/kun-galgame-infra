@@ -89,8 +89,10 @@ await callOnce('auth:user', async () => {
       leave-active-class="transition-opacity duration-200 ease-in"
       leave-to-class="opacity-0"
     >
-      <div
+      <button
         v-if="isMobileMenuOpen"
+        type="button"
+        aria-label="关闭菜单"
         class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
         @click="isMobileMenuOpen = false"
       />

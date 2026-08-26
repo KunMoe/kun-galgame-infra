@@ -22,12 +22,16 @@ const policies = computed(() => data.value?.policies ?? [])
 const editable = computed(() => data.value?.editable ?? false)
 const isLoading = computed(() => status.value === 'pending')
 
+// The target outlives the close so the panel still has a policy to render while
+// KunModal's leave transition plays; `pendingOpen` drives the dialog.
 const pending = ref<{ policy: DevPolicy; mode: DevPolicyMode } | null>(null)
+const pendingOpen = ref(false)
 const submitting = ref(false)
 
 const askSet = (policy: DevPolicy, mode: DevPolicyMode) => {
   if (!editable.value || policy.mode === mode) return
   pending.value = { policy, mode }
+  pendingOpen.value = true
 }
 
 const confirmSet = async () => {
@@ -43,7 +47,7 @@ const confirmSet = async () => {
           })
     if (res.code === 0) {
       useKunMessage('平台策略已更新', 'success')
-      pending.value = null
+      pendingOpen.value = false
       await refresh()
     } else {
       useKunMessage(res.message || '更新失败', 'error')
@@ -146,13 +150,12 @@ const cellClass = (policy: DevPolicy, mode: DevPolicyMode) =>
     </div>
 
     <KunModal
-      v-if="pending"
-      :model-value="true"
+      v-model="pendingOpen"
       size="md"
       role="alertdialog"
-      @update:model-value="pending = null"
+      aria-label="修改平台策略"
     >
-      <div class="space-y-4">
+      <div v-if="pending" class="space-y-4">
         <h2 class="text-xl font-bold text-foreground">修改平台策略</h2>
         <p class="text-sm text-default-500">
           将「{{ pending.policy.label_zh }}」从
@@ -173,7 +176,7 @@ const cellClass = (policy: DevPolicy, mode: DevPolicyMode) =>
             color="default"
             variant="flat"
             :disabled="submitting"
-            @click="pending = null"
+            @click="pendingOpen = false"
           >
             取消
           </KunButton>

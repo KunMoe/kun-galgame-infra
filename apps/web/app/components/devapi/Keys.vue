@@ -281,7 +281,11 @@ const askRevoke = (key: DevAdminKey) => {
       :rotated="true"
     />
 
-    <KunModal v-model="confirmOpen" role="alertdialog">
+    <KunModal
+      v-model="confirmOpen"
+      role="alertdialog"
+      :aria-label="confirmDialog?.title ?? '确认'"
+    >
       <div class="space-y-4">
         <h2 class="text-xl font-bold text-foreground">
           {{ confirmDialog?.title }}
