@@ -15,5 +15,6 @@
         <slot />
       </main>
     </div>
+    <LayoutFooter />
   </div>
 </template>

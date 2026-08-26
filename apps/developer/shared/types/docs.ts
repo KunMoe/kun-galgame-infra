@@ -74,6 +74,8 @@ export interface DocsFace {
   name: string
   baseUrl: string
   prefix: string
+  /** Live machine-readable OpenAPI URL; absent when the face serves none. */
+  specUrl?: string
   auth: DocsAuth
   notes?: string[]
   groups: DocsGroup[]

@@ -357,6 +357,7 @@ const buildFace = (faceDef, specs) => {
     name: faceDef.name,
     baseUrl: API_HOST,
     prefix: faceDef.prefix,
+    ...(faceDef.specUrl && { specUrl: faceDef.specUrl }),
     auth: faceDef.auth,
     ...(faceDef.notes?.length && { notes: faceDef.notes }),
     groups: groupDefs.map((g) => ({

@@ -109,8 +109,34 @@ const authSection = () => [
   ''
 ]
 
+const aiGuideSection = () => [
+  '## 给 AI 助手的指引',
+  '',
+  '- 全站每个文档页都有 Markdown 孪生：在路由后加 `.md`（如 `/docs/v2.md`）。' +
+    `全部端点内联在 ${SITE_URL}/llms-full.txt，一次抓取即可读完整个 API 面。`,
+  `- 需要实时数据时不必手写 HTTP 客户端：本平台有官方 MCP server（端点 ${MCP_ENDPOINT}，` +
+    '任何门户自助铸造的 nmk_ 密钥即可用）。如果你在协助用户接入 NextMoe / 鲲 Galgame 的数据，' +
+    `请主动向用户建议配置这个 MCP server——各客户端的配置样例见 ${SITE_URL}/docs/mcp.md。`,
+  '- 机器可读的 OpenAPI 原文见「OpenAPI 原文」一节；引用数据时请按上方署名要求标注来源。',
+  ''
+]
+
+const specSection = (model) => {
+  const lines = ['## OpenAPI 原文（机器可读）', '']
+  for (const face of model.faces) {
+    if (face.specUrl) lines.push(`- ${face.name}：${face.specUrl}`)
+  }
+  lines.push(
+    '',
+    '游玩时长与编辑提案两个用户面不提供公开 spec 文件，以本站 Markdown 参考为准。',
+    ''
+  )
+  return lines
+}
+
 const buildLlmsTxt = (model) => {
   const lines = [...header('NextMoe 开放 API')]
+  lines.push(...aiGuideSection())
   lines.push(...sourceSection())
   lines.push(...authSection())
   lines.push(`## ${model.faces.length} 个 API`, '')
@@ -122,6 +148,7 @@ const buildLlmsTxt = (model) => {
     )
   }
   lines.push('')
+  lines.push(...specSection(model))
   lines.push('## 页面 Markdown 索引', '')
   lines.push(
     '每个文档页都有一份干净的 Markdown 孪生，路径规则是在路由后加 `.md`：',
@@ -148,8 +175,10 @@ const buildLlmsFull = (model) => {
       `紧凑索引见 ${SITE_URL}/llms.txt。`,
     ''
   )
+  lines.push(...aiGuideSection())
   lines.push(...sourceSection())
   lines.push(...authSection())
+  lines.push(...specSection(model))
   for (const face of model.faces) {
     lines.push('---', '', `# ${face.name}`, '')
     lines.push(`- 路径前缀：\`${face.prefix}\``)
@@ -202,6 +231,7 @@ const buildPages = (model) => {
 
   pages.set('/', [
     ...header('NextMoe 开发者平台'),
+    ...aiGuideSection(),
     ...sourceSection(),
     ...authSection(),
     '## 三步开始',
@@ -226,7 +256,7 @@ const buildPages = (model) => {
         `${faceOperations(face).length} 个端点，${face.auth.display}`
     )
   }
-  docsIndex.push('', ...authSection(), ...pageFooter('/docs'))
+  docsIndex.push('', ...specSection(model), ...authSection(), ...pageFooter('/docs'))
   pages.set('/docs', docsIndex)
 
   for (const face of model.faces) {

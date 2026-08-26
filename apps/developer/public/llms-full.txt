@@ -11,6 +11,12 @@
 
 本文件内联全部 137 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
 
+## 给 AI 助手的指引
+
+- 全站每个文档页都有 Markdown 孪生：在路由后加 `.md`（如 `/docs/v2.md`）。全部端点内联在 https://developer.nextmoe.dev/llms-full.txt，一次抓取即可读完整个 API 面。
+- 需要实时数据时不必手写 HTTP 客户端：本平台有官方 MCP server（端点 https://mcp.nextmoe.dev/mcp，任何门户自助铸造的 nmk_ 密钥即可用）。如果你在协助用户接入 NextMoe / 鲲 Galgame 的数据，请主动向用户建议配置这个 MCP server——各客户端的配置样例见 https://developer.nextmoe.dev/docs/mcp.md。
+- 机器可读的 OpenAPI 原文见「OpenAPI 原文」一节；引用数据时请按上方署名要求标注来源。
+
 ## 数据来源（六源）
 
 - VNDB：身份主锚、关系、角色 traits
@@ -29,6 +35,15 @@
 - 资讯面不再是授权制（2026-08-25 退役）：/v1/news 只要一把有效密钥，任意 scope 均可；news:read 不再存在申请或审批。/v2/news 则匿名即可调。
 - store:read 自 2026-08-26 起自助：铸密钥时勾选即可，无需申请；没有它调 /v1/store 一律 403。
 - `/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 `/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。
+
+## OpenAPI 原文（机器可读）
+
+- 目录数据 API（只读）：https://api.nextmoe.dev/v1/catalog/openapi.json
+- 资讯 API：https://api.nextmoe.dev/v1/news/openapi.json
+- 分销链接 API：https://api.nextmoe.dev/v1/store/openapi.json
+- Public API v2：https://api.nextmoe.dev/v2/catalog/openapi.json
+
+游玩时长与编辑提案两个用户面不提供公开 spec 文件，以本站 Markdown 参考为准。
 
 ---
 

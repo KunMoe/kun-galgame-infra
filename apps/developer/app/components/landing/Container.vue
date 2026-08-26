@@ -443,6 +443,9 @@ const curlSample = `curl https://api.nextmoe.dev/v2/catalog/works/1 \\
         <KunButton variant="flat" size="lg" @click="navigateTo('/docs')">
           查看 API 文档
         </KunButton>
+        <KunButton variant="flat" size="lg" @click="navigateTo('/docs/mcp')">
+          AI / MCP 接入
+        </KunButton>
       </div>
     </section>
   </div>

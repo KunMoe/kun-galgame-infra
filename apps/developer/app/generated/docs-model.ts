@@ -15,6 +15,7 @@ export const docsModel: DocsModel = {
       "name": "目录数据 API（只读）",
       "baseUrl": "https://api.nextmoe.dev",
       "prefix": "/v1/catalog",
+      "specUrl": "https://api.nextmoe.dev/v1/catalog/openapi.json",
       "auth": {
         "kind": "api_key",
         "curl": "Authorization: Bearer nmk_live_<YOUR_KEY>",
@@ -16692,6 +16693,7 @@ export const docsModel: DocsModel = {
       "name": "资讯 API",
       "baseUrl": "https://api.nextmoe.dev",
       "prefix": "/v1/news",
+      "specUrl": "https://api.nextmoe.dev/v1/news/openapi.json",
       "auth": {
         "kind": "api_key",
         "curl": "Authorization: Bearer nmk_live_<YOUR_KEY>",
@@ -17210,6 +17212,7 @@ export const docsModel: DocsModel = {
       "name": "分销链接 API",
       "baseUrl": "https://api.nextmoe.dev",
       "prefix": "/v1/store",
+      "specUrl": "https://api.nextmoe.dev/v1/store/openapi.json",
       "auth": {
         "kind": "api_key",
         "curl": "Authorization: Bearer nmk_live_<YOUR_KEY>",
@@ -17551,6 +17554,7 @@ export const docsModel: DocsModel = {
       "name": "Public API v2",
       "baseUrl": "https://api.nextmoe.dev",
       "prefix": "/v2",
+      "specUrl": "https://api.nextmoe.dev/v2/catalog/openapi.json",
       "auth": {
         "kind": "api_key",
         "curl": "Authorization: Bearer nmk_live_<YOUR_KEY>",

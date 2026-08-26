@@ -24,6 +24,11 @@ export const V2_SPEC = join(REPO_ROOT, 'docs/catalog/v2-openapi.yaml')
 // public gen target, and scope lives in prose. Both are derived here, from the
 // prefix and the method, and they are the only place the reference pages learn
 // which credential to print.
+//
+// specUrl is the face's live machine-readable contract, listed in llms.txt and
+// on the docs pages. playtime and edit deliberately have none — playtime's
+// spec route sits behind user auth (401) and edit exposes none (404) — so do
+// not "complete" the pattern for them.
 export const FACES = [
   {
     key: 'catalog',
@@ -31,6 +36,7 @@ export const FACES = [
     name: '目录数据 API（只读）',
     file: PUBLIC_SPEC,
     prefix: '/v1/catalog',
+    specUrl: `${API_HOST}/v1/catalog/openapi.json`,
     scope: () => 'catalog:read',
     auth: {
       kind: 'api_key',
@@ -87,6 +93,7 @@ export const FACES = [
     name: '资讯 API',
     file: NEWS_SPEC,
     prefix: '/v1/news',
+    specUrl: `${API_HOST}/v1/news/openapi.json`,
     scope: () => '',
     auth: {
       kind: 'api_key',
@@ -106,6 +113,7 @@ export const FACES = [
     name: '分销链接 API',
     file: STORE_SPEC,
     prefix: '/v1/store',
+    specUrl: `${API_HOST}/v1/store/openapi.json`,
     scope: () => 'store:read',
     auth: {
       kind: 'api_key',
@@ -126,6 +134,7 @@ export const FACES = [
     name: 'Public API v2',
     file: V2_SPEC,
     prefix: '/v2',
+    specUrl: `${API_HOST}/v2/catalog/openapi.json`,
     scope: (_method, path) => {
       if (!path) return 'catalog:read'
       if (path.startsWith('/v2/me/') || path.startsWith('/v2/moderation/')) return ''

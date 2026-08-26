@@ -18,6 +18,15 @@
 - [分销链接 API](https://developer.nextmoe.dev/docs/store.md) — `/v1/store`，2 个端点，Authorization: Bearer nmk_live_…
 - [Public API v2](https://developer.nextmoe.dev/docs/v2.md) — `/v2`，84 个端点，Authorization: Bearer nmk_live_…
 
+## OpenAPI 原文（机器可读）
+
+- 目录数据 API（只读）：https://api.nextmoe.dev/v1/catalog/openapi.json
+- 资讯 API：https://api.nextmoe.dev/v1/news/openapi.json
+- 分销链接 API：https://api.nextmoe.dev/v1/store/openapi.json
+- Public API v2：https://api.nextmoe.dev/v2/catalog/openapi.json
+
+游玩时长与编辑提案两个用户面不提供公开 spec 文件，以本站 Markdown 参考为准。
+
 ## 鉴权模型
 
 - 应用密钥（`Authorization: Bearer nmk_live_…`）——在 https://developer.nextmoe.dev 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 只有 catalog:read。/v2 只收 nmk_ 前缀的密钥，v1 两代都收。
