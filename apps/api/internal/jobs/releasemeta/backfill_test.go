@@ -382,6 +382,13 @@ func TestBackfillReleaseMeta(t *testing.T) {
 	mkWorkAnchor(t, rEgFalse, "612", reg.egSource, model.LinkKindExact)
 	mkEgErogame(t, 612, false)
 
+	rEgBeatsDl := mkWork(t, medium, "rating-eg-beats-dl-allages", nil, nil, 0)
+	relEgBeatsDl := mkRelease(t, rEgBeatsDl, 2000, 1, 1)
+	mkReleaseAnchor(t, relEgBeatsDl, "RJ000106", reg.dlsiteSource)
+	mkDlWork(t, "RJ000106", "", "1")
+	mkWorkAnchor(t, rEgBeatsDl, "613", reg.egSource, model.LinkKindExact)
+	mkEgErogame(t, 613, true)
+
 	rBgmMeta := mkWork(t, medium, "rating-bgm-meta-tag", nil, nil, 0)
 	mkWorkAnchor(t, rBgmMeta, "710", reg.bangumiSource, model.LinkKindExact)
 	mkSubjectMeta(t, 710, false, "游戏", "R18")
@@ -405,15 +412,15 @@ func TestBackfillReleaseMeta(t *testing.T) {
 	assert.Equal(t, 1, st.BgmDateBadDate)
 	assert.Equal(t, 1, st.BgmDatePartial)
 	assert.Equal(t, 2, st.BgmDatePlanned, "wBgmClaimed + wBgmPartial")
-	assert.Equal(t, 32, st.RatingCandidates, "every rating-0 work; rRated excluded")
+	assert.Equal(t, 33, st.RatingCandidates, "every rating-0 work; rRated excluded")
 	assert.Equal(t, 3, st.RatingVndbR18, "minage + has_ero + the dl-allages preemption")
 	assert.Equal(t, 1, st.RatingDlR18)
 	assert.Equal(t, 1, st.RatingDlSensitive)
 	assert.Equal(t, 1, st.RatingDlAllAges, "explicit all-ages verdict keeps the row at 0")
-	assert.Equal(t, 1, st.RatingEgR18)
+	assert.Equal(t, 2, st.RatingEgR18, "erogame=true + the dl-allages preemption")
 	assert.Equal(t, 2, st.RatingBgmR18, "nsfw flag + R18 meta_tag")
 	assert.Equal(t, 23, st.RatingNoVerdict)
-	assert.Equal(t, 8, st.RatingPlanned)
+	assert.Equal(t, 9, st.RatingPlanned)
 	assert.Zero(t, st.DlDateFilled+st.EgDateFilled+st.BgmDateFilled+st.RatingFilled+
 		st.DlDateSkippedNonEmpty+st.EgDateSkippedNonEmpty+st.BgmDateSkippedNonEmpty+
 		st.RatingSkippedNonEmpty+st.Errors)
@@ -426,7 +433,7 @@ func TestBackfillReleaseMeta(t *testing.T) {
 	assert.Equal(t, 2, st.DlDateFilled)
 	assert.Equal(t, 4, st.EgDateFilled)
 	assert.Equal(t, 2, st.BgmDateFilled)
-	assert.Equal(t, 8, st.RatingFilled)
+	assert.Equal(t, 9, st.RatingFilled)
 	assert.Zero(t, st.DlDateSkippedNonEmpty+st.EgDateSkippedNonEmpty+st.BgmDateSkippedNonEmpty+
 		st.RatingSkippedNonEmpty+st.Errors)
 
@@ -457,6 +464,8 @@ func TestBackfillReleaseMeta(t *testing.T) {
 	assert.Equal(t, model.ContentRatingR18, workRating(t, rVndbBeatsDl),
 		"work-level vndb verdict outranks the 全年齢版 SKU's dlsite age")
 	assert.Equal(t, model.ContentRatingR18, workRating(t, rEgTrue))
+	assert.Equal(t, model.ContentRatingR18, workRating(t, rEgBeatsDl),
+		"work-level EG erogame outranks the 全年齢版 SKU's dlsite age")
 	assert.Equal(t, int16(0), workRating(t, rEgFalse), "erogame=false never infers a rating")
 	assert.Equal(t, model.ContentRatingR18, workRating(t, rBgmMeta))
 
@@ -465,7 +474,7 @@ func TestBackfillReleaseMeta(t *testing.T) {
 	assert.Equal(t, 3, st.DlDateCandidates, "only the unfillable three remain")
 	assert.Equal(t, 2, st.EgDateCandidates, "bad-date + missing-mirror remain")
 	assert.Equal(t, 2, st.BgmDateCandidates, "no-date + garbage remain")
-	assert.Equal(t, 24, st.RatingCandidates, "the eight filled works left the set")
+	assert.Equal(t, 24, st.RatingCandidates, "the nine filled works left the set")
 	assert.Zero(t, st.DlDatePlanned+st.EgDatePlanned+st.BgmDatePlanned+st.RatingPlanned,
 		"second pass plans zero")
 	assert.Zero(t, st.DlDateFilled+st.EgDateFilled+st.BgmDateFilled+st.RatingFilled+st.Errors,
