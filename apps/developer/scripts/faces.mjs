@@ -33,8 +33,8 @@ export const FACES = [
     scope: () => 'catalog:read',
     auth: {
       kind: 'api_key',
-      curl: 'Authorization: Bearer nm_live_<YOUR_KEY>',
-      display: 'Authorization: Bearer nm_live_…',
+      curl: 'Authorization: Bearer nmk_live_<YOUR_KEY>',
+      display: 'Authorization: Bearer nmk_live_…',
       note: '机器 API 密钥,服务端持有'
     }
   },
@@ -89,8 +89,8 @@ export const FACES = [
     scope: () => 'news:read',
     auth: {
       kind: 'api_key',
-      curl: 'Authorization: Bearer nm_live_<YOUR_KEY>',
-      display: 'Authorization: Bearer nm_live_…',
+      curl: 'Authorization: Bearer nmk_live_<YOUR_KEY>',
+      display: 'Authorization: Bearer nmk_live_…',
       note: '机器 API 密钥,但须带 news:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选'
     },
     notes: [

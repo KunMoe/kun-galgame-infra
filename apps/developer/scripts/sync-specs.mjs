@@ -203,7 +203,7 @@ const buildParams = (rawParams = []) => {
 const jsonContent = (content) =>
   content?.['application/json'] || content?.['application/problem+json']
 
-const authForPath = (faceDef, path, method) => {
+const authForPath = (faceDef, path) => {
   if (faceDef.key !== 'v2') return faceDef.auth
   if (path.startsWith('/v2/me/') || path.startsWith('/v2/moderation/')) return USER_TOKEN_AUTH
   if (
@@ -306,7 +306,7 @@ const buildFace = (faceDef, specs) => {
         )
       }
       placed.add(key)
-      const auth = authForPath(faceDef, path, method)
+      const auth = authForPath(faceDef, path)
       const scopeFn = faceDef.scope.length >= 2 ? faceDef.scope(method, path) : faceDef.scope(method)
       buckets.get(group.key).push(
         buildOperation(method, path, op, {

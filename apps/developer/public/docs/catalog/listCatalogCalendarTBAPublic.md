@@ -16,7 +16,7 @@ Release calendar, the global announced-but-undated bucket (id ASC keyset)
 Works that HAVE release rows but none carrying a year. A work with no release row at all is 'unknown' and deliberately enters no bucket — absence of a release is absence of an announcement, not a TBA date.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -30,7 +30,7 @@ Works that HAVE release rows but none carrying a year. A work with no release ro
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/calendar/tba" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

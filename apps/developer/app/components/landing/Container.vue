@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { API_BASE_URL } from '~/constants/dev'
-import { DOCS_FACE_META } from '~/constants/docs'
 import { ATTRIBUTION_NOTE, SOURCES } from '~~/shared/brand.mjs'
 import type { CatalogStats } from '~~/shared/types/stats'
 
@@ -96,15 +95,45 @@ const quickstart = [
   }
 ]
 
+// One prefix = one credential, and the four of them are the whole public
+// surface. Every card lands on the same reference page: v2 is one document.
 const faces = [
-  { key: 'catalog', path: '/v1/catalog', name: '目录数据 API（只读）' },
-  { key: 'playtime', path: '/v1/playtime', name: '游玩时长 API' },
-  { key: 'edit', path: '/api/v1/user/catalog/edit', name: '编辑提案 API' },
-  { key: 'news', path: '/v1/news', name: '资讯 API（授权制）' }
+  {
+    key: 'catalog',
+    path: '/v2/catalog',
+    icon: 'lucide:network',
+    name: '目录数据（只读）',
+    tagline:
+      '作品、角色、厂牌、制作人员的统一条目库。同一部作品在六个源各有一个页面，我们把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上这个答案取自哪个源。凭据是应用密钥。'
+  },
+  {
+    key: 'news',
+    path: '/v2/news',
+    icon: 'lucide:newspaper',
+    name: '资讯（无需凭据）',
+    tagline:
+      '合作媒体的 Galgame 资讯索引：标题、摘要、题图与回源链接，正文不下发。这个面不要任何凭据，直接调。'
+  },
+  {
+    key: 'me',
+    path: '/v2/me',
+    icon: 'lucide:user-round',
+    name: '用户面（用户令牌）',
+    tagline:
+      '代表某个用户读写他自己的东西：游玩时长、封面投票、认领、编辑提案、资讯投稿。凭据是那个用户授权后的访问令牌，不是应用密钥。'
+  },
+  {
+    key: 'moderation',
+    path: '/v2/moderation',
+    icon: 'lucide:shield-check',
+    name: '审核面（用户令牌 + 权限）',
+    tagline:
+      '一方站点的审核台：认领与提案队列、裁决、回滚、快照。用户令牌加审核权限，且按站点隔离。'
+  }
 ] as const
 
-const curlSample = `curl https://api.nextmoe.dev/v1/catalog/works/1 \\
-  -H "Authorization: Bearer nm_live_…"`
+const curlSample = `curl https://api.nextmoe.dev/v2/catalog/works/1 \\
+  -H "Authorization: Bearer nmk_live_…"`
 </script>
 
 <template>
@@ -198,15 +227,19 @@ const curlSample = `curl https://api.nextmoe.dev/v1/catalog/works/1 \\
             <p class="font-semibold text-success">200 OK</p>
             <p class="text-default-400">
               cache-control:
-              <span class="text-default-600">public, s-maxage=86400</span>
+              <span class="text-default-600">
+                public, max-age=60, s-maxage=300
+              </span>
             </p>
             <p class="text-default-400">
-              x-ratelimit-remaining:
-              <span class="text-default-600">59</span>
+              etag:
+              <span class="text-default-600">"w1.7c1f9a2b"</span>
             </p>
             <p class="text-default-400">
-              x-quota-remaining:
-              <span class="text-default-600">49999</span>
+              ratelimit:
+              <span class="text-default-600">
+                limit=100, remaining=96, reset=53
+              </span>
             </p>
           </div>
         </div>
@@ -230,7 +263,7 @@ const curlSample = `curl https://api.nextmoe.dev/v1/catalog/works/1 \\
       </div>
       <p class="mt-3 text-center text-xs text-default-400">
         实时取自
-        <code class="font-mono text-default-500">/v1/catalog/stats</code>
+        <code class="font-mono text-default-500">/v2/catalog/stats</code>
         <template v-if="galgameCount">
           ，其中 Galgame {{ galgameCount }} 部
         </template>
@@ -338,17 +371,18 @@ const curlSample = `curl https://api.nextmoe.dev/v1/catalog/works/1 \\
     <section>
       <div class="mb-8 text-center">
         <h2 class="text-2xl font-bold text-foreground md:text-3xl">
-          四个 API
+          四个面，四种凭据
         </h2>
         <p class="mt-2 text-default-500">
-          版本化的 /v1 契约；已发布的字段只做向后兼容的新增。
+          一条前缀收一种凭据。v2 已正式公开，此后只做加法——删字段、改名字都会被 CI
+          的破坏性变更门挡下。
         </p>
       </div>
       <div class="grid gap-4 md:grid-cols-2">
         <NuxtLink
           v-for="face in faces"
           :key="face.key"
-          :to="`/docs/${face.key}`"
+          to="/docs/v2"
           class="group"
         >
           <KunCard
@@ -360,23 +394,12 @@ const curlSample = `curl https://api.nextmoe.dev/v1/catalog/works/1 \\
               <div
                 class="flex size-11 items-center justify-center rounded-lg bg-default-100 text-foreground"
               >
-                <KunIcon
-                  :name="DOCS_FACE_META[face.key].icon"
-                  class="size-5"
-                />
+                <KunIcon :name="face.icon" class="size-5" />
               </div>
-              <div class="flex items-center gap-2">
-                <span
-                  v-if="DOCS_FACE_META[face.key].badge"
-                  class="rounded-full bg-warning-50 px-2 py-1 text-xs font-medium text-warning-600"
-                >
-                  {{ DOCS_FACE_META[face.key].badge }}
-                </span>
-                <KunIcon
-                  name="lucide:arrow-up-right"
-                  class="size-4 text-default-300 transition-colors group-hover:text-primary"
-                />
-              </div>
+              <KunIcon
+                name="lucide:arrow-up-right"
+                class="size-4 text-default-300 transition-colors group-hover:text-primary"
+              />
             </div>
             <div class="mt-4 flex flex-wrap items-center gap-2">
               <h3 class="text-base font-semibold text-foreground">
@@ -387,7 +410,7 @@ const curlSample = `curl https://api.nextmoe.dev/v1/catalog/works/1 \\
               }}</code>
             </div>
             <p class="mt-1 text-sm leading-relaxed text-default-500">
-              {{ DOCS_FACE_META[face.key].tagline }}
+              {{ face.tagline }}
             </p>
           </KunCard>
         </NuxtLink>

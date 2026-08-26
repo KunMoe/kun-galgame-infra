@@ -23,7 +23,7 @@ await callOnce('auth:user', async () => {
         <p>NextMoe 开放 API · 六源对齐的 galgame 数据</p>
         <div class="flex items-center gap-3">
           <a href="/llms.txt" class="text-xs hover:text-foreground">llms.txt</a>
-          <p class="font-mono text-xs">api.nextmoe.dev/v1</p>
+          <p class="font-mono text-xs">api.nextmoe.dev/v2</p>
         </div>
       </div>
     </footer>

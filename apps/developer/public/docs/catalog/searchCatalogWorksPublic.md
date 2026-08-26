@@ -16,7 +16,7 @@ Works product search: free text + the works-list filter set, page-paginated, wit
 Searches the LIVE galgame registry (claimed + bodyless) by any indexed title or alias and narrows it with the same filters GET /v1/catalog/works accepts. Items are works-list rows VERBATIM (PublicWorkListItem, include= and all), re-hydrated from the registry — the search documents never reach the wire. total, the facet distribution and items are three views of ONE filtered set: page through total and you collect exactly that many rows, and an sfw caller's total already excludes the r18 works it can never receive.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -44,7 +44,7 @@ Searches the LIVE galgame registry (claimed + bodyless) by any indexed title or 
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/search" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

@@ -16,7 +16,7 @@ Keyset label browse lane (id ASC); filter by kind, each row carries an nsfw-awar
 Every label that has not been merged away, id ascending. work_count is the number of works THIS caller would page through via works?label_id=<id> — so an sfw caller's count excludes r18 works and always matches the list it can actually fetch.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -29,7 +29,7 @@ Every label that has not been merged away, id ascending. work_count is the numbe
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/labels" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

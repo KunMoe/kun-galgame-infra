@@ -64,15 +64,33 @@ const busy = ref(false)
 const showEditModal = ref(false)
 const showMintModal = ref(false)
 
+const showReveal = ref(false)
 const mintedKey = ref<DevKeyMinted | null>(null)
 const revealRotated = ref(false)
 
-const confirmDialog = ref<{
+const reveal = (minted: DevKeyMinted, rotated: boolean) => {
+  mintedKey.value = minted
+  revealRotated.value = rotated
+  showReveal.value = true
+}
+
+interface ConfirmDialog {
   title: string
   body: string
   danger?: boolean
   run: () => Promise<void>
-} | null>(null)
+}
+
+// The payload outlives the close so the panel still has something to render
+// while KunModal's leave transition plays — nulling it on close emptied the
+// panel for the length of the animation.
+const confirmOpen = ref(false)
+const confirmDialog = ref<ConfirmDialog | null>(null)
+
+const askConfirm = (dialog: ConfirmDialog) => {
+  confirmDialog.value = dialog
+  confirmOpen.value = true
+}
 
 const runConfirm = async () => {
   if (!confirmDialog.value) return
@@ -81,7 +99,7 @@ const runConfirm = async () => {
     await confirmDialog.value.run()
   } finally {
     busy.value = false
-    confirmDialog.value = null
+    confirmOpen.value = false
   }
 }
 
@@ -89,24 +107,17 @@ const limitLabel = (v: number, unit: string) =>
   v > 0 ? `${v.toLocaleString()} ${unit}` : '不限'
 
 const handleMinted = (minted: DevKeyMinted) => {
-  showMintModal.value = false
-  revealRotated.value = false
-  mintedKey.value = minted
+  reveal(minted, false)
   refreshKeys()
   refreshApp()
 }
 
-const closeReveal = () => {
-  mintedKey.value = null
-}
-
 const handleEdited = () => {
-  showEditModal.value = false
   refreshApp()
 }
 
 const askRotate = (key: DevKey) => {
-  confirmDialog.value = {
+  askConfirm({
     title: '轮换密钥',
     body: `将为「${key.name}」生成一枚新密钥，旧密钥进入 72 小时宽限后失效。请确保有机会保存新密钥。`,
     run: async () => {
@@ -114,18 +125,17 @@ const askRotate = (key: DevKey) => {
         `/dev/apps/${clientId.value}/keys/${key.id}/rotate`
       )
       if (res.code === 0 && res.data) {
-        revealRotated.value = true
-        mintedKey.value = res.data
+        reveal(res.data, true)
         refreshKeys()
       } else {
         useKunMessage(res.message || '轮换失败', 'error')
       }
     }
-  }
+  })
 }
 
 const askRevoke = (key: DevKey) => {
-  confirmDialog.value = {
+  askConfirm({
     title: '吊销密钥',
     body: `吊销「${key.name}」后立即生效且不可撤销，使用该密钥的所有请求将被拒绝。确认继续？`,
     danger: true,
@@ -141,7 +151,7 @@ const askRevoke = (key: DevKey) => {
         useKunMessage(res.message || '吊销失败', 'error')
       }
     }
-  }
+  })
 }
 
 const resubmitting = ref(false)
@@ -162,7 +172,7 @@ const resubmit = async () => {
 }
 
 const askDeactivate = () => {
-  confirmDialog.value = {
+  askConfirm({
     title: '停用应用',
     body: '停用后该应用退出开放 API 平台，其所有密钥将立即失效。确认继续？',
     danger: true,
@@ -175,7 +185,7 @@ const askDeactivate = () => {
         useKunMessage(res.message || '停用失败', 'error')
       }
     }
-  }
+  })
 }
 </script>
 
@@ -363,34 +373,31 @@ const askDeactivate = () => {
     </template>
 
     <AppsEditModal
-      v-if="showEditModal && app"
+      v-if="app"
+      v-model:open="showEditModal"
       :app="app"
-      @close="showEditModal = false"
       @updated="handleEdited"
     />
 
     <KeysMintModal
-      v-if="showMintModal"
+      v-model:open="showMintModal"
       :client-id="clientId"
       :scope-apply-disabled="scopeApplyDisabled"
-      @close="showMintModal = false"
       @minted="handleMinted"
     />
 
     <KeysRevealModal
-      v-if="mintedKey"
+      v-model:open="showReveal"
       :minted="mintedKey"
       :rotated="revealRotated"
-      @close="closeReveal"
     />
 
     <KunModal
-      v-if="confirmDialog"
-      :model-value="true"
+      v-model="confirmOpen"
       role="alertdialog"
-      @update:model-value="confirmDialog = null"
+      :aria-label="confirmDialog?.title ?? '确认'"
     >
-      <div class="space-y-4">
+      <div v-if="confirmDialog" class="space-y-4">
         <h2 class="text-xl font-bold text-foreground">
           {{ confirmDialog.title }}
         </h2>
@@ -400,7 +407,7 @@ const askDeactivate = () => {
             color="default"
             variant="flat"
             :disabled="busy"
-            @click="confirmDialog = null"
+            @click="confirmOpen = false"
           >
             取消
           </KunButton>

@@ -10,7 +10,7 @@
 **署名**：目前阶段使用 NextMoe·未萌 API，可以将 API 的名字标记为『鲲 Galgame 论坛』（如果你使用 Galgame 数据）或『LetMoe·一启萌』（如果你使用同人游戏数据）。
 
 - 路径前缀：`/v1/news`
-- 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,但须带 news:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选）
+- 凭据：Authorization: Bearer nmk_live_…（机器 API 密钥,但须带 news:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选）
 - 端点数：3
 
 ## 使用须知

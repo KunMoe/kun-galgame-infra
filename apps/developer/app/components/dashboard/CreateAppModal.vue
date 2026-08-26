@@ -2,18 +2,21 @@
 import type { DevApp } from '~~/shared/types/dev'
 
 const props = defineProps<{ needsApproval?: boolean }>()
-const emit = defineEmits<{ close: []; created: [DevApp] }>()
+const emit = defineEmits<{ created: [DevApp] }>()
 
+const open = defineModel<boolean>('open', { required: true })
 const api = useApi()
-const show = ref(true)
 
 const name = ref('')
 const description = ref('')
 const error = ref('')
 const isLoading = ref(false)
 
-watch(show, (val) => {
-  if (!val) emit('close')
+watch(open, (val) => {
+  if (!val) return
+  name.value = ''
+  description.value = ''
+  error.value = ''
 })
 
 const handleSubmit = async () => {
@@ -32,6 +35,7 @@ const handleSubmit = async () => {
         props.needsApproval ? '已提交，等待平台审核' : '应用已创建',
         'success'
       )
+      open.value = false
       emit('created', res.data)
     } else {
       error.value = res.message || '创建失败'
@@ -43,7 +47,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="show" size="md">
+  <KunModal v-model="open" size="md" aria-label="创建应用">
     <div class="space-y-4">
       <h2 class="text-xl font-bold text-foreground">创建应用</h2>
 
@@ -72,7 +76,7 @@ const handleSubmit = async () => {
       </div>
 
       <div class="flex justify-end gap-3">
-        <KunButton color="default" variant="flat" @click="show = false">
+        <KunButton color="default" variant="flat" @click="open = false">
           取消
         </KunButton>
         <KunButton color="primary" :disabled="isLoading" @click="handleSubmit">

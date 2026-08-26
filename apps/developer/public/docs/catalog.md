@@ -10,7 +10,7 @@
 **署名**：目前阶段使用 NextMoe·未萌 API，可以将 API 的名字标记为『鲲 Galgame 论坛』（如果你使用 Galgame 数据）或『LetMoe·一启萌』（如果你使用同人游戏数据）。
 
 - 路径前缀：`/v1/catalog`
-- 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,服务端持有）
+- 凭据：Authorization: Bearer nmk_live_…（机器 API 密钥,服务端持有）
 - 端点数：37
 
 ## 端点

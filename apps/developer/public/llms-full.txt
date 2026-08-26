@@ -24,17 +24,17 @@
 
 ## 鉴权模型
 
-- API 密钥（`Authorization: Bearer nm_live_…`）——在 https://developer.nextmoe.dev 控制台自助创建应用与密钥，自助可勾选的 scope 只有 catalog:read。
-- 用户访问令牌（`Authorization: Bearer <access token>`）——游玩时长与编辑提案两个 API 读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是 API 密钥。
-- news:read 是授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定。在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。
-- `/v1/catalog/stats` 不要任何凭据，匿名即可调。
+- 应用密钥（`Authorization: Bearer nmk_live_…`）——在 https://developer.nextmoe.dev 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 只有 catalog:read。/v2 只收 nmk_ 前缀的密钥，v1 两代都收。
+- 用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation（以及 v1 的游玩时长、编辑提案）读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。
+- news:read 是授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定。在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。/v2/news 不受此限，无需凭据。
+- `/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 `/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。
 
 ---
 
 # 目录数据 API（只读）
 
 - 路径前缀：`/v1/catalog`
-- 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,服务端持有）
+- 凭据：Authorization: Bearer nmk_live_…（机器 API 密钥,服务端持有）
 - 端点数：37
 
 ## 检索与反查
@@ -46,7 +46,7 @@ Entity autocomplete over names / characters / labels / works / tags, projected t
 The identity finder: up to 20 flat hits of ONE family, no filters and no pagination — what a picker or a jump-to-entity box needs. For a works RESULTS PAGE (filters, facets, sort, paging, full works-list rows) use GET /v1/catalog/works/search instead.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -59,7 +59,7 @@ The identity finder: up to 20 flat hits of ONE family, no filters and no paginat
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/search" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/search
@@ -69,7 +69,7 @@ Works product search: free text + the works-list filter set, page-paginated, wit
 Searches the LIVE galgame registry (claimed + bodyless) by any indexed title or alias and narrows it with the same filters GET /v1/catalog/works accepts. Items are works-list rows VERBATIM (PublicWorkListItem, include= and all), re-hydrated from the registry — the search documents never reach the wire. total, the facet distribution and items are three views of ONE filtered set: page through total and you collect exactly that many rows, and an sfw caller's total already excludes the r18 works it can never receive.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -97,7 +97,7 @@ Searches the LIVE galgame registry (claimed + bodyless) by any indexed title or 
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/search" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/lookup
@@ -105,7 +105,7 @@ curl "https://api.nextmoe.dev/v1/catalog/works/search" \
 Reverse-lookup an external id via an EXACT anchor (killer feature); type=work|name|character|label, 404 on miss/hidden
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -117,7 +117,7 @@ Reverse-lookup an external id via an EXACT anchor (killer feature); type=work|na
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/lookup" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### POST /v1/catalog/lookup/batch
@@ -125,14 +125,14 @@ curl "https://api.nextmoe.dev/v1/catalog/lookup" \
 Batch external-id reverse-lookup (≤100 pairs, per-pair type); misses return null blocks in order
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 无参数。
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v1/catalog/lookup/batch" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"items":[{"external_id":"string","source":"string"}]}'
 ```
@@ -142,14 +142,14 @@ curl -X POST "https://api.nextmoe.dev/v1/catalog/lookup/batch" \
 Batch old id → canonical id (redirect flattening) for a given entity_type
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 无参数。
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v1/catalog/resolve" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"entity_type":"string","ids":[0]}'
 ```
@@ -159,7 +159,7 @@ curl -X POST "https://api.nextmoe.dev/v1/catalog/resolve" \
 Keyset feed of id-convergence (merge) events for stored-id cleanup; filter by entity_type
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -170,7 +170,7 @@ Keyset feed of id-convergence (merge) events for stored-id cleanup; filter by en
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/redirects" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 作品
@@ -180,7 +180,7 @@ curl "https://api.nextmoe.dev/v1/catalog/redirects" \
 Keyset works browse lane: the LIVE galgame registry set (claimed + bodyless) with conjunctive filters; sort=id|updated
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -209,7 +209,7 @@ Keyset works browse lane: the LIVE galgame registry set (claimed + bodyless) wit
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}
@@ -217,7 +217,7 @@ curl "https://api.nextmoe.dev/v1/catalog/works" \
 Frozen work record: identity + titles + exact cross-source refs + claim pointer; include=relations,credits
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -230,7 +230,7 @@ Frozen work record: identity + titles + exact cross-source refs + claim pointer;
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 作品子资源
@@ -242,7 +242,7 @@ Cover images of one work, paged — the block a store card or a shelf needs on i
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Rows the CDN cannot render are dropped before paging rather than after, so a page is short only when the block is exhausted. Need just the two display slots instead of every stored image? works/{id}.cover_slots and works?include=covers pick them for you.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -254,7 +254,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/covers" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/screenshots
@@ -264,7 +264,7 @@ Screenshots of one work, paged, with dimensions and thumbhash
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Each row carries its own sexual and violence level: this face reports them, it does not filter on them.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -276,7 +276,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/screenshots" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/tags
@@ -286,7 +286,7 @@ Source tags of one work, paged, with the canonical mapping and the safety axis
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Ordered count DESC, then name in BYTE order, then source — the parent's order exactly. Rows that map to the canonical vocabulary carry canonical_id/tier/kind plus an nsfw-aware work_count; unmapped rows omit them.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -299,7 +299,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/tags" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/characters
@@ -309,7 +309,7 @@ The character roster of one work, paged, with voice credits
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Order is main, secondary, appears, then the credit-only entries. Like the parent block this face applies NO spoiler ceiling — every row publishes its own spoiler level for the caller to gate on, which is why there is no spoilers parameter here.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -321,7 +321,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/characters" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/credits
@@ -331,7 +331,7 @@ Staff credits of one work grouped by role, paged over credit rows
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. PAGING IS OVER CREDIT ROWS, NOT GROUPS: limit and offset count individual credits, so a role whose credits straddle a page boundary appears in both pages as its own group carrying that page's slice. Concatenating pages means merging the groups that share a role_key. Counting groups instead would leave one page unbounded, which is the thing this face exists to stop.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -343,7 +343,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/credits" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/releases
@@ -353,7 +353,7 @@ Release rows of one work, paged, each with its exact anchors and its own compani
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Ordered by release id ASC. labels[] is THIS version's companies (who developed it, who published it) — the Switch port's publisher and the English edition's publisher are two releases' facts, and this is where each of them lives. For a cross-work release timeline use GET /v1/catalog/releases instead.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -365,7 +365,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/releases" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/intros
@@ -375,7 +375,7 @@ Synopses of one work, one per language, paged
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. One row per language, elected the parent's way: a source-written synopsis beats a machine-translated one, and machine rows are flagged rather than hidden.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -387,7 +387,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/intros" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/ratings
@@ -397,7 +397,7 @@ Per-source ratings of one work, paged, with the vote histogram and the spread
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. This is the work-DETAIL projection, so distribution and stats are carried in full — unlike the works-list ratings block, which drops them. Scores stay on each source's native scale and are never blended into one number.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -409,7 +409,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/ratings" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/relations
@@ -419,7 +419,7 @@ Related works of one work, paged — the block works/{id} only serves under incl
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. With nsfw absent or 0 an r18 relation end is dropped WHOLE, not emptied, and next_offset counts what survived that drop. Sequels and fandiscs also reach you through works/{id}.series_siblings, which is the transitive series component rather than the one-hop relation set.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -431,7 +431,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/relations" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/series
@@ -441,7 +441,7 @@ The series this work belongs to, paged
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. member_count is the series' whole membership, not this page — follow it with works?series_id=<id> or series/{id}?include=works.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -453,7 +453,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/series" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/links
@@ -463,7 +463,7 @@ Non-identity outbound links of one work (official site, Steam, X, …), paged
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. These are addresses, not anchors: the identity anchors are works/{id}.refs[]. Sources whose storefront URL cannot be reconstructed from the stored code (dlsite, dmm — the section is part of the address and the registry stores only the bare code) are absent here by design and stay reachable through refs[].
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -475,7 +475,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/links" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/engines
@@ -485,7 +485,7 @@ Engines one work is built with, paged, each with an nsfw-aware work_count
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. work_count is the number of works this caller would page through via works?engine_id=<id>, so it always matches the list it can actually fetch.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -497,7 +497,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/engines" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 发售与日历
@@ -509,7 +509,7 @@ Release-grain new-releases timeline: every dated release row, ports and re-editi
 The calendar one grain down. /v1/catalog/calendar places a WORK in the month of its EARLIEST release and shows it once, so a Switch port, a Steam re-issue or a Chinese localisation of a title released years ago is invisible there by construction. Here every release row is its own item, on its own date. is_first tells the two apart: true = the work's earliest dated release (a title genuinely coming out), false = a later edition of something already released — computed over the work's whole dated-release set, so it does not change when you narrow the feed. Each item carries the parent work as a works-list row (include= and all). Population: releases of LIVE galgame works whose date is known to at least the MONTH. Year-only and undated releases are deliberately absent — they cannot be ordered against a real date, and they already have homes in /v1/catalog/calendar/pending and /v1/catalog/calendar/tba. Carries a feed-level ETag (count + newest created_at + highest release id over the whole filtered set): an If-None-Match hit 304s before any page is loaded.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -530,7 +530,7 @@ The calendar one grain down. /v1/catalog/calendar places a WORK in the month of 
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/releases" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/calendar
@@ -540,7 +540,7 @@ Release calendar, one ISO month (date ASC keyset); default = the current Asia/To
 Works whose EARLIEST year-carrying, non-deleted release falls inside the month — day precision and month precision alike (a month-precision work sorts at the head of its month, it is never pinned to the 1st). Same classification anchor as the works-list release_date, so a row's bucket and its printed date can never disagree. Year-precision works live in /v1/catalog/calendar/pending, undated ones in /v1/catalog/calendar/tba, and a work with no release row at all is in no bucket. Items are works-list rows verbatim, include= and all. Carries a bucket-level ETag (count + newest updated_at over the whole filtered set): an If-None-Match hit 304s before any page is loaded.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -555,7 +555,7 @@ Works whose EARLIEST year-carrying, non-deleted release falls inside the month �
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/calendar" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/calendar/pending
@@ -565,7 +565,7 @@ Release calendar, one year's month-still-unknown bucket (id ASC keyset); default
 Works whose earliest release is known only to the YEAR — they appear in no month view of that year, by design. Same population, item shape, olang gate and ETag mechanics as the month bucket.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -580,7 +580,7 @@ Works whose earliest release is known only to the YEAR — they appear in no mon
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/calendar/pending" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/calendar/tba
@@ -590,7 +590,7 @@ Release calendar, the global announced-but-undated bucket (id ASC keyset)
 Works that HAVE release rows but none carrying a year. A work with no release row at all is 'unknown' and deliberately enters no bucket — absence of a release is absence of an announcement, not a TBA date.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -604,7 +604,7 @@ Works that HAVE release rows but none carrying a year. A work with no release ro
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/calendar/tba" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 角色与人物
@@ -614,7 +614,7 @@ curl "https://api.nextmoe.dev/v1/catalog/calendar/tba" \
 Character identity; include=works attaches the works it appears in with voice names
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -628,7 +628,7 @@ Character identity; include=works attaches the works it appears in with voice na
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/characters/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/names/{id}
@@ -636,7 +636,7 @@ curl "https://api.nextmoe.dev/v1/catalog/characters/1" \
 Credited identity (same-person grouping via public links); include=credits attaches works + roles
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -649,7 +649,7 @@ Credited identity (same-person grouping via public links); include=credits attac
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/names/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 厂牌与标签
@@ -661,7 +661,7 @@ Keyset label browse lane (id ASC); filter by kind, each row carries an nsfw-awar
 Every label that has not been merged away, id ascending. work_count is the number of works THIS caller would page through via works?label_id=<id> — so an sfw caller's count excludes r18 works and always matches the list it can actually fetch.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -674,7 +674,7 @@ Every label that has not been merged away, id ascending. work_count is the numbe
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/labels" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/labels/{id}
@@ -682,7 +682,7 @@ curl "https://api.nextmoe.dev/v1/catalog/labels" \
 Label (brand / circle / publisher …) identity; include=works attaches attributed works
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -695,7 +695,7 @@ Label (brand / circle / publisher …) identity; include=works attaches attribut
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/labels/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/labels/{id}/relation-graph
@@ -705,7 +705,7 @@ Corporate-structure graph around a label: the connected family (parents, subsidi
 labels/{id}.relations[] is ONE HOP; this is the whole component, which is what a picture needs — standing on a brand you can see its parent's other brands without walking the one-hop face once per neighbour. A breadth-first walk from the seed over the label-relation graph, bounded at depth 4 and 60 nodes; the bound is applied breadth-first, so a truncated answer keeps the neighbourhood NEAREST the seed. Soft-deleted (merged-away) labels never appear. There is no pagination — a graph served in slices is not a graph. nodes[0] is always the seed, and a label with no relations is a one-node, zero-edge graph, not a 404; an unknown id is a 404 and a merged id is the same 301 labels/{id} serves. EDGE SEMANTICS: {from, to, relation} reads "`to` is the `relation` of `from`" — the same reading relations[].relation has, where `from` is the label being viewed. So {from: Key, to: VisualArt's, relation: parent} means "VisualArt's is the parent of Key". The underlying graph is stored MIRRORED, but each fact is emitted ONCE: only the canonical side of each inverse pair (parent, imprint, spawned, succeeded_by) is rendered, and the four inverses (subsidiary, imprint_of, origin, formerly) are implied by reading the edge backwards — for "the subsidiaries of X", take the edges whose `to` is X and whose relation is parent. Every node's work_count is the SAME nsfw-aware number labels/{id} and the labels browse lane report for this caller.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -715,7 +715,7 @@ labels/{id}.relations[] is ONE HOP; this is the whole component, which is what a
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/labels/1/relation-graph" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/tags
@@ -725,7 +725,7 @@ Keyset canonical-tag browse lane (id ASC); filter by tier / kind, each row carri
 The cross-source canonical tag vocabulary, id ascending. work_count is the number of works THIS caller would page through via works?tag_id=<id> (counted over the source-tag map, so a work carrying two mapped source tags counts once).
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -740,7 +740,7 @@ The cross-source canonical tag vocabulary, id ascending. work_count is the numbe
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/tags" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/tags/{id}
@@ -748,7 +748,7 @@ curl "https://api.nextmoe.dev/v1/catalog/tags" \
 Canonical tag (cross-source vocabulary): name / tier / kind / intros; include=works attaches the tagged works
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -761,7 +761,7 @@ Canonical tag (cross-source vocabulary): name / tier / kind / intros; include=wo
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/tags/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 系列与引擎
@@ -773,7 +773,7 @@ Keyset series browse lane (id ASC); each row carries an nsfw-aware work_count
 The grouping entities works?series_id= filters on, id ascending. work_count is the number of works THIS caller would page through via works?series_id=<id>. Series are a curated, source-mirrored facet with no search index of their own, so this lane is how a consumer discovers an id it does not already hold.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -785,7 +785,7 @@ The grouping entities works?series_id= filters on, id ascending. work_count is t
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/series" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/series/{id}
@@ -795,7 +795,7 @@ Series record: identity + source anchor + intros; include=works attaches its mem
 The address of the grouping entity works?series_id= filters on. Members are the LIVE galgame fetchable set, paged by limit/offset exactly like labels/{id} and tags/{id}, ordered by release date (members with no dated release last). members[] runs parallel to works[] — same page, same order — and carries each membership's position (1-based; 0 = not ordered yet) and kind (unknown/main/fandisc/side_story/collection). Series carry no merge or soft-delete machinery, so an unknown id is a plain 404 — never a redirect.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -808,7 +808,7 @@ The address of the grouping entity works?series_id= filters on. Members are the 
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/series/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/engines
@@ -818,7 +818,7 @@ Keyset engine browse lane (id ASC); each row carries an nsfw-aware work_count
 The visual-novel / game engines works are built with, id ascending. work_count is the number of works THIS caller would page through via works?engine_id=<id>.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -829,7 +829,7 @@ The visual-novel / game engines works are built with, id ascending. work_count i
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/engines" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/engines/{id}
@@ -837,7 +837,7 @@ curl "https://api.nextmoe.dev/v1/catalog/engines" \
 Engine record: name + nsfw-aware work_count + exact cross-source refs
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -847,7 +847,7 @@ Engine record: name + nsfw-aware work_count + exact cross-source refs
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/engines/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 变更流与统计
@@ -859,7 +859,7 @@ Incremental works changes feed ((updated,id) keyset; next_cursor always present 
 Creations and updates of LIVE galgame works, ordered by (updated_at, id) ASC. The feed deliberately trails real time by ~5 seconds: updated_at is statement time, not commit time, so serving rows younger than that lag would let a slow transaction commit behind an already-advanced consumer cursor and be skipped forever. DELETIONS DO NOT FLOW THROUGH THIS FEED — a row that leaves the LIVE set simply stops appearing; merge-style disappearances are covered by /v1/catalog/redirects, and mirror-style consumers should periodically reconcile the full id set via works?sort=id. WATERMARK GUARANTEE: any write that changes what a work's public face renders — its own columns and every works?include= block (names, intros, labels, ratings, covers, refs) plus release_date — moves that work's updated_at, so a full mirror can be driven from this feed alone. The guarantee covers sub-resource and fan-out writes (a cover detached, a label logo cleared, an anchor confirmed or killed, a release edited, a merge rehanging facets onto the survivor), and it is one-directional: updated_at moving does not promise the rendered bytes differ, so consumers must diff, not trust.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -870,7 +870,7 @@ Creations and updates of LIVE galgame works, ordered by (updated_at, id) ASC. Th
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/changes" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/stats
@@ -1125,7 +1125,7 @@ curl -X POST "https://api.nextmoe.dev/api/v1/user/catalog/edit/proposals/1/withd
 # 资讯 API（授权制）
 
 - 路径前缀：`/v1/news`
-- 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,但须带 news:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选）
+- 凭据：Authorization: Bearer nmk_live_…（机器 API 密钥,但须带 news:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选）
 - 端点数：3
 
 > 授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，所以 news:read 不是自助勾一下就有的。在开发者门户控制台提交申请并说明用途，批准后这一项就出现在铸密钥的可勾选项里；没有它的密钥调这三条路径一律 403。
@@ -1141,7 +1141,7 @@ Galgame news feed republished from partner sites, newest upstream publication fi
 Every item carries its source block and source_url unconditionally: the partners authorised an INDEX, not a mirror. The article body is never served here and is not stored — preview plus banner is the whole authorisation, and readers reach the full text by following source_url to the partner's own site. Items we withdrew, and items whose upstream original has disappeared, are absent from this feed. Two lanes share the feed — 'news' (short bulletins) and 'column' (longer editorial pieces) — and every item states which one it came from.
 
 - 所属 API：资讯 API（授权制）（/v1/news）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：news:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -1156,7 +1156,7 @@ Every item carries its source block and source_url unconditionally: the partners
 
 ```bash
 curl "https://api.nextmoe.dev/v1/news" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/news/sources
@@ -1166,14 +1166,14 @@ The source registry: display name, homepage, column entry point, publisher uid, 
 For pages that render one standing attribution block. It does NOT replace the per-item source block — an item taken on its own must still carry its own attribution.
 
 - 所属 API：资讯 API（授权制）（/v1/news）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：news:read
 
 无参数。
 
 ```bash
 curl "https://api.nextmoe.dev/v1/news/sources" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/news/{id}
@@ -1183,7 +1183,7 @@ One news item; 404 once it is unpublished, withdrawn, or gone upstream
 The 404 is a contract, not a lookup failure: a withdrawn item must stop being addressable.
 
 - 所属 API：资讯 API（授权制）（/v1/news）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：news:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -1192,7 +1192,7 @@ The 404 is a contract, not a lookup failure: a withdrawn item must stop being ad
 
 ```bash
 curl "https://api.nextmoe.dev/v1/news/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

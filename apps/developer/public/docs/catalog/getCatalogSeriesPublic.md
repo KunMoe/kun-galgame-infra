@@ -16,7 +16,7 @@ Series record: identity + source anchor + intros; include=works attaches its mem
 The address of the grouping entity works?series_id= filters on. Members are the LIVE galgame fetchable set, paged by limit/offset exactly like labels/{id} and tags/{id}, ordered by release date (members with no dated release last). members[] runs parallel to works[] — same page, same order — and carries each membership's position (1-based; 0 = not ordered yet) and kind (unknown/main/fandisc/side_story/collection). Series carry no merge or soft-delete machinery, so an unknown id is a plain 404 — never a redirect.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -29,7 +29,7 @@ The address of the grouping entity works?series_id= filters on. Members are the 
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/series/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

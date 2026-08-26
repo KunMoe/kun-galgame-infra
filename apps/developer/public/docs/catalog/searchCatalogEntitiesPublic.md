@@ -16,7 +16,7 @@ Entity autocomplete over names / characters / labels / works / tags, projected t
 The identity finder: up to 20 flat hits of ONE family, no filters and no pagination — what a picker or a jump-to-entity box needs. For a works RESULTS PAGE (filters, facets, sort, paging, full works-list rows) use GET /v1/catalog/works/search instead.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -29,7 +29,7 @@ The identity finder: up to 20 flat hits of ONE family, no filters and no paginat
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/search" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

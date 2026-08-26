@@ -3,17 +3,19 @@ import { DEV_SCOPE_APP_MESSAGE_MAX } from '~/constants/dev'
 import type { DevScopeApplication } from '~~/shared/types/dev'
 
 const props = defineProps<{ scope: string }>()
-const emit = defineEmits<{ close: []; filed: [DevScopeApplication] }>()
+const emit = defineEmits<{ filed: [DevScopeApplication] }>()
 
+const open = defineModel<boolean>('open', { required: true })
 const api = useApi()
-const show = ref(true)
 
 const message = ref('')
 const error = ref('')
 const isLoading = ref(false)
 
-watch(show, (val) => {
-  if (!val) emit('close')
+watch(open, (val) => {
+  if (!val) return
+  message.value = ''
+  error.value = ''
 })
 
 const handleSubmit = async () => {
@@ -40,7 +42,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="show" size="md">
+  <KunModal v-model="open" size="md" :aria-label="`申请 ${scope}`">
     <div class="space-y-4">
       <div>
         <h2 class="text-xl font-bold text-foreground">申请 {{ scope }}</h2>
@@ -64,7 +66,7 @@ const handleSubmit = async () => {
       </div>
 
       <div class="flex justify-end gap-3">
-        <KunButton color="default" variant="flat" @click="show = false">
+        <KunButton color="default" variant="flat" @click="open = false">
           取消
         </KunButton>
         <KunButton color="primary" :disabled="isLoading" @click="handleSubmit">

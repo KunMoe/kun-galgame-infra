@@ -14,7 +14,7 @@
 Frozen work record: identity + titles + exact cross-source refs + claim pointer; include=relations,credits
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -27,7 +27,7 @@ Frozen work record: identity + titles + exact cross-source refs + claim pointer;
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

@@ -69,8 +69,6 @@ export const DEV_DISABLED_HINT = '该功能当前已由平台关闭'
 export const MAX_APPS_PER_ACCOUNT = 5
 export const MAX_ACTIVE_KEYS_PER_APP = 5
 
-export const API_BASE_URL = 'https://api.nextmoe.dev/v1'
-
-export const API_V2_BASE_URL = 'https://api.nextmoe.dev/v2'
+export const API_BASE_URL = 'https://api.nextmoe.dev/v2'
 
 export const MCP_ENDPOINT = 'https://mcp.nextmoe.dev/mcp'

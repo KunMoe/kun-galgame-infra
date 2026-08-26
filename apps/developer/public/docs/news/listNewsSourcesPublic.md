@@ -16,14 +16,14 @@ The source registry: display name, homepage, column entry point, publisher uid, 
 For pages that render one standing attribution block. It does NOT replace the per-item source block — an item taken on its own must still carry its own attribution.
 
 - 所属 API：资讯 API（授权制）（/v1/news）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：news:read
 
 无参数。
 
 ```bash
 curl "https://api.nextmoe.dev/v1/news/sources" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

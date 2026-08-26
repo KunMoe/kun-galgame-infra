@@ -16,7 +16,7 @@ Incremental works changes feed ((updated,id) keyset; next_cursor always present 
 Creations and updates of LIVE galgame works, ordered by (updated_at, id) ASC. The feed deliberately trails real time by ~5 seconds: updated_at is statement time, not commit time, so serving rows younger than that lag would let a slow transaction commit behind an already-advanced consumer cursor and be skipped forever. DELETIONS DO NOT FLOW THROUGH THIS FEED — a row that leaves the LIVE set simply stops appearing; merge-style disappearances are covered by /v1/catalog/redirects, and mirror-style consumers should periodically reconcile the full id set via works?sort=id. WATERMARK GUARANTEE: any write that changes what a work's public face renders — its own columns and every works?include= block (names, intros, labels, ratings, covers, refs) plus release_date — moves that work's updated_at, so a full mirror can be driven from this feed alone. The guarantee covers sub-resource and fan-out writes (a cover detached, a label logo cleared, an anchor confirmed or killed, a release edited, a merge rehanging facets onto the survivor), and it is one-directional: updated_at moving does not promise the rendered bytes differ, so consumers must diff, not trust.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -27,7 +27,7 @@ Creations and updates of LIVE galgame works, ordered by (updated_at, id) ASC. Th
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/changes" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

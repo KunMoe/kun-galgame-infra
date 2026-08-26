@@ -24,7 +24,7 @@ export interface DocsSchemaNode {
 
 export interface DocsParam {
   name: string
-  in: 'query' | 'path'
+  in: 'query' | 'path' | 'header'
   required: boolean
   type: string
   format?: string

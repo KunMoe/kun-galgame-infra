@@ -17,8 +17,8 @@ export const docsModel: DocsModel = {
       "prefix": "/v1/catalog",
       "auth": {
         "kind": "api_key",
-        "curl": "Authorization: Bearer nm_live_<YOUR_KEY>",
-        "display": "Authorization: Bearer nm_live_…",
+        "curl": "Authorization: Bearer nmk_live_<YOUR_KEY>",
+        "display": "Authorization: Bearer nmk_live_…",
         "note": "机器 API 密钥,服务端持有"
       },
       "groups": [
@@ -219,7 +219,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/search\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/search\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "searchCatalogWorksPublic",
@@ -940,7 +940,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/search\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/search\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "lookupCatalogPublic",
@@ -2413,7 +2413,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/lookup\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/lookup\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "lookupCatalogBatchPublic",
@@ -3907,7 +3907,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl -X POST \"https://api.nextmoe.dev/v1/catalog/lookup/batch\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"items\":[{\"external_id\":\"string\",\"source\":\"string\"}]}'"
+              "curl": "curl -X POST \"https://api.nextmoe.dev/v1/catalog/lookup/batch\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"items\":[{\"external_id\":\"string\",\"source\":\"string\"}]}'"
             },
             {
               "id": "resolveCatalogPublic",
@@ -4007,7 +4007,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl -X POST \"https://api.nextmoe.dev/v1/catalog/resolve\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"entity_type\":\"string\",\"ids\":[0]}'"
+              "curl": "curl -X POST \"https://api.nextmoe.dev/v1/catalog/resolve\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"entity_type\":\"string\",\"ids\":[0]}'"
             },
             {
               "id": "listCatalogRedirectsPublic",
@@ -4131,7 +4131,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/redirects\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/redirects\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             }
           ]
         },
@@ -4841,7 +4841,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkPublic",
@@ -6377,7 +6377,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             }
           ]
         },
@@ -6545,7 +6545,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/covers\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/covers\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkScreenshotsPublic",
@@ -6697,7 +6697,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/screenshots\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/screenshots\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkTagsPublic",
@@ -6864,7 +6864,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/tags\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/tags\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkCharactersPublic",
@@ -7153,7 +7153,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/characters\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/characters\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkCreditsPublic",
@@ -7361,7 +7361,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/credits\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/credits\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkReleasesPublic",
@@ -7618,7 +7618,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/releases\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/releases\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkIntrosPublic",
@@ -7749,7 +7749,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/intros\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/intros\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkRatingsPublic",
@@ -7935,7 +7935,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/ratings\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/ratings\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkRelationsPublic",
@@ -8147,7 +8147,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/relations\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/relations\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkSeriesPublic",
@@ -8281,7 +8281,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/series\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/series\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkLinksPublic",
@@ -8403,7 +8403,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/links\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/links\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogWorkEnginesPublic",
@@ -8532,7 +8532,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/engines\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/works/1/engines\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             }
           ]
         },
@@ -9338,7 +9338,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/releases\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/releases\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "listCatalogCalendarPublic",
@@ -9969,7 +9969,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/calendar\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/calendar\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "listCatalogCalendarPendingPublic",
@@ -10600,7 +10600,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/calendar/pending\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/calendar/pending\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "listCatalogCalendarTBAPublic",
@@ -11224,7 +11224,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/calendar/tba\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/calendar/tba\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             }
           ]
         },
@@ -11806,7 +11806,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/characters/1\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/characters/1\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogNamePublic",
@@ -12317,7 +12317,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/names/1\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/names/1\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             }
           ]
         },
@@ -12573,7 +12573,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/labels\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/labels\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogLabelPublic",
@@ -13033,7 +13033,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/labels/1\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/labels/1\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogLabelRelationGraphPublic",
@@ -13234,7 +13234,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/labels/1/relation-graph\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/labels/1/relation-graph\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "listCatalogTagsPublic",
@@ -13413,7 +13413,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/tags\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/tags\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogTagPublic",
@@ -13676,7 +13676,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/tags/1\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/tags/1\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             }
           ]
         },
@@ -13822,7 +13822,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/series\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/series\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogSeriesPublic",
@@ -14118,7 +14118,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/series/1\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/series/1\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "listCatalogEnginesPublic",
@@ -14257,7 +14257,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/engines\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/engines\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogEnginePublic",
@@ -14386,7 +14386,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/engines/1\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/engines/1\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             }
           ]
         },
@@ -14512,7 +14512,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/changes\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/catalog/changes\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getCatalogStatsPublic",
@@ -16694,8 +16694,8 @@ export const docsModel: DocsModel = {
       "prefix": "/v1/news",
       "auth": {
         "kind": "api_key",
-        "curl": "Authorization: Bearer nm_live_<YOUR_KEY>",
-        "display": "Authorization: Bearer nm_live_…",
+        "curl": "Authorization: Bearer nmk_live_<YOUR_KEY>",
+        "display": "Authorization: Bearer nmk_live_…",
         "note": "机器 API 密钥,但须带 news:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选"
       },
       "notes": [
@@ -16932,7 +16932,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/news\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/news\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "listNewsSourcesPublic",
@@ -17036,7 +17036,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/news/sources\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/news/sources\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             },
             {
               "id": "getNewsPublic",
@@ -17198,7 +17198,7 @@ export const docsModel: DocsModel = {
                   }
                 }
               ],
-              "curl": "curl \"https://api.nextmoe.dev/v1/news/1\" \\\n  -H \"Authorization: Bearer nm_live_<YOUR_KEY>\""
+              "curl": "curl \"https://api.nextmoe.dev/v1/news/1\" \\\n  -H \"Authorization: Bearer nmk_live_<YOUR_KEY>\""
             }
           ]
         }

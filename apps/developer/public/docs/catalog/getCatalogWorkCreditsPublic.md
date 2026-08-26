@@ -16,7 +16,7 @@ Staff credits of one work grouped by role, paged over credit rows
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. PAGING IS OVER CREDIT ROWS, NOT GROUPS: limit and offset count individual credits, so a role whose credits straddle a page boundary appears in both pages as its own group carrying that page's slice. Concatenating pages means merging the groups that share a role_key. Counting groups instead would leave one page unbounded, which is the thing this face exists to stop.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -28,7 +28,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/credits" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

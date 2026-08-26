@@ -9,10 +9,10 @@ import {
 import type { DevKeyMinted, DevScopeApplication } from '~~/shared/types/dev'
 
 const props = defineProps<{ clientId: string; scopeApplyDisabled?: boolean }>()
-const emit = defineEmits<{ close: []; minted: [DevKeyMinted] }>()
+const emit = defineEmits<{ minted: [DevKeyMinted] }>()
 
+const open = defineModel<boolean>('open', { required: true })
 const api = useApi()
-const show = ref(true)
 
 const name = ref('')
 const test = ref(false)
@@ -21,14 +21,13 @@ const error = ref('')
 const isLoading = ref(false)
 
 const applications = ref<DevScopeApplication[]>([])
-const applyingFor = ref<string | null>(null)
+const applyScope = ref('')
+const applyOpen = ref(false)
 
 const loadApplications = async () => {
   const res = await api.get<DevScopeApplication[]>('/dev/scope-applications')
   applications.value = res.code === 0 && res.data ? res.data : []
 }
-
-onMounted(loadApplications)
 
 const applicationFor = (scope: string) =>
   applications.value.find((a) => a.scope === scope) ?? null
@@ -36,7 +35,7 @@ const applicationFor = (scope: string) =>
 const isGranted = (scope: string) => applicationFor(scope)?.status === 'approved'
 
 const handleFiled = (filed: DevScopeApplication) => {
-  applyingFor.value = null
+  applyOpen.value = false
   applications.value = [
     ...applications.value.filter((a) => a.scope !== filed.scope),
     filed
@@ -44,8 +43,18 @@ const handleFiled = (filed: DevScopeApplication) => {
   useKunMessage('申请已提交，等待平台审核', 'success')
 }
 
-watch(show, (val) => {
-  if (!val) emit('close')
+const openApply = (scope: string) => {
+  applyScope.value = scope
+  applyOpen.value = true
+}
+
+watch(open, (val) => {
+  if (!val) return
+  name.value = ''
+  test.value = false
+  scopes.value = [...DEV_MINTABLE_SCOPES]
+  error.value = ''
+  loadApplications()
 })
 
 const toggleScope = (s: string) => {
@@ -76,6 +85,7 @@ const handleSubmit = async () => {
       body
     )
     if (res.code === 0 && res.data) {
+      open.value = false
       emit('minted', res.data)
     } else {
       error.value = res.message || '生成失败'
@@ -87,7 +97,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="show" size="md">
+  <KunModal v-model="open" size="md" aria-label="生成新密钥">
     <div class="space-y-4">
       <h2 class="text-xl font-bold text-foreground">生成新密钥</h2>
 
@@ -144,7 +154,7 @@ const handleSubmit = async () => {
               color="primary"
               class="ml-auto"
               :disabled="scopeApplyDisabled"
-              @click="applyingFor = s"
+              @click="openApply(s)"
             >
               {{ applicationFor(s) ? '重新申请' : '申请授权' }}
             </KunButton>
@@ -165,9 +175,9 @@ const handleSubmit = async () => {
       </div>
 
       <div class="rounded-lg border border-default-200 p-3">
-        <KunSwitch v-model="test" label="测试密钥（nm_test_ 前缀）" />
+        <KunSwitch v-model="test" label="测试密钥（nmk_test_ 前缀）" />
         <p class="mt-1 text-xs text-default-400">
-          — 测试密钥用于开发/联调；正式接入请使用生产密钥（nm_live_）。
+          — 测试密钥用于开发/联调；正式接入请使用生产密钥（nmk_live_）。
         </p>
       </div>
 
@@ -176,7 +186,7 @@ const handleSubmit = async () => {
       </div>
 
       <div class="flex justify-end gap-3">
-        <KunButton color="default" variant="flat" @click="show = false">
+        <KunButton color="default" variant="flat" @click="open = false">
           取消
         </KunButton>
         <KunButton color="primary" :disabled="isLoading" @click="handleSubmit">
@@ -191,9 +201,8 @@ const handleSubmit = async () => {
     </div>
 
     <KeysScopeApplyModal
-      v-if="applyingFor"
-      :scope="applyingFor"
-      @close="applyingFor = null"
+      v-model:open="applyOpen"
+      :scope="applyScope"
       @filed="handleFiled"
     />
   </KunModal>

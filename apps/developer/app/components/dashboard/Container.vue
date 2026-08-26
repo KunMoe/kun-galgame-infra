@@ -32,7 +32,6 @@ const reviewChip = (app: DevApp) => {
 }
 
 const handleCreated = () => {
-  showCreate.value = false
   refresh()
 }
 </script>
@@ -169,9 +168,8 @@ const handleCreated = () => {
     </KunCard>
 
     <DashboardCreateAppModal
-      v-if="showCreate"
+      v-model:open="showCreate"
       :needs-approval="needsApproval"
-      @close="showCreate = false"
       @created="handleCreated"
     />
   </div>

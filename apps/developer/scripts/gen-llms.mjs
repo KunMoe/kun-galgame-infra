@@ -23,13 +23,16 @@ import {
 import { MCP_TOOLS } from '../shared/mcp-tools.mjs'
 
 const AUTH_MODEL = [
-  'API 密钥（`Authorization: Bearer nm_live_…`）——在 ' +
-    `${SITE_URL} 控制台自助创建应用与密钥，自助可勾选的 scope 只有 catalog:read。`,
-  '用户访问令牌（`Authorization: Bearer <access token>`）——游玩时长与编辑提案两个 API 读写的是某个用户自己的东西，' +
-    '用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是 API 密钥。',
+  '应用密钥（`Authorization: Bearer nmk_live_…`）——在 ' +
+    `${SITE_URL} 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 只有 catalog:read。` +
+    '/v2 只收 nmk_ 前缀的密钥，v1 两代都收。',
+  '用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation（以及 v1 的游玩时长、编辑提案）' +
+    '读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。',
   'news:read 是授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定。' +
-    `在 ${SITE_URL} 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。`,
-  '`/v1/catalog/stats` 不要任何凭据，匿名即可调。'
+    `在 ${SITE_URL} 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。` +
+    '/v2/news 不受此限，无需凭据。',
+  '`/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 ' +
+    '`/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。'
 ]
 
 const mdPath = (route) => (route === '/' ? '/index.md' : `${route}.md`)
@@ -110,7 +113,7 @@ const buildLlmsTxt = (model) => {
   const lines = [...header('NextMoe 开放 API')]
   lines.push(...sourceSection())
   lines.push(...authSection())
-  lines.push('## 四个 API', '')
+  lines.push(`## ${model.faces.length} 个 API`, '')
   for (const face of model.faces) {
     const count = faceOperations(face).length
     lines.push(
@@ -211,7 +214,7 @@ const buildPages = (model) => {
 
   const docsIndex = [
     ...header('API 文档'),
-    '## 四个 API',
+    `## ${model.faces.length} 个 API`,
     ''
   ]
   for (const face of model.faces) {

@@ -16,7 +16,7 @@ Release-grain new-releases timeline: every dated release row, ports and re-editi
 The calendar one grain down. /v1/catalog/calendar places a WORK in the month of its EARLIEST release and shows it once, so a Switch port, a Steam re-issue or a Chinese localisation of a title released years ago is invisible there by construction. Here every release row is its own item, on its own date. is_first tells the two apart: true = the work's earliest dated release (a title genuinely coming out), false = a later edition of something already released — computed over the work's whole dated-release set, so it does not change when you narrow the feed. Each item carries the parent work as a works-list row (include= and all). Population: releases of LIVE galgame works whose date is known to at least the MONTH. Year-only and undated releases are deliberately absent — they cannot be ordered against a real date, and they already have homes in /v1/catalog/calendar/pending and /v1/catalog/calendar/tba. Carries a feed-level ETag (count + newest created_at + highest release id over the whole filtered set): an If-None-Match hit 304s before any page is loaded.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -37,7 +37,7 @@ The calendar one grain down. /v1/catalog/calendar places a WORK in the month of 
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/releases" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

@@ -16,7 +16,7 @@ Galgame news feed republished from partner sites, newest upstream publication fi
 Every item carries its source block and source_url unconditionally: the partners authorised an INDEX, not a mirror. The article body is never served here and is not stored — preview plus banner is the whole authorisation, and readers reach the full text by following source_url to the partner's own site. Items we withdrew, and items whose upstream original has disappeared, are absent from this feed. Two lanes share the feed — 'news' (short bulletins) and 'column' (longer editorial pieces) — and every item states which one it came from.
 
 - 所属 API：资讯 API（授权制）（/v1/news）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：news:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -31,7 +31,7 @@ Every item carries its source block and source_url unconditionally: the partners
 
 ```bash
 curl "https://api.nextmoe.dev/v1/news" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---
