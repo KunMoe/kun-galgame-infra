@@ -7,7 +7,7 @@
 ## 11. 安全 / 滥用 / 合规
 
 - **HTTPS 强制**(Cloudflare);key 只走 header,**不进 URL、不进日志**(日志只留 `key_prefix`)。
-- **NSFW**:默认 `sfw`;放开需 `galgame:nsfw` scope + `nsfw_allowed` tier,并审计——NSFW 闸控是**合规问题**(ToS / 法律),不只是整洁问题。catalog 面同理:`content_rating=r18` 的作品行默认过滤,同一 scope 闸控。
+- **NSFW**:默认 `sfw`——`content_rating=r18` 的作品行不出现在任何不带 `nsfw=true` 的响应里。这道默认**由参数而非授权面执行**:能力位(`nsfw_allowed` / `dev_nsfw_allowed` + 审批)已于 2026-08-25 退役,任何持 key 的 app 显式传 `nsfw=true` 即可取 r18,平台不再对此授权或审计。合规立场相应收敛为:平台保证**默认不投递 r18**,由调用方对自己显式要来的内容负责(ToS 条款,见 §11)。
 - **来源投影(再分发授权,D1 已拍板 2026-07-14)**:公开投影 = **聚合记录**——一个 Galgame 的每个字段是多源归并的结果(名称可能来自 wiki 策展、简介来自 Bangumi、日期来自 VNDB),**不做任何逐源原始字段的批量再分发**;评分以逐源数值 + 归源链接形态出现(P-★ 窄片同款),响应携带 `attribution` 块。归并结果与自产字段(中文简介/tag 本地化/竖图/stats)是投影本体;per-field provenance 机制用于执行该姿态。
 - **CORS**:`api.nextmoe.dev` 对浏览器直连**不开放任意 origin 携带 API key**(key 是机密,仅服务端);浏览器场景走 OAuth2 public client + PKCE。
 - **ToS / 滥用**:服务条款 + 异常用量告警 + 一键吊销 key/应用。

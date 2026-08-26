@@ -367,7 +367,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "boolean",
-                  "doc": "true/1 = include r18 works (default false = dropped from items, total AND facets alike). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded"
+                  "doc": "true/1 = include r18 works (default false = dropped from items, total AND facets alike). Caller-controlled: any application key may ask for it"
                 },
                 {
                   "name": "include",
@@ -4298,7 +4298,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "boolean",
-                  "doc": "true/1 = include r18 works (default false = dropped). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded"
+                  "doc": "true/1 = include r18 works (default false = dropped). Caller-controlled: any application key may ask for it"
                 },
                 {
                   "name": "include",
@@ -4870,7 +4870,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "boolean",
-                  "doc": "true/1 = serve r18 works and r18 relation ends (default false = hidden). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded, so it can never read an sfw page as the whole truth"
+                  "doc": "true/1 = serve r18 works and r18 relation ends (default false = hidden). Caller-controlled: any application key may ask for it"
                 },
                 {
                   "name": "spoilers",
@@ -17311,7 +17311,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -18709,7 +18709,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -19831,7 +19831,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "month",
@@ -22182,7 +22182,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -23102,7 +23102,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -24052,7 +24052,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -25052,7 +25052,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -27598,7 +27598,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -28489,7 +28489,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -29430,7 +29430,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -30468,7 +30468,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "q",
@@ -31352,7 +31352,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -32279,7 +32279,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -34763,7 +34763,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -35610,7 +35610,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -36570,7 +36570,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -37429,7 +37429,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -38338,7 +38338,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -41508,7 +41508,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "object",
@@ -42441,7 +42441,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -43355,7 +43355,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -47190,7 +47190,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "q",
@@ -48201,7 +48201,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -49041,7 +49041,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -50467,7 +50467,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -51335,7 +51335,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -52316,7 +52316,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -53174,7 +53174,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -54145,7 +54145,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "q",
@@ -56510,7 +56510,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "view",
@@ -58820,7 +58820,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -59974,7 +59974,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -60993,7 +60993,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -62008,7 +62008,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -62970,7 +62970,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -63929,7 +63929,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -64876,7 +64876,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -65838,7 +65838,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -68213,7 +68213,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -69242,7 +69242,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -70248,7 +70248,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -71216,7 +71216,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "cursor",
@@ -72286,7 +72286,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -74271,7 +74271,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -82340,7 +82340,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -86967,7 +86967,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "work_ids",
@@ -91902,7 +91902,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 },
                 {
                   "name": "state",
@@ -98132,7 +98132,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [
@@ -101227,7 +101227,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."
+                  "doc": "true includes r18. false or absent hides r18. Only true or false."
                 }
               ],
               "responses": [

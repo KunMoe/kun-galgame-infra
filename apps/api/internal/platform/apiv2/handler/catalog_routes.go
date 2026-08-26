@@ -14,7 +14,7 @@ import (
 
 type resourceIDInput struct {
 	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Decimal catalog id."`
-	NSFW    string `query:"nsfw" maxLength:"8" doc:"true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."`
+	NSFW    string `query:"nsfw" maxLength:"8" doc:"true includes r18. false or absent hides r18. Only true or false."`
 	View    string `query:"view" maxLength:"16" doc:"basic (default) or full. Closed vocabulary."`
 	Include string `query:"include" maxLength:"1024" doc:"Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE."`
 	Fields  string `query:"fields" maxLength:"1024" doc:"Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept."`
@@ -316,26 +316,7 @@ func parseResource(ctx context.Context, in *resourceIDInput, spec collect.Spec) 
 	if err != nil {
 		return 0, collect.Query{}, withIdent(ctx, err)
 	}
-	if q.NSFW {
-		if p := refuseNSFW(ctx); p != nil {
-			return 0, collect.Query{}, p
-		}
-	}
 	return id, q, nil
-}
-
-func refuseNSFW(ctx context.Context) *problem.Problem {
-	if nsfwAllowed(ctx) {
-		return nil
-	}
-	id, inst := ident(ctx)
-	return problem.New(problem.CodeNSFWCapabilityRequired, id, inst,
-		"nsfw=true requires a credential with the NSFW capability.")
-}
-
-func nsfwAllowed(ctx context.Context) bool {
-	v, _ := ctx.Value("nsfw_allowed").(bool)
-	return v
 }
 
 func catalogErr(ctx context.Context, err error) error {

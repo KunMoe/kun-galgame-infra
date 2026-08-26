@@ -133,13 +133,12 @@ MCP server 是公开 /v1 契约前面的一层**协议适配**,不是第二个 A
   「让 agent 帮我同步游玩库」的外部需求时,连同写面工具一起评估,而不是先把面开了。
   在那之前,**覆盖率分数不把这 5 条算进分母**。
 
-- **r18 姿态(104 波定的「调用方自控」已于 wave 213 波 2 改为能力位门控)**:catalog 系
-  工具仍是 `nsfw=true` 显式开、默认全部隐藏——LLM 消费者不显式要就永远看不到 r18;
-  但**开得成不成不再只取决于调用方**:上游面按 key 的 `nsfw_allowed` 能力位判,
-  没有该位的 key 带 `nsfw=true` 吃 **403**。MCP 层照旧零 authz,`mapUpstream` 把这个
-  403 原样转成 tool error。故每个工具的 `nsfw` 参数描述都写明
-  「requires an API key with the NSFW capability」,`instructions` 串同步改口——
-  漏改的话模型会把一个权限错误读成「这个作品不存在」,然后换个问法一直重试。(旧 galgame 系工具的
+- **r18 姿态 = 调用方自控**(104 波所定;wave 213 波 2 曾改为能力位门控,该能力位已于
+  2026-08-25 退役,姿态回到 104 波原样):catalog 系工具是 `nsfw=true` 显式开、默认
+  全部隐藏——LLM 消费者不显式要就永远看不到 r18,而**要了就一定拿得到**,不再有
+  凭证维度的 403。每个工具的 `nsfw` 参数描述与 `instructions` 串里的
+  「requires an API key with the NSFW capability」已一并删除:留着的话模型会以为
+  自己缺权限,把一次空结果读成「被拒绝」而反复换问法重试。(旧 galgame 系工具的
   `content_limit`+`galgame:nsfw` scope 姿态已随 /v1/galgame 摘牌一并退役;
   `catalog_works_search` 的 `content_limit` 是编辑展示轴,与 r18 轴无关。)
 

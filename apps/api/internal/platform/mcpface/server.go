@@ -20,8 +20,7 @@ const instructions = "NextMoe catalog v2: read-only tools generated from the pub
 	"Send `Authorization: Bearer nmk_live_…` on the MCP endpoint for catalog reads that require a key; " +
 	"mint a v2 key at " + devPortalURL + " (internal-tier apps during preview). " +
 	"v1 nm_live_ keys are not accepted. News, problems, vocabularies, stats and schemas need no key. " +
-	"R18 content is hidden by default: nsfw=true requires an NSFW-capable key and is refused with 403 " +
-	"without it — it does not silently fall back to sfw. " +
+	"R18 content is hidden by default: pass nsfw=true to include it. Any key may do so. " +
 	"This surface is preview: paths and fields may still change."
 
 type tools struct {

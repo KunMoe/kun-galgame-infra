@@ -27,12 +27,10 @@ type resolveRow struct {
 	AppName       string
 	KeyHash       string
 	KeyScopes     []byte
-	KeyNSFW       bool
 	RevokedAt     *time.Time
 	ExpiresAt     *time.Time
 	DevEnabled    bool
 	DevTier       string
-	DevNSFW       bool
 	DevRatePerMin int
 	DevQuotaDaily int
 }
@@ -42,10 +40,10 @@ func (r *Repository) ResolveByHash(ctx context.Context, hash string, now time.Ti
 	err := r.db.WithContext(ctx).
 		Table("developer_api_keys AS k").
 		Select(`k.id AS key_id, k.client_id AS client_id, c.name AS app_name,
-			k.key_hash AS key_hash, k.scopes AS key_scopes, k.nsfw_allowed AS key_nsfw,
+			k.key_hash AS key_hash, k.scopes AS key_scopes,
 			k.revoked_at AS revoked_at, k.expires_at AS expires_at,
 			c.dev_enabled AS dev_enabled, c.dev_tier AS dev_tier,
-			c.dev_nsfw_allowed AS dev_nsfw, c.dev_rate_per_min AS dev_rate_per_min,
+			c.dev_rate_per_min AS dev_rate_per_min,
 			c.dev_quota_daily AS dev_quota_daily`).
 		Joins("JOIN oauth_clients AS c ON c.id = k.client_id").
 		Where("k.key_hash = ?", hash).
@@ -76,7 +74,6 @@ func (r *Repository) ResolveByHash(ctx context.Context, hash string, now time.Ti
 		AppName:       row.AppName,
 		Tier:          row.DevTier,
 		Scopes:        scopes,
-		NSFWAllowed:   row.KeyNSFW && row.DevNSFW,
 		RateOverride:  row.DevRatePerMin,
 		QuotaOverride: row.DevQuotaDaily,
 	}, nil

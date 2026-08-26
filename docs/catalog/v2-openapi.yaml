@@ -5455,12 +5455,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: "Dated month window YYYY-MM. Default: current month in Asia/Tokyo."
@@ -5634,12 +5634,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -5781,12 +5781,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -5858,12 +5858,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -5965,12 +5965,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -6134,12 +6134,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -6211,12 +6211,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -6318,12 +6318,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -6495,12 +6495,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Name search. Empty lists by id. Must not be used as a discriminant.
@@ -6580,12 +6580,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -6687,12 +6687,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -6856,12 +6856,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -6933,12 +6933,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -7110,12 +7110,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -7187,12 +7187,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -7294,12 +7294,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -7733,12 +7733,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: "Restrict to one family. Closed: work, release, character, credit_name, person, company, tag, engine."
@@ -7888,12 +7888,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -7965,12 +7965,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -8474,12 +8474,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Search string. Empty runs a popularity-ordered listing of that family.
@@ -8645,12 +8645,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -8722,12 +8722,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -8939,12 +8939,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -9016,12 +9016,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -9193,12 +9193,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -9270,12 +9270,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -9447,12 +9447,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant.
@@ -9644,12 +9644,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: basic (default) or full. Closed vocabulary.
@@ -9751,12 +9751,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -9850,12 +9850,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -9949,12 +9949,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -10048,12 +10048,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -10147,12 +10147,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -10246,12 +10246,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -10345,12 +10345,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -10444,12 +10444,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -10543,12 +10543,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -10642,12 +10642,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -10741,12 +10741,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -10840,12 +10840,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -11009,12 +11009,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -11755,12 +11755,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -12185,12 +12185,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: Comma-separated work ids, max 100. Batch read, no pagination.
@@ -12652,12 +12652,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
         - description: open, pending, merged, declined, withdrawn.
@@ -13214,12 +13214,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -13550,12 +13550,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -14076,12 +14076,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -14314,12 +14314,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:
@@ -14521,12 +14521,12 @@ paths:
             description: Closed per-collection sort key.
             maxLength: 32
             type: string
-        - description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+        - description: true includes r18. false or absent hides r18. Only true or false.
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false.
+            description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
       responses:

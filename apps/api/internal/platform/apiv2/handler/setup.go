@@ -63,9 +63,6 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 		id := problem.RequestID(fc)
 		ctx = huma.WithValue(ctx, "request_id", id)
 		ctx = huma.WithValue(ctx, "instance", problem.Instance(fc))
-		if cred := devapi.CredentialFrom(fc); cred != nil && cred.NSFWAllowed {
-			ctx = huma.WithValue(ctx, "nsfw_allowed", true)
-		}
 		switch id := fc.Locals("user_id").(type) {
 		case uint:
 			ctx = huma.WithValue(ctx, ctxUserID, int64(id))

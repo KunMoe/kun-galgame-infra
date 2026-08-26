@@ -17,12 +17,14 @@ func Models() []any {
 // the later AutoMigrate call creates the table with every column already
 // present. For an existing table, the NOT NULL intent columns are added WITH a
 // temporary DEFAULT so existing rows backfill, then the DEFAULT is dropped so
-// the GORM zero-value INSERT trap can't reintroduce a silent default.
+// the GORM zero-value INSERT trap can't reintroduce a silent default. The one
+// exception is dev_nsfw_allowed, which keeps its DEFAULT because the Go model
+// no longer writes it — see the note at that statement.
 // owner_user_id is nullable (third-party app owner; NULL for first-party site
 // clients) and gets a plain index.
 //
-// Idempotent — ADD COLUMN IF NOT EXISTS + a no-op DROP DEFAULT on re-run, so a
-// second migration is a zero-change pass. cmd/migrate MUST call this BEFORE
+// Idempotent — ADD COLUMN IF NOT EXISTS + a no-op DROP/SET DEFAULT on re-run, so
+// a second migration is a zero-change pass. cmd/migrate MUST call this BEFORE
 // AutoMigrate(oauth_clients) so AutoMigrate never tries to add a NOT NULL column
 // to a populated table (which Postgres rejects). Column types match GORM's
 // mapping for the model fields (Go int → bigint, string size:20 → varchar(20)),
@@ -40,8 +42,14 @@ func AddOAuthClientDevColumns(db *gorm.DB) error {
 		`ALTER TABLE oauth_clients ALTER COLUMN dev_enabled DROP DEFAULT`,
 		`ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS dev_tier varchar(20) NOT NULL DEFAULT 'free'`,
 		`ALTER TABLE oauth_clients ALTER COLUMN dev_tier DROP DEFAULT`,
+		// 2026-08-25, the NSFW capability is retired: any key may ask for
+		// nsfw=true. The column stays (dropping it needs a separate outage-class
+		// migration and the historical grants are still readable), but its
+		// DEFAULT is restored instead of dropped — OAuthClient no longer carries
+		// DevNSFWAllowed, so every INSERT now omits the column and a NOT NULL
+		// column with no default would reject it.
 		`ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS dev_nsfw_allowed boolean NOT NULL DEFAULT false`,
-		`ALTER TABLE oauth_clients ALTER COLUMN dev_nsfw_allowed DROP DEFAULT`,
+		`ALTER TABLE oauth_clients ALTER COLUMN dev_nsfw_allowed SET DEFAULT false`,
 		`ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS dev_rate_per_min bigint NOT NULL DEFAULT 0`,
 		`ALTER TABLE oauth_clients ALTER COLUMN dev_rate_per_min DROP DEFAULT`,
 		`ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS dev_quota_daily bigint NOT NULL DEFAULT 0`,
@@ -62,6 +70,28 @@ func AddOAuthClientDevColumns(db *gorm.DB) error {
 		if err := db.Exec(s).Error; err != nil {
 			return fmt.Errorf("devapi migrate %q: %w", s, err)
 		}
+	}
+	return nil
+}
+
+// RestoreKeyNSFWDefault re-adds a DEFAULT to developer_api_keys.nsfw_allowed,
+// retired with the NSFW capability on 2026-08-25. The column is kept — a DROP
+// COLUMN is outage-class and the historical grants are still worth reading —
+// but DeveloperAPIKey no longer has the field, so every minted key now INSERTs
+// without it and the NOT NULL column would reject the row. Guarded on the
+// column: a database created after this change never has it, because
+// AutoMigrate builds developer_api_keys from the model.
+//
+// Idempotent, and cmd/migrate calls it BEFORE AutoMigrate. Migrate FIRST, then
+// deploy: the new binary cannot mint a key against a column that still demands
+// an explicit value.
+func RestoreKeyNSFWDefault(db *gorm.DB) error {
+	if !db.Migrator().HasTable("developer_api_keys") || !db.Migrator().HasColumn("developer_api_keys", "nsfw_allowed") {
+		return nil
+	}
+	s := `ALTER TABLE developer_api_keys ALTER COLUMN nsfw_allowed SET DEFAULT false`
+	if err := db.Exec(s).Error; err != nil {
+		return fmt.Errorf("devapi migrate %q: %w", s, err)
 	}
 	return nil
 }

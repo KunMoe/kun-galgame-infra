@@ -117,7 +117,6 @@ func (s *SelfServiceService) CreateApp(ctx context.Context, ownerUserID uint, na
 		OwnerUserID:     &owner,
 		DevEnabled:      enabled,
 		DevTier:         TierFree,
-		DevNSFWAllowed:  false,
 		DevRatePerMin:   0,
 		DevQuotaDaily:   0,
 		DevReviewStatus: reviewStatus,

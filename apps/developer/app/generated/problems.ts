@@ -245,15 +245,6 @@ export const problems = [
     "type": "https://developer.nextmoe.dev/problems/platform/service-unavailable"
   },
   {
-    "code": "NSFW_CAPABILITY_REQUIRED",
-    "domain": "catalog",
-    "kebab": "nsfw-capability-required",
-    "status": 403,
-    "title": "NSFW capability required",
-    "description": "nsfw=true was requested and this credential does not have the capability. The request is refused, not degraded.",
-    "type": "https://developer.nextmoe.dev/problems/catalog/nsfw-capability-required"
-  },
-  {
     "code": "ENTITY_MERGED",
     "domain": "catalog",
     "kebab": "entity-merged",

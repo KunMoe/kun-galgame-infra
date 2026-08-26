@@ -438,14 +438,14 @@ INSERT INTO oauth_clients
   (id, name, secret, redirect_uris, grants, is_public, auto_consent,
    refresh_token_ttl_seconds, allowed_scopes,
    image_enabled, image_site_key, image_allowed_presets, catalog_site,
-   dev_enabled, dev_tier, dev_nsfw_allowed, dev_rate_per_min, dev_quota_daily,
+   dev_enabled, dev_tier, dev_rate_per_min, dev_quota_daily,
    dev_review_status)
 VALUES
   ('letmoe-dev', '一起萌 letmoe (dev)', 'sha256:$HASH',
    '["http://127.0.0.1:5364/auth/callback"]', '["authorization_code","refresh_token"]',
    false, false, 7776000, '["openid","profile","email"]',
    true, 'letmoe', '["topic"]', 'letmoe',
-   false, '', false, 0, 0,
+   false, '', 0, 0,
    'approved')
 ON CONFLICT (id) DO UPDATE SET secret=EXCLUDED.secret,
   redirect_uris=EXCLUDED.redirect_uris, image_enabled=EXCLUDED.image_enabled,

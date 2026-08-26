@@ -49,7 +49,6 @@ type patchAppRequest struct {
 	OwnerUserID    *uint   `json:"owner_user_id"`
 	DevEnabled     *bool   `json:"dev_enabled"`
 	DevTier        *string `json:"dev_tier"`
-	DevNSFWAllowed *bool   `json:"dev_nsfw_allowed"`
 	DevRatePerMin  *int    `json:"dev_rate_per_min"`
 	DevQuotaDaily  *int    `json:"dev_quota_daily"`
 }
@@ -66,7 +65,6 @@ type appView struct {
 	OwnerUserID    *uint  `json:"owner_user_id,omitempty"`
 	DevEnabled     bool   `json:"dev_enabled"`
 	DevTier        string `json:"dev_tier"`
-	DevNSFWAllowed bool   `json:"dev_nsfw_allowed"`
 	DevRatePerMin  int    `json:"dev_rate_per_min"`
 	DevQuotaDaily  int    `json:"dev_quota_daily"`
 	KeyCount       int64  `json:"key_count"`
@@ -82,7 +80,6 @@ func toAppView(app *siteModel.OAuthClient, keyCount int64) appView {
 		OwnerUserID:    app.OwnerUserID,
 		DevEnabled:     app.DevEnabled,
 		DevTier:        app.DevTier,
-		DevNSFWAllowed: app.DevNSFWAllowed,
 		DevRatePerMin:  app.DevRatePerMin,
 		DevQuotaDaily:  app.DevQuotaDaily,
 		KeyCount:       keyCount,
@@ -99,7 +96,6 @@ type keyView struct {
 	KeyPrefix   string   `json:"key_prefix"`
 	Last4       string   `json:"last4"`
 	Scopes      []string `json:"scopes"`
-	NSFWAllowed bool     `json:"nsfw_allowed"`
 	ExpiresAt   string   `json:"expires_at,omitempty"`
 	RevokedAt   string   `json:"revoked_at,omitempty"`
 	LastUsedAt  string   `json:"last_used_at,omitempty"`
@@ -136,7 +132,6 @@ func (h *AdminHandler) PatchApp(c fiber.Ctx) error {
 		OwnerUserID:    req.OwnerUserID,
 		DevEnabled:     req.DevEnabled,
 		DevTier:        req.DevTier,
-		DevNSFWAllowed: req.DevNSFWAllowed,
 		DevRatePerMin:  req.DevRatePerMin,
 		DevQuotaDaily:  req.DevQuotaDaily,
 	})
@@ -429,7 +424,6 @@ func toKeyView(k *DeveloperAPIKey) keyView {
 		KeyPrefix:   k.KeyPrefix,
 		Last4:       k.Last4,
 		Scopes:      scopes,
-		NSFWAllowed: k.NSFWAllowed,
 		CreatedAt:   k.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
 	if k.ExpiresAt != nil {

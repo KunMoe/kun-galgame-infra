@@ -12,7 +12,7 @@
 
 ### 16.2 形态
 
-- **scope**:每个下游面新增 `<site>:read`(如 `kungal:read`),命名沿用 §4 词表规则;敏感能力照 `galgame:nsfw` 前例走审批 scope,不入自助集。
+- **scope**:每个下游面新增 `<site>:read`(如 `kungal:read`),命名沿用 §4 词表规则;敏感能力走审批 scope,不入自助集(旧稿在此援引 `galgame:nsfw` 为前例——它与 NSFW 能力位均已退役,不再是可照抄的形状)。
 - **计量**:face 字符串以 `<site>` / `<site>_<sub>` 命名,落 `developer_api_usage`(04 §12;face 列宽教训见 07 §14)。
 - **域名**:默认统一 `api.nextmoe.dev/v1/<site>/*`(Traefik 路径分面,现有孪生 router 模式);品牌确需独立域时允许 per-site 域名,但凭证/计量平面**不分裂**——这是唯一不变量,域名只是表皮。
 - **契约**:每个下游面提供合法 OpenAPI 文档,注册进门户构建(docs-model)+ oasdiff 破坏门 + operation-count 守卫,与 /v1 两面同一套纪律(02 §10)。
