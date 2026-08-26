@@ -18,7 +18,6 @@ OwnerUserID    *uint  `gorm:"index" json:"owner_user_id,omitempty"`
 
 DevEnabled     bool   `gorm:"not null;default:false" json:"dev_enabled"`      // 准入 NextMoe 开放 API
 DevTier        string `gorm:"size:20;not null;default:'free'" json:"dev_tier"` // free|trusted|internal(D2:tier 授予由平台内部完成;身份/角色沿 IdP 五全局角色,不铸新全局角色)
-DevNSFWAllowed bool   `gorm:"not null;default:false" json:"dev_nsfw_allowed"`
 // 限流/配额(0 = 用 tier 默认值,见 03-auth-and-tiers.md §7)
 DevRatePerMin  int    `gorm:"not null;default:0" json:"dev_rate_per_min"`
 DevQuotaDaily  int    `gorm:"not null;default:0" json:"dev_quota_daily"`
@@ -48,7 +47,6 @@ type DeveloperAPIKey struct {
     KeyPrefix   string     `gorm:"size:24;not null;index" json:"key_prefix"`// nm_live_a1b2
     Last4       string     `gorm:"size:4;not null" json:"last4"`
     Scopes      datatypes.JSON `gorm:"type:jsonb" json:"scopes"`            // ⊆ 应用 AllowedScopes
-    NSFWAllowed bool       `gorm:"not null;default:false" json:"nsfw_allowed"`
     ExpiresAt   *time.Time `json:"expires_at,omitempty"`  // 轮换宽限/有效期;NULL=不过期
     RevokedAt   *time.Time `json:"revoked_at,omitempty"`  // 吊销即拒
     LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
@@ -109,7 +107,7 @@ func (PolicyOverride) TableName() string { return "devapi_policy_overrides" }
 Cloudflare(TLS,可能命中边缘缓存→直接返回)
   → Traefik(按 /v1/<face>/ 路由到面服务)
     → 面服务(catalog 或 galgame,同一套中间件):
-       1. resolveCredential:  Bearer key/JWT → app + scopes + tier + nsfw_allowed
+       1. resolveCredential:  Bearer key/JWT → app + scopes + tier
                               (JWT 本地验;API key 经 introspection + Redis 缓存)
                               失败 → 401
        2. recordUsage:包住其后的整条链,响应回来时按(面, 路由模板, 状态码)记一次
@@ -117,12 +115,11 @@ Cloudflare(TLS,可能命中边缘缓存→直接返回)
        3. rateLimit(Redis,滑动窗口,key=app/key,跨面共享计数) → 超 → 429 + Retry-After + X-RateLimit-*
        4. quota(Redis 当日计数器,跨面共享) → 超 → 429 + X-Quota-*
        5. requireScope(端点所需 scope ⊆ 凭证 scope) → 缺 → 403
-       6. nsfw 能力闸:请求不带 nsfw= 真值即原样放行;带真值而凭证无 nsfw_allowed → 403
-       7. ETag(If-None-Match 命中 → 304)
-       8. handler(查询 + 设缓存头)
+       6. ETag(If-None-Match 命中 → 304)
+       7. handler(查询 + 设缓存头)
 ```
 
-> **第 6 步只看能力位,不看 scope,也绝不降级。** 旧稿这里写的是「content_limit 闸:请求 nsfw 需 `galgame:nsfw` scope + `nsfw_allowed`,否则降级为 sfw 或 403」——那描述的是已退役的 galgame 面的形状,catalog 面上**从来没有存在过**这样一道闸(在此波之前 `nsfw=1` 对任何 `catalog:read` key 都直接生效)。现在这道闸是:`nsfw` 参数的真值集与 handler 完全同一个解析器,凭证的 `nsfw_allowed` = key 的 `nsfw_allowed` **AND** client 的 `dev_nsfw_allowed`,不满足即 **403 + 可执行提示**(去门户申请)。**不降级为 sfw** 是刻意的:被悄悄收窄的一页会被调用方当成全部真相读走。`/v1/catalog/stats`(挂在 group 之上)与 `/v1/news` 不在这条链上。
+> **这条链上曾有第 6 步「nsfw 能力闸」**(wave 213 波 3 加,凭证无 `nsfw_allowed` 带 `nsfw=true` → 403,刻意不降级为 sfw),**已于 2026-08-25 随能力位整体退役**:`nsfw=true` 现在对任何 `catalog:read` 凭证直接生效,与该闸存在之前的形状一致。参数本身没变——不带 `nsfw` 仍是 sfw 投影,由 handler 而非中间件决定。`/v1/catalog/stats`(挂在 group 之上)与 `/v1/news` 从来不在这条链上。
 
 伪代码(中间件):
 ```go
@@ -134,7 +131,7 @@ func OpenAPIAuth(c fiber.Ctx) error {
     c.Locals("cred", cred)
     return c.Next()
 }
-// group 上:requireScope("catalog:read"); requireNSFWCapability(c) // nsfw=1 且无 nsfw_allowed → 403
+// group 上:requireScope("catalog:read")   // NSFW 能力闸已于 2026-08-25 退役
 ```
 
 ---

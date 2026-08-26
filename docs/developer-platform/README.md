@@ -13,7 +13,7 @@
 | 03 | [auth-and-tiers.md](./03-auth-and-tiers.md) | 认证与授权(API Key / OAuth2 / scope / 校验路径,§4)· 限流 + 配额 + 分层(§7) | 已完成 |
 | 04 | [platform-internals.md](./04-platform-internals.md) | 数据模型(§5)· 请求生命周期 / 中间件链(§6)· 缓存(§8)· 可观测 / 计量(§12) | 已完成 |
 | 05 | [developer-portal.md](./05-developer-portal.md) | 开发者门户 `developer.nextmoe.dev`(§9) | 已完成 |
-| 06 | [security-compliance.md](./06-security-compliance.md) | 安全 / 滥用 / 合规:NSFW 闸控、来源投影(D1 再分发)、CORS、ToS、审计(§11) | 已完成 |
+| 06 | [security-compliance.md](./06-security-compliance.md) | 安全 / 滥用 / 合规:NSFW 默认(能力闸已退役)、来源投影(D1 再分发)、CORS、ToS、审计(§11) | 已完成 |
 | 07 | [migration-and-ops.md](./07-migration-and-ops.md) | 迁移与运维提醒:主库迁移、新域名 / CF、Redis 键空间、契约登记、面服务中间件(§14) | 已完成 |
 | 08 | [downstream-faces-and-sdk.md](./08-downstream-faces-and-sdk.md) | 下游开放 API = 面联邦(§16)· OpenAPI 契约与客户端 SDK / Flutter(§17) | 拍板 2026-07-23,触发式执行 |
 | 09 | [mcp-server.md](./09-mcp-server.md) | MCP server:公开 /v1 只读面的纯透传协议适配(架构裁决 · M1 七工具面 · 认证/计量复用 · 部署) | 拍板 2026-07-23,M1 执行中 |
