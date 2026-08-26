@@ -99,10 +99,13 @@ func runRatingLane(ctx context.Context, db, dlDB, egDB *gorm.DB, w *writer, reg 
 	return nil
 }
 
-// VNDB outranks the DLsite storefront age: the dlsite anchor is release-level,
-// so a 全年齢版 SKU's age "1" describes that edition, while the vndb verdict is
-// the work-level "an 18+ release exists". With dlsite first, such a work took
-// an all-ages verdict (written as nothing) and stayed 0 forever.
+// VNDB and EG outrank the DLsite storefront age: the dlsite anchor is
+// release-level, so a 全年齢版 SKU's age "1" describes that edition, while the
+// vndb verdict ("a non-patch 18+ release exists") and the EG erogame flag are
+// work-level. With dlsite ahead of them, such a work took an all-ages verdict
+// (written as nothing) and stayed 0 forever — the first prod run confirmed it:
+// eg_r18 counted 0 while 3 un-edited erogame=true works sat in the candidate
+// set, each parked behind a dl age "1" SKU.
 func decideRating(c ratingCandidate, dlAnchors map[int64]string, dlAges map[string]string,
 	vndbR18 map[int64]bool, egAnchors map[int64][]int64, egErogame map[int64]bool,
 	bgmR18 map[int64]bool, st *Stats) (int16, string, string, bool) {
@@ -110,6 +113,13 @@ func decideRating(c ratingCandidate, dlAnchors map[int64]string, dlAges map[stri
 	if vndbR18[c.WorkID] {
 		st.RatingVndbR18++
 		return model.ContentRatingR18, "vndb", "", true
+	}
+
+	for _, id := range egAnchors[c.WorkID] {
+		if egErogame[id] {
+			st.RatingEgR18++
+			return model.ContentRatingR18, "erogamescape", strconv.FormatInt(id, 10), true
+		}
 	}
 
 	if wn, ok := dlAnchors[c.WorkID]; ok {
@@ -126,18 +136,12 @@ func decideRating(c ratingCandidate, dlAnchors map[int64]string, dlAges map[stri
 		}
 	}
 
-	// The wiki's editorial age_limit lane used to sit here, read from
-	// galgame.age_limit for claimed works. Wave 149 dropped that table, so the
-	// lane is gone rather than merely unfilled. It had in fact stopped
-	// producing verdicts earlier: its claim test pinned site == "galgame_wiki",
-	// the literal wave 161 renamed, so it silently matched nothing from then on.
-
-	for _, id := range egAnchors[c.WorkID] {
-		if egErogame[id] {
-			st.RatingEgR18++
-			return model.ContentRatingR18, "erogamescape", strconv.FormatInt(id, 10), true
-		}
-	}
+	// The wiki's editorial age_limit lane used to sit between dlsite and
+	// bangumi, read from galgame.age_limit for claimed works. Wave 149 dropped
+	// that table, so the lane is gone rather than merely unfilled. It had in
+	// fact stopped producing verdicts earlier: its claim test pinned
+	// site == "galgame_wiki", the literal wave 161 renamed, so it silently
+	// matched nothing from then on.
 
 	if bgmR18[c.WorkID] {
 		st.RatingBgmR18++
