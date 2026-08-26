@@ -10,6 +10,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+var readOnly = &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true}
+
 func registerSpecTools(s *mcp.Server, up *Upstream, raw []byte) error {
 	tools, err := ToolsFromSpec(raw)
 	if err != nil {

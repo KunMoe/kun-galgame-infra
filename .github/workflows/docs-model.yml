@@ -41,6 +41,10 @@ on:
       - "apps/developer/scripts/gen-llms.mjs"
       - "apps/developer/shared/brand.mjs"
       - "apps/developer/shared/mcp-tools.mjs"
+      # The generated half of the MCP roster. shared/mcp-tools.mjs only adds the
+      # Chinese descriptions to it, so a regenerated roster moves docs/mcp.md
+      # without any listed source file changing.
+      - "apps/developer/app/generated/mcp-tools.mjs"
       - "apps/developer/app/generated/docs-model.ts"
       - "apps/developer/public/llms.txt"
       - "apps/developer/public/llms-full.txt"
