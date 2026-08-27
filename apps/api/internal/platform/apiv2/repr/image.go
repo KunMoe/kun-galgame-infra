@@ -19,6 +19,7 @@ type Cover struct {
 	ID             string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"catalog_work_cover row id, not the image hash."`
 	VoteCount      int      `json:"vote_count" minimum:"0" doc:"Net votes on this cover row."`
 	PortraitPinned bool     `json:"portrait_pinned" doc:"Whether this row is pinned as the portrait cover."`
+	Kind           string   `json:"cover_kind" maxLength:"32" doc:"Upstream cover class from the pinning ladder: main, dig, pkgfront, pkgback and friends. Open vocabulary. Empty if unrecorded. Must not be used as a discriminant."`
 	URL            string   `json:"url" format:"uri" maxLength:"512" doc:"Absolute image URL. Never a bare hash."`
 	Hash           string   `json:"hash" minLength:"64" maxLength:"64" pattern:"^[0-9a-f]{64}$" doc:"Image-service content hash."`
 	Width          *int     `json:"width" minimum:"0" maximum:"65535" doc:"Pixel width. null if unknown."`

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"api/internal/platform/apiv2/parse"
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
+	catmodel "api/internal/platform/catalog/model"
 	catsvc "api/internal/platform/catalog/service"
 )
 
@@ -17,28 +19,48 @@ var calendarJST = time.FixedZone("Asia/Tokyo", 9*60*60)
 var calendarPrecision = []string{"day", "month", "year"}
 var calendarStatus = []string{"released", "dated", "announced", "cancelled", "unknown"}
 
-func (c *Catalog) ListCalendar(ctx context.Context, q collect.Query, month, year, precision, status string) (repr.List[repr.Work], error) {
+type calendarParams struct {
+	Month, Year, Precision, Status string
+	ContentLimit, OLang            string
+}
+
+func (c *Catalog) ListCalendar(ctx context.Context, q collect.Query, p calendarParams) (repr.CalendarList, error) {
 	if c == nil || c.Public == nil {
-		return repr.List[repr.Work]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+		return repr.CalendarList{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
 	if q.Batch {
-		return repr.List[repr.Work]{}, feedNoBatch("calendar")
+		return repr.CalendarList{}, feedNoBatch("calendar")
 	}
-	win, err := calendarWindow(month, year, precision, status, time.Now())
+	limits, err := closedCSV(p.ContentLimit, "content_limit", []string{
+		catmodel.DisplayLimitKeySFW, catmodel.DisplayLimitKeyNSFW,
+	})
 	if err != nil {
-		return repr.List[repr.Work]{}, err
+		return repr.CalendarList{}, err
 	}
+	win, werr := calendarWindow(p.Month, p.Year, p.Precision, p.Status, time.Now())
+	if werr != nil {
+		return repr.CalendarList{}, werr
+	}
+	f := catsvc.CalendarFilter{
+		NSFW: q.NSFW, Include: calendarWorksInclude(q.Include),
+		DisplayLimits: limits, OLang: calendarOLang(p.OLang),
+	}
+	meta := &repr.CalendarMeta{Today: time.Now().In(calendarJST).Format("2006-01-02")}
 	if win.empty {
-		return finishList([]repr.Work{}, nil, 0, q, nil), nil
+		return repr.CalendarList{List: finishList([]repr.Work{}, nil, 0, q, nil), Meta: meta}, nil
 	}
-	f := catsvc.CalendarFilter{NSFW: q.NSFW, Include: calendarWorksInclude(q.Include)}
+	if win.bucket.Kind == catsvc.CalendarMonthBucket {
+		if merr := calendarMonthMeta(ctx, c, f, win.bucket, meta); merr != nil {
+			return repr.CalendarList{}, merr
+		}
+	}
 	limit := q.Limit
 	if limit <= 0 {
 		limit = collect.DefaultLimit
 	}
 	data, lerr := c.Public.CalendarPage(ctx, win.bucket, f, q.Cursor, limit)
 	if lerr != nil {
-		return repr.List[repr.Work]{}, listCursorErr(lerr)
+		return repr.CalendarList{}, listCursorErr(lerr)
 	}
 	items := make([]repr.Work, 0, len(data.Items))
 	for _, it := range data.Items {
@@ -48,11 +70,59 @@ func (c *Catalog) ListCalendar(ctx context.Context, q collect.Query, month, year
 	if q.IncludeTotal {
 		n, _, merr := c.Public.CalendarMeta(ctx, win.bucket, f)
 		if merr != nil {
-			return repr.List[repr.Work]{}, merr
+			return repr.CalendarList{}, merr
 		}
 		total = n
 	}
-	return finishList(items, data.NextCursor, total, q, nil), nil
+	return repr.CalendarList{List: finishList(items, data.NextCursor, total, q, nil), Meta: meta}, nil
+}
+
+func calendarMonthMeta(ctx context.Context, c *Catalog, f catsvc.CalendarFilter, b catsvc.CalendarBucket, meta *repr.CalendarMeta) error {
+	minOrd, maxOrd, found, err := c.Public.CalendarBounds(ctx, f)
+	if err != nil {
+		return err
+	}
+	if !found {
+		no := false
+		meta.HasPrev, meta.HasNext = &no, &no
+		return nil
+	}
+	mn, mx := calendarMonthOfOrdinal(minOrd), calendarMonthOfOrdinal(maxOrd)
+	meta.MinMonth, meta.MaxMonth = &mn, &mx
+	cur := int64(b.Year)*10000 + int64(b.Month)*100
+	prev, next := cur > minOrd, cur < maxOrd
+	meta.HasPrev, meta.HasNext = &prev, &next
+	return nil
+}
+
+func calendarMonthOfOrdinal(ord int64) string {
+	return fmt.Sprintf("%04d-%02d", ord/10000, (ord/100)%100)
+}
+
+// Not parseOLang: the calendar's home population is ja+zh (the zero
+// PublicOLang), matching v1, while the works lane defaults to all languages.
+func calendarOLang(raw string) catsvc.PublicOLang {
+	raw = strings.TrimSpace(raw)
+	switch raw {
+	case "":
+		return catsvc.PublicOLang{}
+	case "all":
+		return catsvc.PublicOLang{All: true}
+	}
+	var vals []string
+	seen := map[string]bool{}
+	for _, tok := range strings.Split(raw, ",") {
+		tok = strings.TrimSpace(tok)
+		if tok == "" || seen[tok] {
+			continue
+		}
+		seen[tok] = true
+		vals = append(vals, tok)
+	}
+	if len(vals) == 0 {
+		return catsvc.PublicOLang{}
+	}
+	return catsvc.PublicOLang{Values: vals}
 }
 
 type calendarWin struct {

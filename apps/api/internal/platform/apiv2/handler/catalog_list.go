@@ -68,7 +68,7 @@ func companyWantsDetail(include []string) bool {
 	return false
 }
 
-func (c *Catalog) ListTags(ctx context.Context, q collect.Query) (repr.List[repr.Tag], error) {
+func (c *Catalog) ListTags(ctx context.Context, q collect.Query, hasWorks bool) (repr.List[repr.Tag], error) {
 	if c == nil || c.Public == nil {
 		return repr.List[repr.Tag]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
@@ -79,7 +79,7 @@ func (c *Catalog) ListTags(ctx context.Context, q collect.Query) (repr.List[repr
 	if q.Batch && len(ids) == 0 {
 		return finishList([]repr.Tag{}, nil, 0, q, missing), nil
 	}
-	f := catsvc.TagsListFilter{NSFW: q.NSFW, IDs: ids}
+	f := catsvc.TagsListFilter{NSFW: q.NSFW, IDs: ids, HasWorks: hasWorks}
 	limit := q.Limit
 	if q.Batch {
 		limit = 100

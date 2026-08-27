@@ -90,6 +90,9 @@ type liveFix struct {
 	TraitMinor, CharacterNoLang         int64
 	BulkWork, BulkCharacter             int64
 	AnchoredPerson, AnchoredCredit      int64
+	RollupCo, RollupImprint             int64
+	RollupDirect, RollupVia             int64
+	VAOnlyCharacter                     int64
 	AnchorExt                           string
 }
 
@@ -102,6 +105,7 @@ const (
 	liveCDNBase    = "https://img.example.test/image"
 	liveLogoHash   = "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809"
 	livePhotoHash  = "9f8e7d6c5b4a39281706f5e4d3c2b1a09f8e7d6c5b4a39281706f5e4d3c2b1a0"
+	liveCoverHash  = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 )
 
 type liveEnv struct {
@@ -223,6 +227,7 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		catalog_work_rating, catalog_tag_intro, catalog_series_intro, catalog_person_intro,
 		catalog_name_alias, catalog_credit, catalog_work_tag, catalog_label_relation,
 		catalog_character_alias, catalog_character_intro,
+		catalog_work_character, catalog_tag_source_map,
 		edit_revision, edit_proposal, edit_proposal_amendment
 		RESTART IDENTITY CASCADE`).Error; err != nil {
 		return liveFix{}, err
@@ -359,6 +364,51 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 
+	// A disconnected corporate pair: the graph test pins fx.Company's family at
+	// exactly two nodes and one edge, so the rollup fixtures may not touch it.
+	roll := &model.CatalogLabel{DisplayName: "Rollup Brand", Lang: "ja", Kind: model.LabelKindGameBrand, FieldProvenance: empty}
+	if err := db.Create(roll).Error; err != nil {
+		return fx, err
+	}
+	fx.RollupCo = roll.ID
+	rimp := &model.CatalogLabel{DisplayName: "Rollup Imprint", Lang: "ja", Kind: model.LabelKindGameBrand, FieldProvenance: empty}
+	if err := db.Create(rimp).Error; err != nil {
+		return fx, err
+	}
+	fx.RollupImprint = rimp.ID
+	if err := db.Create(&model.CatalogLabelRelation{
+		LabelID: roll.ID, OtherLabelID: rimp.ID,
+		Relation: model.LabelRelationImprint, SourceID: 2, MatchedBy: "test",
+	}).Error; err != nil {
+		return fx, err
+	}
+	rollDirect := &model.CatalogWork{
+		MediumID: 1, OLang: "ja", DisplayName: "Rollup Direct Work",
+		ContentRating: model.ContentRatingAllAges, Status: model.WorkStatusLive,
+		Extra: empty, FieldProvenance: empty,
+	}
+	if err := db.Create(rollDirect).Error; err != nil {
+		return fx, err
+	}
+	fx.RollupDirect = rollDirect.ID
+	rollVia := &model.CatalogWork{
+		MediumID: 1, OLang: "ja", DisplayName: "Rollup Via Work",
+		ContentRating: model.ContentRatingAllAges, Status: model.WorkStatusLive,
+		Extra: empty, FieldProvenance: empty,
+	}
+	if err := db.Create(rollVia).Error; err != nil {
+		return fx, err
+	}
+	fx.RollupVia = rollVia.ID
+	for _, wl := range []*model.CatalogWorkLabel{
+		{WorkID: rollDirect.ID, LabelID: roll.ID, Kind: model.WorkLabelKindBrand},
+		{WorkID: rollVia.ID, LabelID: rimp.ID, Kind: model.WorkLabelKindBrand},
+	} {
+		if err := db.Create(wl).Error; err != nil {
+			return fx, err
+		}
+	}
+
 	tg := &model.CatalogTag{Name: "live-tag", Tier: model.TagTierCore, Kind: model.TagKindContent}
 	if err := db.Create(tg).Error; err != nil {
 		return fx, err
@@ -372,6 +422,18 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	fx.TagSexual = ero.ID
 
 	if err := db.Create(&model.CatalogTagIntro{TagID: tg.ID, Lang: "zh-Hans", Intro: "标签说明", SourceID: 1}).Error; err != nil {
+		return fx, err
+	}
+
+	// live-tag is the has_works positive control: mapped, and attached to the
+	// one LIVE-claimed fixture work so the taxonomy count sees it. live-ero-tag
+	// stays unmapped-to-any-claimed-work and reads work_count 0.
+	if err := db.Create(&model.CatalogTagSourceMap{TagID: tg.ID, SourceID: 2, SourceName: "live-tag"}).Error; err != nil {
+		return fx, err
+	}
+	if err := db.Create(&model.CatalogWorkTag{
+		WorkID: attributed.ID, Name: "live-tag", Count: 3, SourceID: 2, Spoiler: 0,
+	}).Error; err != nil {
 		return fx, err
 	}
 
@@ -520,6 +582,31 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		}
 	}
 
+	// fx.Character sits on the roster proper (identity present, voice joined);
+	// this one is reached only through a voice credit, the identity-absent arm.
+	// It gets its own credit name: a second voice-actor row under fx.Credit
+	// would race the by-role_key map in the credit-names credits test.
+	if err := db.Create(&model.CatalogWorkCharacter{
+		WorkID: w.ID, CharacterID: ch.ID, Kind: model.WorkCharacterKindMain,
+		Spoiler: 0, MatchedBy: "test", FieldProvenance: empty,
+	}).Error; err != nil {
+		return fx, err
+	}
+	vaOnly := &model.CatalogCharacter{DisplayName: "Voice Only Char", Lang: "ja", Extra: empty, FieldProvenance: empty}
+	if err := db.Create(vaOnly).Error; err != nil {
+		return fx, err
+	}
+	fx.VAOnlyCharacter = vaOnly.ID
+	va2 := &model.CatalogCreditName{Name: "Second Voice", Lang: "ja", Kind: model.CreditNameKindMain, FieldProvenance: empty}
+	if err := db.Create(va2).Error; err != nil {
+		return fx, err
+	}
+	if err := db.Create(&model.CatalogCredit{
+		WorkID: w.ID, CreditNameID: va2.ID, RoleID: 1, CharacterID: &vaOnly.ID,
+	}).Error; err != nil {
+		return fx, err
+	}
+
 	rank := 12
 	if err := db.Create(&model.CatalogWorkRating{
 		WorkID: w.ID, SourceID: 3, Score: 7.9, VoteCount: 12, Rank: &rank,
@@ -558,7 +645,10 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 
-	cv := &model.CatalogWorkCover{WorkID: w.ID, ImageHash: "livecoverhash1", Kind: "main", SourceID: 2}
+	// A real 64-hex hash: the v2 covers block derives the hash from the URL
+	// basename and silently drops any row whose hash is not 64 characters, so
+	// the old "livecoverhash1" placeholder made this block empty on v2.
+	cv := &model.CatalogWorkCover{WorkID: w.ID, ImageHash: liveCoverHash, Kind: "main", SourceID: 2}
 	if err := db.Create(cv).Error; err != nil {
 		return fx, err
 	}

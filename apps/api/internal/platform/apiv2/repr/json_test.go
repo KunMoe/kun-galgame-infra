@@ -85,8 +85,14 @@ func TestCoverHasRowIDNotKind(t *testing.T) {
 	if !strings.Contains(string(b), `"id":"48213"`) {
 		t.Fatalf("cover id: %s", b)
 	}
-	if strings.Contains(string(b), `"kind"`) || strings.Contains(string(b), "cover_kind") {
-		t.Fatalf("cover must not emit kind until that vocabulary is closed: %s", b)
+	// This test used to refuse the field "until that vocabulary is closed";
+	// deviation 44 ships it as an explicitly OPEN vocabulary instead (the
+	// source/platform convention), under the G8-safe name cover_kind.
+	if !strings.Contains(string(b), `"cover_kind":""`) {
+		t.Fatalf("cover must emit cover_kind, empty when unrecorded: %s", b)
+	}
+	if strings.Contains(string(b), `"kind"`) && !strings.Contains(string(b), `"cover_kind"`) {
+		t.Fatalf("the bare kind property is forbidden by G8: %s", b)
 	}
 }
 

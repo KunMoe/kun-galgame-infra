@@ -59,7 +59,7 @@ func TestLiveCompaniesHasWorks(t *testing.T) {
 	status, _, body = liveDo(t, env, http.MethodGet, "/v2/catalog/companies", liveAppKey, "")
 	require.Equal(t, 200, status)
 	require.NoError(t, json.Unmarshal(body, &out))
-	require.Len(t, out.Items, 3)
+	require.Len(t, out.Items, 5, "without the flag every company lists, including the rollup pair")
 }
 
 func TestLiveCompanyIncludeBlocks(t *testing.T) {

@@ -13,7 +13,7 @@
 
 Release calendar
 
-One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. Requires an application key. ids= is not accepted.
+One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. content_limit= gates on the editorial display axis and olang= on the original language (absent = ja plus zh). meta carries today plus, on the dated month window, min_month/max_month/has_prev/has_next for month navigation. Requires an application key. ids= is not accepted.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -36,6 +36,8 @@ One collection. month=/year= pick a window; precision= and status= select among 
 | `year` | query | 否 | string | Year-only window YYYY (v1 pending). Default with precision=year: current year in Asia/Tokyo. |
 | `precision` | query | 否 | string | day, month, or year. year selects the year-only window. day and month use the dated month window. |
 | `status` | query | 否 | string | released, dated, announced, cancelled, unknown. announced and unknown select the undated window. cancelled is empty until the catalog records cancellations. |
+| `content_limit` | query | 否 | string | Comma-separated closed editorial axis: sfw, nsfw. |
+| `olang` | query | 否 | string | Comma-separated BCP-47, or all. Open vocabulary; unknown values match nothing. Absent = the calendar's home population, ja plus zh. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/calendar" \

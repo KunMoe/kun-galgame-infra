@@ -49,6 +49,11 @@ type listCompaniesInput struct {
 	HasWorks string `query:"has_works" maxLength:"8" doc:"true keeps only companies whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every company."`
 }
 
+type listTagsInput struct {
+	CollectionInput
+	HasWorks string `query:"has_works" maxLength:"8" doc:"true keeps only tags whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every tag."`
+}
+
 func registerCatalogLists(api huma.API, cat *Catalog) {
 	catalog := []string{"catalog"}
 	errs := collectionErrors(http.StatusUnauthorized, http.StatusForbidden, http.StatusServiceUnavailable)
@@ -67,7 +72,7 @@ func registerCatalogLists(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/tags",
 		Summary:            "List tags",
-		Description:        "Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a batch lane and does not paginate.",
+		Description:        "Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a batch lane and does not paginate. has_works=true keeps only tags with works visible under the same nsfw gate.",
 		Tags:               catalog,
 		Errors:             errs,
 		SkipValidateParams: true,
@@ -169,13 +174,24 @@ func listCatalogCompanies(cat *Catalog) func(context.Context, *listCompaniesInpu
 	}
 }
 
-func listCatalogTags(cat *Catalog) func(context.Context, *CollectionInput) (*listTagsOutput, error) {
-	return func(ctx context.Context, in *CollectionInput) (*listTagsOutput, error) {
-		q, err := parseCatalogList(ctx, in, collect.TagSpec())
+func listCatalogTags(cat *Catalog) func(context.Context, *listTagsInput) (*listTagsOutput, error) {
+	return func(ctx context.Context, in *listTagsInput) (*listTagsOutput, error) {
+		if in == nil {
+			in = &listTagsInput{}
+		}
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.TagSpec())
 		if err != nil {
 			return nil, err
 		}
-		page, lerr := cat.ListTags(ctx, q)
+		hasWorks := false
+		if in.HasWorks != "" {
+			v, berr := parse.Bool(in.HasWorks, "has_works")
+			if berr != nil {
+				return nil, withIdent(ctx, berr)
+			}
+			hasWorks = v
+		}
+		page, lerr := cat.ListTags(ctx, q, hasWorks)
 		if lerr != nil {
 			return nil, catalogErr(ctx, lerr)
 		}
