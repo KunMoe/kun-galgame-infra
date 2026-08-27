@@ -1815,6 +1815,8 @@ components:
           type: string
         lang:
           type: string
+        latin:
+          type: string
         links:
           items:
             $ref: "#/components/schemas/PublicLabelLink"
@@ -1975,6 +1977,8 @@ components:
           type: string
         lang:
           description: BCP-47 language of display_name; empty when unrecorded
+          type: string
+        latin:
           type: string
         localized:
           additionalProperties:

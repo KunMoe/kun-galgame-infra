@@ -698,6 +698,7 @@ type LabelWork struct {
 type LabelHead struct {
 	ID          int64  `gorm:"column:id"`
 	DisplayName string `gorm:"column:display_name"`
+	Latin       string `gorm:"column:latin"`
 	Kind        int16  `gorm:"column:kind"`
 	Lang        string `gorm:"column:lang"`
 	LogoHash    string `gorm:"column:logo_hash"`
@@ -706,7 +707,7 @@ type LabelHead struct {
 func (s *ReadService) LabelWorks(ctx context.Context, labelID int64, limit, offset int) (head *LabelHead, items []LabelWork, total int64, err error) {
 	db := s.db.WithContext(ctx)
 	var h LabelHead
-	if err = db.Raw(`SELECT id, display_name, kind, lang, logo_hash FROM catalog_label
+	if err = db.Raw(`SELECT id, display_name, latin, kind, lang, logo_hash FROM catalog_label
 		WHERE id = ? AND deleted_at IS NULL`, labelID).Scan(&h).Error; err != nil {
 		return nil, nil, 0, err
 	}

@@ -101,16 +101,23 @@ func (s *UserPlaytimeService) ResolveRef(ctx context.Context, sourceKey, externa
 	return workID, nil
 }
 
-func (s *UserPlaytimeService) ListMine(ctx context.Context, uid int64, since time.Time, limit int) ([]PlaytimeRecord, error) {
+func (s *UserPlaytimeService) ListMine(ctx context.Context, uid int64, since time.Time, sinceWorkID int64, limit int) ([]PlaytimeRecord, error) {
 	if uid <= 0 {
 		return nil, ErrPlaytimeActorRequired
 	}
 	q := s.db.WithContext(ctx).Model(&model.CatalogUserPlaytime{}).Where("actor_uid = ?", uid)
 	if !since.IsZero() {
-		q = q.Where("updated_at > ?", since)
+		// sinceWorkID <= 0 keeps the strictly-after semantics: the v1 face's
+		// updated_since is a client-remembered resync watermark, and adding the
+		// equal-timestamp arm there would re-deliver rows on every pull.
+		if sinceWorkID > 0 {
+			q = q.Where("updated_at > ? OR (updated_at = ? AND work_id > ?)", since, since, sinceWorkID)
+		} else {
+			q = q.Where("updated_at > ?", since)
+		}
 	}
 	var rows []model.CatalogUserPlaytime
-	if err := q.Order("updated_at ASC, id ASC").Limit(limit).Find(&rows).Error; err != nil {
+	if err := q.Order("updated_at ASC, work_id ASC").Limit(limit).Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make([]PlaytimeRecord, 0, len(rows))
@@ -121,6 +128,16 @@ func (s *UserPlaytimeService) ListMine(ctx context.Context, uid int64, since tim
 		})
 	}
 	return out, nil
+}
+
+func (s *UserPlaytimeService) CountMine(ctx context.Context, uid int64) (int64, error) {
+	if uid <= 0 {
+		return 0, ErrPlaytimeActorRequired
+	}
+	var n int64
+	err := s.db.WithContext(ctx).Model(&model.CatalogUserPlaytime{}).
+		Where("actor_uid = ?", uid).Count(&n).Error
+	return n, err
 }
 
 type UserWorkPlaytime struct {

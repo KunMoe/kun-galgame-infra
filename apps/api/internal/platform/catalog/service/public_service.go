@@ -739,7 +739,8 @@ func (s *PublicService) Label(ctx context.Context, id int64, withWorks, nsfw boo
 		return dto.PublicLabel{}, false, nil
 	}
 	l := dto.PublicLabel{
-		ID: head.ID, DisplayName: head.DisplayName, Kind: labelKindKey(head.Kind), Lang: head.Lang,
+		ID: head.ID, DisplayName: head.DisplayName, Latin: head.Latin,
+		Kind: labelKindKey(head.Kind), Lang: head.Lang,
 		LogoHash: head.LogoHash,
 	}
 	l.LogoMeta = publicImageMeta(s.entityMetaFor(ctx, l.LogoHash), l.LogoHash)

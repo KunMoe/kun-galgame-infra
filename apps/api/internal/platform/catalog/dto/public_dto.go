@@ -289,6 +289,7 @@ type PublicPersonLink struct {
 type PublicLabel struct {
 	ID               int64                          `json:"id"`
 	DisplayName      string                         `json:"display_name"`
+	Latin            string                         `json:"latin,omitempty"`
 	Kind             string                         `json:"kind"`
 	Lang             string                         `json:"lang,omitempty"`
 	Aliases          []PublicAlias                  `json:"aliases"`
@@ -530,6 +531,7 @@ type PublicTagDetail struct {
 type PublicLabelListItem struct {
 	ID           int64                          `json:"id"`
 	DisplayName  string                         `json:"display_name"`
+	Latin        string                         `json:"latin,omitempty"`
 	Lang         string                         `json:"lang,omitempty" doc:"BCP-47 language of display_name; empty when unrecorded"`
 	Localized    map[string]PublicLocalizedName `json:"localized" doc:"preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name"`
 	Aliases      []PublicAlias                  `json:"aliases" doc:"alternate spellings of this label, same election and shape as the label detail face; deduplicated by value+lang, display_name excluded, [] when it has none"`

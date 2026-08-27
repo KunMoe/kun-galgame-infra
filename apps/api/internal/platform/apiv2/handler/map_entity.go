@@ -15,7 +15,7 @@ func companyFromListItem(it dto.PublicLabelListItem, include []string, logoURL s
 	}
 	out := repr.Company{
 		Object: "company", ID: repr.ID(it.ID), DisplayName: it.DisplayName,
-		Lang: optString(it.Lang), Localized: localizedFrom(it.Localized),
+		Latin: optString(it.Latin), Lang: optString(it.Lang), Localized: localizedFrom(it.Localized),
 		CompanyKind: kind, WorkCount: it.WorkCount,
 	}
 	for _, t := range include {
@@ -38,7 +38,7 @@ func companyFromDetail(rec dto.PublicLabel, include []string, logoURL string) re
 	}
 	out := repr.Company{
 		Object: "company", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
-		Lang: optString(rec.Lang), Localized: localizedFrom(rec.Localized),
+		Latin: optString(rec.Latin), Lang: optString(rec.Lang), Localized: localizedFrom(rec.Localized),
 		CompanyKind: kind, WorkCount: rec.WorkCount,
 	}
 	for _, t := range include {

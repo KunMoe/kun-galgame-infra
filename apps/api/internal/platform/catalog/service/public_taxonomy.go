@@ -69,11 +69,12 @@ func (s *PublicService) LabelsList(ctx context.Context, f LabelsListFilter, curs
 	var rows []struct {
 		ID          int64
 		DisplayName string
+		Latin       string
 		Lang        string
 		Kind        int16
 		LogoHash    string
 	}
-	q := `SELECT id, display_name, lang, kind, logo_hash FROM catalog_label WHERE ` +
+	q := `SELECT id, display_name, latin, lang, kind, logo_hash FROM catalog_label WHERE ` +
 		strings.Join(where, " AND ") + ` ORDER BY id ASC`
 	q, args, paginated := applyBrowseLimit(q, args, limit+taxonomyOverFetch, f.IDs)
 	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
@@ -109,7 +110,7 @@ func (s *PublicService) LabelsList(ctx context.Context, f LabelsListFilter, curs
 	out := dto.PublicLabelsListData{Items: make([]dto.PublicLabelListItem, len(rows))}
 	for i, r := range rows {
 		out.Items[i] = dto.PublicLabelListItem{
-			ID: r.ID, DisplayName: r.DisplayName, Lang: r.Lang, Localized: localizedNames(aliases[r.ID]),
+			ID: r.ID, DisplayName: r.DisplayName, Latin: r.Latin, Lang: r.Lang, Localized: localizedNames(aliases[r.ID]),
 			Aliases: richAliases(aliases[r.ID]),
 			Kind:    labelKindKey(r.Kind), WorkCount: counts[r.ID],
 			LogoHash: r.LogoHash, LogoMeta: publicImageMeta(logoMeta, r.LogoHash),
