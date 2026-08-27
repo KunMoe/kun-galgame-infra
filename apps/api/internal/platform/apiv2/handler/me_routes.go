@@ -84,8 +84,9 @@ func registerMe(api huma.API, cat *Catalog) {
 	}, putMyCoverVote(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "listMyClaims", Method: http.MethodGet, Path: "/v2/me/claims",
-		Summary: "List my claims", Description: "Claims the bearer submitted. Requires a user access token.",
-		Tags: me, Errors: errs, SkipValidateParams: true,
+		Summary:     "List my claims",
+		Description: "Claims the bearer acted on. kind=submitted (the default) keeps the ones the bearer owns, kind=audited the ones the bearer only reviewed, kind=all everything they touched. claim_state= and site= narrow further, and site= also scopes first_acted_at/acted_count. Requires a user access token.",
+		Tags:        me, Errors: errs, SkipValidateParams: true,
 	}, listMyClaims(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "listModerationClaims", Method: http.MethodGet, Path: "/v2/moderation/claims",
@@ -213,13 +214,27 @@ type listClaimsOutput struct {
 	Body repr.List[repr.ClaimRecord]
 }
 
-func listMyClaims(cat *Catalog) func(context.Context, *CollectionInput) (*listClaimsOutput, error) {
-	return func(ctx context.Context, in *CollectionInput) (*listClaimsOutput, error) {
-		q, err := parseCatalogList(ctx, in, collect.ClaimSpec())
+type listMyClaimsInput struct {
+	CollectionInput
+	ClaimState string `query:"claim_state" maxLength:"128" doc:"Comma-separated closed states: none, live, draft, pending, declined, hidden."`
+	Kind       string `query:"kind" maxLength:"16" doc:"submitted (default) keeps works the bearer owns, audited keeps works the bearer reviewed but does not own, all keeps everything the bearer touched."`
+	Site       string `query:"site" maxLength:"64" doc:"Claiming site key. Open vocabulary; unknown values match nothing. Also scopes first_acted_at and acted_count."`
+}
+
+func listMyClaims(cat *Catalog) func(context.Context, *listMyClaimsInput) (*listClaimsOutput, error) {
+	return func(ctx context.Context, in *listMyClaimsInput) (*listClaimsOutput, error) {
+		if in == nil {
+			in = &listMyClaimsInput{}
+		}
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.ClaimSpec())
 		if err != nil {
 			return nil, err
 		}
-		page, lerr := cat.ListMyClaims(ctx, q)
+		f, ferr := parseMyClaimFilter(in.ClaimState, in.Kind, in.Site)
+		if ferr != nil {
+			return nil, withIdent(ctx, ferr)
+		}
+		page, lerr := cat.ListMyClaims(ctx, q, f)
 		if lerr != nil {
 			return nil, catalogErr(ctx, lerr)
 		}

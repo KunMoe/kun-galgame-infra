@@ -14,6 +14,9 @@ const (
 	ScopeGalgameNSFW  = "galgame:nsfw"
 	ScopeGalgameWrite = "galgame:write"
 	ScopeStoreRead    = "store:read"
+	// Operator-granted, never self-service: claim events carry decline reasons
+	// and the moderator uid behind every decision.
+	ScopeClaimEventsRead = "claim_events:read"
 	// Retired 2026-08-25 with the grant-only application machinery: no route
 	// checks it any more. Kept because live keys still carry the string in
 	// their scopes jsonb and readers of that history need the name.

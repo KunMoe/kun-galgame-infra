@@ -169,7 +169,10 @@ func ClaimSpec() Spec {
 	return Spec{
 		Include: []string{},
 		FullSet: []string{},
-		Fields:  []string{"object", "id", "state", "display_name"},
+		Fields: []string{
+			"object", "id", "state", "display_name", "site", "product_work_id",
+			"last_event", "first_acted_at", "acted_count",
+		},
 	}
 }
 

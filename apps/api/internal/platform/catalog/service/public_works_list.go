@@ -16,6 +16,7 @@ type WorksListFilter struct {
 	ClaimStates    []string
 	DisplayLimits  []string
 	Site           string
+	OwnerUID       int64
 	Statuses       []int16
 	LabelID        int64
 	LabelRollup    bool
@@ -164,6 +165,10 @@ func worksListWhere(f WorksListFilter) ([]string, []any) {
 	if f.Site != "" {
 		where = append(where, "w.site = ?")
 		args = append(args, f.Site)
+	}
+	if f.OwnerUID > 0 {
+		where = append(where, "w.owner_user_id = ?")
+		args = append(args, f.OwnerUID)
 	}
 	if pred, pargs := claimStateWhere(f.ClaimStates); pred != "" {
 		where = append(where, pred)

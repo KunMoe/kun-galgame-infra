@@ -18,6 +18,18 @@ func RevisionSpec() Spec {
 	}
 }
 
+func ClaimEventSpec() Spec {
+	return Spec{
+		Sort:    RevisionSort,
+		Include: []string{},
+		FullSet: []string{},
+		Fields: []string{
+			"object", "id", "work_id", "from_state", "to_state", "reason",
+			"actor_uid", "site", "product_work_id", "created_at",
+		},
+	}
+}
+
 var ProposalBasicFields = []string{
 	"object", "id", "state", "target_object", "entity_type", "entity_id", "note",
 	"proposer_uid", "site", "base_revision_seq", "decided_by_uid", "decided_at",

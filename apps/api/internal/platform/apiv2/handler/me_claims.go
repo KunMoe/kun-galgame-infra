@@ -14,9 +14,43 @@ import (
 	catmodel "api/internal/platform/catalog/model"
 	catalogPerm "api/internal/platform/catalog/perm"
 	catsvc "api/internal/platform/catalog/service"
+
+	"gorm.io/gorm"
 )
 
-func (c *Catalog) ListMyClaims(ctx context.Context, q collect.Query) (repr.List[repr.ClaimRecord], error) {
+type myClaimFilter struct {
+	ClaimStates []string
+	Kind        string
+	Site        string
+}
+
+var myClaimKinds = []string{"submitted", "audited", "all"}
+
+func parseMyClaimFilter(claimState, kind, site string) (myClaimFilter, *problem.Problem) {
+	var f myClaimFilter
+	states, err := closedCSV(claimState, "claim_state", []string{
+		catmodel.ClaimStateKeyNone, catmodel.ClaimStateKeyLive, catmodel.ClaimStateKeyDraft,
+		catmodel.ClaimStateKeyPending, catmodel.ClaimStateKeyDeclined, catmodel.ClaimStateKeyHidden,
+	})
+	if err != nil {
+		return myClaimFilter{}, err
+	}
+	f.ClaimStates = states
+	switch k := strings.TrimSpace(kind); k {
+	case "", "submitted":
+		f.Kind = "submitted"
+	case "audited":
+		f.Kind = "audited"
+	case "all":
+		f.Kind = ""
+	default:
+		return myClaimFilter{}, closedParam("kind", strings.Join(myClaimKinds, ", "))
+	}
+	f.Site = strings.TrimSpace(site)
+	return f, nil
+}
+
+func (c *Catalog) ListMyClaims(ctx context.Context, q collect.Query, f myClaimFilter) (repr.List[repr.ClaimRecord], error) {
 	if c == nil || c.Claims == nil {
 		return repr.List[repr.ClaimRecord]{}, problem.New(problem.CodeServiceUnavailable, "", "", "claims are not bound.")
 	}
@@ -33,7 +67,8 @@ func (c *Catalog) ListMyClaims(ctx context.Context, q collect.Query) (repr.List[
 		limit = collect.DefaultLimit
 	}
 	rows, total, lerr := c.Claims.ClaimsByActor(ctx, catsvc.UserClaimQuery{
-		ActorUID: uid, Kind: "submitted", Limit: limit + 1, Before: before,
+		ActorUID: uid, Kind: f.Kind, ClaimStates: f.ClaimStates, Site: f.Site,
+		Limit: limit + 1, Before: before,
 	})
 	if lerr != nil {
 		return repr.List[repr.ClaimRecord]{}, lerr
@@ -51,14 +86,26 @@ func (c *Catalog) ListMyClaims(ctx context.Context, q collect.Query) (repr.List[
 	return finishList(items, next, total, q, nil), nil
 }
 
+func requireClaimReview(ctx context.Context) (string, error) {
+	if _, _, err := requireUser(ctx); err != nil {
+		return "", err
+	}
+	site, err := requireSite(ctx)
+	if err != nil {
+		return "", err
+	}
+	if !catalogPerm.Resolver.Can(rolesFrom(ctx), catalogPerm.ClaimReview) {
+		return "", problem.New(problem.CodePermissionRequired, "", "",
+			"this moderation face requires the "+string(catalogPerm.ClaimReview)+" permission.")
+	}
+	return site, nil
+}
+
 func (c *Catalog) ListModerationClaims(ctx context.Context, q collect.Query) (repr.List[repr.ClaimRecord], error) {
 	if c == nil || c.Claims == nil {
 		return repr.List[repr.ClaimRecord]{}, problem.New(problem.CodeServiceUnavailable, "", "", "claims are not bound.")
 	}
-	if _, _, err := requireUser(ctx); err != nil {
-		return repr.List[repr.ClaimRecord]{}, err
-	}
-	site, err := requireSite(ctx)
+	site, err := requireClaimReview(ctx)
 	if err != nil {
 		return repr.List[repr.ClaimRecord]{}, err
 	}
@@ -84,9 +131,14 @@ func (c *Catalog) ListModerationClaims(ctx context.Context, q collect.Query) (re
 	}
 	items := make([]repr.ClaimRecord, 0, len(rows))
 	for _, r := range rows {
-		items = append(items, repr.ClaimRecord{
+		rec := repr.ClaimRecord{
 			Object: "claim", ID: repr.ID(r.WorkID), State: "pending", DisplayName: r.DisplayName,
-		})
+			ProductWorkID: idPtr(r.ProductWorkID),
+		}
+		if r.Site != nil {
+			rec.Site = *r.Site
+		}
+		items = append(items, rec)
 	}
 	return finishList(items, next, total, q, nil), nil
 }
@@ -95,10 +147,7 @@ func (c *Catalog) GetModerationClaim(ctx context.Context, workID int64) (repr.Cl
 	if c == nil || c.Claims == nil {
 		return repr.ClaimRecord{}, problem.New(problem.CodeServiceUnavailable, "", "", "claims are not bound.")
 	}
-	if _, _, err := requireUser(ctx); err != nil {
-		return repr.ClaimRecord{}, err
-	}
-	site, err := requireSite(ctx)
+	site, err := requireClaimReview(ctx)
 	if err != nil {
 		return repr.ClaimRecord{}, err
 	}
@@ -115,11 +164,27 @@ func (c *Catalog) GetModerationClaim(ctx context.Context, workID int64) (repr.Cl
 func claimRecordFrom(r catsvc.UserClaimItem) repr.ClaimRecord {
 	st := r.ClaimState
 	switch st {
-	case "live", "draft", "pending", "declined", "hidden":
+	case catmodel.ClaimStateKeyNone, catmodel.ClaimStateKeyLive, catmodel.ClaimStateKeyDraft,
+		catmodel.ClaimStateKeyPending, catmodel.ClaimStateKeyDeclined, catmodel.ClaimStateKeyHidden:
 	default:
-		st = "hidden"
+		st = catmodel.ClaimStateKeyHidden
 	}
-	return repr.ClaimRecord{Object: "claim", ID: repr.ID(r.WorkID), State: st, DisplayName: r.DisplayName}
+	rec := repr.ClaimRecord{
+		Object: "claim", ID: repr.ID(r.WorkID), State: st, DisplayName: r.DisplayName,
+		Site: r.Site, ProductWorkID: idPtr(r.ProductWorkID),
+	}
+	if r.LastEventID > 0 {
+		rec.LastEvent = &repr.ClaimEventRef{
+			Object: "claim_event", ID: repr.ID(r.LastEventID),
+			FromState: r.LastFromState, ToState: r.LastToState, Reason: r.LastReason,
+			ActorUID: repr.ID(r.LastActorUID), CreatedAt: rfc3339(r.LastEventAt),
+		}
+		first := rfc3339(r.FirstActedAt)
+		rec.FirstActedAt = &first
+		acted := r.ActedCount
+		rec.ActedCount = &acted
+	}
+	return rec
 }
 
 func (c *Catalog) GetMyClaim(ctx context.Context, workID int64) (repr.ClaimRecord, error) {
@@ -219,9 +284,45 @@ func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayNa
 		}
 		return repr.ClaimRecord{Object: "claim", ID: repr.ID(res.WorkID), State: res.ClaimState}, nil
 	}
-	p := problem.New(problem.CodeValidationFailed, "", "", "work_id or refs is required.")
-	p.Errors = []problem.FieldError{{Pointer: "/work_id", Reason: problem.ReasonRequired, Detail: "provide work_id or refs"}}
+	if siteWorkID != "" {
+		if displayName == "" {
+			p := problem.New(problem.CodeValidationFailed, "", "", "display_name is required to mint a work from site_work_id alone.")
+			p.Errors = []problem.FieldError{{Pointer: "/display_name", Reason: problem.ReasonRequired, Detail: "SubmitWork requires catalog.work.display_name"}}
+			return repr.ClaimRecord{}, p
+		}
+		n, ok := repr.ParseID(siteWorkID)
+		if !ok {
+			p := problem.New(problem.CodeValidationFailed, "", "", "site_work_id must be a decimal id.")
+			p.Errors = []problem.FieldError{{Pointer: "/site_work_id", Reason: problem.ReasonInvalidFormat, Detail: siteWorkID}}
+			return repr.ClaimRecord{}, p
+		}
+		res, serr := c.Claims.SubmitWork(ctx, catsvc.SubmitWorkParams{
+			Site: site, ProductWorkID: n, ActorUID: uid,
+			ContentRating: c.Claims.DeriveContentRating(ctx, nil),
+			Fields:        map[string]any{editspec.FieldWorkDisplayName: displayName},
+		})
+		if serr != nil {
+			return repr.ClaimRecord{}, claimWriteErr(serr)
+		}
+		return repr.ClaimRecord{Object: "claim", ID: repr.ID(res.WorkID), State: res.ClaimState}, nil
+	}
+	p := problem.New(problem.CodeValidationFailed, "", "", "work_id, refs, or site_work_id is required.")
+	p.Errors = []problem.FieldError{{Pointer: "/work_id", Reason: problem.ReasonRequired, Detail: "provide work_id, refs, or site_work_id with display_name"}}
 	return repr.ClaimRecord{}, p
+}
+
+func (c *Catalog) DeleteClaim(ctx context.Context, workID int64) error {
+	if c == nil || c.Claims == nil {
+		return problem.New(problem.CodeServiceUnavailable, "", "", "claims are not bound.")
+	}
+	uid, _, err := requireUser(ctx)
+	if err != nil {
+		return err
+	}
+	if derr := c.Claims.DeleteDraft(ctx, workID, uid); derr != nil {
+		return claimWriteErr(derr)
+	}
+	return nil
 }
 
 func (c *Catalog) actClaim(ctx context.Context, uid int64, site string, workID int64, siteWorkID string) (repr.ClaimRecord, error) {
@@ -365,13 +466,9 @@ func (c *Catalog) DecideClaim(ctx context.Context, workID int64, decision, note,
 	if err != nil {
 		return repr.DecisionRecord{}, err
 	}
-	site, serr := requireSite(ctx)
+	site, serr := requireClaimReview(ctx)
 	if serr != nil {
 		return repr.DecisionRecord{}, serr
-	}
-	if !catalogPerm.Resolver.Can(rolesFrom(ctx), catalogPerm.ClaimReview) {
-		return repr.DecisionRecord{}, problem.New(problem.CodePermissionRequired, "", "",
-			"deciding a claim requires the "+string(catalogPerm.ClaimReview)+" permission.")
 	}
 	cur, gerr := c.claimForWrite(ctx, workID, site)
 	if gerr != nil {
@@ -442,6 +539,9 @@ func claimWriteErr(err error) error {
 	var otherSite *catsvc.ClaimOwnershipError
 	if errors.As(err, &otherSite) {
 		return problem.New(problem.CodeTenantMismatch, "", "", otherSite.Error())
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return problem.New(problem.CodeNotFound, "", "", "No claim with this id.")
 	}
 	switch {
 	case errors.Is(err, catsvc.ErrClaimReasonRequired), errors.Is(err, catsvc.ErrSubmitDisplayNameRequired),

@@ -67,9 +67,10 @@ type listWorksInput struct {
 	Q              string `query:"q" maxLength:"512" doc:"Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant."`
 	ContentRating  string `query:"content_rating" maxLength:"16" doc:"Closed: all_ages, sensitive, r18. r18 requires nsfw=true."`
 	Claimed        string `query:"claimed" maxLength:"8" doc:"true or false. Absent = no gate."`
-	ClaimState     string `query:"claim_state" maxLength:"128" doc:"Comma-separated closed states: none, live, draft, pending, declined, hidden."`
+	ClaimState     string `query:"claim_state" maxLength:"128" doc:"Comma-separated closed states: none, live, draft. Moderation states live on /v2/moderation/claims."`
 	ContentLimit   string `query:"content_limit" maxLength:"32" doc:"Comma-separated closed editorial axis: sfw, nsfw."`
 	Site           string `query:"site" maxLength:"64" doc:"Claiming site key. Open vocabulary; unknown values match nothing."`
+	OwnerUID       string `query:"owner_uid" maxLength:"20" doc:"The claiming site's own user id of the claim owner. Requires site=. Live registry filter; cannot be combined with q= or search sorts."`
 	CompanyID      string `query:"company_id" maxLength:"20" doc:"Catalog company id. Live registry filter when q= is absent."`
 	CompanyRollup  string `query:"company_rollup" maxLength:"8" doc:"true expands company_id one hop down imprint/subsidiary. Only true or false."`
 	TagID          string `query:"tag_id" maxLength:"256" doc:"Comma-separated canonical tag ids, AND, max 10."`
@@ -222,7 +223,16 @@ func credentialLimitIdentity(c fiber.Ctx) (protocol.LimitIdentity, bool) {
 func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error)) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		path := c.Path()
-		if !strings.HasPrefix(path, "/v2/catalog/") || path == "/v2/catalog/openapi.json" || path == "/v2/catalog/stats" || strings.HasPrefix(path, "/v2/catalog/schemas/") {
+		scope := ""
+		switch {
+		case strings.HasPrefix(path, "/v2/catalog/"):
+			if path == "/v2/catalog/openapi.json" || path == "/v2/catalog/stats" || strings.HasPrefix(path, "/v2/catalog/schemas/") {
+				return c.Next()
+			}
+			scope = devapi.ScopeCatalogRead
+		case strings.HasPrefix(path, "/v2/store/"):
+			scope = devapi.ScopeStoreRead
+		default:
 			return c.Next()
 		}
 		h := c.Get("Authorization")
@@ -260,9 +270,13 @@ func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error
 			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
 				"Authorization Bearer token is invalid."))
 		}
-		if !cred.HasScope(devapi.ScopeCatalogRead) {
+		if !cred.HasScope(scope) {
 			return problem.WriteFiberError(c, problem.New(problem.CodeScopeRequired, problem.RequestID(c), problem.Instance(c),
-				"this operation requires the catalog:read scope."))
+				"this operation requires the "+scope+" scope."))
+		}
+		if path == "/v2/catalog/claim-events" && !cred.HasScope(devapi.ScopeClaimEventsRead) {
+			return problem.WriteFiberError(c, problem.New(problem.CodeScopeRequired, problem.RequestID(c), problem.Instance(c),
+				"this operation additionally requires the claim_events:read scope."))
 		}
 		devapi.WithCredential(c, cred)
 		return c.Next()
