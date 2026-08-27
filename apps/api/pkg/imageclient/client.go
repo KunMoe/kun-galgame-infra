@@ -90,7 +90,13 @@ func (e *Error) Error() string {
 var (
 	ErrQuotaExceeded      = errors.New("imageclient: quota exceeded")
 	ErrModerationRejected = errors.New("imageclient: rejected by moderation")
-	ErrUnauthorized       = errors.New("imageclient: unauthorized")
+	// ErrMIMEDenied is the preset refusing the file's format (code 80009). Like
+	// moderation it is a PERMANENT verdict on this file, not a transient
+	// failure: retrying re-uploads the same bytes to the same preset for the
+	// same answer. A backfill that treats it as retryable burns its whole
+	// backoff ladder per file (~90s) to learn nothing.
+	ErrMIMEDenied   = errors.New("imageclient: preset does not accept this format")
+	ErrUnauthorized = errors.New("imageclient: unauthorized")
 )
 
 func classifyError(e *Error) error {
@@ -104,6 +110,8 @@ func classifyError(e *Error) error {
 		return fmt.Errorf("%w: %s", ErrUnauthorized, e.Message)
 	case 60002:
 		return fmt.Errorf("%w: %s", ErrModerationRejected, e.Message)
+	case 80009:
+		return fmt.Errorf("%w: %s", ErrMIMEDenied, e.Message)
 	default:
 		return e
 	}
