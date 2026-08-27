@@ -13,8 +13,9 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 )
 
-
-type UserClaimServer struct{ claims *service.ClaimLifecycleService }
+type UserClaimServer struct {
+	claims *service.ClaimLifecycleService
+}
 
 func RegisterUserClaimOps(api huma.API, lifecycle *service.ClaimLifecycleService) {
 	s := &UserClaimServer{claims: lifecycle}
@@ -46,7 +47,6 @@ func RegisterUserClaimOps(api huma.API, lifecycle *service.ClaimLifecycleService
 	}, s.deleteDraft)
 }
 
-
 type userSubmitWorkInput struct {
 	Body dto.UserWorkSubmitRequest
 }
@@ -56,7 +56,11 @@ func (s *UserClaimServer) submitWork(ctx context.Context, in *userSubmitWorkInpu
 	if he != nil {
 		return nil, he
 	}
-	params := service.SubmitWorkParams{Site: site, ActorUID: uid, Fields: in.Body.Fields}
+	trusted := catperm.Resolver.Can(userRolesFromCtx(ctx), catperm.EditTrusted) &&
+		!isThirdPartyClient(clientFromCtx(ctx))
+	params := service.SubmitWorkParams{
+		Site: site, ActorUID: uid, Fields: in.Body.Fields, Trusted: trusted,
+	}
 	if id := in.Body.ProductWorkID; id != nil {
 		params.ProductWorkID = *id
 	}
@@ -72,7 +76,6 @@ func (s *UserClaimServer) submitWork(ctx context.Context, in *userSubmitWorkInpu
 		EventID: res.EventID, ReleaseID: res.ReleaseID,
 	})}, nil
 }
-
 
 type userClaimActionInput struct {
 	ID     int64  `path:"id" minimum:"1"`
@@ -106,14 +109,13 @@ func (s *UserClaimServer) act(ctx context.Context, in *userClaimActionInput) (*c
 		ProductWorkID: in.Body.ProductWorkID,
 		ActorUID:      uid,
 		Reason:        in.Body.Reason,
-		RequireOwner: !review,
+		RequireOwner:  !review,
 	})
 	if err != nil {
 		return nil, claimErr(err)
 	}
 	return &claimActionOutput{Body: okEnvelope(*res)}, nil
 }
-
 
 type userMineClaimsInput struct {
 	ClaimState string `query:"claim_state" doc:"Comma-separated subset of none, live, draft, pending, declined, hidden; absent = every state"`

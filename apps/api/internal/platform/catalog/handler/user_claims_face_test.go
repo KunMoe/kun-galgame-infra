@@ -172,6 +172,49 @@ func TestUserClaims_SubmitDerivesActorAndSite(t *testing.T) {
 	assert.Equal(t, fiber.StatusUnprocessableEntity, status, string(raw))
 }
 
+func TestUserClaims_TrustedSubmitPublishesDirectly(t *testing.T) {
+	db := openCatalogTestDB(t)
+	resetClaims(t, db)
+	app := userClaimApp(db)
+
+	type submitEnv struct {
+		Data struct {
+			WorkID     int64  `json:"work_id"`
+			ClaimState string `json:"claim_state"`
+			EventID    int64  `json:"event_id"`
+		} `json:"data"`
+	}
+
+	admin := userTokenRoles(t, 871, ScopeCatalogEdit, "kungal-client", "user", "admin")
+	status, raw := userEditReq(t, app, "POST", UserPrefix+"/works/submit",
+		admin, `{"fields":{"catalog.work.display_name":"信頼投稿"}}`)
+	require.Equal(t, fiber.StatusOK, status, string(raw))
+
+	var env submitEnv
+	require.NoError(t, json.Unmarshal(raw, &env), string(raw))
+	assert.Equal(t, model.ClaimStateKeyLive, env.Data.ClaimState,
+		"a trusted submitter publishes directly, bypassing the review queue")
+
+	var ev struct {
+		FromState *int16 `gorm:"column:from_state"`
+		ToState   int16  `gorm:"column:to_state"`
+	}
+	require.NoError(t, db.Raw(
+		`SELECT from_state, to_state FROM catalog_claim_event WHERE id = ?`, env.Data.EventID,
+	).Scan(&ev).Error)
+	require.Nil(t, ev.FromState)
+	assert.EqualValues(t, model.ClaimStateLive, ev.ToState,
+		"the birth event lands on live, not pending")
+
+	plain := userToken(t, 872, ScopeCatalogEdit, "kungal-client")
+	status, raw = userEditReq(t, app, "POST", UserPrefix+"/works/submit",
+		plain, `{"fields":{"catalog.work.display_name":"一般投稿"}}`)
+	require.Equal(t, fiber.StatusOK, status, string(raw))
+	require.NoError(t, json.Unmarshal(raw, &env), string(raw))
+	assert.Equal(t, model.ClaimStateKeyPending, env.Data.ClaimState,
+		"a non-trusted submitter still lands in the review queue")
+}
+
 func TestUserClaims_OwnerActionsNeedOwnership(t *testing.T) {
 	db := openCatalogTestDB(t)
 	resetClaims(t, db)
