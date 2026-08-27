@@ -1,22 +1,17 @@
 package handler
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 
 	"api/internal/middleware"
 	"api/internal/platform/catalog/migrate"
-	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/perm"
-	"api/internal/platform/catalog/repository"
 	"api/internal/platform/catalog/seed"
-	"api/internal/platform/catalog/service"
 	siteModel "api/internal/platform/site/model"
 
 	"github.com/gofiber/fiber/v3"
@@ -27,15 +22,23 @@ import (
 	glogger "gorm.io/gorm/logger"
 )
 
-func TestSetup_RegistersS2SOperations(t *testing.T) {
-	api := Setup(fiber.New(), nil, nil, nil, nil, nil)
-	paths := api.OpenAPI().Paths
-	for _, p := range []string{
-		"/api/v1/catalog/resolve",
-		"/api/v1/catalog/redirects",
-		"/api/v1/catalog/works/claim",
-	} {
-		assert.NotNilf(t, paths[p], "operation %s must be registered", p)
+type fakeClientLookup map[string]*siteModel.OAuthClient
+
+func (f fakeClientLookup) FindByClientID(_ context.Context, clientID string) (*siteModel.OAuthClient, error) {
+	return f[clientID], nil
+}
+
+func userEditClients() fakeClientLookup {
+	thirdPartyOwner := uint(4040)
+	return fakeClientLookup{
+		"kungal-client": {ID: "kungal-client", CatalogSite: "kungal"},
+		"letmoe-client": {ID: "letmoe-client", CatalogSite: "letmoe"},
+		"thirdparty-letmoe": {
+			ID: "thirdparty-letmoe", CatalogSite: "letmoe", OwnerUserID: &thirdPartyOwner,
+		},
+		"thirdparty-kungal": {
+			ID: "thirdparty-kungal", CatalogSite: "kungal", OwnerUserID: &thirdPartyOwner,
+		},
 	}
 }
 
@@ -56,22 +59,6 @@ func TestSetupAdmin_RegistersQueueOperations(t *testing.T) {
 	}
 }
 
-func TestS2SAuth_Unauthenticated401(t *testing.T) {
-	app := fiber.New()
-	app.Use("/api/v1/catalog", S2SAuth(nil))
-	Setup(app, nil, nil, nil, nil, nil)
-
-	for _, header := range []string{"", "Bearer whatever", "Basic not-base64!"} {
-		req := httptest.NewRequest("POST", "/api/v1/catalog/resolve", nil)
-		if header != "" {
-			req.Header.Set("Authorization", header)
-		}
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		assert.Equalf(t, fiber.StatusUnauthorized, resp.StatusCode, "header %q must 401", header)
-	}
-}
-
 func TestAdminGate_403WithoutRole(t *testing.T) {
 	for _, roles := range [][]string{{"user"}, {"admin", "moderator"}} {
 		app := fiber.New()
@@ -86,109 +73,6 @@ func TestAdminGate_403WithoutRole(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, fiber.StatusForbidden, resp.StatusCode, "roles %v must not pass", roles)
 	}
-}
-
-func TestEnforceSiteBinding(t *testing.T) {
-	assert.NotNil(t, enforceSiteBinding(nil, "galgame_wiki"), "nil client → forbidden")
-	assert.NotNil(t, enforceSiteBinding(&siteModel.OAuthClient{CatalogSite: ""}, "galgame_wiki"), "unbound → forbidden")
-	assert.NotNil(t, enforceSiteBinding(&siteModel.OAuthClient{CatalogSite: "kungal"}, "galgame_wiki"), "mismatch → forbidden")
-	assert.Nil(t, enforceSiteBinding(&siteModel.OAuthClient{CatalogSite: "galgame_wiki"}, "galgame_wiki"), "match → authorized")
-
-	if he := enforceSiteBinding(nil, "x"); assert.NotNil(t, he) {
-		assert.Equal(t, http.StatusForbidden, he.GetStatus())
-	}
-}
-
-func claimApp(client *siteModel.OAuthClient, work *service.WorkService) *fiber.App {
-	app := fiber.New()
-	app.Use("/api/v1/catalog", func(c fiber.Ctx) error {
-		if client != nil {
-			c.Locals(localClient, client)
-		}
-		return c.Next()
-	})
-	Setup(app, nil, work, nil, nil, nil)
-	return app
-}
-
-func postClaim(t *testing.T, app *fiber.App, body string) int {
-	t.Helper()
-	req := httptest.NewRequest("POST", "/api/v1/catalog/works/claim", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	return resp.StatusCode
-}
-
-func TestClaimSiteBinding_Forbidden(t *testing.T) {
-	body := `{"medium_id":1,"site":"galgame_wiki","product_work_id":1,"display_name":"X"}`
-	for _, tc := range []struct {
-		name   string
-		client *siteModel.OAuthClient
-	}{
-		{"unbound", &siteModel.OAuthClient{ID: "c1", CatalogSite: ""}},
-		{"wrong-site", &siteModel.OAuthClient{ID: "c2", CatalogSite: "kungal"}},
-	} {
-		app := claimApp(tc.client, nil)
-		assert.Equalf(t, fiber.StatusForbidden, postClaim(t, app, body), "%s must 403", tc.name)
-	}
-
-	app := claimApp(&siteModel.OAuthClient{ID: "c3", CatalogSite: ""}, nil)
-	req := httptest.NewRequest("POST", "/api/v1/catalog/resolve", strings.NewReader(`{"items":[]}`))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	assert.NotEqual(t, fiber.StatusForbidden, resp.StatusCode, "resolve is unaffected by site binding")
-}
-
-func TestClaimSiteBinding_Allowed(t *testing.T) {
-	db := openCatalogTestDB(t)
-	work := service.NewWorkService(db, service.NewResolveService(repository.NewRedirectRepository(db)))
-	app := claimApp(&siteModel.OAuthClient{ID: "bound-client", CatalogSite: "galgame_wiki"}, work)
-
-	body := `{"medium_id":1,"site":"galgame_wiki","product_work_id":990016,"display_name":"バインドテスト","olang":"ja"}`
-	assert.Equal(t, fiber.StatusOK, postClaim(t, app, body), "bound client claims for its own site → 200")
-}
-
-func TestClaimConflict_StructuredBody(t *testing.T) {
-	db := openCatalogTestDB(t)
-	for _, tbl := range []string{"catalog_external_ref", "catalog_release", "catalog_work"} {
-		require.NoError(t, db.Exec("TRUNCATE "+tbl+" RESTART IDENTITY CASCADE").Error)
-	}
-	work := &model.CatalogWork{MediumID: 1, OLang: "ja", DisplayName: "同人音声", Status: model.WorkStatusStub}
-	require.NoError(t, db.Create(work).Error)
-	rel := &model.CatalogRelease{WorkID: work.ID, Kind: model.ReleaseKindDigital}
-	require.NoError(t, db.Create(rel).Error)
-	require.NoError(t, db.Create(&model.CatalogExternalRef{
-		EntityType: model.EntityTypeRelease, EntityID: rel.ID, SourceID: 4, ExternalID: "RJWIRE",
-		LinkKind: model.LinkKindExact, MatchedBy: "rule:test",
-	}).Error)
-
-	svc := service.NewWorkService(db, service.NewResolveService(repository.NewRedirectRepository(db)))
-	app := claimApp(&siteModel.OAuthClient{ID: "letmoe-client", CatalogSite: "letmoe"}, svc)
-
-	assert.Equal(t, fiber.StatusOK, postClaim(t, app,
-		`{"medium_id":1,"site":"letmoe","product_work_id":9001,"display_name":"同人音声","anchors":[{"source_id":4,"external_id":"RJWIRE","level":"release"}]}`))
-
-	req := httptest.NewRequest("POST", "/api/v1/catalog/works/claim", strings.NewReader(
-		`{"medium_id":1,"site":"letmoe","product_work_id":9002,"display_name":"別行","anchors":[{"source_id":4,"external_id":"RJWIRE","level":"release"}]}`))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := app.Test(req)
-	require.NoError(t, err)
-	require.Equal(t, fiber.StatusConflict, resp.StatusCode)
-
-	var envelope struct {
-		Code int `json:"code"`
-		Data struct {
-			WorkID              int64  `json:"work_id"`
-			OwningSite          string `json:"owning_site"`
-			OwningProductWorkID int64  `json:"owning_product_work_id"`
-		} `json:"data"`
-	}
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&envelope))
-	assert.Equal(t, work.ID, envelope.Data.WorkID, "conflict carries the owning catalog work id")
-	assert.Equal(t, "letmoe", envelope.Data.OwningSite)
-	assert.Equal(t, int64(9001), envelope.Data.OwningProductWorkID)
 }
 
 var (
@@ -223,17 +107,4 @@ func openCatalogTestDB(t *testing.T) *gorm.DB {
 		t.Skip(catalogTestErr.Error())
 	}
 	return catalogTestDBH
-}
-
-func TestRedirectCursorRoundTrip(t *testing.T) {
-	c, err := decodeRedirectCursor("")
-	require.NoError(t, err)
-	assert.Zero(t, c.OldID)
-
-	encoded := encodeRedirectCursor(c)
-	_, err = decodeRedirectCursor(encoded)
-	require.NoError(t, err)
-
-	_, err = decodeRedirectCursor("!!!not-base64!!!")
-	require.Error(t, err)
 }

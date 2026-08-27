@@ -6,13 +6,67 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+	"time"
 
 	"api/internal/platform/store/model"
 	"api/internal/platform/store/service"
+	"api/internal/platform/store/storetest"
 
 	"github.com/gofiber/fiber/v3"
+	"gorm.io/gorm"
 )
+
+var testDB *gorm.DB
+
+func TestMain(m *testing.M) {
+	db, release, ok := storetest.Open()
+	if !ok {
+		os.Exit(0)
+	}
+	testDB = db
+	code := m.Run()
+	release()
+	os.Exit(code)
+}
+
+func seedStats(t *testing.T) (today, yesterday string) {
+	t.Helper()
+	if err := storetest.Truncate(testDB); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	now := time.Now()
+	today = model.JSTDay(now)
+	yesterday = model.JSTDay(now.AddDate(0, 0, -1))
+
+	links := []model.PurchaseLink{
+		{ClientID: "site-a", ProductID: "RJ100001", Alias: "pa1", ShortURL: "https://s.test/pa1"},
+		{ClientID: "site-b", ProductID: "RJ100001", Alias: "pb1", ShortURL: "https://s.test/pb1"},
+	}
+	for i := range links {
+		if err := testDB.Create(&links[i]).Error; err != nil {
+			t.Fatalf("seed purchase link: %v", err)
+		}
+	}
+	coupon := model.CouponLink{ClientID: "site-a", CampaignID: 7, Alias: "ca1", ShortURL: "https://s.test/ca1"}
+	if err := testDB.Create(&coupon).Error; err != nil {
+		t.Fatalf("seed coupon link: %v", err)
+	}
+
+	stats := []model.LinkDailyStat{
+		{Alias: "pa1", Day: yesterday, Total: 10, Uniques: 6, SyncedAt: now},
+		{Alias: "pa1", Day: today, Total: 4, Uniques: 3, SyncedAt: now},
+		{Alias: "ca1", Day: today, Total: 5, Uniques: 2, SyncedAt: now},
+		{Alias: "pb1", Day: today, Total: 99, Uniques: 99, SyncedAt: now},
+	}
+	for i := range stats {
+		if err := testDB.Create(&stats[i]).Error; err != nil {
+			t.Fatalf("seed stat: %v", err)
+		}
+	}
+	return today, yesterday
+}
 
 type devEnvelope struct {
 	Code int                        `json:"code"`

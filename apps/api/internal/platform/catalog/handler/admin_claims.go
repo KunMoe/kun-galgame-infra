@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	stderrors "errors"
 	"log/slog"
 	"net/http"
 
@@ -10,7 +11,32 @@ import (
 	"api/pkg/errors"
 
 	"github.com/danielgtaylor/huma/v2"
+	"gorm.io/gorm"
 )
+
+func claimErr(err error) error {
+	var (
+		transition *service.ClaimTransitionError
+		ownership  *service.ClaimOwnershipError
+		notOwned   *service.ClaimNotOwnedError
+	)
+	switch {
+	case stderrors.Is(err, gorm.ErrRecordNotFound):
+		return apiErrMsg(http.StatusNotFound, errors.ErrNotFound, "work not found")
+	case stderrors.As(err, &transition):
+		return apiErrData(http.StatusConflict, errors.ErrOperationFailed, transition.Error(),
+			dto.ClaimTransitionInfo{CurrentState: transition.Current, AllowedFrom: transition.Allowed})
+	case stderrors.As(err, &ownership):
+		return apiErrMsg(http.StatusForbidden, errors.ErrForbidden, ownership.Error())
+	case stderrors.As(err, &notOwned):
+		return apiErrMsg(http.StatusForbidden, errors.ErrForbidden, notOwned.Error())
+	case stderrors.Is(err, service.ErrClaimReasonRequired),
+		stderrors.Is(err, service.ErrClaimTargetRequired):
+		return apiErrMsg(http.StatusUnprocessableEntity, errors.ErrValidationFailed, err.Error())
+	}
+	slog.Error("catalog claim action", "err", err)
+	return apiErr(http.StatusInternalServerError, errors.ErrInternalServer)
+}
 
 func (s *AdminServer) registerClaims(api huma.API) {
 	tags := []string{"catalog-admin"}

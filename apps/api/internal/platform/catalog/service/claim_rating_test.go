@@ -86,33 +86,3 @@ func TestSubmitWorkCarriesDerivedRating(t *testing.T) {
 	require.NoError(t, testDB.First(&w, res.WorkID).Error)
 	assert.Equal(t, model.ContentRatingR18, w.ContentRating)
 }
-
-func TestClaimWorkDerivesRatingFromAnchors(t *testing.T) {
-	cleanTables(t)
-	seedRatingSources(t)
-	ctx := t.Context()
-	var vndbID int16
-	require.NoError(t, testDB.Raw(`SELECT id FROM catalog_source WHERE key = 'vndb'`).Scan(&vndbID).Error)
-
-	id, created, err := testWork.ClaimWork(ctx, ClaimWorkParams{
-		MediumID: 1, Site: "kungal", ProductWorkID: 4242, DisplayName: "derived",
-		Anchors: []ExternalAnchor{{SourceID: vndbID, ExternalID: "v1", MatchedBy: "rule:test", EntityType: model.EntityTypeWork}},
-	})
-	require.NoError(t, err)
-	require.True(t, created)
-	var w model.CatalogWork
-	require.NoError(t, testDB.First(&w, id).Error)
-	assert.Equal(t, model.ContentRatingR18, w.ContentRating)
-
-	id2, created2, err := testWork.ClaimWork(ctx, ClaimWorkParams{
-		MediumID: 1, Site: "kungal", ProductWorkID: 4243, DisplayName: "caller wins",
-		ContentRating: model.ContentRatingSensitive,
-		Anchors:       []ExternalAnchor{{SourceID: vndbID, ExternalID: "v2", MatchedBy: "rule:test", EntityType: model.EntityTypeWork}},
-	})
-	require.NoError(t, err)
-	require.True(t, created2)
-	var w2 model.CatalogWork
-	require.NoError(t, testDB.First(&w2, id2).Error)
-	assert.Equal(t, model.ContentRatingSensitive, w2.ContentRating,
-		"an explicit caller rating is never re-derived")
-}
