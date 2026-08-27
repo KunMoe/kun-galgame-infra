@@ -61,7 +61,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="open" size="md">
+  <KunModal v-model="open" size="md" aria-label="生成新密钥">
     <div class="space-y-4">
       <h2 class="text-xl font-bold text-foreground">生成新密钥</h2>
 
@@ -91,9 +91,9 @@ const handleSubmit = async () => {
       </div>
 
       <div class="rounded-lg border border-default-200 p-3">
-        <KunSwitch v-model="test" label="测试密钥（nm_test_ 前缀）" />
+        <KunSwitch v-model="test" label="测试密钥（nmk_test_ 前缀）" />
         <p class="mt-1 text-xs text-default-400">
-          — 测试密钥用于开发/联调；正式接入请使用生产密钥（nm_live_）。
+          — 测试密钥用于开发/联调；正式接入请使用生产密钥（nmk_live_）。
         </p>
       </div>
 

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,12 +22,20 @@ const (
 	maxAppDescLen       = 100
 )
 
-var selfServiceScopes = []string{ScopeCatalogRead, ScopeGalgameRead}
+// Scopes a key owner may tick unilaterally. galgame:read left this list when the
+// /v1/galgame face retired to a 410 tombstone (wave 146): no live route consumes
+// it, so offering it minted a permission over nothing. news:read left it the
+// other way round on 2026-08-25 — the grant machinery retired and /v1/news now
+// takes any valid key, so there is nothing left to tick. store:read joined on
+// 2026-08-26 as part of the same retirement: /v1/store still checks the scope
+// on every request, and with the application queue gone, ticking it here is the
+// only way anyone can hold it.
+var selfServiceScopes = []string{ScopeCatalogRead, ScopeStoreRead}
 
 var (
 	ErrAppLimitReached = errors.New("devapi: application limit reached")
 	ErrKeyLimitReached = errors.New("devapi: active key limit reached")
-	ErrScopeNotAllowed = errors.New("devapi: scope not permitted (want catalog:read and/or galgame:read)")
+	ErrScopeNotAllowed = errors.New("devapi: scope not permitted (want catalog:read or store:read)")
 	ErrNameRequired    = errors.New("devapi: name is required")
 	ErrNameTooLong     = errors.New("devapi: name too long (max 100)")
 	ErrDescTooLong     = errors.New("devapi: description too long (max 100)")
@@ -45,6 +52,13 @@ func NewSelfServiceService(repo *Repository, admin *AdminService, store Store) *
 }
 
 func (s *SelfServiceService) CreateApp(ctx context.Context, ownerUserID uint, name, description string, login *UserLoginRequest) (*siteModel.OAuthClient, error) {
+	mode, err := s.repo.PolicyMode(ctx, CapabilityAppCreate)
+	if err != nil {
+		return nil, err
+	}
+	if mode == PolicyDisabled {
+		return nil, ErrCapabilityDisabled
+	}
 	if err := validateAppMeta(name, description, true); err != nil {
 		return nil, err
 	}
@@ -85,21 +99,25 @@ func (s *SelfServiceService) CreateApp(ctx context.Context, ownerUserID uint, na
 	}
 
 	owner := ownerUserID
+	reviewStatus, enabled := AppReviewApproved, true
+	if mode == PolicyApproval {
+		reviewStatus, enabled = AppReviewPending, false
+	}
 	app := &siteModel.OAuthClient{
-		ID:             clientID,
-		Name:           name,
-		Secret:         siteModel.HashOAuthClientSecret(secret),
-		RedirectURIs:   datatypes.JSON([]byte(redirectURIs)),
-		Grants:         datatypes.JSON([]byte(grants)),
-		IsPublic:       isPublic,
-		AllowedScopes:  datatypes.JSON(appAllowedScopes(userScopes)),
-		Tagline:        description,
-		OwnerUserID:    &owner,
-		DevEnabled:     true,
-		DevTier:        TierFree,
-		DevNSFWAllowed: false,
-		DevRatePerMin:  0,
-		DevQuotaDaily:  0,
+		ID:              clientID,
+		Name:            name,
+		Secret:          siteModel.HashOAuthClientSecret(secret),
+		RedirectURIs:    datatypes.JSON([]byte(redirectURIs)),
+		Grants:          datatypes.JSON([]byte(grants)),
+		IsPublic:        isPublic,
+		AllowedScopes:   datatypes.JSON(appAllowedScopes(userScopes)),
+		Tagline:         description,
+		OwnerUserID:     &owner,
+		DevEnabled:      enabled,
+		DevTier:         TierFree,
+		DevRatePerMin:   0,
+		DevQuotaDaily:   0,
+		DevReviewStatus: reviewStatus,
 	}
 	if err := s.repo.CreateApp(ctx, app); err != nil {
 		return nil, err
@@ -138,6 +156,9 @@ func (s *SelfServiceService) GetApp(ctx context.Context, ownerUserID uint, clien
 func (s *SelfServiceService) UpdateApp(ctx context.Context, ownerUserID uint, clientID string, name, description *string, login *UserLoginRequest) (*siteModel.OAuthClient, error) {
 	app, err := s.repo.GetAppByOwner(ctx, clientID, ownerUserID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.requireCapability(ctx, CapabilityAppManage); err != nil {
 		return nil, err
 	}
 	if err := validateAppMetaPtr(name, description); err != nil {
@@ -180,6 +201,15 @@ func (s *SelfServiceService) DeactivateApp(ctx context.Context, ownerUserID uint
 	if err != nil {
 		return err
 	}
+	if err := s.requireCapability(ctx, CapabilityAppManage); err != nil {
+		return err
+	}
+	// A pending row was never enabled and a declined one is already inert, so
+	// there is nothing to deactivate; letting it through would silently turn
+	// "waiting for review" into "gone" with no way back.
+	if appAwaitsReview(app.DevReviewStatus) {
+		return ErrAppNotApproved
+	}
 	keys, err := s.repo.ListKeysByClient(ctx, app.ID)
 	if err != nil {
 		return err
@@ -196,8 +226,15 @@ func (s *SelfServiceService) DeactivateApp(ctx context.Context, ownerUserID uint
 }
 
 func (s *SelfServiceService) MintKey(ctx context.Context, ownerUserID uint, clientID string, in MintKeyInput) (*DeveloperAPIKey, string, error) {
-	if _, err := s.repo.GetAppByOwner(ctx, clientID, ownerUserID); err != nil {
+	app, err := s.repo.GetAppByOwner(ctx, clientID, ownerUserID)
+	if err != nil {
 		return nil, "", err
+	}
+	if err := s.requireCapability(ctx, CapabilityKeyMint); err != nil {
+		return nil, "", err
+	}
+	if appAwaitsReview(app.DevReviewStatus) {
+		return nil, "", ErrAppNotApproved
 	}
 	if in.Name == "" {
 		return nil, "", ErrNameRequired
@@ -205,7 +242,7 @@ func (s *SelfServiceService) MintKey(ctx context.Context, ownerUserID uint, clie
 	if len(in.Name) > maxAppNameLen {
 		return nil, "", ErrNameTooLong
 	}
-	if err := checkSelfServiceScopes(in.Scopes); err != nil {
+	if err := checkMintScopes(in.Scopes); err != nil {
 		return nil, "", err
 	}
 	active, err := s.repo.CountActiveKeysByClient(ctx, clientID, time.Now())
@@ -227,6 +264,9 @@ func (s *SelfServiceService) ListKeys(ctx context.Context, ownerUserID uint, cli
 
 func (s *SelfServiceService) RotateKey(ctx context.Context, ownerUserID uint, clientID string, keyID uint) (*DeveloperAPIKey, string, error) {
 	if _, err := s.repo.GetAppByOwner(ctx, clientID, ownerUserID); err != nil {
+		return nil, "", err
+	}
+	if err := s.requireCapability(ctx, CapabilityKeyMint); err != nil {
 		return nil, "", err
 	}
 	key, err := s.admin.GetKeyForClient(ctx, clientID, keyID)
@@ -253,183 +293,7 @@ func (s *SelfServiceService) RevokeKey(ctx context.Context, ownerUserID uint, cl
 	return true, s.admin.RevokeKey(ctx, keyID)
 }
 
-func (s *SelfServiceService) Usage(ctx context.Context, ownerUserID uint, clientID string, days int) ([]UsageDayFace, error) {
-	if _, err := s.repo.GetAppByOwner(ctx, clientID, ownerUserID); err != nil {
-		return nil, err
-	}
-	since := time.Now().UTC().AddDate(0, 0, -(days - 1)).Format("2006-01-02")
-	return s.repo.AggregateUsageByClient(ctx, clientID, since)
-}
-
-type OwnerUsageAppTotal struct {
-	ClientID  string `json:"client_id"`
-	Name      string `json:"name"`
-	Count     int64  `json:"count"`
-	Status4xx int64  `json:"status_4xx"`
-	Status5xx int64  `json:"status_5xx"`
-}
-
-type LiveKeyUsage struct {
-	AppName        string `json:"app_name"`
-	KeyID          uint   `json:"key_id"`
-	RateLimit      int    `json:"rate_limit"`
-	QuotaLimit     int    `json:"quota_limit"`
-	QuotaUsed      int64  `json:"quota_used"`
-	QuotaRemaining int64  `json:"quota_remaining"`
-	QuotaReset     int64  `json:"quota_reset"`
-}
-
-type OwnerUsageSummary struct {
-	Days            int                  `json:"days"`
-	Since           string               `json:"since"`
-	TotalCount      int64                `json:"total_count"`
-	Total4xx        int64                `json:"total_4xx"`
-	Total5xx        int64                `json:"total_5xx"`
-	Daily           []UsageDayTotal      `json:"daily"`
-	ByApp           []OwnerUsageAppTotal `json:"by_app"`
-	ByFace          []UsageFaceTotal     `json:"by_face"`
-	Live            []LiveKeyUsage       `json:"live"`
-	LiveUnavailable bool                 `json:"live_unavailable,omitempty"`
-}
-
-func (s *SelfServiceService) OwnerUsage(ctx context.Context, ownerUserID uint, days int) (*OwnerUsageSummary, error) {
-	apps, err := s.repo.ListAppsByOwner(ctx, ownerUserID)
-	if err != nil {
-		return nil, err
-	}
-	now := time.Now().UTC()
-	summary := &OwnerUsageSummary{
-		Days:   days,
-		Since:  now.AddDate(0, 0, -(days - 1)).Format("2006-01-02"),
-		ByApp:  []OwnerUsageAppTotal{},
-		ByFace: []UsageFaceTotal{},
-		Live:   []LiveKeyUsage{},
-	}
-	s.fillLive(ctx, summary, ownerUserID, now)
-
-	if len(apps) == 0 {
-		summary.Daily = denseDays(now, days, nil)
-		return summary, nil
-	}
-
-	clientIDs := make([]string, len(apps))
-	for i := range apps {
-		clientIDs[i] = apps[i].ID
-	}
-	dayRows, err := s.repo.SumUsageByDay(ctx, clientIDs, summary.Since)
-	if err != nil {
-		return nil, err
-	}
-	clientRows, err := s.repo.SumUsageByClient(ctx, clientIDs, summary.Since)
-	if err != nil {
-		return nil, err
-	}
-	faceRows, err := s.repo.SumUsageByFace(ctx, clientIDs, summary.Since)
-	if err != nil {
-		return nil, err
-	}
-	if faceRows != nil {
-		summary.ByFace = faceRows
-	}
-
-	summary.Daily = denseDays(now, days, dayRows)
-	for i := range summary.Daily {
-		summary.TotalCount += summary.Daily[i].Count
-		summary.Total4xx += summary.Daily[i].Status4xx
-		summary.Total5xx += summary.Daily[i].Status5xx
-	}
-
-	totalsByID := make(map[string]UsageClientTotal, len(clientRows))
-	for _, r := range clientRows {
-		totalsByID[r.ClientID] = r
-	}
-	for i := range apps {
-		t := totalsByID[apps[i].ID]
-		summary.ByApp = append(summary.ByApp, OwnerUsageAppTotal{
-			ClientID:  apps[i].ID,
-			Name:      apps[i].Name,
-			Count:     t.Count,
-			Status4xx: t.Status4xx,
-			Status5xx: t.Status5xx,
-		})
-	}
-	slices.SortFunc(summary.ByApp, func(a, b OwnerUsageAppTotal) int {
-		switch {
-		case a.Count > b.Count:
-			return -1
-		case a.Count < b.Count:
-			return 1
-		default:
-			return 0
-		}
-	})
-	return summary, nil
-}
-
-func (s *SelfServiceService) fillLive(ctx context.Context, summary *OwnerUsageSummary, ownerUserID uint, now time.Time) {
-	if s.store == nil || !s.store.Available(ctx) {
-		summary.LiveUnavailable = true
-		return
-	}
-	keys, err := s.repo.ListOwnerActiveKeys(ctx, ownerUserID, now)
-	if err != nil {
-		summary.LiveUnavailable = true
-		return
-	}
-	day := now.UTC().Format("2006-01-02")
-	reset := nextDayStartUnix(now)
-	for _, k := range keys {
-		cred := &Credential{Tier: k.DevTier, RateOverride: k.DevRatePerMin, QuotaOverride: k.DevQuotaDaily}
-		rate, _ := cred.EffectiveRate()
-		quota, unlimited := cred.EffectiveQuota()
-		row := LiveKeyUsage{
-			AppName:    k.AppName,
-			KeyID:      k.KeyID,
-			RateLimit:  rate,
-			QuotaLimit: quota,
-			QuotaReset: reset,
-		}
-		if !unlimited {
-			row.QuotaUsed = s.readCounter(ctx, quotaCounterKey(k.KeyID, day))
-			if rem := int64(quota) - row.QuotaUsed; rem > 0 {
-				row.QuotaRemaining = rem
-			}
-		}
-		summary.Live = append(summary.Live, row)
-	}
-}
-
-func (s *SelfServiceService) readCounter(ctx context.Context, key string) int64 {
-	b, err := s.store.Get(ctx, key)
-	if err != nil || len(b) == 0 {
-		return 0
-	}
-	n, err := strconv.ParseInt(strings.TrimSpace(string(b)), 10, 64)
-	if err != nil || n < 0 {
-		return 0
-	}
-	return n
-}
-
-func denseDays(now time.Time, days int, rows []UsageDayTotal) []UsageDayTotal {
-	byDay := make(map[string]UsageDayTotal, len(rows))
-	for _, r := range rows {
-		byDay[r.Day] = r
-	}
-	out := make([]UsageDayTotal, 0, days)
-	for i := days - 1; i >= 0; i-- {
-		day := now.AddDate(0, 0, -i).Format("2006-01-02")
-		if r, ok := byDay[day]; ok {
-			r.Day = day
-			out = append(out, r)
-		} else {
-			out = append(out, UsageDayTotal{Day: day})
-		}
-	}
-	return out
-}
-
-func checkSelfServiceScopes(scopes []string) error {
+func checkMintScopes(scopes []string) error {
 	for _, sc := range scopes {
 		if !slices.Contains(selfServiceScopes, sc) {
 			return ErrScopeNotAllowed

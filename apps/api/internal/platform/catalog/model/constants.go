@@ -47,6 +47,14 @@ const (
 	AliasProvenanceMachine int16 = 1
 )
 
+// catalog_character_trait.name_zh_provenance. Curated is the ingest tool's own
+// word for 0 (a hand-checked vocabulary row), not "a source published it" —
+// there is no upstream Chinese trait vocabulary to be sourced from.
+const (
+	TraitNameZhProvenanceCurated int16 = 0
+	TraitNameZhProvenanceMachine int16 = 1
+)
+
 const (
 	LabelKindGameBrand    int16 = 0
 	LabelKindBunko        int16 = 1
@@ -135,6 +143,18 @@ const (
 	ContentRatingR18       int16 = 2
 )
 
+// Per-image sexual levels (covers/screenshots): 0 safe, 1 suggestive
+// (underwear/swimsuit), 2 explicit. The public read path and the repincovers
+// pin job must draw the display-safe line at the same level: the read path
+// used to hide sexual >= 1 while the pin job pinned sexual = 1 covers, so
+// display-sfw works whose covers were all suggestive rendered no cover for
+// anyone — 101 of the top 400 works by popularity listed with cover: null.
+const (
+	SexualSafe       int16 = 0
+	SexualSuggestive int16 = 1
+	SexualExplicit   int16 = 2
+)
+
 const (
 	WorkStatusLive   int16 = 0
 	WorkStatusStub   int16 = 1
@@ -209,6 +229,11 @@ const (
 	WorkTitleKindAlias        int16 = 1
 	WorkTitleKindAbbreviation int16 = 2
 	WorkTitleKindSearchHint   int16 = 3
+)
+
+const (
+	WorkTitleProvenanceSource  int16 = 0
+	WorkTitleProvenanceMachine int16 = 1
 )
 
 const (

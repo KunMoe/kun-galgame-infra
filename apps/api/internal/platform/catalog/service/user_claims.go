@@ -28,6 +28,7 @@ type UserClaimQuery struct {
 	Site        string
 	ClaimStates []string
 	Before      int64
+	WorkID      int64
 	Limit       int
 	// Kind narrows which events qualify the actor: "submitted" keeps only the
 	// works the actor owns (their own submissions), "audited" keeps only the
@@ -38,8 +39,10 @@ type UserClaimQuery struct {
 
 func (s *ClaimLifecycleService) ClaimsByActor(ctx context.Context, q UserClaimQuery) ([]UserClaimItem, int64, error) {
 	limit := q.Limit
-	if limit <= 0 || limit > 100 {
+	if limit <= 0 {
 		limit = 20
+	} else if limit > 101 {
+		limit = 101
 	}
 	stateGate, stateArgs := claimStateWhere(q.ClaimStates)
 	if stateGate != "" {
@@ -54,6 +57,10 @@ func (s *ClaimLifecycleService) ClaimsByActor(ctx context.Context, q UserClaimQu
 	case "audited":
 		ownerGate = " AND w.owner_user_id IS DISTINCT FROM ?"
 		ownerArgs = []any{q.ActorUID}
+	}
+	if q.WorkID > 0 {
+		ownerGate += " AND w.id = ?"
+		ownerArgs = append(ownerArgs, q.WorkID)
 	}
 
 	const from = `

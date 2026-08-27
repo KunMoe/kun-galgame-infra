@@ -5,32 +5,52 @@ alwaysApply: true
 
 # Grok-as-executor dispatch mode
 
-The agent in this session is the **orchestrator** (task-book author + acceptor). Implementation and investigation work is dispatched to the locally installed `grok` CLI (Grok Build) as the **executor subagent**. Do NOT use Cursor's built-in Task subagents for execution work; use `grok`.
+The agent in this session is the **orchestrator** (task-book author + acceptor). Implementation and investigation work is dispatched to the locally installed `grok` CLI (Grok Build) as the **executor subagent**. Do NOT use built-in Task subagents for execution work; use `grok`.
+
+The full operating manual — verified flag set, dispatch script, task-book template — is `.claude/skills/dispatch-grok/`. Read it before the first dispatch of a session.
+
+## What grok can do here (verified 2026-08-22, grok 1.0.5)
+
+`/etc/grok/requirements.toml` is a system policy pin; no flag lifts it.
+
+- **No shell.** `run_terminal_command` sits behind a managed confirmation floor, and headless has nobody to confirm, so the first shell call ends the run (`stopReason: "cancelled"`). `--always-approve`, `--permission-mode`, and catch-all rules (`--allow Bash`) are all rejected. **grok writes; the orchestrator runs every command.**
+- Reads inside the repo are free. Writes need a **path-scoped** `--allow 'Write(<glob>)'` / `Edit(<glob>)` — enforced, not advisory: a write outside the glob ends the run. That is the mechanical form of "one path, one writer".
+- The sandbox is the repo plus `/tmp`. Sibling repos are unreadable even with an explicit rule.
+- Rule prefixes are Claude-compatible names (`Write`, `Edit`, `Read`), not grok's native tool names.
+- grok loads this repo's `CLAUDE.md` automatically — don't re-paste the iron rules, do restate the ones the task turns on.
 
 ## How to dispatch
 
-1. Write a self-contained task book to `/tmp/<task-slug>.md`, then run from the repo root, in the background:
-
 ```bash
-grok --prompt-file /tmp/<task-slug>.md --output-format plain --max-turns 200 \
-  > /tmp/<task-slug>-report.md 2>/tmp/<task-slug>-stderr.log
+export GROK_OUT_ROOT=/tmp/grok-dispatch          # never the repo
+mkdir -p "$GROK_OUT_ROOT/<slug>"                 # write task.md there, then:
+.claude/skills/dispatch-grok/dispatch.sh <slug> \
+  --allow 'Write(<narrow glob>)' --allow 'Edit(<narrow glob>)'
 ```
 
-2. Headless default permissions allow file reads and read-only shell without approval; write control rides on the task book's discipline section plus your post-run checks. For risky tasks add `--permission-mode` / `--sandbox`.
-3. Never run two grok dispatches concurrently on overlapping paths — one writer per path. Sequential dispatches only.
+Run it in the background. One dispatch at a time over any given path.
 
-## Task book requirements (what makes executors perform well)
+Have grok **write its report to a file** under `$GROK_OUT_ROOT/<slug>/`, never to stdout: `.text` is the concatenation of every assistant text block, not the final answer. Keeping the report out of the repo also makes `git status --porcelain` a pure signal of what grok changed.
+
+`stopReason: "cancelled"` means *either* a denied tool call *or* turn exhaustion — `dispatch.sh` greps the debug log to tell you which.
+
+## Task book requirements
 
 - **Write it in English** — executors follow English task books more reliably.
 - Self-contained: the executor sees nothing of this conversation. State repo path, branch, HEAD, where the code lives, and every relevant prior decision inline.
-- Explicit scope AND out-of-scope lists; named acceptance criteria (test names, commands with expected output); a required report structure.
-- All design adjudications are made by the orchestrator in the task book — never delegate an open design decision to the executor. If mechanics genuinely depend on code details, state the invariant to enforce plus the precedent to follow, and require the executor to report the chosen mechanics for acceptance.
-- A discipline section: writable paths (exact), forbidden operations (git add/commit/checkout/reset/stash, DB access unless a DSN is explicitly provided, starting services), and "report, don't work around" for anything unexpected.
+- State "you have no shell" explicitly. A task book that says "run the tests" wastes the dispatch.
+- Explicit scope AND out-of-scope lists; named acceptance criteria (test names, commands with expected output) that **the orchestrator** will run; a required report structure.
+- All design adjudications are made by the orchestrator in the task book — never delegate an open design decision. If mechanics genuinely depend on code details, state the invariant to enforce plus the precedent to follow, and require the executor to report the chosen mechanics for acceptance.
+- Name binding spec clauses by identifier and quote them (`refs/api-v2/` axiom `A<n>`, blacklist `B<n>`, gate `G<n>`, decision `D<n>`). "Follow the spec" points at eleven files and gets the wrong one followed.
+- A discipline section: writable paths (exact), forbidden operations (git, DB, starting services, KunUI edits), and "report, don't work around" for anything unexpected.
+- **Forbid ranking.** The executor cannot see what the orchestrator knows, so its importance ordering is noise. Require a flat list at equal weight, and put "anything that looks wrong, in scope or not" near the top of the report structure — left at the bottom, the one finding with real consequence gets folded into "could not verify" and labelled `not scored`.
+- On any search, audit, or census, require a **positive control**: alongside "I found N", the list of what was checked and came back clean. A zero from a search nobody proved works is unreadable.
 
 ## What the orchestrator never delegates
 
 - Task-book adjudications and scope calls.
+- Every command — build, test, `gofmt`, lint, docs gates.
 - Git commits (explicit paths only), pushes, PRs, and anything touching shared git state.
-- Database provisioning (`scripts/ephemeral-test-db.sh create <slug>`; pass the DSN into the grok dispatch env; `drop` it when done) and all migrations.
-- Cross-repo docs sync (`../kungal-docs` `docs:sync --write` + `docs:audit`) and production operations.
-- Final acceptance: after every dispatch run `git status --porcelain` (only expected paths changed), spot-check the report's highest-stakes claims against the code, and independently re-run the tests/gates for write tasks. Trust the report's structure, verify its conclusions.
+- Database provisioning (`scripts/ephemeral-test-db.sh create <slug>`) and all migrations.
+- Cross-repo docs sync (`../kungal-docs` `docs:sync --write` + `docs:audit`) and production operations — grok cannot even read a sibling repo.
+- Final acceptance: after every dispatch run `git status --porcelain` (only granted paths changed), spot-check the report's highest-stakes claims against the code, and independently re-run the tests/gates. Trust the report's structure, verify its conclusions.

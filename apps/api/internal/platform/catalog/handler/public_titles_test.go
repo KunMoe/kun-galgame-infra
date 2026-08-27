@@ -111,10 +111,14 @@ func TestClaimedWorkNamesBlockBridged(t *testing.T) {
 	require.Equal(t, 200, code)
 	items := body["data"].(map[string]any)["items"].([]any)
 	require.Len(t, items, 1)
-	names := items[0].(map[string]any)["names"].(map[string]any)
-	assert.Equal(t, "日本語名", names["ja-jp"])
-	assert.Equal(t, "English Name", names["en-us"])
-	assert.Equal(t, "简体中文名", names["zh-cn"])
-	assert.Equal(t, "繁體中文名", names["zh-tw"])
-	assert.Len(t, names, 4, "a lang-less alias belongs to no product key")
+	names := items[0].(map[string]any)["localized"].(map[string]any)
+	value := func(locale string) any {
+		row, _ := names[locale].(map[string]any)
+		return row["value"]
+	}
+	assert.Equal(t, "日本語名", value("ja"))
+	assert.Equal(t, "English Name", value("en"))
+	assert.Equal(t, "简体中文名", value("zh-Hans"))
+	assert.Equal(t, "繁體中文名", value("zh-Hant"))
+	assert.Len(t, names, 4, "a lang-less alias answers no locale")
 }

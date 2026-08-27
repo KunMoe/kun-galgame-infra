@@ -56,6 +56,7 @@ type fakeUpstream struct {
 	model      string
 	result     upstream.ChatResult
 	err        error
+	errSeq     []error
 	calls      int
 }
 
@@ -63,6 +64,13 @@ func (f *fakeUpstream) Configured() bool { return f.configured }
 func (f *fakeUpstream) Model() string    { return f.model }
 func (f *fakeUpstream) ChatJSON(_ context.Context, _, _ string, _ int) (upstream.ChatResult, error) {
 	f.calls++
+	if len(f.errSeq) > 0 {
+		e := f.errSeq[0]
+		f.errSeq = f.errSeq[1:]
+		if e != nil {
+			return upstream.ChatResult{}, e
+		}
+	}
 	if f.err != nil {
 		return upstream.ChatResult{}, f.err
 	}

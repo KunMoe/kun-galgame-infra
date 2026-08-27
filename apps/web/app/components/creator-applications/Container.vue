@@ -217,7 +217,7 @@ const confirmDecline = async () => {
       />
     </div>
 
-    <KunModal v-model="declineOpen">
+    <KunModal v-model="declineOpen" aria-label="拒绝申请">
       <div class="space-y-4">
         <div>
           <h2 class="text-foreground text-xl font-bold">拒绝申请</h2>

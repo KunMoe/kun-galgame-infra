@@ -45,6 +45,16 @@ func (s *PublicService) LabelRelationGraph(ctx context.Context, id int64, nsfw b
 	if err != nil {
 		return dto.PublicLabelGraph{}, false, err
 	}
+	loc, err := s.localizedFor(ctx, labelAliasSource, ids)
+	if err != nil {
+		return dto.PublicLabelGraph{}, false, err
+	}
+
+	logoHashes := make([]string, 0, len(nodes))
+	for _, n := range nodes {
+		logoHashes = append(logoHashes, n.LogoHash)
+	}
+	logoMeta := s.entityMetaFor(ctx, logoHashes...)
 
 	out := dto.PublicLabelGraph{
 		Nodes: make([]dto.PublicLabelGraphNode, len(nodes)),
@@ -52,7 +62,9 @@ func (s *PublicService) LabelRelationGraph(ctx context.Context, id int64, nsfw b
 	}
 	for i, n := range nodes {
 		out.Nodes[i] = dto.PublicLabelGraphNode{
-			ID: n.ID, Name: n.Name, LogoHash: n.LogoHash, WorkCount: counts[n.ID],
+			ID: n.ID, DisplayName: n.Name, Localized: locOrEmpty(loc[n.ID]),
+			LogoHash: n.LogoHash, LogoMeta: publicImageMeta(logoMeta, n.LogoHash),
+			WorkCount: counts[n.ID],
 		}
 	}
 	return out, true, nil

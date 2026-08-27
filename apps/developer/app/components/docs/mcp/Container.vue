@@ -1,117 +1,17 @@
 <script setup lang="ts">
 import { MCP_ENDPOINT } from '~/constants/dev'
+import { MCP_TOOLS } from '~~/shared/mcp-tools.mjs'
 
 useSeoMeta({
   title: 'AI / MCP 接入',
   description:
-    '把 NextMoe 开放 API 作为 MCP（Model Context Protocol）server 接入 AI 助手：端点、密钥配置，25 个只读工具，以及 Claude Code / Claude Desktop / 通用 MCP 客户端三段配置示例。'
+    '把 NextMoe 开放 API v2 作为 MCP server 接入 AI 助手：工具由 /v2 OpenAPI 生成，密钥是 nmk_live_。'
 })
 
-const tools: { name: string; desc: string; grant?: boolean }[] = [
-  {
-    name: 'catalog_search',
-    desc: '按名字搜身份图谱实体：names（人物名义）/ characters / labels / works（跨媒介作品标题，r18 需 nsfw=true）。'
-  },
-  {
-    name: 'catalog_work_get',
-    desc: '按 catalog work id 取注册行，include=credits,relations 并取子块。'
-  },
-  {
-    name: 'catalog_lookup_external',
-    desc: '外部 id 反查（如 source=vndb, external_id=v19658）——手握外部 id 时首选。'
-  },
-  {
-    name: 'catalog_name_get',
-    desc: '按 id 取名义（credit-name 同人格分组），include=credits 附署名作品与角色。'
-  },
-  { name: 'catalog_label_get', desc: '按 id 取厂牌 / 社团（include=works 附归属作品）。' },
-  {
-    name: 'catalog_character_get',
-    desc: '按 id 取角色（traits 按 spoilers=0-2 分级；nsfw 控 r18 作品与 sexual 系 traits）。'
-  },
-  {
-    name: 'catalog_works_list',
-    desc: '批量浏览 / 过滤作品注册表（评级 / 厂牌 / 标签 / 系列 / 平台 / 发售窗，keyset 分页，ids= 批量水合）。'
-  },
-  {
-    name: 'catalog_changes',
-    desc: '增量同步变更流——存下 next_cursor，下次轮询只拿变化的部分。'
-  },
-  {
-    name: 'catalog_tag_get',
-    desc: '按 id 取正典标签（跨源标签词表），include=works 附携带作品。'
-  },
-  {
-    name: 'catalog_works_search',
-    desc: '作品产品检索：自由文本 + works-list 全过滤集，五档排序、可选 facets 分面计数、page 分页（组合「查询 + 过滤」时优先用它，纯名字检索用 catalog_search）。'
-  },
-  {
-    name: 'catalog_calendar',
-    desc: '发售月历单月（缺省为当前 Asia/Tokyo 月；olang 缺省收敛到 ja + zh* 族，olang=all 放开）。'
-  },
-  {
-    name: 'catalog_calendar_pending',
-    desc: '月历「知年不知月」桶（缺省为当前 Asia/Tokyo 年）。'
-  },
-  {
-    name: 'catalog_calendar_tba',
-    desc: '月历「已公布未定档」全局桶。'
-  },
-  {
-    name: 'catalog_labels_list',
-    desc: '浏览厂牌 / 社团词表本身（kind 过滤，每行带 nsfw 感知 work_count）——用来发现 label id。'
-  },
-  {
-    name: 'catalog_tags_list',
-    desc: '浏览正典标签词表本身（tier / kind 过滤）——用来发现 tag id 再喂给作品过滤。'
-  },
-  {
-    name: 'catalog_engines_list',
-    desc: '浏览引擎词表本身——用来发现 engine id 再喂给 catalog_works_search。'
-  },
-  {
-    name: 'catalog_engine_get',
-    desc: '按 id 取引擎记录（名称 + nsfw 感知 work_count + 跨源 refs）。'
-  },
-  {
-    name: 'catalog_series_list',
-    desc: '浏览系列词表本身（source= 泳道过滤：curated / derived / dlsite，每行带 nsfw 感知 work_count）——系列不进搜索索引，这是发现 series id 的唯一入口。'
-  },
-  {
-    name: 'catalog_series_get',
-    desc: '按 id 取系列（身份 + 源锚 + 简介），include_works 附成员作品并按阅读顺序排列——回答「这个系列按什么顺序玩」。'
-  },
-  {
-    name: 'catalog_stats',
-    desc: '全库计数：各媒介 LIVE 作品数 + 身份家族总量（无参数）。'
-  },
-  {
-    name: 'catalog_label_relation_graph',
-    desc: '一次拿到一个厂牌周围的整个会社家族（母公司 / 子品牌 / 文库 / 继承），nodes[] + edges[]。catalog_label_get 的 relations[] 只有一跳，问「某社旗下有哪些牌子」用这个。服务端封顶 depth 4 / 60 节点，不分页。'
-  },
-  {
-    name: 'catalog_releases',
-    desc: '发售动态的 release 粒度：每一条发售行各自成项，移植版 / 复刻 / 中文化都看得见（calendar 只把作品放在最早发售月且只显示一次）。可按日期区间、平台、发行语言、版本类型、官方性过滤；is_first 分辨首发与再版。'
-  },
-  {
-    name: 'news_list',
-    grant: true,
-    desc: '合作媒体的 Galgame 资讯索引（按来源 / 泳道 / 关联作品 / 发布时间窗过滤，keyset 分页）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。'
-  },
-  {
-    name: 'news_sources',
-    grant: true,
-    desc: '资讯来源注册表：每家媒体的 key、名称、主页、专栏入口，以及该渲染的归属文案。无参数。'
-  },
-  {
-    name: 'news_get',
-    grant: true,
-    desc: '按 id 取单条资讯。已撤回的、上游原文已消失的条目返回 404——这是契约不是查不到，别重试，也别拿缓存副本顶上。'
-  }
-]
+const tools = MCP_TOOLS
 
 const claudeCodeCmd = `claude mcp add --transport http nextmoe ${MCP_ENDPOINT} \\
-  --header "Authorization: Bearer nm_live_你的密钥"`
+  --header "Authorization: Bearer nmk_live_你的密钥"`
 
 const claudeDesktopJson = `{
   "mcpServers": {
@@ -119,7 +19,7 @@ const claudeDesktopJson = `{
       "type": "http",
       "url": "${MCP_ENDPOINT}",
       "headers": {
-        "Authorization": "Bearer nm_live_你的密钥"
+        "Authorization": "Bearer nmk_live_你的密钥"
       }
     }
   }
@@ -129,14 +29,14 @@ const genericJson = `{
   "transport": "streamable-http",
   "url": "${MCP_ENDPOINT}",
   "headers": {
-    "Authorization": "Bearer nm_live_你的密钥"
+    "Authorization": "Bearer nmk_live_你的密钥"
   }
 }`
 
 const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
   -H "Content-Type: application/json" \\
   -H "Accept: application/json, text/event-stream" \\
-  -H "Authorization: Bearer nm_live_你的密钥" \\
+  -H "Authorization: Bearer nmk_live_你的密钥" \\
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize",
        "params":{"protocolVersion":"2025-06-18","capabilities":{},
                  "clientInfo":{"name":"curl","version":"0"}}}'`
@@ -153,7 +53,7 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
         NextMoe 开放 API 同时以 <strong class="text-foreground">MCP</strong>（Model
         Context Protocol）server 暴露：AI 助手 / agent 用自然的工具调用直接查生态目录，
         无需为它写胶水代码。它是一层<strong class="text-foreground">纯透传适配</strong>——
-        每次工具调用就是一次对公开 /v1 端点的请求，原样带上你的密钥。
+        工具由 v2 OpenAPI 生成，每次调用就是一次对公开 /v2 GET 的请求。
       </p>
     </header>
 
@@ -193,7 +93,7 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
           <code
             class="rounded bg-default-100 px-1 py-0.5 font-mono text-xs text-foreground"
           >
-            Authorization: Bearer nm_live_…
+            Authorization: Bearer nmk_live_…
           </code>
           。与直连同一把密钥，
           <NuxtLink to="/dashboard" class="text-primary hover:underline">
@@ -215,21 +115,20 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
         MCP 层自身<strong class="text-foreground">零鉴权、零计量</strong>逻辑——鉴权、tier、
         NSFW 可见性、限流、日配额与用量统计全部复用同一套端点、记在同一把密钥上：一次工具调用在
         <code class="font-mono text-xs text-foreground">/dev/usage</code>
-        里与一次直连 <code class="font-mono text-xs text-foreground">/v1</code> 请求毫无区别。
+        里与一次直连 <code class="font-mono text-xs text-foreground">/v2</code> 请求毫无区别。任何应用在门户自助铸造的 nmk_ 密钥都能用，不需要申请。
       </p>
     </section>
 
     <section>
       <h2 class="text-lg font-semibold text-foreground">工具（{{ tools.length }} 个）</h2>
       <p class="mt-1 text-sm text-default-500">
-        每个工具映射一个公开只读端点。手握 id / 外部 id 用
-        <code class="font-mono text-xs text-foreground">*_get</code> /
-        <code class="font-mono text-xs text-foreground">*_lookup</code>，自然语言用
-        <code class="font-mono text-xs text-foreground">*_search</code>。带
-        <span class="font-medium text-warning-600">授权制</span>
-        的三个走资讯 API，密钥须带
-        <code class="font-mono text-xs text-foreground">news:read</code>
-        ——该权限由平台授予，控制台勾不到；没有它调这三个一律 403。
+        每个工具对应一条公开 GET，工具名就是 OpenAPI
+        <code class="font-mono text-xs">operationId</code>，参数集合就是 HTTP 的 query 与 path（含
+        <code class="font-mono text-xs">view=</code> /
+        <code class="font-mono text-xs">fields=</code>）。这份清单由
+        <code class="font-mono text-xs">cmd/gen-v2-portal</code>
+        从同一份 v2 OpenAPI 生成，与 server 注册的工具集逐条一致。完整契约见
+        <NuxtLink to="/docs/v2" class="text-primary hover:underline">API v2 文档</NuxtLink>。
       </p>
       <ul class="mt-4 space-y-2">
         <li
@@ -243,10 +142,10 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
             {{ tool.name }}
           </code>
           <span
-            v-if="tool.grant"
-            class="w-fit shrink-0 rounded-full bg-warning-50 px-2 py-1 text-xs font-medium text-warning-600"
+            v-if="!tool.needsKey"
+            class="w-fit shrink-0 rounded-full bg-success-50 px-2 py-1 text-xs font-medium text-success-600"
           >
-            授权制
+            无需密钥
           </span>
           <span class="text-sm text-default-500">{{ tool.desc }}</span>
         </li>
@@ -258,7 +157,7 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
         <h2 class="text-lg font-semibold text-foreground">客户端配置</h2>
         <p class="mt-1 text-sm text-default-500">
           把下面的
-          <code class="font-mono text-xs text-foreground">nm_live_你的密钥</code>
+          <code class="font-mono text-xs text-foreground">nmk_live_你的密钥</code>
           换成你自己的密钥。
         </p>
       </div>

@@ -26,6 +26,9 @@ func TestPublicLabelRelationGraphWire(t *testing.T) {
 		LabelID: parent.ID, OtherLabelID: live, Relation: model.LabelRelationSubsidiary,
 		SourceID: 2, MatchedBy: "rule:test",
 	}).Error)
+	require.NoError(t, db.Create(&model.CatalogLabelAlias{
+		LabelID: live, Name: "生存社", Lang: "zh-Hans", Kind: model.AliasKindTranslation,
+	}).Error)
 
 	t.Run("graph shape", func(t *testing.T) {
 		resp, body := getRaw(t, app, "/v1/catalog/labels/"+itoa(live)+"/relation-graph")
@@ -36,11 +39,15 @@ func TestPublicLabelRelationGraphWire(t *testing.T) {
 
 		seed := nodes[0].(map[string]any)
 		assert.EqualValues(t, live, seed["id"], "nodes[0] must be the seed")
-		assert.Equal(t, "生存ブランド", seed["name"])
+		assert.Equal(t, "生存ブランド", seed["display_name"])
+		loc := seed["localized"].(map[string]any)
+		assert.Equal(t, "生存社", loc["zh-Hans"].(map[string]any)["value"])
 		require.Contains(t, seed, "logo_hash")
 		assert.Equal(t, "", seed["logo_hash"])
 		assert.EqualValues(t, 0, seed["work_count"])
-		assert.Equal(t, "logohash-oya", nodes[1].(map[string]any)["logo_hash"])
+		other := nodes[1].(map[string]any)
+		assert.Equal(t, "logohash-oya", other["logo_hash"])
+		assert.Equal(t, map[string]any{}, other["localized"], "no alias → {} not null")
 
 		edges := data["edges"].([]any)
 		require.Len(t, edges, 1)

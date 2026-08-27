@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { needsStepUp } from '~/constants/roles'
+import { SCOPE_LABELS } from '~~/shared/types/oauth-client'
 
 interface ClientPublicInfo {
   id: string
@@ -60,15 +61,6 @@ const scopeList = computed(() => {
   if (!scope.value) return []
   return scope.value.split(/[\s+]/).filter(Boolean)
 })
-
-const scopeLabels: Record<string, string> = {
-  openid: '身份标识',
-  profile: '用户资料 (昵称、头像)',
-  email: '邮箱地址',
-  'playtime:read': '读取你的游戏时长记录',
-  'playtime:write': '记录你的游戏时长',
-  'catalog:edit': '以你的名义提交目录条目的编辑提案',
-}
 
 const respondWithError = async (errCode: string): Promise<void> => {
   const res = await api.post<{ redirect_url: string }>(
@@ -376,7 +368,7 @@ const handleDeny = async () => {
             class="text-default-500 flex items-center gap-2 text-sm"
           >
             <KunIcon name="lucide:check" class="text-success size-4 shrink-0" />
-            {{ scopeLabels[s] || s }}
+            {{ SCOPE_LABELS[s] || s }}
           </li>
           <li
             v-if="scopeList.length === 0"

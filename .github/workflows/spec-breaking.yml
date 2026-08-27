@@ -20,6 +20,11 @@ name: spec-breaking
 # A deliberate retirement is not a silent one: a spec may carry a sibling
 # <spec>-breaking-ignore.txt naming the changes it means to make, which turns
 # the gate from "never break" into "never break by accident".
+#
+# docs/catalog/v2-openapi.yaml sat in the trigger paths but not in the specs
+# list below through the whole v2 preview — deliberate then (preview allowed
+# breaking changes), but it looked checked while it wasn't. It joined the list
+# at GA on 2026-08-25; both lists must stay in step from here on.
 
 on:
   push:
@@ -30,7 +35,9 @@ on:
       - "docs/catalog/openapi.yaml"
       - "docs/catalog/admin-openapi.yaml"
       - "docs/catalog/public-openapi.yaml"
+      - "docs/catalog/v2-openapi.yaml"
       - "docs/news/public-openapi.yaml"
+      - "docs/store/public-openapi.yaml"
       - "docs/community/openapi.yaml"
       - "docs/trust/openapi.yaml"
       - "docs/trust/admin-openapi.yaml"
@@ -91,7 +98,9 @@ jobs:
             docs/catalog/openapi.yaml
             docs/catalog/admin-openapi.yaml
             docs/catalog/public-openapi.yaml
+            docs/catalog/v2-openapi.yaml
             docs/news/public-openapi.yaml
+            docs/store/public-openapi.yaml
             docs/community/openapi.yaml
             docs/trust/openapi.yaml
             docs/trust/admin-openapi.yaml

@@ -12,11 +12,11 @@ import (
 )
 
 func appAllowedScopes(userScopes string) []byte {
-	all := []string{ScopeCatalogRead, ScopeGalgameRead}
+	all := []string{ScopeCatalogRead}
 	all = append(all, strings.Fields(userScopes)...)
 	encoded, err := json.Marshal(all)
 	if err != nil {
-		return []byte(`["catalog:read","galgame:read"]`)
+		return []byte(`["catalog:read"]`)
 	}
 	return encoded
 }
@@ -117,6 +117,10 @@ func toUserLoginView(app *siteModel.OAuthClient) *userLoginView {
 	_ = json.Unmarshal(app.AllowedScopes, &all)
 	consent := make([]string, 0, len(all))
 	for _, s := range all {
+		// galgame:read is still filtered although appAllowedScopes stopped
+		// writing it on 2026-08-18: every app registered before that date has it
+		// in allowed_scopes, and dropping the filter would make the consent page
+		// suddenly list a retired machine scope as something the app asks a user for.
 		if s != ScopeCatalogRead && s != ScopeGalgameRead {
 			consent = append(consent, s)
 		}

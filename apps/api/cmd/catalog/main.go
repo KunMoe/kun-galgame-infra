@@ -14,6 +14,8 @@ import (
 	"api/internal/infrastructure/database"
 	searchInfra "api/internal/infrastructure/search"
 	"api/internal/middleware"
+	v2handler "api/internal/platform/apiv2/handler"
+	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/catalog/editspec"
 	catHandler "api/internal/platform/catalog/handler"
 	catalogPerm "api/internal/platform/catalog/perm"
@@ -26,6 +28,9 @@ import (
 	newsService "api/internal/platform/news/service"
 	"api/internal/platform/permissions"
 	siteRepo "api/internal/platform/site/repository"
+	storeHandler "api/internal/platform/store/handler"
+	storeService "api/internal/platform/store/service"
+	"api/internal/platform/store/shortener"
 	"api/pkg/config"
 	"api/pkg/health"
 	"api/pkg/imageclient"
@@ -136,7 +141,8 @@ func main() {
 		"catalog": catalogPerm.Resolver,
 	}, claimSvc, readSvc)
 
-	catHandler.SetupPlaytime(application.Fiber, service.NewUserPlaytimeService(catalogDB.DB()))
+	playtimeSvc := service.NewUserPlaytimeService(catalogDB.DB())
+	catHandler.SetupPlaytime(application.Fiber, playtimeSvc)
 
 	catalogSpec, err := json.Marshal(catHandler.SetupCatalogPublicSpec(fiber.New()).OpenAPI())
 	if err != nil {
@@ -160,6 +166,17 @@ func main() {
 		return c.Send(newsSpec)
 	})
 
+	storeSpec, err := json.Marshal(storeHandler.SetupStorePublicSpec(fiber.New()).OpenAPI())
+	if err != nil {
+		slog.Error("marshal store public spec", "error", err)
+		os.Exit(1)
+	}
+	application.Fiber.Get("/v1/store/openapi.json", func(c fiber.Ctx) error {
+		c.Set("Content-Type", "application/json")
+		c.Set("Cache-Control", "public, max-age=3600")
+		return c.Send(storeSpec)
+	})
+
 	// kun_news is a SECOND database on a process whose primary job is catalog.
 	// An unreachable news database degrades the news face to 503 instead of
 	// exiting: the first production deploy necessarily precedes
@@ -167,6 +184,7 @@ func main() {
 	// catalog container over a face nobody is calling yet.
 	var newsSvc *newsService.PublicService
 	var newsAdminSvc *newsService.AdminService
+	var newsWriteSvc *newsService.SubmissionService
 	if newsDB, err := database.NewPostgresDB(cfg.NewsDatabase); err != nil {
 		slog.Warn("news db connect failed — /v1/news degraded to 503", "dbname", cfg.NewsDatabase.DBName, "error", err)
 	} else {
@@ -177,6 +195,7 @@ func main() {
 		}()
 		newsSvc = newsService.NewPublicService(newsDB.DB(), cfg.ImageService.CDNBase)
 		newsAdminSvc = newsService.NewAdminService(newsDB.DB(), cfg.ImageService.CDNBase)
+		newsWriteSvc = newsService.NewSubmissionService(newsDB.DB())
 	}
 
 	// The moderation face is the human half of the gate 月幕 asked for. It is a
@@ -193,7 +212,7 @@ func main() {
 	adminNews.Post("/items/:id/decision", newsAdminH.Decide)
 
 	setupPublicCatalog(application, cfg, catalogDB, readSvc, resolveSvc, searcher, statsSvc,
-		clientRepo, tokenVerifier, devStore, devCache, newsSvc)
+		clientRepo, tokenVerifier, devStore, devCache, newsSvc, newsWriteSvc, editRegistry, playtimeSvc, coverVoteSvc, claimSvc, editEngine)
 
 	galgameapp.MountRetiredPublic(application)
 
@@ -240,6 +259,12 @@ func setupPublicCatalog(
 	store devapi.Store,
 	devCache *cache.RedisCache,
 	newsSvc *newsService.PublicService,
+	newsWriteSvc *newsService.SubmissionService,
+	editRegistry *editing.Registry,
+	playtimeSvc *service.UserPlaytimeService,
+	coverVoteSvc *service.CoverVoteService,
+	claimSvc *service.ClaimLifecycleService,
+	editEngine *editing.Engine,
 ) {
 	oauthDB := application.DB.DB()
 
@@ -263,7 +288,9 @@ func setupPublicCatalog(
 			}
 			out := make(map[string]service.ImageMeta, len(raw))
 			for h, m := range raw {
-				out[h] = service.ImageMeta{Width: m.Width, Height: m.Height, Thumbhash: m.Thumbhash}
+				out[h] = service.ImageMeta{
+					Width: m.Width, Height: m.Height, Thumbhash: m.Thumbhash, Sexual: m.Sexual,
+				}
 			}
 			return out, nil
 		})
@@ -293,13 +320,59 @@ func setupPublicCatalog(
 	publicH := catHandler.NewPublicHandler(publicSvc, resolveSvc, searcher, statsSvc).
 		WithModeration(clientRepo)
 
-	recordUsage := func(c fiber.Ctx) error {
-		err := c.Next()
-		if cred := devapi.CredentialFrom(c); cred != nil {
-			usageRec.Record(cred, "catalog", c.Response().StatusCode())
-			go usageRec.TouchLastUsed(context.Background(), cred)
+	v2API := v2handler.SetupWith(application.Fiber, v2handler.Options{
+		Store:            protocol.NewRedisStore(devCache),
+		LookupCredential: mw.Lookup,
+		LookupUser: func(ctx context.Context, raw string) (v2handler.UserIdentity, error) {
+			claims, err := tokenVerifier.Parse(ctx, raw)
+			if err != nil {
+				return v2handler.UserIdentity{}, err
+			}
+			return v2handler.UserIdentity{UID: int64(claims.ID), ClientID: claims.ClientID, Roles: claims.Roles}, nil
+		},
+		LookupSite: func(ctx context.Context, clientID string) (string, error) {
+			cl, err := clientRepo.FindByClientID(ctx, clientID)
+			if err != nil || cl == nil {
+				return "", err
+			}
+			return cl.CatalogSite, nil
+		},
+		Catalog: &v2handler.Catalog{
+			Public:      publicSvc,
+			Resolve:     resolveSvc,
+			StatsSvc:    statsSvc,
+			News:        newsSvc,
+			NewsWrite:   newsWriteSvc,
+			Searcher:    searcher,
+			EditTypes:   editRegistry,
+			Playtime:    playtimeSvc,
+			CoverVotes:  coverVoteSvc,
+			Claims:      claimSvc,
+			Engine:      editEngine,
+			EditHistory: service.NewEditHistoryService(catalogDB.DB()),
+			Uploads:     v2handler.EditImageUpload(editUpload),
+		},
+	})
+	v2spec, err := json.Marshal(v2API.OpenAPI())
+	if err != nil {
+		slog.Error("marshal catalog v2 spec", "error", err)
+		os.Exit(1)
+	}
+	application.Fiber.Get("/v2/catalog/openapi.json", func(c fiber.Ctx) error {
+		c.Set("Content-Type", "application/json")
+		c.Set("Cache-Control", "public, max-age=3600")
+		return c.Send(v2spec)
+	})
+
+	recordUsage := func(face string) fiber.Handler {
+		return func(c fiber.Ctx) error {
+			err := c.Next()
+			if cred := devapi.CredentialFrom(c); cred != nil {
+				usageRec.Record(cred, face, c.Route().Path, c.Response().StatusCode())
+				go usageRec.TouchLastUsed(context.Background(), cred)
+			}
+			return err
 		}
-		return err
 	}
 
 	// Credential-free: the catalogue-size counters the public site and the
@@ -311,10 +384,11 @@ func setupPublicCatalog(
 
 	v1 := application.Fiber.Group("/v1/catalog",
 		mw.ResolveCredential,
-		recordUsage,
+		recordUsage("catalog"),
 		mw.RateLimit,
 		mw.Quota,
 		devapi.RequireScope(devapi.ScopeCatalogRead),
+		middleware.ETag(),
 	)
 
 	v1.Get("/lookup", publicH.Lookup)
@@ -334,6 +408,18 @@ func setupPublicCatalog(
 	v1.Get("/engines", publicH.EnginesList)
 	v1.Get("/series", publicH.SeriesList)
 	v1.Get("/works/:id", publicH.WorkDetail)
+	v1.Get("/works/:id/covers", publicH.WorkCovers)
+	v1.Get("/works/:id/screenshots", publicH.WorkScreenshots)
+	v1.Get("/works/:id/tags", publicH.WorkTags)
+	v1.Get("/works/:id/characters", publicH.WorkCharacters)
+	v1.Get("/works/:id/credits", publicH.WorkCredits)
+	v1.Get("/works/:id/releases", publicH.WorkReleases)
+	v1.Get("/works/:id/intros", publicH.WorkIntros)
+	v1.Get("/works/:id/ratings", publicH.WorkRatings)
+	v1.Get("/works/:id/relations", publicH.WorkRelations)
+	v1.Get("/works/:id/series", publicH.WorkSeries)
+	v1.Get("/works/:id/links", publicH.WorkLinks)
+	v1.Get("/works/:id/engines", publicH.WorkEngines)
 	v1.Get("/names/:id", publicH.Name)
 	v1.Get("/characters/:id", publicH.Character)
 	v1.Get("/labels/:id", publicH.Label)
@@ -345,14 +431,37 @@ func setupPublicCatalog(
 	newsH := newsHandler.NewPublicHandler(newsSvc)
 	v1news := application.Fiber.Group("/v1/news",
 		mw.ResolveCredential,
-		recordUsage,
+		// "catalog", not "news": this group has metered under the catalog face
+		// since it launched, and renaming it now would split one application's
+		// history across two face values in developer_api_usage.
+		recordUsage("catalog"),
 		mw.RateLimit,
 		mw.Quota,
-		devapi.RequireScope(devapi.ScopeNewsRead),
 	)
 	v1news.Get("/sources", newsH.Sources)
 	v1news.Get("/", newsH.List)
 	v1news.Get("/:id", newsH.Detail)
+
+	var storeMinter storeService.Minter
+	if cfg.Store.ShortlinkBaseURL != "" && cfg.Store.ShortlinkAPIKey != "" {
+		storeMinter = shortener.New(cfg.Store.ShortlinkBaseURL, cfg.Store.ShortlinkAPIKey)
+	} else {
+		slog.Warn("store face: link shortener not configured — /v1/store answers 503 (set KUN_STORE_SHORTLINK_BASE_URL and KUN_STORE_SHORTLINK_API_KEY)")
+	}
+	storeH := storeHandler.NewPublicHandler(storeService.New(oauthDB, storeMinter, storeService.Options{
+		AffTemplateManiax:  cfg.Store.AffTemplateManiax,
+		AffTemplatePro:     cfg.Store.AffTemplatePro,
+		LinkQuotaPerClient: cfg.Store.LinkQuotaPerClient,
+	}))
+	v1store := application.Fiber.Group("/v1/store",
+		mw.ResolveCredential,
+		recordUsage("store"),
+		mw.RateLimit,
+		mw.Quota,
+		devapi.RequireScope(devapi.ScopeStoreRead),
+	)
+	v1store.Get("/purchase-links/:product_id", storeH.PurchaseLinks)
+	v1store.Get("/me/stats", storeH.MyStats)
 
 	flushDone := make(chan struct{})
 	go func() {

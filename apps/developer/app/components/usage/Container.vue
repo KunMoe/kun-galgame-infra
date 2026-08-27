@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { docsFaceLabel } from '~/constants/docs'
 import type { DevLiveKey, DevUsageSummary } from '~~/shared/types/dev'
 
 useSeoMeta({ title: '用量', robots: 'noindex' })
@@ -16,15 +17,6 @@ const byApp = computed(() => summary.value?.by_app ?? [])
 const byFace = computed(() => summary.value?.by_face ?? [])
 const live = computed(() => summary.value?.live ?? [])
 const liveUnavailable = computed(() => summary.value?.live_unavailable ?? false)
-
-const faceLabel: Record<string, string> = {
-  galgame: 'Galgame',
-  catalog: 'Catalog',
-  galgame_internal: 'Galgame 内部',
-  galgame_internal_write: 'Galgame 内部写',
-  galgame_internal_propose: 'Galgame 内部提议'
-}
-const labelFace = (face: string) => faceLabel[face] ?? face
 
 const fmt = (n: number) => n.toLocaleString()
 
@@ -263,7 +255,7 @@ const toneClass: Record<string, string> = {
     </div>
 
     <div v-if="byFace.length">
-      <h2 class="mb-3 text-lg font-semibold text-foreground">按面</h2>
+      <h2 class="mb-3 text-lg font-semibold text-foreground">按接口</h2>
       <KunCard content-class="p-0" class-name="overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full min-w-[32rem] text-sm">
@@ -271,7 +263,7 @@ const toneClass: Record<string, string> = {
               <tr
                 class="border-b border-default-200 text-left text-default-400"
               >
-                <th class="px-4 py-2 font-medium">面</th>
+                <th class="px-4 py-2 font-medium">接口</th>
                 <th class="px-4 py-2 text-right font-medium">请求数</th>
                 <th class="px-4 py-2 text-right font-medium">4xx</th>
                 <th class="px-4 py-2 text-right font-medium">5xx</th>
@@ -286,7 +278,7 @@ const toneClass: Record<string, string> = {
               >
                 <td class="px-4 py-2">
                   <KunChip color="default" variant="flat" size="xs">
-                    {{ labelFace(row.face) }}
+                    {{ docsFaceLabel(row.face) }}
                   </KunChip>
                 </td>
                 <td class="px-4 py-2 text-right font-medium text-foreground">

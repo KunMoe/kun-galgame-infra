@@ -109,7 +109,7 @@ func TestLabelRollupPageMatchesTheCountsAndIsAttributed(t *testing.T) {
 			t.Fatalf("the spin-off's work reached a rolled-up company page")
 		}
 		if it.ViaLabel != nil {
-			via[it.ID] = it.ViaLabel.Name
+			via[it.ID] = it.ViaLabel.DisplayName
 		}
 	}
 	if len(via) != 1 || via[f.viaImprint] != "Key" {

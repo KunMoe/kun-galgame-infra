@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DevKey } from '~~/shared/types/dev'
 
-defineProps<{ keys: DevKey[]; busy?: boolean }>()
+defineProps<{ keys: DevKey[]; busy?: boolean; rotateDisabled?: boolean }>()
 defineEmits<{ rotate: [DevKey]; revoke: [DevKey] }>()
 
 type KeyStatus = {
@@ -58,7 +58,7 @@ const isRevoked = (k: DevKey) => !!k.revoked_at
           <KunButton
             variant="flat"
             size="sm"
-            :disabled="busy || isRevoked(k)"
+            :disabled="busy || rotateDisabled || isRevoked(k)"
             @click="$emit('rotate', k)"
           >
             <KunIcon name="lucide:refresh-cw" class="mr-1 size-4" />

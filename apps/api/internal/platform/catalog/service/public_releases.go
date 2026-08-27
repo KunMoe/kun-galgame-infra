@@ -55,6 +55,7 @@ type ReleaseFeedFilter struct {
 	DateTo        int64
 	Sort          string
 	Include       WorksListInclude
+	IDs           []int64
 }
 
 func (f ReleaseFeedFilter) lane() string {
@@ -163,7 +164,6 @@ func (s *PublicService) ReleaseFeed(ctx context.Context, f ReleaseFeedFilter, cu
 	if lane == releaseFeedLaneAsc {
 		dir = "ASC"
 	}
-	args = append(args, limit)
 
 	q := `SELECT r.id, r.kind, r.title, r.lang, r.platform,
 			r.released_y, r.released_m, r.released_d, r.extra,
@@ -174,7 +174,8 @@ func (s *PublicService) ReleaseFeed(ctx context.Context, f ReleaseFeedFilter, cu
 			w.id AS work_id, w.medium_id, w.display_name, w.olang, w.content_rating,
 			w.site, w.product_work_id, w.claim_state, w.updated_at ` +
 		from + ` WHERE ` + strings.Join(where, " AND ") +
-		` ORDER BY ord ` + dir + `, r.id ASC LIMIT ?`
+		` ORDER BY ord ` + dir + `, r.id ASC`
+	q, args, paginated := applyBrowseLimit(q, args, limit, f.IDs)
 
 	var rows []releaseFeedRow
 	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
@@ -185,7 +186,7 @@ func (s *PublicService) ReleaseFeed(ctx context.Context, f ReleaseFeedFilter, cu
 		return dto.PublicReleaseFeedData{}, err
 	}
 	out := dto.PublicReleaseFeedData{Items: items}
-	if len(rows) == limit {
+	if paginated && len(rows) == limit {
 		last := rows[len(rows)-1]
 		nc := encodePublicCursor(publicCursor{Sort: lane, ID: last.ID, Ord: last.Ord})
 		out.NextCursor = &nc
@@ -220,7 +221,7 @@ func (s *PublicService) buildReleaseFeedItems(ctx context.Context, rows []releas
 	if err != nil {
 		return nil, err
 	}
-	works, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include)
+	works, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include, PublicFields{})
 	if err != nil {
 		return nil, err
 	}
@@ -262,9 +263,15 @@ func releaseFeedSource(f ReleaseFeedFilter) (from string, where []string, args [
 
 	where = []string{
 		"r.deleted_at IS NULL", "w.deleted_at IS NULL", "w.status = ?", "w.medium_id = ?",
-		"r.released_y IS NOT NULL", "r.released_m IS NOT NULL",
 	}
 	args = append(args, model.WorkStatusLive, galgameMediumID)
+	if len(f.IDs) == 0 {
+		where = append(where, "r.released_y IS NOT NULL", "r.released_m IS NOT NULL")
+	}
+	if len(f.IDs) > 0 {
+		where = append(where, "r.id IN ?")
+		args = append(args, f.IDs)
+	}
 
 	if !f.NSFW {
 		where = append(where, "w.content_rating <> ?")

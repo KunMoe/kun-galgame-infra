@@ -179,12 +179,14 @@ var live = NewRegistry(
 		},
 	},
 	Domain{
-		Name:    "devapi",
-		TitleZH: "开发者平台",
-		Bundles: devapiPerm.Bundles,
-		Holder:  devapiPerm.Resolver,
+		Name:         "devapi",
+		TitleZH:      "开发者平台",
+		Bundles:      devapiPerm.Bundles,
+		Holder:       devapiPerm.Resolver,
+		NonDelegable: devapiPerm.NonDelegable,
 		Keys: []Key{
 			{devapiPerm.Manage, "Manage open-API applications — tier / quota, and mint / rotate / revoke keys.", "管理开放 API 应用(tier/配额,铸造/轮换/吊销 key)"},
+			{devapiPerm.PolicyManage, "Set the developer-platform policy matrix — whether app creation is self-service, needs approval, or is off, and whether owners may manage their own apps and keys.", "设定开发者平台策略矩阵(自助创建/需审批/关闭,以及自助管理应用与密钥);不可委派"},
 		},
 	},
 	Domain{

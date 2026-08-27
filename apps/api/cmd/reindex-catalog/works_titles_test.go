@@ -38,8 +38,8 @@ func TestLoadWorkTitlesUsesCatalogRowsForEveryWork(t *testing.T) {
 		{"ja", "日名", "", model.WorkTitleKindAbbreviation},
 		{"ja", "ディーエルサイト名", "", model.WorkTitleKindSearchHint},
 	} {
-		if err := facetTestDB.Exec(`INSERT INTO catalog_work_title (work_id, lang, title, latin, kind)
-			VALUES (?, ?, ?, nullif(?, ''), ?)`, claimed, r.lang, r.title, r.latin, r.kind).Error; err != nil {
+		if err := facetTestDB.Exec(`INSERT INTO catalog_work_title (work_id, lang, title, latin, kind, provenance)
+			VALUES (?, ?, ?, nullif(?, ''), ?, 0)`, claimed, r.lang, r.title, r.latin, r.kind).Error; err != nil {
 			t.Fatalf("seed native title: %v", err)
 		}
 	}
@@ -53,15 +53,15 @@ func TestLoadWorkTitlesUsesCatalogRowsForEveryWork(t *testing.T) {
 		{"", "むたい", "", model.WorkTitleKindAlias},
 		{"ja", "けんさくヒント", "", model.WorkTitleKindSearchHint},
 	} {
-		if err := facetTestDB.Exec(`INSERT INTO catalog_work_title (work_id, lang, title, latin, kind)
-			VALUES (?, ?, ?, nullif(?, ''), ?)`, bodyless, r.lang, r.title, r.latin, r.kind).Error; err != nil {
+		if err := facetTestDB.Exec(`INSERT INTO catalog_work_title (work_id, lang, title, latin, kind, provenance)
+			VALUES (?, ?, ?, nullif(?, ''), ?, 0)`, bodyless, r.lang, r.title, r.latin, r.kind).Error; err != nil {
 			t.Fatalf("seed native title: %v", err)
 		}
 	}
 
 	stub := mkWork(t, "stub-title", model.WorkStatusStub, galgameMedium)
-	if err := facetTestDB.Exec(`INSERT INTO catalog_work_title (work_id, lang, title, kind)
-		VALUES (?, 'ja', 'スタブ', 0)`, stub).Error; err != nil {
+	if err := facetTestDB.Exec(`INSERT INTO catalog_work_title (work_id, lang, title, kind, provenance)
+		VALUES (?, 'ja', 'スタブ', 0, 0)`, stub).Error; err != nil {
 		t.Fatalf("seed stub title: %v", err)
 	}
 

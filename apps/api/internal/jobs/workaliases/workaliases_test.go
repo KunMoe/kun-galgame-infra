@@ -88,8 +88,8 @@ func mkWork(t *testing.T, medium int16, name string, site *string) int64 {
 
 func mkTitle(t *testing.T, workID int64, lang, title string, kind int16) {
 	t.Helper()
-	require.NoError(t, testDB.Exec(`INSERT INTO catalog_work_title (work_id, lang, title, kind)
-		VALUES (?, ?, ?, ?)`, workID, lang, title, kind).Error)
+	require.NoError(t, testDB.Exec(`INSERT INTO catalog_work_title (work_id, lang, title, kind, provenance)
+		VALUES (?, ?, ?, ?, 0)`, workID, lang, title, kind).Error)
 }
 
 func mkBgmAnchor(t *testing.T, workID int64, subjectID string) {

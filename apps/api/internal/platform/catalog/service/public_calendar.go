@@ -180,7 +180,7 @@ func (s *PublicService) CalendarPage(ctx context.Context, b CalendarBucket, f Ca
 			ClaimState: r.ClaimState, UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 	}
-	items, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include)
+	items, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include, PublicFields{})
 	if err != nil {
 		return dto.PublicCalendarData{}, err
 	}

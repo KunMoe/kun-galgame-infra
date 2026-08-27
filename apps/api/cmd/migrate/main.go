@@ -26,6 +26,7 @@ import (
 	"api/internal/platform/devapi"
 	"api/internal/platform/permissions"
 	siteModel "api/internal/platform/site/model"
+	storeModel "api/internal/platform/store/model"
 
 	"gorm.io/gorm"
 )
@@ -102,6 +103,25 @@ func runPlatform(cfg *config.Config, args []string) {
 		os.Exit(1)
 	}
 
+	// developer_api_keys.nsfw_allowed outlives the NSFW capability that owned
+	// it (retired 2026-08-25) and is no longer on the model, so it needs its
+	// DEFAULT back before the first key is minted without the column.
+	// Idempotent. See devapi.RestoreKeyNSFWDefault.
+	if err := devapi.RestoreKeyNSFWDefault(gormDB); err != nil {
+		slog.Error("failed to restore the developer key nsfw_allowed default", "error", err)
+		os.Exit(1)
+	}
+
+	// developer_api_usage.path (the matched route pattern) + the 4→5 column
+	// rebuild of idx_usage_day, for the same reason and one more: AutoMigrate
+	// never alters an index that already exists, so the widened unique key has
+	// to be dropped in raw SQL here or the first two route patterns of a face
+	// collide. Idempotent. See devapi.AddUsagePathColumn.
+	if err := devapi.AddUsagePathColumn(gormDB); err != nil {
+		slog.Error("failed to add the developer usage path column", "error", err)
+		os.Exit(1)
+	}
+
 	// role_permission_overrides.effect, for the same reason: the overlay gained
 	// its deny half on 2026-08-04 and the column is NOT NULL, so a table that
 	// already holds (necessarily grant) rows must be backfilled in raw SQL
@@ -135,6 +155,16 @@ func runPlatform(cfg *config.Config, args []string) {
 	// Idempotent DROP IF EXISTS, so a re-run is a no-op.
 	if err := dropRetiredModerationTables(gormDB); err != nil {
 		slog.Error("failed to drop retired moderation tables", "error", err)
+		os.Exit(1)
+	}
+
+	// Retire devapi_scope_applications: /v1/news stopped asking for news:read on
+	// 2026-08-25, so nothing is applied for. Runs after AutoMigrate for the same
+	// reason as the two drops above — the model is gone, but a stale binary that
+	// still carried it would otherwise recreate the table underneath us.
+	// See devapi.DropScopeApplications for what the discarded rows were.
+	if err := devapi.DropScopeApplications(gormDB); err != nil {
+		slog.Error("failed to drop the retired devapi scope applications table", "error", err)
 		os.Exit(1)
 	}
 
@@ -191,11 +221,16 @@ func getAllModels() []any {
 		&siteModel.OAuthClient{},
 		&siteModel.Role{},
 
-		// Developer platform (NextMoe open API): API keys + usage rollup.
-		// The oauth_clients dev_* columns are handled by
+		// Developer platform (NextMoe open API): API keys + usage rollup + the
+		// platform policy matrix (2026-08-18: one row per capability that departs
+		// from the code default; no row = the default). The grant-only scope
+		// applications added here on 2026-08-18 were dropped on 2026-08-25 — see
+		// devapi.DropScopeApplications, called after AutoMigrate below.
+		// The oauth_clients dev_* / dev_review_* columns are handled by
 		// devapi.AddOAuthClientDevColumns above (raw SQL, pre-AutoMigrate).
 		&devapi.DeveloperAPIKey{},
 		&devapi.DeveloperAPIUsage{},
+		&devapi.PolicyOverride{},
 
 		// NOTE: artifact models (Artifact/Manifest) moved to the dedicated
 		// kun_artifacts DB — migrated by cmd/artifact's AutoMigrate, not here.
@@ -212,6 +247,18 @@ func getAllModels() []any {
 		// role's permissions but never cut below the code floor.
 		&permissions.RolePermissionOverride{},
 		&permissions.PermissionAuditLog{},
+
+		// DLsite distribution face (/v1/store, wave 02 of the store track,
+		// 2026-08-25). Four brand-new tables, no pre-existing rows to convert:
+		// the two link tables map (calling site, product|campaign) → the short
+		// link minted for it, store_campaigns is the coupon-campaign window
+		// (rows inserted by hand — there is no admin face yet), and
+		// store_link_daily_stats caches the redirector's JST-day click buckets
+		// so the portal and settlement read this database instead of fanning out.
+		&storeModel.PurchaseLink{},
+		&storeModel.CouponLink{},
+		&storeModel.Campaign{},
+		&storeModel.LinkDailyStat{},
 
 		// Job registry observability
 		&jobsModel.JobRun{},

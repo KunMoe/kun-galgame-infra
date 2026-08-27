@@ -137,6 +137,9 @@ func TestLoadCandidates(t *testing.T) {
 	want := mkWork(t, reg.galgameMedium, "bodyless-exact", nil)
 	mkRef(t, want, reg.bangumiSource, "111", model.LinkKindExact, ruleBgmTitleYear)
 
+	wantType4 := mkWork(t, reg.galgameMedium, "bodyless-type4", nil)
+	mkRef(t, wantType4, reg.bangumiSource, "666", model.LinkKindExact, ruleBgmType4Gated)
+
 	wProbable := mkWork(t, reg.galgameMedium, "bodyless-probable", nil)
 	mkRef(t, wProbable, reg.bangumiSource, "222", model.LinkKindProbable, "rule:bgm-title-only")
 
@@ -144,16 +147,20 @@ func TestLoadCandidates(t *testing.T) {
 	mkRef(t, wClaimed, reg.bangumiSource, "333", model.LinkKindExact, ruleBgmTitleYear)
 
 	wManga := mkWork(t, 2, "manga-exact", nil)
-	mkRef(t, wManga, reg.bangumiSource, "444", model.LinkKindExact, ruleBgmTitleYear)
+	mkRef(t, wManga, reg.bangumiSource, "444", model.LinkKindExact, ruleBgmType4Gated)
 
 	wOtherRule := mkWork(t, reg.galgameMedium, "bodyless-otherrule", nil)
 	mkRef(t, wOtherRule, reg.bangumiSource, "555", model.LinkKindExact, "rule:title-year-strict")
 
 	cands, err := loadCandidates(context.Background(), testDB, reg, 0, 0)
 	require.NoError(t, err)
-	require.Len(t, cands, 1, "only the bodyless galgame exact rule:bgm-title-year anchor is a candidate")
-	assert.Equal(t, want, cands[0].WorkID)
-	assert.Equal(t, "111", cands[0].SubjectID)
+	require.Len(t, cands, 2, "only bodyless galgame exact anchors of the two trusted rules are candidates")
+	byWork := map[int64]string{}
+	for _, c := range cands {
+		byWork[c.WorkID] = c.SubjectID
+	}
+	assert.Equal(t, "111", byWork[want])
+	assert.Equal(t, "666", byWork[wantType4])
 }
 
 func TestWritePath(t *testing.T) {
@@ -225,6 +232,40 @@ func TestWritePath(t *testing.T) {
 	assert.Equal(t, 0, r3.c.coverUploaded)
 	assert.Equal(t, 1, r3.c.coverDedup, "ON CONFLICT refuses the duplicate under a stale preload")
 	require.Len(t, coversOf(t, wPortrait), 1, "still exactly one cover row")
+}
+
+func TestAllowLandscape(t *testing.T) {
+	truncate(t)
+	reg := resolveTestRegistry(t)
+
+	wLandscape := mkWork(t, reg.galgameMedium, "landscape-ok", nil)
+	wPortrait := mkWork(t, reg.galgameMedium, "portrait-ok", nil)
+
+	mirror := writeMirror(t, []dimsEntry{
+		{SubjectID: 9401, W: 1200, H: 800, File: "9401/cover.jpg"},
+		{SubjectID: 9402, W: 800, H: 1200, File: "9402/cover.jpg"},
+	}, map[string]bool{"9401": true, "9402": true})
+	d, err := loadDims(mirror)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	r := &runner{db: testDB, cli: &fakeUploader{}, sourceID: reg.bangumiSource, exist: map[int64]bool{}}
+	require.False(t, r.process(ctx, Opts{Apply: true, BangumiMirror: mirror, AllowLandscape: true}, []candidate{
+		{WorkID: wLandscape, SubjectID: "9401", Site: nil},
+		{WorkID: wPortrait, SubjectID: "9402", Site: nil},
+	}, d))
+
+	assert.Equal(t, 2, r.c.coverUploaded)
+	assert.Equal(t, 1, r.c.coverLandscapeOK)
+	assert.Equal(t, 0, r.c.coverLandscape)
+
+	landRows := coversOf(t, wLandscape)
+	require.Len(t, landRows, 1)
+	assert.False(t, landRows[0].PortraitPinned, "a landscape cover must never take the portrait pin")
+
+	portRows := coversOf(t, wPortrait)
+	require.Len(t, portRows, 1)
+	assert.True(t, portRows[0].PortraitPinned, "the portrait in the same run still pins")
 }
 
 func TestTwoCoversReadFace(t *testing.T) {

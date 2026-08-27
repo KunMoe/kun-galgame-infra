@@ -28,7 +28,9 @@ type WorksListFilter struct {
 	IDs            []int64
 	NSFW           bool
 	Sort           string
+	OLang          PublicOLang
 	Include        WorksListInclude
+	Fields         PublicFields
 }
 
 func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor string, limit int) (dto.PublicWorksListData, error) {
@@ -118,6 +120,10 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 			args = append(args, f.ReleasedBefore)
 		}
 	}
+	if pred, pargs := f.OLang.predicate(); pred != "" {
+		where = append(where, pred)
+		args = append(args, pargs...)
+	}
 	if len(f.IDs) > 0 {
 		where = append(where, "w.id IN ?")
 		args = append(args, f.IDs)
@@ -143,8 +149,8 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 	}
 
 	q := `SELECT w.id, w.medium_id, w.display_name, w.olang, w.content_rating, w.site, w.product_work_id, w.claim_state, w.updated_at
-		FROM catalog_work w WHERE ` + strings.Join(where, " AND ") + " " + order + " LIMIT ?"
-	args = append(args, limit)
+		FROM catalog_work w WHERE ` + strings.Join(where, " AND ") + " " + order
+	q, args, paginated := applyBrowseLimit(q, args, limit, f.IDs)
 
 	var rows []struct {
 		ID          int64
@@ -172,11 +178,11 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 			ClaimState: r.ClaimState, UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 	}
-	items, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include)
+	items, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include, f.Fields)
 	if err != nil {
 		return dto.PublicWorksListData{}, err
 	}
-	if f.LabelID > 0 && f.LabelRollup {
+	if f.LabelID > 0 && f.LabelRollup && f.Fields.Wants("via_label") {
 		ids := make([]int64, len(items))
 		for i, it := range items {
 			ids[i] = it.ID
@@ -192,7 +198,7 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 		}
 	}
 	out := dto.PublicWorksListData{Items: items}
-	if len(rows) == limit {
+	if paginated && len(rows) == limit {
 		last := rows[len(rows)-1]
 		c := publicCursor{Sort: lane, ID: last.ID}
 		if lane == "updated" {
@@ -266,25 +272,39 @@ type workListSourceRow struct {
 	UpdatedAt     string
 }
 
-func (s *PublicService) enrichWorkListItems(ctx context.Context, rows []workListSourceRow, nsfw bool, inc WorksListInclude) ([]dto.PublicWorkListItem, error) {
+func (s *PublicService) enrichWorkListItems(ctx context.Context, rows []workListSourceRow, nsfw bool, inc WorksListInclude, sel PublicFields) ([]dto.PublicWorkListItem, error) {
 	if len(rows) == 0 {
 		return []dto.PublicWorkListItem{}, nil
 	}
+	inc = inc.intersect(sel)
 	ids := make([]int64, len(rows))
 	subjects := make([]claimSubject, len(rows))
 	for i, r := range rows {
 		ids[i] = r.ID
 		subjects[i] = claimSubject{WorkID: r.ID}
 	}
-	dates, err := s.earliestReleaseDatesFor(ctx, ids)
+	// The cover rows feed two different keys, and display_nsfw decides which
+	// cover each of them may show, so both loads follow either key.
+	wantCovers := sel.Wants("cover") || inc.Covers
+	var coverSubjects, limitSubjects []claimSubject
+	if wantCovers {
+		coverSubjects = subjects
+	}
+	if wantCovers || sel.Wants("claimed_by") {
+		limitSubjects = subjects
+	}
+	var dates map[int64]*string
+	if sel.Wants("release_date") {
+		var err error
+		if dates, err = s.earliestReleaseDatesFor(ctx, ids); err != nil {
+			return nil, err
+		}
+	}
+	covers, err := s.read.loadWorkCovers(ctx, coverSubjects)
 	if err != nil {
 		return nil, err
 	}
-	covers, err := s.read.loadWorkCovers(ctx, subjects)
-	if err != nil {
-		return nil, err
-	}
-	limits, err := s.read.loadDisplayNSFW(ctx, subjects)
+	limits, err := s.read.loadDisplayNSFW(ctx, limitSubjects)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +315,9 @@ func (s *PublicService) enrichWorkListItems(ctx context.Context, rows []workList
 			ContentRating: contentRatingKey(r.ContentRating), OLang: r.OLang,
 			ReleaseDate: dates[r.ID],
 			ClaimedBy:   claimedBy(r.Site, r.ProductWorkID, r.ClaimState, limits[r.ID], r.ContentRating),
-			Cover:       s.pickListCover(covers[r.ID], nsfw && limits[r.ID]), Updated: r.UpdatedAt,
+			Cover: s.pickListCover(covers[r.ID],
+				nsfw && effectiveDisplayNSFW(r.Site, r.ProductWorkID, limits[r.ID], r.ContentRating)),
+			Updated: r.UpdatedAt,
 		}
 	}
 	if err := s.attachWorkListBlocks(ctx, out, rows, subjects, covers, inc, nsfw, limits); err != nil {
@@ -343,7 +365,7 @@ func partialISOFromOrdinal(ord int64) string {
 func (s *PublicService) pickListCover(rows []WorkCoverRow, allowSexual bool) string {
 	var fallback string
 	for _, c := range rows {
-		if !allowSexual && c.Sexual != 0 {
+		if !allowSexual && c.Sexual >= model.SexualExplicit {
 			continue
 		}
 		url := s.imageURL(c.ImageHash)

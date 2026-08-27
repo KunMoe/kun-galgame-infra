@@ -525,6 +525,258 @@ components:
         - code
         - message
       type: object
+    EnvelopePublicWorkCharactersData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkCharactersData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkCharactersData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkCoversData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkCoversData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkCoversData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkCreditsData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkCreditsData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkCreditsData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkEnginesData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkEnginesData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkEnginesData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkIntrosData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkIntrosData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkIntrosData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkLinksData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkLinksData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkLinksData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkRatingsData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkRatingsData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkRatingsData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkRelationsData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkRelationsData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkRelationsData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkReleasesData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkReleasesData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkReleasesData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkScreenshotsData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkScreenshotsData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkScreenshotsData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkSeriesData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkSeriesData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkSeriesData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
+    EnvelopePublicWorkTagsData:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopePublicWorkTagsData.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/PublicWorkTagsData"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
     EnvelopePublicWorksListData:
       additionalProperties: false
       properties:
@@ -786,6 +1038,23 @@ components:
         - last_played_at
         - clients
       type: object
+    PublicAlias:
+      additionalProperties: false
+      properties:
+        kind:
+          description: translation|spelling_variant
+          type: string
+        lang:
+          description: BCP-47 language of this spelling; empty when unrecorded
+          type: string
+        machine:
+          type: boolean
+        value:
+          type: string
+      required:
+        - value
+        - kind
+      type: object
     PublicCalendarData:
       additionalProperties: false
       properties:
@@ -863,6 +1132,9 @@ components:
           type: string
         latin:
           type: string
+        machine:
+          description: true when the title is a machine translation, not a title a source published
+          type: boolean
         title:
           type: string
       required:
@@ -910,9 +1182,9 @@ components:
         id:
           format: int64
           type: integer
-        intro:
+        intros:
           items:
-            $ref: "#/components/schemas/PublicWorkIntro"
+            $ref: "#/components/schemas/PublicIntro"
           type:
             - array
             - "null"
@@ -922,12 +1194,20 @@ components:
           type:
             - array
             - "null"
+        latin:
+          description: romanisation of display_name, from the title row display_name was taken from; absent when that row records none
+          type: string
         links:
           items:
             $ref: "#/components/schemas/PublicWorkLink"
           type:
             - array
             - "null"
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred title per locale, keyed by canonically-cased BCP-47 tag; {} when none. SPARSE by design — render localized[yourLocale] ?? display_name ?? latin, never a blank
+          type: object
         medium:
           type: string
         olang:
@@ -1014,6 +1294,7 @@ components:
         - id
         - medium
         - display_name
+        - localized
         - olang
         - content_rating
         - release_date
@@ -1029,7 +1310,7 @@ components:
         - playtimes
         - series
         - platforms
-        - intro
+        - intros
         - covers
         - cover_slots
         - screenshots
@@ -1075,7 +1356,7 @@ components:
         aliases:
           description: alternate spellings; deduplicated, the display name excluded, [] when it has none
           items:
-            type: string
+            $ref: "#/components/schemas/PublicAlias"
           type:
             - array
             - "null"
@@ -1083,14 +1364,20 @@ components:
           type: string
         figure:
           type: string
+        figure_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of figure; absent when there is no figure or the image service did not answer
         id:
           format: int64
           type: integer
         image:
           type: string
+        image_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of image; absent when there is no image or the image service did not answer
         intros:
           items:
-            $ref: "#/components/schemas/PublicCharacterIntro"
+            $ref: "#/components/schemas/PublicIntro"
           type:
             - array
             - "null"
@@ -1134,37 +1421,27 @@ components:
         - traits
         - intros
       type: object
-    PublicCharacterIntro:
-      additionalProperties: false
-      properties:
-        intro:
-          type: string
-        lang:
-          type: string
-        machine:
-          type: boolean
-        source:
-          type: string
-      required:
-        - lang
-        - intro
-        - source
-      type: object
     PublicCharacterTrait:
       additionalProperties: false
       properties:
         group:
           type: string
-        group_zh:
-          type: string
+        group_localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: same shape for the trait's root group; {} for a root trait or a group with no localized name — render group_localized[yourLocale] ?? group
+          type: object
         id:
           format: int64
           type: integer
         lie:
           type: boolean
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred trait name per locale, keyed by canonically-cased BCP-47 tag; {} when the vocabulary row has no localized name. Today the only key is zh-Hans — render localized[yourLocale] ?? name, never a blank
+          type: object
         name:
-          type: string
-        name_zh:
           type: string
         sexual:
           type: boolean
@@ -1175,6 +1452,8 @@ components:
       required:
         - id
         - name
+        - localized
+        - group_localized
         - spoiler
         - sexual
         - lie
@@ -1230,6 +1509,9 @@ components:
       additionalProperties: false
       properties:
         height:
+          format: int64
+          type: integer
+        id:
           format: int64
           type: integer
         kind:
@@ -1311,6 +1593,8 @@ components:
         character_id:
           format: int64
           type: integer
+        display_name:
+          type: string
         id:
           format: int64
           type: integer
@@ -1326,14 +1610,18 @@ components:
           type: string
         latin:
           type: string
-        name:
-          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name ?? latin
+          type: object
         source:
           type: string
       required:
         - id
-        - name
+        - display_name
         - lang
+        - localized
         - identity
       type: object
     PublicEngine:
@@ -1421,6 +1709,8 @@ components:
       properties:
         content_rating:
           type: string
+        display_name:
+          type: string
         entity_type:
           type: string
         id:
@@ -1430,8 +1720,11 @@ components:
           type: string
         latin:
           type: string
-        name:
-          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: "names/characters/labels/works hits: preferred name per locale, same election as the entity's detail face — render localized[yourLocale] ?? display_name. Absent when the entity has no localized name (tags hits never carry it)"
+          type: object
         sources:
           items:
             type: string
@@ -1443,7 +1736,7 @@ components:
       required:
         - id
         - entity_type
-        - name
+        - display_name
         - sources
       type: object
     PublicEntitySearchData:
@@ -1462,12 +1755,44 @@ components:
         - items
         - total
       type: object
+    PublicImageMeta:
+      additionalProperties: false
+      properties:
+        height:
+          format: int64
+          type: integer
+        sexual:
+          description: 0 safe / 1 suggestive / 2 explicit; absent = not yet assessed
+          format: int32
+          type: integer
+        thumbhash:
+          type: string
+        width:
+          format: int64
+          type: integer
+      type: object
+    PublicIntro:
+      additionalProperties: false
+      properties:
+        intro:
+          type: string
+        lang:
+          type: string
+        machine:
+          type: boolean
+        source:
+          type: string
+      required:
+        - lang
+        - intro
+        - source
+      type: object
     PublicLabel:
       additionalProperties: false
       properties:
         aliases:
           items:
-            type: string
+            $ref: "#/components/schemas/PublicAlias"
           type:
             - array
             - "null"
@@ -1482,7 +1807,7 @@ components:
           type: integer
         intros:
           items:
-            $ref: "#/components/schemas/PublicLabelIntro"
+            $ref: "#/components/schemas/PublicIntro"
           type:
             - array
             - "null"
@@ -1504,6 +1829,9 @@ components:
         logo_hash:
           description: brand logo content hash in the image service; "" = this label has no logo
           type: string
+        logo_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of logo_hash; absent when there is no logo or the image service did not answer
         next_offset:
           format: int64
           type: integer
@@ -1586,39 +1914,32 @@ components:
     PublicLabelGraphNode:
       additionalProperties: false
       properties:
+        display_name:
+          type: string
         id:
           format: int64
           type: integer
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name
+          type: object
         logo_hash:
           description: brand logo content hash in the image service; "" = this label has no logo
           type: string
-        name:
-          type: string
+        logo_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of logo_hash; absent when there is no logo or the image service did not answer
         work_count:
           description: nsfw-aware work count, identical to labels/{id}.work_count for the same nsfw setting
           format: int64
           type: integer
       required:
         - id
-        - name
+        - display_name
+        - localized
         - logo_hash
         - work_count
-      type: object
-    PublicLabelIntro:
-      additionalProperties: false
-      properties:
-        intro:
-          type: string
-        lang:
-          type: string
-        machine:
-          type: boolean
-        source:
-          type: string
-      required:
-        - lang
-        - intro
-        - source
       type: object
     PublicLabelLink:
       additionalProperties: false
@@ -1634,6 +1955,13 @@ components:
     PublicLabelListItem:
       additionalProperties: false
       properties:
+        aliases:
+          description: alternate spellings of this label, same election and shape as the label detail face; deduplicated by value+lang, display_name excluded, [] when it has none
+          items:
+            $ref: "#/components/schemas/PublicAlias"
+          type:
+            - array
+            - "null"
         display_name:
           type: string
         has_relations:
@@ -1645,15 +1973,25 @@ components:
         kind:
           description: game_brand|bunko|publisher|anime_studio|doujin_circle|group|other
           type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name
+          type: object
         logo_hash:
           description: brand logo content hash in the image service; "" = this label has no logo
           type: string
+        logo_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of logo_hash; absent when there is no logo or the image service did not answer
         work_count:
           format: int64
           type: integer
       required:
         - id
         - display_name
+        - localized
+        - aliases
         - kind
         - work_count
         - logo_hash
@@ -1662,30 +2000,42 @@ components:
     PublicLabelRelation:
       additionalProperties: false
       properties:
+        display_name:
+          type: string
         id:
           format: int64
           type: integer
-        name:
-          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name
+          type: object
         relation:
-          description: parent|subsidiary|imprint|imprint_of|spawned|origin|succeeded_by|formerly — reads "<name> is the <relation> of this label"
+          description: parent|subsidiary|imprint|imprint_of|spawned|origin|succeeded_by|formerly — reads "<display_name> is the <relation> of this label"
           type: string
       required:
         - id
-        - name
+        - display_name
+        - localized
         - relation
       type: object
     PublicLabelVia:
       additionalProperties: false
       properties:
+        display_name:
+          type: string
         id:
           format: int64
           type: integer
-        name:
-          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name
+          type: object
       required:
         - id
-        - name
+        - display_name
+        - localized
       type: object
     PublicLabelWork:
       additionalProperties: false
@@ -1723,8 +2073,11 @@ components:
       additionalProperties: false
       properties:
         kind:
-          description: translation|spelling_variant
+          description: "which vocabulary the elected row was drawn from, and they do not overlap: an ENTITY name (character, label, credit name, and every projection of them) is translation|spelling_variant, taken from the alias tables; a WORK title is official|alias|abbreviation, taken from catalog_work_title. Read it per entity type — a works localized{} never says translation"
           type: string
+        machine:
+          description: true = machine-translated fill-in, present only when this locale has no source-provenance name (a source name always wins the slot); render it like any name but do not treat it as authoritative
+          type: boolean
         value:
           type: string
       required:
@@ -1824,7 +2177,7 @@ components:
         aliases:
           description: alternate spellings of THIS credited name; deduplicated, the name itself excluded, [] when it has none
           items:
-            type: string
+            $ref: "#/components/schemas/PublicAlias"
           type:
             - array
             - "null"
@@ -1857,7 +2210,7 @@ components:
           type: integer
         intros:
           items:
-            $ref: "#/components/schemas/PublicNameIntro"
+            $ref: "#/components/schemas/PublicIntro"
           type:
             - array
             - "null"
@@ -1886,6 +2239,9 @@ components:
         photo_hash:
           description: person photo content hash in the image service; "" = no photo (or the person link is hidden)
           type: string
+        photo_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of photo_hash; absent when there is no photo or the image service did not answer
         refs:
           items:
             $ref: "#/components/schemas/PublicCatalogRef"
@@ -1923,22 +2279,6 @@ components:
       required:
         - work
         - roles
-      type: object
-    PublicNameIntro:
-      additionalProperties: false
-      properties:
-        intro:
-          type: string
-        lang:
-          type: string
-        machine:
-          type: boolean
-        source:
-          type: string
-      required:
-        - lang
-        - intro
-        - source
       type: object
     PublicNameRole:
       additionalProperties: false
@@ -2018,7 +2358,7 @@ components:
       additionalProperties: false
       properties:
         distribution:
-          description: "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count"
+          description: "vote histogram on the source-native scale, ascending, sparse (an absent bucket has no votes). Work-detail responses only (works/{id} and works/{id}/ratings) — the works-list ratings block never carries it. All four sources publish it: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps (0, 10, ... 100). The bars do not share one denominator: bangumi and dlsite publish the histogram together with the aggregate, so their bars sum to vote_count; erogamescape bars are computed from the reviews mirror, which syncs on a cursor independent of the row score and vote_count come from, so sum-of-bars is the histogram's own denominator and need not equal vote_count; vndb bars come from the public votes dump, which omits votes on private lists, so they sum to at most vote_count"
           items:
             $ref: "#/components/schemas/RatingBucket"
           type:
@@ -2034,7 +2374,7 @@ components:
           type: string
         stats:
           $ref: "#/components/schemas/RatingStats"
-          description: spread of the same vote population as score, work-detail responses only. Carried by erogamescape (average, stdev, min and max, on its 0-100 scale) and by vndb (average only — the plain mean beside the bayesian-smoothed rating that score holds). bangumi and dlsite carry no stats
+          description: spread of the same vote population as score, work-detail responses only (works/{id} and works/{id}/ratings). Carried by erogamescape (average, stdev, min and max, on its 0-100 scale) and by vndb (average only — the plain mean beside the bayesian-smoothed rating that score holds). bangumi and dlsite carry no stats
         vote_count:
           format: int64
           type: integer
@@ -2254,8 +2594,13 @@ components:
     PublicRosterCharacter:
       additionalProperties: false
       properties:
+        display_name:
+          type: string
         figure:
           type: string
+        figure_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of figure; absent when there is no figure or the image service did not answer
         id:
           format: int64
           type: integer
@@ -2264,13 +2609,19 @@ components:
           type: string
         image:
           type: string
+        image_meta:
+          $ref: "#/components/schemas/PublicImageMeta"
+          description: dimensions, thumbhash and grading of image; absent when there is no image or the image service did not answer
         kind:
           description: main|secondary|appears|unknown
           type: string
         latin:
           type: string
-        name:
-          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred name per locale, same election as the character detail face (machine fill-ins flagged); {} when none — render localized[yourLocale] ?? display_name ?? latin
+          type: object
         spoiler:
           description: 0=none 1=minor 2=major
           format: int32
@@ -2283,7 +2634,8 @@ components:
             - "null"
       required:
         - id
-        - name
+        - display_name
+        - localized
         - kind
         - spoiler
         - voices
@@ -2291,14 +2643,24 @@ components:
     PublicRosterVoice:
       additionalProperties: false
       properties:
+        display_name:
+          type: string
         id:
           format: int64
           type: integer
-        name:
+        lang:
           type: string
+        latin:
+          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name ?? latin
+          type: object
       required:
         - id
-        - name
+        - display_name
+        - localized
       type: object
     PublicScreenshot:
       additionalProperties: false
@@ -2379,6 +2741,9 @@ components:
           type:
             - array
             - "null"
+        work_count:
+          format: int64
+          type: integer
         works:
           items:
             $ref: "#/components/schemas/PublicWorkBrief"
@@ -2388,6 +2753,7 @@ components:
       required:
         - id
         - display_name
+        - work_count
         - refs
         - intros
         - has_nsfw
@@ -2481,9 +2847,15 @@ components:
           type: string
         latin:
           type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name ?? latin
+          type: object
       required:
         - id
         - display_name
+        - localized
       type: object
     PublicStatsEntities:
       additionalProperties: false
@@ -2579,8 +2951,9 @@ components:
           format: int64
           type: integer
         intros:
+          description: tag descriptions per language. machine is ALWAYS false on this face — catalog_tag_intro carries no provenance column, so the flag records "unknown", not "human-written"; do not read an absent machine here as a quality signal
           items:
-            $ref: "#/components/schemas/PublicTagIntro"
+            $ref: "#/components/schemas/PublicIntro"
           type:
             - array
             - "null"
@@ -2614,20 +2987,6 @@ components:
         - work_count
         - sexual
         - intros
-      type: object
-    PublicTagIntro:
-      additionalProperties: false
-      properties:
-        intro:
-          type: string
-        lang:
-          type: string
-        source:
-          type: string
-      required:
-        - lang
-        - intro
-        - source
       type: object
     PublicTagListItem:
       additionalProperties: false
@@ -2680,6 +3039,8 @@ components:
     PublicVoiceName:
       additionalProperties: false
       properties:
+        display_name:
+          type: string
         id:
           format: int64
           type: integer
@@ -2687,12 +3048,16 @@ components:
           type: string
         latin:
           type: string
-        name:
-          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name ?? latin
+          type: object
       required:
         - id
-        - name
+        - display_name
         - lang
+        - localized
       type: object
     PublicWorkBrief:
       additionalProperties: false
@@ -2706,6 +3071,14 @@ components:
         id:
           format: int64
           type: integer
+        latin:
+          description: romanisation of display_name, from the title row display_name was taken from; absent when that row records none
+          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred title per locale, keyed by canonically-cased BCP-47 tag; {} when none. SPARSE by design — render localized[yourLocale] ?? display_name ?? latin, never a blank
+          type: object
         medium:
           type: string
       required:
@@ -2714,6 +3087,24 @@ components:
         - display_name
         - content_rating
         - claimed_by
+        - localized
+      type: object
+    PublicWorkCharactersData:
+      additionalProperties: false
+      properties:
+        items:
+          description: The character roster, same order and shape as works/{id}.characters[] (main before secondary before appears, credit-only last). Rows carry spoiler for the CALLER to gate on — this face applies no spoiler ceiling, exactly like the parent block
+          items:
+            $ref: "#/components/schemas/PublicRosterCharacter"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page; absent on the last page
+          format: int64
+          type: integer
+      required:
+        - items
       type: object
     PublicWorkCoverSlots:
       additionalProperties: false
@@ -2725,6 +3116,40 @@ components:
       required:
         - portrait
         - banner
+      type: object
+    PublicWorkCoversData:
+      additionalProperties: false
+      properties:
+        items:
+          description: Cover images of this work, in the same order and the same shape as works/{id}.covers[] — one row per stored image, width/height/thumbhash filled from the image service. Rows with no renderable bytes are dropped before paging, so a page is never short of its limit while rows remain
+          items:
+            $ref: "#/components/schemas/PublicCover"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page. ABSENT on the last page — this face knows the block's true size, so its absence means "no more rows", never "maybe"
+          format: int64
+          type: integer
+      required:
+        - items
+      type: object
+    PublicWorkCreditsData:
+      additionalProperties: false
+      properties:
+        items:
+          description: "Credits grouped by role, same shape as works/{id}.credits[]. PAGING IS OVER CREDIT ROWS, not groups: limit/offset count individual credits, and a role whose credits straddle a page boundary appears in BOTH pages as its own group carrying that page's slice. Concatenating pages therefore means merging the groups that share a role_key"
+          items:
+            $ref: "#/components/schemas/PublicCreditGroup"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page, counted in credit rows rather than groups; absent on the last page
+          format: int64
+          type: integer
+      required:
+        - items
       type: object
     PublicWorkEngine:
       additionalProperties: false
@@ -2742,46 +3167,39 @@ components:
         - name
         - work_count
       type: object
-    PublicWorkIntro:
+    PublicWorkEnginesData:
       additionalProperties: false
       properties:
-        intro:
-          type: string
-        lang:
-          type: string
-        machine:
-          type: boolean
-        source:
-          type: string
+        items:
+          description: Engines this work is built with, same order and shape as works/{id}.engines[]; work_count is the nsfw-aware population of works?engine_id=<id>, resolved for THIS page only
+          items:
+            $ref: "#/components/schemas/PublicWorkEngine"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page; absent on the last page
+          format: int64
+          type: integer
       required:
-        - lang
-        - intro
-        - source
+        - items
       type: object
-    PublicWorkIntroSlot:
+    PublicWorkIntrosData:
       additionalProperties: false
       properties:
-        intro:
-          type: string
-        machine:
-          type: boolean
-        source:
-          type: string
+        items:
+          description: One synopsis per language, same election and shape as works/{id}.intros[] — a source-written row beats a machine-translated one for the same language
+          items:
+            $ref: "#/components/schemas/PublicIntro"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page; absent on the last page
+          format: int64
+          type: integer
       required:
-        - intro
-        - source
-      type: object
-    PublicWorkIntros:
-      additionalProperties: false
-      properties:
-        en-us:
-          $ref: "#/components/schemas/PublicWorkIntroSlot"
-        ja-jp:
-          $ref: "#/components/schemas/PublicWorkIntroSlot"
-        zh-cn:
-          $ref: "#/components/schemas/PublicWorkIntroSlot"
-        zh-tw:
-          $ref: "#/components/schemas/PublicWorkIntroSlot"
+        - items
       type: object
     PublicWorkLabel:
       additionalProperties: false
@@ -2805,6 +3223,11 @@ components:
           type: string
         lang:
           type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name
+          type: object
         logo_hash:
           description: brand logo content hash in the image service; "" = this label has no logo
           type: string
@@ -2814,6 +3237,7 @@ components:
       required:
         - id
         - display_name
+        - localized
         - label_kind
         - kind
         - kinds
@@ -2830,6 +3254,23 @@ components:
       required:
         - source
         - url
+      type: object
+    PublicWorkLinksData:
+      additionalProperties: false
+      properties:
+        items:
+          description: Non-identity outbound links of this work, same order and shape as works/{id}.links[]. Sources whose storefront URL cannot be reconstructed from the stored code (dlsite, dmm) are absent by design — they stay reachable as anchors through refs[]
+          items:
+            $ref: "#/components/schemas/PublicWorkLink"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page; absent on the last page
+          format: int64
+          type: integer
+      required:
+        - items
       type: object
     PublicWorkListItem:
       additionalProperties: false
@@ -2848,17 +3289,28 @@ components:
           format: int64
           type: integer
         intros:
-          $ref: "#/components/schemas/PublicWorkIntros"
+          description: "include=intros only: one intro per language, same shape and election as the work-detail intros block"
+          items:
+            $ref: "#/components/schemas/PublicIntro"
+          type:
+            - array
+            - "null"
         labels:
           items:
             $ref: "#/components/schemas/PublicWorkLabel"
           type:
             - array
             - "null"
+        latin:
+          description: "include=names only: romanisation of display_name, from the title row display_name was taken from"
+          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/PublicLocalizedName"
+          description: include=names only, and absent (never {}) when this work has no localized title — the block is include-gated exactly like names, so its absence means "not requested or none", not "none". SPARSE by design — render localized[yourLocale] ?? display_name ?? latin
+          type: object
         medium:
           type: string
-        names:
-          $ref: "#/components/schemas/PublicWorkNames"
         olang:
           type: string
         ratings:
@@ -2891,17 +3343,107 @@ components:
         - claimed_by
         - updated
       type: object
-    PublicWorkNames:
+    PublicWorkRatingsData:
       additionalProperties: false
       properties:
-        en-us:
-          type: string
-        ja-jp:
-          type: string
-        zh-cn:
-          type: string
-        zh-tw:
-          type: string
+        items:
+          description: Per-source ratings, same order and shape as works/{id}.ratings[] — distribution and stats included, because this IS the work-detail projection of that block
+          items:
+            $ref: "#/components/schemas/PublicRating"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page; absent on the last page
+          format: int64
+          type: integer
+      required:
+        - items
+      type: object
+    PublicWorkRelationsData:
+      additionalProperties: false
+      properties:
+        items:
+          description: Related works, same order and shape as works/{id}.relations[] under include=relations — one edge rendered per direction. With nsfw absent or 0 an r18 relation end is dropped whole rather than emptied
+          items:
+            $ref: "#/components/schemas/PublicRelation"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page, counted AFTER the r18 ends were dropped; absent on the last page
+          format: int64
+          type: integer
+      required:
+        - items
+      type: object
+    PublicWorkReleasesData:
+      additionalProperties: false
+      properties:
+        items:
+          description: Release rows of this work, same order (id ASC) and shape as works/{id}.releases[], each with its exact refs[] and its own labels[]
+          items:
+            $ref: "#/components/schemas/PublicRelease"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page; absent on the last page
+          format: int64
+          type: integer
+      required:
+        - items
+      type: object
+    PublicWorkScreenshotsData:
+      additionalProperties: false
+      properties:
+        items:
+          description: Screenshots of this work, same order and shape as works/{id}.screenshots[]. Rows with no renderable bytes are dropped before paging
+          items:
+            $ref: "#/components/schemas/PublicScreenshot"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page; absent on the last page
+          format: int64
+          type: integer
+      required:
+        - items
+      type: object
+    PublicWorkSeriesData:
+      additionalProperties: false
+      properties:
+        items:
+          description: Series this work belongs to, same order and shape as works/{id}.series[]; member_count is the series' full membership, not this page
+          items:
+            $ref: "#/components/schemas/PublicSeries"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page; absent on the last page
+          format: int64
+          type: integer
+      required:
+        - items
+      type: object
+    PublicWorkTagsData:
+      additionalProperties: false
+      properties:
+        items:
+          description: Source tags carried by this work, same order and shape as works/{id}.tags[] (count DESC, name, source). work_count is the nsfw-aware population of works?tag_id=<canonical_id>, resolved for THIS page only
+          items:
+            $ref: "#/components/schemas/PublicTag"
+          type:
+            - array
+            - "null"
+        next_offset:
+          description: Pass back as offset= for the next page; absent on the last page
+          format: int64
+          type: integer
+      required:
+        - items
       type: object
     PublicWorksListData:
       additionalProperties: false
@@ -3196,7 +3738,7 @@ paths:
         - catalog-public
   /v1/catalog/changes:
     get:
-      description: "Creations and updates of LIVE galgame works, ordered by (updated_at, id) ASC. The feed deliberately trails real time by ~5 seconds: updated_at is statement time, not commit time, so serving rows younger than that lag would let a slow transaction commit behind an already-advanced consumer cursor and be skipped forever. DELETIONS DO NOT FLOW THROUGH THIS FEED — a row that leaves the LIVE set simply stops appearing; merge-style disappearances are covered by /v1/catalog/redirects, and mirror-style consumers should periodically reconcile the full id set via works?sort=id."
+      description: "Creations and updates of LIVE galgame works, ordered by (updated_at, id) ASC. The feed deliberately trails real time by ~5 seconds: updated_at is statement time, not commit time, so serving rows younger than that lag would let a slow transaction commit behind an already-advanced consumer cursor and be skipped forever. DELETIONS DO NOT FLOW THROUGH THIS FEED — a row that leaves the LIVE set simply stops appearing; merge-style disappearances are covered by /v1/catalog/redirects, and mirror-style consumers should periodically reconcile the full id set via works?sort=id. WATERMARK GUARANTEE: any write that changes what a work's public face renders — its own columns and every works?include= block (names, intros, labels, ratings, covers, refs) plus release_date — moves that work's updated_at, so a full mirror can be driven from this feed alone. The guarantee covers sub-resource and fan-out writes (a cover detached, a label logo cleared, an anchor confirmed or killed, a release edited, a merge rehanging facets onto the survivor), and it is one-directional: updated_at moving does not promise the rendered bytes differ, so consumers must diff, not trust."
       operationId: listCatalogChangesPublic
       parameters:
         - description: "v1 feed scope: work (default)"
@@ -4086,19 +4628,19 @@ paths:
               - content
               - meta
             type: string
-        - description: Opaque keyset cursor from a prior next_cursor; omit for the first page
+        - description: "Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"
           explode: false
           in: query
           name: cursor
           schema:
-            description: Opaque keyset cursor from a prior next_cursor; omit for the first page
+            description: "Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"
             type: string
-        - description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+        - description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400
           explode: false
           in: query
           name: limit
           schema:
-            description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400
             format: int64
             type: integer
         - description: true/1 = count r18 works in work_count (default false = excluded, matching what an sfw works?tag_id= call returns)
@@ -4115,6 +4657,13 @@ paths:
           schema:
             description: true/1 = only tags whose work_count is > 0 under the same nsfw setting (default false = every tag); total converges with the filter
             type: boolean
+        - description: "Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"
+          explode: false
+          in: query
+          name: ids
+          schema:
+            description: "Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"
+            type: string
       responses:
         "200":
           content:
@@ -4304,12 +4853,12 @@ paths:
           schema:
             description: YYYY-MM-DD, inclusive
             type: string
-        - description: Comma-separated work ids (max 100) — the batch-hydrate lane
+        - description: "Comma-separated work ids (max 100) — the batch-hydrate lane. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"
           explode: false
           in: query
           name: ids
           schema:
-            description: Comma-separated work ids (max 100) — the batch-hydrate lane
+            description: "Comma-separated work ids (max 100) — the batch-hydrate lane. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"
             type: string
         - description: id = ascending browse order (default); updated = newest-updated first
           explode: false
@@ -4321,34 +4870,41 @@ paths:
               - id
               - updated
             type: string
-        - description: Opaque keyset cursor from a prior next_cursor; omit for the first page
+        - description: "Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"
           explode: false
           in: query
           name: cursor
           schema:
-            description: Opaque keyset cursor from a prior next_cursor; omit for the first page
+            description: "Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"
             type: string
-        - description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+        - description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400
           explode: false
           in: query
           name: limit
           schema:
-            description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400
             format: int64
             type: integer
-        - description: true/1 = include r18 works (default false = dropped)
+        - description: "true/1 = include r18 works (default false = dropped). Caller-controlled: any application key may ask for it"
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true/1 = include r18 works (default false = dropped)
+            description: "true/1 = include r18 works (default false = dropped). Caller-controlled: any application key may ask for it"
             type: boolean
-        - description: "Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs (default: none — the response is then byte-identical to the base contract). Unknown tokens are ignored. names/intros are keyed by the four product locales ja-jp/zh-cn/zh-tw/en-us; covers carries the portrait + banner slots with width/height/thumbhash; refs carries the work exact identity anchors, detail-face shape"
+        - description: "Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs (default: none — the response is then byte-identical to the base contract). Unknown tokens are ignored. names carries latin + localized{}; intros carries one intro per language, detail-face shape; covers carries the portrait + banner slots with width/height/thumbhash; refs carries the work exact identity anchors, detail-face shape"
           explode: false
           in: query
           name: include
           schema:
-            description: "Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs (default: none — the response is then byte-identical to the base contract). Unknown tokens are ignored. names/intros are keyed by the four product locales ja-jp/zh-cn/zh-tw/en-us; covers carries the portrait + banner slots with width/height/thumbhash; refs carries the work exact identity anchors, detail-face shape"
+            description: "Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs (default: none — the response is then byte-identical to the base contract). Unknown tokens are ignored. names carries latin + localized{}; intros carries one intro per language, detail-face shape; covers carries the portrait + banner slots with width/height/thumbhash; refs carries the work exact identity anchors, detail-face shape"
+            type: string
+        - description: "Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — items/next_cursor — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: "Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — items/next_cursor — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"
             type: string
       responses:
         "200":
@@ -4501,12 +5057,12 @@ paths:
             description: Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
             format: int64
             type: integer
-        - description: true/1 = include r18 works (default false = dropped from items, total AND facets alike)
+        - description: "true/1 = include r18 works (default false = dropped from items, total AND facets alike). Caller-controlled: any application key may ask for it"
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true/1 = include r18 works (default false = dropped from items, total AND facets alike)
+            description: "true/1 = include r18 works (default false = dropped from items, total AND facets alike). Caller-controlled: any application key may ask for it"
             type: boolean
         - description: "Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs — the works-list vocabulary verbatim (unknown tokens ignored)"
           explode: false
@@ -4514,6 +5070,13 @@ paths:
           name: include
           schema:
             description: "Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs — the works-list vocabulary verbatim (unknown tokens ignored)"
+            type: string
+        - description: "Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — total/page/limit/items/facets — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: "Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — total/page/limit/items/facets — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"
             type: string
         - description: true/1 = also match q against the work SYNOPSIS, not just its titles and aliases (A2-1f). Default false = titles only, byte-identical to the pre-A2-1f result set. Indexed synopses are capped at 2000 characters per language, and a synopsis match can never outrank a title match (the title attributes are ranked first)
           explode: false
@@ -4557,12 +5120,12 @@ paths:
           schema:
             description: "Comma-separated heavy blocks: relations,credits (default: none)"
             type: string
-        - description: true/1 = serve r18 works and r18 relation ends (caller-controlled; default false = hidden)
+        - description: "true/1 = serve r18 works and r18 relation ends (default false = hidden). Caller-controlled: any application key may ask for it"
           explode: false
           in: query
           name: nsfw
           schema:
-            description: true/1 = serve r18 works and r18 relation ends (caller-controlled; default false = hidden)
+            description: "true/1 = serve r18 works and r18 relation ends (default false = hidden). Caller-controlled: any application key may ask for it"
             type: boolean
         - description: "Max tag spoiler level 0-2 (default 0 = safe): tags[] carries per-edge spoiler + per-tag sexual flags, and rows above this ceiling are omitted entirely. The axis is populated for the VNDB-derived vocabulary only — Bangumi/DLsite folksonomy publishes no spoiler or category concept, so those rows read 0/false"
           explode: false
@@ -4572,6 +5135,13 @@ paths:
             description: "Max tag spoiler level 0-2 (default 0 = safe): tags[] carries per-edge spoiler + per-tag sexual flags, and rows above this ceiling are omitted entirely. The axis is populated for the VNDB-derived vocabulary only — Bangumi/DLsite folksonomy publishes no spoiler or category concept, so those rows read 0/false"
             format: int32
             type: integer
+        - description: "Comma-separated TOP-LEVEL keys of this response to keep (default absent = every key, byte-identical to the base contract). id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response, never reshaped. Applied AFTER include=, so fields=relations WITHOUT include=relations does not expand the block — the key is simply absent. Selecting a derived key loads what it needs (release_date and refs both read the release rows) but the dependency's own key still only appears if you named it. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"
+          explode: false
+          in: query
+          name: fields
+          schema:
+            description: "Comma-separated TOP-LEVEL keys of this response to keep (default absent = every key, byte-identical to the base contract). id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response, never reshaped. Applied AFTER include=, so fields=relations WITHOUT include=relations does not expand the block — the key is simply absent. Selecting a derived key loads what it needs (release_date and refs both read the release rows) but the dependency's own key still only appears if you named it. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"
+            type: string
       responses:
         "200":
           content:
@@ -4586,6 +5156,638 @@ paths:
                 $ref: "#/components/schemas/HouseError"
           description: Error
       summary: "Frozen work record: identity + titles + exact cross-source refs + claim pointer; include=relations,credits"
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/characters:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Order is main, secondary, appears, then the credit-only entries. Like the parent block this face applies NO spoiler ceiling — every row publishes its own spoiler level for the caller to gate on, which is why there is no spoilers parameter here."
+      operationId: getCatalogWorkCharactersPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkCharactersData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: The character roster of one work, paged, with voice credits
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/covers:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Rows the CDN cannot render are dropped before paging rather than after, so a page is short only when the block is exhausted. Need just the two display slots instead of every stored image? works/{id}.cover_slots and works?include=covers pick them for you."
+      operationId: getCatalogWorkCoversPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkCoversData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Cover images of one work, paged — the block a store card or a shelf needs on its own
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/credits:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. PAGING IS OVER CREDIT ROWS, NOT GROUPS: limit and offset count individual credits, so a role whose credits straddle a page boundary appears in both pages as its own group carrying that page's slice. Concatenating pages means merging the groups that share a role_key. Counting groups instead would leave one page unbounded, which is the thing this face exists to stop."
+      operationId: getCatalogWorkCreditsPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkCreditsData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Staff credits of one work grouped by role, paged over credit rows
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/engines:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. work_count is the number of works this caller would page through via works?engine_id=<id>, so it always matches the list it can actually fetch."
+      operationId: getCatalogWorkEnginesPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkEnginesData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Engines one work is built with, paged, each with an nsfw-aware work_count
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/intros:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. One row per language, elected the parent's way: a source-written synopsis beats a machine-translated one, and machine rows are flagged rather than hidden."
+      operationId: getCatalogWorkIntrosPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkIntrosData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Synopses of one work, one per language, paged
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/links:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. These are addresses, not anchors: the identity anchors are works/{id}.refs[]. Sources whose storefront URL cannot be reconstructed from the stored code (dlsite, dmm — the section is part of the address and the registry stores only the bare code) are absent here by design and stay reachable through refs[]."
+      operationId: getCatalogWorkLinksPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkLinksData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Non-identity outbound links of one work (official site, Steam, X, …), paged
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/ratings:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. This is the work-DETAIL projection, so distribution and stats are carried in full — unlike the works-list ratings block, which drops them. Scores stay on each source's native scale and are never blended into one number."
+      operationId: getCatalogWorkRatingsPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkRatingsData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Per-source ratings of one work, paged, with the vote histogram and the spread
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/relations:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. With nsfw absent or 0 an r18 relation end is dropped WHOLE, not emptied, and next_offset counts what survived that drop. Sequels and fandiscs also reach you through works/{id}.series_siblings, which is the transitive series component rather than the one-hop relation set."
+      operationId: getCatalogWorkRelationsPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkRelationsData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Related works of one work, paged — the block works/{id} only serves under include=relations
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/releases:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Ordered by release id ASC. labels[] is THIS version's companies (who developed it, who published it) — the Switch port's publisher and the English edition's publisher are two releases' facts, and this is where each of them lives. For a cross-work release timeline use GET /v1/catalog/releases instead."
+      operationId: getCatalogWorkReleasesPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkReleasesData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Release rows of one work, paged, each with its exact anchors and its own companies
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/screenshots:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Each row carries its own sexual and violence level: this face reports them, it does not filter on them."
+      operationId: getCatalogWorkScreenshotsPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkScreenshotsData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Screenshots of one work, paged, with dimensions and thumbhash
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/series:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. member_count is the series' whole membership, not this page — follow it with works?series_id=<id> or series/{id}?include=works."
+      operationId: getCatalogWorkSeriesPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404, exactly what works/{id} answers for the same work). It gates the WORK, not the rows: a cover's or screenshot's own sexual/violence level is reported, never filtered, and on the two blocks that carry a work_count that count is taken over the population this caller can actually fetch"
+            type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkSeriesData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: The series this work belongs to, paged
+      tags:
+        - catalog-public
+  /v1/catalog/works/{id}/tags:
+    get:
+      description: "ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second \"detail\" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Ordered count DESC, then name in BYTE order, then source — the parent's order exactly. Rows that map to the canonical vocabulary carry canonical_id/tier/kind plus an nsfw-aware work_count; unmapped rows omit them."
+      operationId: getCatalogWorkTagsPublic
+      parameters:
+        - description: Catalog work id — the very id works/{id} answers on
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Catalog work id — the very id works/{id} answers on
+            format: int64
+            type: integer
+        - description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+          explode: false
+          in: query
+          name: limit
+          schema:
+            description: Items per page 1-100 (default 100); above 100 is clamped to 100, a non-positive or non-numeric value is a 400
+            format: int64
+            type: integer
+        - description: Rows to skip
+          explode: false
+          in: query
+          name: offset
+          schema:
+            description: Rows to skip
+            format: int64
+            type: integer
+        - description: "true/1 = serve this sub-resource for an r18 work (default false = 404). It also decides work_count: an sfw caller's count excludes the r18 works it can never fetch"
+          explode: false
+          in: query
+          name: nsfw
+          schema:
+            description: "true/1 = serve this sub-resource for an r18 work (default false = 404). It also decides work_count: an sfw caller's count excludes the r18 works it can never fetch"
+            type: boolean
+        - description: Max tag spoiler level 0-2 (default 0 = safe) — the works/{id} parameter verbatim. Rows above the ceiling are omitted entirely and consume no page slot, so raising the ceiling can change what a given offset points at
+          explode: false
+          in: query
+          name: spoilers
+          schema:
+            description: Max tag spoiler level 0-2 (default 0 = safe) — the works/{id} parameter verbatim. Rows above the ceiling are omitted entirely and consume no page slot, so raising the ceiling can change what a given offset points at
+            format: int32
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicWorkTagsData"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: Source tags of one work, paged, with the canonical mapping and the safety axis
       tags:
         - catalog-public
   /v1/playtime/batch:
@@ -4610,7 +5812,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/HouseError"
           description: Error
-      summary: Report up to 200 works in one call — the first-login library sync. Each item is accepted or rejected on its own and the response reports per-item outcomes; a single bad item never fails the batch. Requires playtime:write
+      summary: Report up to 200 works in one call — the first-login library sync. Each item is accepted or rejected on its own and the response reports per-item outcomes; a single bad item never fails the batch. Any app with a user access token may call this; playtime:write is not required.
       tags:
         - playtime
   /v1/playtime/by-ref/{source}/{externalID}:
@@ -4650,7 +5852,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/HouseError"
           description: Error
-      summary: Report playtime addressing the work by an external id the client already holds (vndb/dlsite/getchu/bangumi …) instead of a catalog work id. Only EXACT anchors resolve; the response echoes the resolved work_id, which the client should cache. 404 when nothing is anchored to that id. Requires playtime:write
+      summary: Report playtime addressing the work by an external id the client already holds (vndb/dlsite/getchu/bangumi …) instead of a catalog work id. Only EXACT anchors resolve; the response echoes the resolved work_id, which the client should cache. 404 when nothing is anchored to that id. Any app with a user access token may call this; playtime:write is not required.
       tags:
         - playtime
   /v1/playtime/mine:
@@ -4688,7 +5890,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/HouseError"
           description: Error
-      summary: Page the bearer token's own playtime rows in (updated_at) order — the sync-back leg for a second device. Hand `cursor` back as ?updated_since= to fetch only what changed. Requires playtime:read
+      summary: Page the bearer token's own playtime rows in (updated_at) order — the sync-back leg for a second device. Hand `cursor` back as ?updated_since= to fetch only what changed. Any app with a user access token may call this; playtime:read is not required.
       tags:
         - playtime
   /v1/playtime/works/{workID}:
@@ -4717,7 +5919,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/HouseError"
           description: Error
-      summary: The bearer token's own playtime on ONE work, folded across their applications (MAX minutes — two apps watching one save file are not two playthroughs). `playtime` is null when the user has never reported here; that is a 200, not a 404. This is the call a rating form makes to offer 'you played 30h — attach it?'. Requires playtime:read
+      summary: The bearer token's own playtime on ONE work, folded across their applications (MAX minutes — two apps watching one save file are not two playthroughs). `playtime` is null when the user has never reported here; that is a 200, not a 404. This is the call a rating form makes to offer 'you played 30h — attach it?'. Any app with a user access token may call this; playtime:read is not required.
       tags:
         - playtime
     put:
@@ -4751,6 +5953,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/HouseError"
           description: Error
-      summary: "Report the bearer token's own playtime on a work. The body carries the ABSOLUTE cumulative total in minutes, never a delta — re-sending the same number is a no-op, which makes the call safe to retry. Keyed by (user, work, client): a second app of the same user reports alongside, not over. Requires playtime:write"
+      summary: "Report the bearer token's own playtime on a work. The body carries the ABSOLUTE cumulative total in minutes, never a delta — re-sending the same number is a no-op, which makes the call safe to retry. Keyed by (user, work, client): a second app of the same user reports alongside, not over. Any app with a user access token may call this; playtime:write is not required."
       tags:
         - playtime

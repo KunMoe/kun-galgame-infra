@@ -51,6 +51,7 @@ func TestIngestFixtureAndIdempotency(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, int64(2), report.PerFile["vn"].Rows)
+	assert.Equal(t, int64(3), report.PerFile["vn_titles"].Rows)
 	assert.Equal(t, int64(2), report.PerFile["chars"].Rows)
 	assert.Equal(t, int64(3), report.PerFile["chars_names"].Rows)
 	assert.Equal(t, int64(3), report.PerFile["chars_vns"].Rows)
@@ -75,6 +76,15 @@ func TestIngestFixtureAndIdempotency(t *testing.T) {
 	require.NoError(t, testDB.First(&v2, "id = ?", "v2").Error)
 	assert.Equal(t, "", v2.Image, `\N cover id → empty`)
 	assert.Equal(t, "Second\nline description.", v2.Description, "escaped newline decoded")
+
+	var t1 VNTitle
+	require.NoError(t, testDB.First(&t1, "id = ? AND lang = ?", "v1", "ja").Error)
+	assert.Equal(t, "猫神さまと", t1.Title)
+	assert.True(t, t1.Official)
+	assert.Equal(t, "Neko-gami-sama to", t1.Latin)
+	var t2 VNTitle
+	require.NoError(t, testDB.First(&t2, "id = ? AND lang = ?", "v1", "en").Error)
+	assert.Equal(t, "", t2.Latin, `\N latin → empty`)
 
 	var c2 Char
 	require.NoError(t, testDB.First(&c2, "id = ?", "c2").Error)

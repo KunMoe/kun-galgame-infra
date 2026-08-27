@@ -102,6 +102,41 @@ var (
 		FROM ros JOIN al ON al.character_id = ros.character_id
 		ORDER BY ros.work_id, ros.character_id`
 
+	// en-lane only. en source texts carry romaji, which the kanji roster keys never
+	// match — work 2775 shipped with "Azabu Masumi" untranslated because its only
+	// roster pair was the identity 麻布 真澄→麻布 真澄. The romaji lives in ASCII
+	// kind 0/1 aliases (both `latin` columns are empty in prod). Never wire this for
+	// SourceJa: it would drift every ja glossary hash and re-trigger the whole lane.
+	workRosterLatinQuery = `
+		WITH ros AS (
+			SELECT wc.work_id, wc.character_id
+			FROM catalog_work_character wc
+			JOIN catalog_character c ON c.id = wc.character_id AND c.deleted_at IS NULL
+			WHERE wc.work_id IN (?)
+			  AND ` + editspec.NotSuppressedRosterSQL("wc") + `
+		),
+		lat AS (
+			SELECT DISTINCT ON (a.character_id) a.character_id, a.name
+			FROM catalog_character_alias a
+			WHERE a.character_id IN (SELECT character_id FROM ros)
+			  AND a.name ~ '^[\x20-\x7e]+$' AND a.name ~ '[A-Za-z]' AND a.kind IN (0,1)
+			  AND ` + editspec.NotSuppressedCharacterAliasSQL("a") + `
+			ORDER BY a.character_id, (a.lang <> 'ja'), a.id
+		),
+		zhn AS (
+			SELECT DISTINCT ON (a.character_id) a.character_id, a.name
+			FROM catalog_character_alias a
+			WHERE a.character_id IN (SELECT character_id FROM ros)
+			  AND a.lang IN ('zh-Hans','zh','zh-Hant') AND a.kind IN (0,1)
+			  AND ` + editspec.NotSuppressedCharacterAliasSQL("a") + `
+			ORDER BY a.character_id, (NOT a.is_primary_for_locale), (a.lang <> 'zh-Hans'), a.id
+		)
+		SELECT ros.work_id AS owner_id, lat.name AS src, zhn.name AS zh
+		FROM ros
+		JOIN lat ON lat.character_id = ros.character_id
+		JOIN zhn ON zhn.character_id = ros.character_id
+		ORDER BY ros.work_id, ros.character_id`
+
 	workLabelQuery = `
 		WITH lab AS (
 			SELECT DISTINCT wl.work_id, wl.label_id, l.display_name
@@ -121,12 +156,12 @@ var (
 		ORDER BY lab.work_id, lab.label_id`
 )
 
-func attachGlossaries(ctx context.Context, db *gorm.DB, cands []candidate) error {
+func attachGlossaries(ctx context.Context, db *gorm.DB, cands []candidate, src SourceLang) error {
 	ids := make([]int64, 0, len(cands))
 	for _, c := range cands {
 		ids = append(ids, c.WorkID)
 	}
-	gs, err := loadGlossaries(ctx, db, ids)
+	gs, err := loadGlossaries(ctx, db, ids, src)
 	if err != nil {
 		return err
 	}
@@ -136,12 +171,16 @@ func attachGlossaries(ctx context.Context, db *gorm.DB, cands []candidate) error
 	return nil
 }
 
-func loadGlossaries(ctx context.Context, db *gorm.DB, workIDs []int64) (map[int64]Glossary, error) {
+func loadGlossaries(ctx context.Context, db *gorm.DB, workIDs []int64, src SourceLang) (map[int64]Glossary, error) {
+	queries := []string{workOwnTitleQuery, workRosterQuery, workLabelQuery}
+	if src == SourceEn {
+		queries = []string{workOwnTitleQuery, workRosterLatinQuery, workRosterQuery, workLabelQuery}
+	}
 	builders := make(map[int64]*glossaryBuilder, len(workIDs))
 	for _, id := range workIDs {
 		builders[id] = &glossaryBuilder{}
 	}
-	for _, q := range []string{workOwnTitleQuery, workRosterQuery, workLabelQuery} {
+	for _, q := range queries {
 		if err := collectGlossary(ctx, db, q, workIDs, builders); err != nil {
 			return nil, err
 		}

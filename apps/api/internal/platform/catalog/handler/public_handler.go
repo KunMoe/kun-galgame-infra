@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	stderrors "errors"
 	"strconv"
 	"strings"
@@ -37,8 +38,14 @@ const (
 	cacheDetail    = "public, max-age=0, s-maxage=300, stale-while-revalidate=60"
 	cacheSearch    = "public, max-age=0, s-maxage=60, stale-while-revalidate=60"
 	cacheRedirects = "public, max-age=0, s-maxage=30, stale-while-revalidate=30"
+	// The pending lane varies on the MODERATOR's own token, not just on the
+	// URL a shared cache keys by, so one tenant's queue could be handed to the
+	// next tenant that asked for the same URL.
+	cacheModeration = "private, no-store"
 
 	msgBadLimit = "limit must be a positive integer"
+
+	msgBadIDsCursor = "ids does not paginate; do not also pass cursor"
 
 	msgBadLookupType = "type must be one of work, name, character, label"
 )
@@ -48,8 +55,9 @@ func (h *PublicHandler) WorkDetail(c fiber.Ctx) error {
 	if err != nil {
 		return response.BadRequest(c, errors.ErrInvalidID)
 	}
+	sel := fieldsQuery(c)
 	rec, found, err := h.svc.WorkDetail(c.Context(), id,
-		service.ParsePublicInclude(c.Query("include")), nsfwQuery(c), spoilersQuery(c))
+		service.ParsePublicInclude(c.Query("include")), nsfwQuery(c), spoilersQuery(c), sel)
 	if err != nil {
 		return response.InternalError(c, errors.ErrInternalServer)
 	}
@@ -57,7 +65,7 @@ func (h *PublicHandler) WorkDetail(c fiber.Ctx) error {
 		return response.NotFound(c, errors.ErrNotFound)
 	}
 	c.Set("Cache-Control", cacheDetail)
-	return response.Success(c, rec)
+	return successProjected(c, rec, sel, sel.ProjectObject)
 }
 
 func (h *PublicHandler) Lookup(c fiber.Ctx) error {
@@ -269,7 +277,7 @@ func (h *PublicHandler) Search(c fiber.Ctx) error {
 			continue
 		}
 		hit := dto.PublicEntityHit{
-			ID: id, EntityType: entityType, Name: d.Name(), Latin: d.Latin, Sources: d.Sources,
+			ID: id, EntityType: entityType, DisplayName: d.Name(), Latin: d.Latin, Sources: d.Sources,
 		}
 		if d.ContentRating != nil {
 			hit.ContentRating = publicContentRatingKey(*d.ContentRating)
@@ -280,16 +288,56 @@ func (h *PublicHandler) Search(c fiber.Ctx) error {
 		}
 		out.Items = append(out.Items, hit)
 	}
+	ids := make([]int64, len(out.Items))
+	for i := range out.Items {
+		ids[i] = out.Items[i].ID
+	}
+	switch entityType {
+	case "work":
+		blocks, err := h.svc.WorkNamesByID(c.Context(), ids)
+		if err != nil {
+			return response.InternalError(c, errors.ErrInternalServer)
+		}
+		for i := range out.Items {
+			out.Items[i].Localized = blocks[out.Items[i].ID].Localized
+		}
+	case "name", "character", "label":
+		loc, err := h.svc.LocalizedForEntities(c.Context(), entityType, ids)
+		if err != nil {
+			return response.InternalError(c, errors.ErrInternalServer)
+		}
+		for i := range out.Items {
+			out.Items[i].Localized = loc[out.Items[i].ID]
+		}
+	}
 	c.Set("Cache-Control", cacheSearch)
 	return response.Success(c, out)
 }
 
 func nsfwQuery(c fiber.Ctx) bool {
-	switch strings.ToLower(strings.TrimSpace(c.Query("nsfw"))) {
-	case "1", "true", "yes":
-		return true
+	return boolQueryPub(c.Query("nsfw"))
+}
+
+func fieldsQuery(c fiber.Ctx) service.PublicFields {
+	return service.ParsePublicFields(c.Query("fields"))
+}
+
+// successProjected keeps the unprojected path on the ORIGINAL typed value: a
+// map/bytes round trip on every response is how key order and number
+// formatting drift away from a published contract nobody meant to change.
+func successProjected(c fiber.Ctx, data any, sel service.PublicFields, project func([]byte) ([]byte, error)) error {
+	if !sel.Active() {
+		return response.Success(c, data)
 	}
-	return false
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return response.InternalError(c, errors.ErrInternalServer)
+	}
+	trimmed, err := project(raw)
+	if err != nil {
+		return response.InternalError(c, errors.ErrInternalServer)
+	}
+	return response.Success(c, json.RawMessage(trimmed))
 }
 
 func boolQueryPub(raw string) bool {
@@ -559,6 +607,7 @@ func (h *PublicHandler) WorksList(c fiber.Ctx) error {
 		NSFW:     nsfwQuery(c),
 		Platform: strings.TrimSpace(c.Query("platform")),
 		Include:  service.ParseWorksListInclude(c.Query("include")),
+		Fields:   fieldsQuery(c),
 		Site:     strings.TrimSpace(c.Query("site")),
 	}
 	switch sort := c.Query("sort"); sort {
@@ -640,6 +689,9 @@ func (h *PublicHandler) WorksList(c fiber.Ctx) error {
 	if !ok {
 		return response.BadRequestMsg(c, errors.ErrInvalidParam, msgBadLimit)
 	}
+	if len(f.IDs) > 0 && c.Query("cursor") != "" {
+		return response.BadRequestMsg(c, errors.ErrInvalidParam, msgBadIDsCursor)
+	}
 	data, err := h.svc.WorksList(c.Context(), f, c.Query("cursor"), limit)
 	if err != nil {
 		if stderrors.Is(err, service.ErrBadCursor) {
@@ -647,8 +699,15 @@ func (h *PublicHandler) WorksList(c fiber.Ctx) error {
 		}
 		return response.InternalError(c, errors.ErrInternalServer)
 	}
-	c.Set("Cache-Control", cacheSearch)
-	return response.Success(c, data)
+	c.Set("Cache-Control", worksListCacheControl(c))
+	return successProjected(c, data, f.Fields, f.Fields.ProjectItems)
+}
+
+func worksListCacheControl(c fiber.Ctx) string {
+	if strings.TrimSpace(c.Query("status")) == worksStatusPending {
+		return cacheModeration
+	}
+	return cacheSearch
 }
 
 func (h *PublicHandler) Changes(c fiber.Ctx) error {

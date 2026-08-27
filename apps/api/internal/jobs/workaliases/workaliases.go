@@ -183,8 +183,8 @@ func runBgm(ctx context.Context, db *gorm.DB, opts Opts, st *Stats) error {
 		if !opts.Apply {
 			continue
 		}
-		res := db.WithContext(ctx).Exec(`INSERT INTO catalog_work_title (work_id, lang, title, kind)
-			VALUES (?, '', ?, 1) ON CONFLICT DO NOTHING`, c.workID, c.alias)
+		res := db.WithContext(ctx).Exec(`INSERT INTO catalog_work_title (work_id, lang, title, kind, provenance)
+			VALUES (?, '', ?, 1, 0) ON CONFLICT DO NOTHING`, c.workID, c.alias)
 		if res.Error != nil {
 			st.Errors++
 			slog.Warn("alias insert", "work", c.workID, "err", res.Error)
@@ -260,8 +260,8 @@ func runKana(ctx context.Context, db *gorm.DB, opts Opts, st *Stats) error {
 		if !opts.Apply {
 			continue
 		}
-		res := db.WithContext(ctx).Exec(`INSERT INTO catalog_work_title (work_id, lang, title, kind)
-			VALUES (?, 'ja', ?, 3) ON CONFLICT DO NOTHING`, r.WorkID, k)
+		res := db.WithContext(ctx).Exec(`INSERT INTO catalog_work_title (work_id, lang, title, kind, provenance)
+			VALUES (?, 'ja', ?, 3, 0) ON CONFLICT DO NOTHING`, r.WorkID, k)
 		if res.Error != nil {
 			st.Errors++
 			slog.Warn("kana insert", "work", r.WorkID, "err", res.Error)

@@ -2193,6 +2193,8 @@ export interface components {
             kind: number;
             lang: string;
             latin?: string;
+            /** @description true if this title is an LLM machine translation (no source published one for this language); omitted for source rows */
+            machine?: boolean;
             title: string;
         };
         WorksCell: {

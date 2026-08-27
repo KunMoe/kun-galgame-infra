@@ -21,6 +21,7 @@ func main() {
 	offset := flag.Int("offset", 0, "skip this many candidate works (for chunking)")
 	imageBaseURL := flag.String("image-base-url", "", "image_service base override (point at the LOCAL dev service, e.g. http://127.0.0.1:9278)")
 	uploadGap := flag.Duration("upload-gap", 0, "min delay between uploads (0 = none; raise for a gentle production sweep)")
+	allowLandscape := flag.Bool("allow-landscape", false, "also write landscape covers (never portrait-pinned); default keeps the portrait-only behavior")
 	flag.Parse()
 
 	_ = godotenv.Load("apps/api/.env")
@@ -33,13 +34,14 @@ func main() {
 	logger.Init(cfg.Server.Env)
 
 	sum, err := bangumicovers.Run(context.Background(), cfg, bangumicovers.Opts{
-		Apply:         *apply,
-		Limit:         *limit,
-		Offset:        *offset,
-		DSN:           *dsn,
-		BangumiMirror: *mirror,
-		ImageBaseURL:  *imageBaseURL,
-		UploadGap:     *uploadGap,
+		Apply:          *apply,
+		Limit:          *limit,
+		Offset:         *offset,
+		DSN:            *dsn,
+		BangumiMirror:  *mirror,
+		ImageBaseURL:   *imageBaseURL,
+		UploadGap:      *uploadGap,
+		AllowLandscape: *allowLandscape,
 	})
 	if sum != nil {
 		slog.Info("backfill-bangumi-covers summary", "summary", sum)

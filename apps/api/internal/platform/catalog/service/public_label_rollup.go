@@ -46,8 +46,16 @@ func (s *PublicService) labelRollupVia(ctx context.Context, seedID int64, workID
 	).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
+	labelIDs := make([]int64, 0, len(rows))
 	for _, r := range rows {
-		out[r.WorkID] = dto.PublicLabelVia{ID: r.LabelID, Name: r.Name}
+		labelIDs = append(labelIDs, r.LabelID)
+	}
+	loc, err := s.localizedFor(ctx, labelAliasSource, labelIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		out[r.WorkID] = dto.PublicLabelVia{ID: r.LabelID, DisplayName: r.Name, Localized: locOrEmpty(loc[r.LabelID])}
 	}
 	return out, nil
 }

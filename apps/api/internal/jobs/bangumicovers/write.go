@@ -50,7 +50,7 @@ func (r *runner) writeCover(ctx context.Context, mirrorRoot string, c candidate,
 		DoNothing: true,
 	}).Create(&model.CatalogWorkCover{
 		WorkID: c.WorkID, ImageHash: res.Hash, SortOrder: 0, Kind: "main",
-		PortraitPinned: !r.pinned[c.WorkID], Sexual: 0, Violence: 0, SourceID: r.sourceID,
+		PortraitPinned: e.portrait() && !r.pinned[c.WorkID], Sexual: 0, Violence: 0, SourceID: r.sourceID,
 	})
 	if tx.Error != nil {
 		r.c.errors++

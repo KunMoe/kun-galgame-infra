@@ -58,7 +58,8 @@ func TestReadFacesExcludeSuppressedCharacterAliases(t *testing.T) {
 	pubAfter, ok, err := public.Character(ctx, ch.ID, false, true, model.SpoilerSevere, 10, 0)
 	require.NoError(t, err)
 	require.True(t, ok)
-	assert.Equal(t, []string{"しゅじんこう"}, pubAfter.Aliases)
+	require.Len(t, pubAfter.Aliases, 1)
+	assert.Equal(t, "しゅじんこう", pubAfter.Aliases[0].Value)
 
 	// The suppressed row is still in the table: the roster importer owns it and
 	// the exclusion is a read-path rule, not a delete.

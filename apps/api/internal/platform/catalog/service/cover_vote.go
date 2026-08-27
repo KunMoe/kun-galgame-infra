@@ -66,6 +66,31 @@ func (s *CoverVoteService) Unvote(ctx context.Context, workID, actorUID int64) e
 		Delete(&model.CatalogCoverVote{}).Error
 }
 
+func (s *CoverVoteService) WorkIDForCover(ctx context.Context, coverID int64) (int64, error) {
+	var workID int64
+	err := s.db.WithContext(ctx).Raw(
+		`SELECT work_id FROM catalog_work_cover WHERE id = ? LIMIT 1`, coverID).Scan(&workID).Error
+	if err != nil {
+		return 0, err
+	}
+	return workID, nil
+}
+
+func (s *CoverVoteService) ListMine(ctx context.Context, uid int64) ([]CoverVoteParams, error) {
+	if uid <= 0 {
+		return nil, ErrVoteActorRequired
+	}
+	var rows []model.CatalogCoverVote
+	if err := s.db.WithContext(ctx).Where("actor_uid = ?", uid).Order("id ASC").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make([]CoverVoteParams, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, CoverVoteParams{WorkID: r.WorkID, CoverID: r.CoverID, ActorUID: r.ActorUID, Site: r.Site})
+	}
+	return out, nil
+}
+
 func (s *CoverVoteService) CountFor(ctx context.Context, coverID int64) (int64, error) {
 	var count int64
 	err := s.db.WithContext(ctx).Model(&model.CatalogCoverVote{}).

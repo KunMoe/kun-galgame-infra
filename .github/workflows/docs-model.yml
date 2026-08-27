@@ -13,6 +13,12 @@ name: docs-model
 #   2. the guard still matches but the model content moved (a param, a summary,
 #      an enum) — the script succeeds and `git diff --exit-code` fails.
 #
+# Since 2026-08-18 the same script also writes the LLM-facing artifacts into
+# apps/developer/public (llms.txt, llms-full.txt, a Markdown twin per docs
+# route). They are covered by the same diff on purpose: an agent reading
+# /docs/catalog.md must not be told a different contract from the one the page
+# renders, and only a drift gate over BOTH outputs can promise that.
+#
 # Sibling gate: openapi-types.yml does the same for the spec -> TS arm in
 # apps/web. This one is the spec -> portal-docs-model arm.
 #
@@ -24,9 +30,25 @@ on:
     paths: &paths
       - "docs/catalog/public-openapi.yaml"
       - "docs/catalog/openapi.yaml"
+      # v2-openapi.yaml was missing here while faces.mjs already built the
+      # portal model from it, so a commit touching only the v2 spec skipped
+      # this gate and the drift landed on whoever next touched a listed path.
+      - "docs/catalog/v2-openapi.yaml"
       - "docs/news/public-openapi.yaml"
+      - "docs/store/public-openapi.yaml"
       - "apps/developer/scripts/sync-specs.mjs"
+      - "apps/developer/scripts/faces.mjs"
+      - "apps/developer/scripts/gen-llms.mjs"
+      - "apps/developer/shared/brand.mjs"
+      - "apps/developer/shared/mcp-tools.mjs"
+      # The generated half of the MCP roster. shared/mcp-tools.mjs only adds the
+      # Chinese descriptions to it, so a regenerated roster moves docs/mcp.md
+      # without any listed source file changing.
+      - "apps/developer/app/generated/mcp-tools.mjs"
       - "apps/developer/app/generated/docs-model.ts"
+      - "apps/developer/public/llms.txt"
+      - "apps/developer/public/llms-full.txt"
+      - "apps/developer/public/**/*.md"
       - ".github/workflows/docs-model.yml"
   pull_request:
     paths: *paths
@@ -55,5 +77,8 @@ jobs:
       # directory does not matter and the pnpm run indirection buys nothing.
       - name: Rebuild the docs model from the committed specs
         run: node apps/developer/scripts/sync-specs.mjs
+      # public/ also holds hand-placed assets (favicons); the script never
+      # touches those, so diffing the whole directory is free coverage for the
+      # llms.txt / llms-full.txt / route-Markdown half of the same generator.
       - name: Fail if the committed model is stale vs the specs
-        run: git diff --exit-code -- apps/developer/app/generated/docs-model.ts
+        run: git diff --exit-code -- apps/developer/app/generated apps/developer/public

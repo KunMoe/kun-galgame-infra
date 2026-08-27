@@ -50,12 +50,21 @@ export interface EcosystemApp {
 
 export const ALL_GRANTS = ['authorization_code', 'refresh_token'] as const
 
-export const KNOWN_SCOPES = [
-  'openid',
-  'profile',
-  'email',
-  'image:upload',
-  'artifact:upload',
-] as const
+// The client editor's checkboxes and the consent screen's wording are the same
+// registry. When they were two lists, playtime:read/playtime:write existed only
+// in the consent one, so the forum client could not be granted them from the
+// console at all: /oauth/authorize answered 15006 and the feature stayed dark.
+export const SCOPE_LABELS: Record<string, string> = {
+  openid: '身份标识',
+  profile: '用户资料 (昵称、头像)',
+  email: '邮箱地址',
+  'playtime:read': '读取你的游戏时长记录',
+  'playtime:write': '记录你的游戏时长',
+  'catalog:edit': '以你的名义提交目录条目的编辑提案',
+  'image:upload': '以你的名义上传图片',
+  'artifact:upload': '以你的名义上传文件',
+}
+
+export const KNOWN_SCOPES: readonly string[] = Object.keys(SCOPE_LABELS)
 
 export const REN_ONLY_SCOPES: readonly string[] = ['image:upload', 'artifact:upload']

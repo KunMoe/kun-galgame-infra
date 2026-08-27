@@ -352,7 +352,7 @@ func TestCalendarItemsAreWorksListItems(t *testing.T) {
 	if item.Cover == "" {
 		t.Fatal("calendar item must carry the representative cover the works list carries")
 	}
-	if item.Names != nil || item.Intros != nil || item.Labels != nil || item.Ratings != nil || item.Covers != nil {
+	if item.Localized != nil || item.Intros != nil || item.Labels != nil || item.Ratings != nil || item.Covers != nil {
 		t.Fatalf("no include= must mean no blocks: %+v", item)
 	}
 
@@ -362,10 +362,10 @@ func TestCalendarItemsAreWorksListItems(t *testing.T) {
 		t.Fatalf("CalendarPage include: %v", err)
 	}
 	item = page.Items[0]
-	if item.Names == nil || item.Names.JaJP != "六月の作品" {
-		t.Fatalf("include=names on the calendar: %+v", item.Names)
+	if item.Localized["ja"].Value != "六月の作品" {
+		t.Fatalf("include=names on the calendar: %+v", item.Localized)
 	}
-	if item.Intros == nil || item.Intros.JaJP == nil || item.Intros.JaJP.Intro != "紹介文" {
+	if len(item.Intros) != 1 || item.Intros[0].Lang != "ja" || item.Intros[0].Intro != "紹介文" {
 		t.Fatalf("include=intros on the calendar: %+v", item.Intros)
 	}
 	if len(item.Labels) != 1 || item.Labels[0].DisplayName != "CalBrand" {

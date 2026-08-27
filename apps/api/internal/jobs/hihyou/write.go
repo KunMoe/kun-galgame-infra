@@ -14,6 +14,7 @@ import (
 	"api/internal/platform/news/model"
 	"api/pkg/config"
 	"api/pkg/imageclient"
+	"api/pkg/imageshrink"
 
 	"gorm.io/gorm"
 )
@@ -22,7 +23,7 @@ const (
 	bannerPreset = "news_banner"
 	uploaderSub  = "system:hihyou-weekly"
 	// What we are willing to DOWNLOAD, which is not what the service accepts:
-	// the largest picture in the corpus is 19.7 MB and shrink() refits it before
+	// the largest picture in the corpus is 19.7 MB and imageshrink.Shrink refits it before
 	// upload. A 10 MiB ceiling here would drop 546 pictures at the fetch.
 	maxImageB = 24 << 20
 )
@@ -288,7 +289,7 @@ func (w *writer) upload(ctx context.Context, src string) (string, error) {
 	if name == "" || name == "." || name == "/" {
 		name = "news.webp"
 	}
-	body, name, err = shrink(body, name)
+	body, name, err = imageshrink.Shrink(body, name)
 	if err != nil {
 		return "", err
 	}

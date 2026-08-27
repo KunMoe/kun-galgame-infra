@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"api/internal/platform/authz"
+	devapiPerm "api/internal/platform/devapi/perm"
 	"api/internal/platform/permissions"
 	sitePerm "api/internal/platform/site/perm"
 )
@@ -64,6 +65,7 @@ func TestNonDelegableKeysAreRegistered(t *testing.T) {
 	reg := permissions.Live()
 	for _, p := range []authz.Permission{
 		sitePerm.RolesGrantAdmin, sitePerm.PermissionsManage, sitePerm.SitesManageAll,
+		devapiPerm.PolicyManage,
 	} {
 		if !reg.IsNonDelegable(p) {
 			t.Errorf("%q must be non-delegable", p)
@@ -71,6 +73,9 @@ func TestNonDelegableKeysAreRegistered(t *testing.T) {
 	}
 	if reg.IsNonDelegable(sitePerm.UsersPIIView) {
 		t.Errorf("%q must be delegable", sitePerm.UsersPIIView)
+	}
+	if reg.IsNonDelegable(devapiPerm.Manage) {
+		t.Errorf("%q must be delegable", devapiPerm.Manage)
 	}
 }
 

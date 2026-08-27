@@ -142,7 +142,7 @@ func TestLoadGlossaries(t *testing.T) {
 	bare := mkWork(t, medium, "no-glossary-work", nil)
 	mkTitle(t, bare, "ja", "何もない作品", model.WorkTitleKindOfficial)
 
-	gs, err := loadGlossaries(ctx, testDB, []int64{w, bare})
+	gs, err := loadGlossaries(ctx, testDB, []int64{w, bare}, SourceJa)
 	require.NoError(t, err)
 
 	assert.Equal(t, Glossary{
@@ -153,9 +153,37 @@ func TestLoadGlossaries(t *testing.T) {
 	}, gs[w], "own title, then roster characters by id, then labels")
 	assert.NotContains(t, gs, bare, "a work with no Chinese anywhere gets no glossary")
 
-	again, err := loadGlossaries(ctx, testDB, []int64{w, bare})
+	again, err := loadGlossaries(ctx, testDB, []int64{w, bare}, SourceJa)
 	require.NoError(t, err)
 	assert.Equal(t, gs[w].Canonical(), again[w].Canonical())
+}
+
+func mkCharAlias(t *testing.T, cid int64, name, lang string, kind int16) {
+	t.Helper()
+	require.NoError(t, testDB.Create(&model.CatalogCharacterAlias{
+		CharacterID: cid, Name: name, Lang: lang, Kind: kind,
+	}).Error)
+}
+
+func TestLoadGlossariesEnLatinKeys(t *testing.T) {
+	clean(t)
+	cleanEntities(t)
+	ctx := context.Background()
+	medium, _, _ := reg(t)
+
+	w := mkWork(t, medium, "latin-work", nil)
+	cid := mkRosterCharacter(t, w, "麻布 真澄", "麻布 真澄")
+	mkCharAlias(t, cid, "Azabu Masumi", "ja", model.AliasKindSpellingVariant)
+
+	ja, err := loadGlossaries(ctx, testDB, []int64{w}, SourceJa)
+	require.NoError(t, err)
+	assert.NotContains(t, ja, w,
+		"ja lane must not gain latin keys: the identity kanji pair stays dropped, and ja hashes must not drift")
+
+	en, err := loadGlossaries(ctx, testDB, []int64{w}, SourceEn)
+	require.NoError(t, err)
+	assert.Equal(t, Glossary{{Src: "Azabu Masumi", Zh: "麻布 真澄"}}, en[w],
+		"en lane anchors the romaji spelling to the zh name")
 }
 
 func TestGlossaryReachesPromptAndHash(t *testing.T) {

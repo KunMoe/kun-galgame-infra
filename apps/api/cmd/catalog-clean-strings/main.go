@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -10,21 +11,33 @@ import (
 	"time"
 
 	"api/internal/infrastructure/database"
+	"api/internal/platform/catalog/repository"
 	"api/internal/platform/textnorm"
+
+	"gorm.io/gorm"
 )
 
-type target struct{ table, idCol, textCol string }
+type target struct {
+	table, idCol, textCol string
+	// Works whose public face renders this column, so a rewrite can move their
+	// /v1/catalog/changes watermark. Empty where the text reaches only the
+	// character, person and release faces.
+	workIDsSQL string
+}
 
 var targets = []target{
-	{"catalog_work", "id", "display_name"},
-	{"catalog_work_title", "id", "title"},
-	{"catalog_credit_name", "id", "name"},
-	{"catalog_name_alias", "id", "name"},
-	{"catalog_character", "id", "display_name"},
-	{"catalog_character_alias", "id", "name"},
-	{"catalog_label", "id", "display_name"},
-	{"catalog_label_alias", "id", "name"},
-	{"catalog_release", "id", "title"},
+	{table: "catalog_work", idCol: "id", textCol: "display_name",
+		workIDsSQL: `SELECT id FROM catalog_work WHERE id = ?`},
+	{table: "catalog_work_title", idCol: "id", textCol: "title",
+		workIDsSQL: `SELECT work_id FROM catalog_work_title WHERE id = ?`},
+	{table: "catalog_credit_name", idCol: "id", textCol: "name"},
+	{table: "catalog_name_alias", idCol: "id", textCol: "name"},
+	{table: "catalog_character", idCol: "id", textCol: "display_name"},
+	{table: "catalog_character_alias", idCol: "id", textCol: "name"},
+	{table: "catalog_label", idCol: "id", textCol: "display_name",
+		workIDsSQL: `SELECT work_id FROM catalog_work_label WHERE label_id = ?`},
+	{table: "catalog_label_alias", idCol: "id", textCol: "name"},
+	{table: "catalog_release", idCol: "id", textCol: "title"},
 }
 
 func main() {
@@ -80,14 +93,26 @@ func main() {
 			cand++
 			fmt.Fprintf(logf, "%s\t%d\t%s\t%s\t%s\n", t.table, id, t.textCol, strconv.Quote(val), strconv.Quote(nv))
 			if *apply {
-				res := db.Exec(
-					fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ? AND %s = ?", t.table, t.textCol, t.idCol, t.textCol),
-					nv, id, val)
-				if res.Error != nil {
-					slog.Error("update", "table", t.table, "id", id, "error", res.Error)
+				err := db.Transaction(func(tx *gorm.DB) error {
+					var works []int64
+					if t.workIDsSQL != "" {
+						if err := tx.Raw(t.workIDsSQL, id).Scan(&works).Error; err != nil {
+							return err
+						}
+					}
+					res := tx.Exec(
+						fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ? AND %s = ?", t.table, t.textCol, t.idCol, t.textCol),
+						nv, id, val)
+					if res.Error != nil || res.RowsAffected == 0 {
+						return res.Error
+					}
+					written += int(res.RowsAffected)
+					return repository.TouchWorks(context.Background(), tx, works)
+				})
+				if err != nil {
+					slog.Error("update", "table", t.table, "id", id, "error", err)
 					os.Exit(1)
 				}
-				written += int(res.RowsAffected)
 			}
 		}
 		rows.Close()

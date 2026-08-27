@@ -56,7 +56,7 @@ const toggle = async (role: string) => {
 </script>
 
 <template>
-  <KunModal v-model="open">
+  <KunModal v-model="open" aria-label="管理角色">
     <div class="space-y-4">
       <div>
         <h2 class="text-xl font-bold text-foreground">管理角色</h2>

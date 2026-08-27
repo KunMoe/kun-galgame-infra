@@ -35,6 +35,7 @@ type ModerationService struct {
 	escalateThreshold  float32
 	negativeSampleRate float64
 	rand               func() float64
+	retryDelay         time.Duration
 }
 
 type ModerationOptions struct {
@@ -55,6 +56,7 @@ func NewModerationService(db *gorm.DB, omni omniClient, llm upstreamClient, opts
 		escalateThreshold:  opts.EscalateThreshold,
 		negativeSampleRate: opts.NegativeSampleRate,
 		rand:               r,
+		retryDelay:         moderateRetryDelay,
 	}
 }
 
@@ -95,6 +97,13 @@ Respond with ONLY a JSON object, no prose, of the form:
 // Tighten this only against measured completion_tokens in ai_usage, never by
 // eyeballing the size of the verdict — the verdict is not what fills the budget.
 const moderateMaxTokens = 1024
+
+// moderateRetryDelay waits out a 429 burst before the single retry. Every
+// observed prod 429 landed at :35-:36 past the minute — a scheduled caller, not
+// a person waiting on a form — so seconds here cost no user latency. It is 3s
+// rather than 1s because two of the observed failures were one second apart:
+// a 1s retry would have landed inside the same burst.
+const moderateRetryDelay = 3 * time.Second
 
 func (s *ModerationService) Moderate(ctx context.Context, p ModerateParams) (ModerateResult, error) {
 	routeName := model.RouteModerateText
@@ -164,6 +173,25 @@ func (s *ModerationService) moderateViaLLM(ctx context.Context, p ModerateParams
 	}
 
 	res, err := s.llm.ChatJSON(ctx, ModerateSystemPrompt, p.Text, moderateMaxTokens)
+	if err != nil && upstream.IsRateLimited(err) {
+		// The Cloudflare inference bucket is per-minute and shared with every
+		// other caller on the account, so a 429 here is contention, not a
+		// verdict — but the fail-open below turns it into an allow. In 2026-08 a
+		// batch job on the same account made prod moderation fail open this way
+		// dozens of times a day, each one silently admitting unscanned content.
+		// One retry; the metered StatusRateLimited row is what makes it visible.
+		s.meter(ctx, model.AIUsage{
+			Site: p.Site, Route: routeName, Status: model.StatusRateLimited,
+			Channel: s.llm.Model(), LatencyMs: msSince(start),
+		})
+		timer := time.NewTimer(s.retryDelay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+		case <-timer.C:
+			res, err = s.llm.ChatJSON(ctx, ModerateSystemPrompt, p.Text, moderateMaxTokens)
+		}
+	}
 	if err != nil {
 		slog.Warn("ai moderate-text upstream error — fail-open allow", "site", p.Site, "err", err)
 		s.meter(ctx, model.AIUsage{

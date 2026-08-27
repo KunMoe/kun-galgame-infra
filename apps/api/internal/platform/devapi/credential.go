@@ -13,7 +13,11 @@ const (
 	ScopeGalgameRead  = "galgame:read"
 	ScopeGalgameNSFW  = "galgame:nsfw"
 	ScopeGalgameWrite = "galgame:write"
-	ScopeNewsRead     = "news:read"
+	ScopeStoreRead    = "store:read"
+	// Retired 2026-08-25 with the grant-only application machinery: no route
+	// checks it any more. Kept because live keys still carry the string in
+	// their scopes jsonb and readers of that history need the name.
+	ScopeNewsRead = "news:read"
 )
 
 func TierLimits(tier string) (ratePerMin, quotaDaily int, unlimited bool) {
@@ -33,7 +37,6 @@ type Credential struct {
 	AppName       string   `json:"app_name"`
 	Tier          string   `json:"tier"`
 	Scopes        []string `json:"scopes"`
-	NSFWAllowed   bool     `json:"nsfw_allowed"`
 	RateOverride  int      `json:"rate_override"`
 	QuotaOverride int      `json:"quota_override"`
 }

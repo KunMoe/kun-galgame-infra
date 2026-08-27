@@ -226,7 +226,7 @@ const handleDetail = (user: { uuid: string; name: string }) => {
 
     <UsersDetailDrawer v-model:open="detailOpen" :user="detailTarget" />
 
-    <KunModal v-model="banOpen">
+    <KunModal v-model="banOpen" aria-label="封禁用户">
       <div class="space-y-4">
         <h2 class="text-xl font-bold text-foreground">封禁用户</h2>
         <p class="rounded-lg bg-danger-50 p-3 text-sm text-danger-700">
@@ -255,7 +255,7 @@ const handleDetail = (user: { uuid: string; name: string }) => {
       </div>
     </KunModal>
 
-    <KunModal v-model="anonymizeOpen">
+    <KunModal v-model="anonymizeOpen" aria-label="注销并匿名化">
       <div class="space-y-4">
         <h2 class="text-xl font-bold text-foreground">注销并匿名化</h2>
         <p class="rounded-lg bg-danger-50 p-3 text-sm text-danger-700">

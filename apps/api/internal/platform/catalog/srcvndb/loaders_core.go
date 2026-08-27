@@ -22,6 +22,17 @@ func newVNLoader(tx *gorm.DB, now time.Time) tableLoader {
 	})
 }
 
+func newVNTitleLoader(tx *gorm.DB, _ time.Time) tableLoader {
+	return newLoader(tx, func(get getter) (VNTitle, bool) {
+		id, _ := get("id")
+		lang, _ := get("lang")
+		return VNTitle{
+			ID: id, Lang: lang, Official: getBool(get, "official"),
+			Title: getStr(get, "title"), Latin: getStr(get, "latin"),
+		}, true
+	})
+}
+
 func newVNRelationLoader(tx *gorm.DB, _ time.Time) tableLoader {
 	return newLoader(tx, func(get getter) (VNRelation, bool) {
 		id, _ := get("id")

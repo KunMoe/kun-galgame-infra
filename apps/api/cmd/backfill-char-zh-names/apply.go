@@ -80,12 +80,15 @@ func stripQualityMarkers(s string) string {
 // glossaries but are refused by the public localized{} face. A proposal equal
 // to the character's current display name is dropped — an identity row is the
 // passthrough lane's decision, not the model's.
-func runApplyCSV(ctx context.Context, db *gorm.DB, path string, samples int) error {
+func runApplyCSV(ctx context.Context, db *gorm.DB, path string, samples, limit int) error {
 	rows, err := readReviewedCSV(path)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\n=== backfill-char-zh-names APPLY reviewed CSV (%d accepted rows) ===\n", len(rows))
+	if limit > 0 && limit < len(rows) {
+		rows = rows[:limit]
+	}
+	fmt.Printf("\n=== backfill-char-zh-names APPLY reviewed CSV (%d accepted rows this run) ===\n", len(rows))
 	var inserted, conflict, sameAsDisplay, missing, errs int
 	touched := make([]int64, 0, len(rows))
 	shown := 0

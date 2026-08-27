@@ -80,25 +80,63 @@ func TestNameAppears(t *testing.T) {
 	}
 }
 
-func TestParseExtraction(t *testing.T) {
-	got, err := parseExtraction("```json\n{\"沙耶\": \"青梅竹马。\"}\n```")
-	require.NoError(t, err)
-	assert.Equal(t, map[string]string{"沙耶": "青梅竹马。"}, got)
+func TestWorkIDsNarrowTheBucketToARetryList(t *testing.T) {
+	works := []candidateWork{{WorkID: 11}, {WorkID: 22}, {WorkID: 33}}
 
-	_, err = parseExtraction("[1,2]")
-	assert.Error(t, err, "a non-object payload must be refused")
+	got := window(works, candidateOpts{WorkIDs: []int64{33, 11, 99}})
+	assert.Equal(t, []int64{11, 33}, workIDsOf(got), "id order stays the candidate order, and an id off the bucket is silently absent")
+	assert.Equal(t, []int64{11, 22, 33}, workIDsOf(works), "the caller's slice is untouched")
 
-	got, err = parseExtraction("{}")
+	got = window(works, candidateOpts{WorkIDs: []int64{11, 22, 33}, Offset: 1, Limit: 1})
+	assert.Equal(t, []int64{22}, workIDsOf(got), "offset and limit still apply to what is left")
+}
+
+func workIDsOf(works []candidateWork) []int64 {
+	out := make([]int64, 0, len(works))
+	for _, w := range works {
+		out = append(out, w.WorkID)
+	}
+	return out
+}
+
+func TestRosterIndexTakesTheSpacesOutButNotAmbiguously(t *testing.T) {
+	roster := []rosterChar{
+		{CharacterID: 1, Name: "河合 葉月"},
+		{CharacterID: 2, Name: "坂本 水葉"},
+		{CharacterID: 3, Name: "坂本水葉"},
+	}
+
+	idx := rosterIndex(roster)
+	assert.Equal(t, int64(1), idx["河合 葉月"].CharacterID)
+	assert.Equal(t, int64(1), idx["河合葉月"].CharacterID, "an unspaced answer still finds its character")
+	assert.Equal(t, int64(2), idx["坂本 水葉"].CharacterID, "an exact name always wins")
+	assert.Equal(t, int64(3), idx["坂本水葉"].CharacterID,
+		"two roster names collapsing to one key must not let the squashed lookup guess")
+}
+
+func TestParseWorkIDs(t *testing.T) {
+	got, err := parseWorkIDs(" 23427, 23449 ,")
 	require.NoError(t, err)
-	assert.Empty(t, got)
+	assert.Equal(t, []int64{23427, 23449}, got)
+
+	got, err = parseWorkIDs("")
+	require.NoError(t, err)
+	assert.Nil(t, got, "no list means the whole bucket, not an empty one")
+
+	_, err = parseWorkIDs("23427,oops")
+	assert.Error(t, err)
 }
 
 type fakeExtractor struct {
 	out map[string]string
 }
 
-func (f fakeExtractor) Extract(_ context.Context, _ candidateWork) (map[string]string, string, error) {
-	return f.out, "glm-5.2", nil
+func (f fakeExtractor) ExtractBatch(_ context.Context, batch []candidateWork) []extraction {
+	out := make([]extraction, len(batch))
+	for i := range batch {
+		out[i] = extraction{Found: f.out, Model: "glm-5.2"}
+	}
+	return out
 }
 
 func seedWorkWithIntro(t *testing.T, intro string) int64 {
@@ -139,7 +177,7 @@ func TestRunExtractsOnlyMissingAndVerbatim(t *testing.T) {
 		(character_id, lang, intro, source_id, provenance, created_at, updated_at)
 		VALUES (?, 'zh-Hans', '既有介绍', 3, 1, now(), now())`, rei).Error)
 
-	cands, err := loadCandidateWorks(context.Background(), testDB, 0, 0)
+	cands, err := loadCandidateWorks(context.Background(), testDB, candidateOpts{})
 	require.NoError(t, err)
 	require.Len(t, cands, 1)
 	require.Len(t, cands[0].Roster, 1, "only the intro-less character is a target")
@@ -193,15 +231,22 @@ type fakeJudge struct {
 	calls int
 }
 
-func (f *fakeJudge) Compare(_ context.Context, _, _, _ string, _ bool) (panelVote, error) {
-	v := f.votes[f.calls%len(f.votes)]
-	f.calls++
-	return v, nil
+func (f *fakeJudge) CompareBatch(_ context.Context, batch []comparison) []comparisonResult {
+	out := make([]comparisonResult, len(batch))
+	for i := range batch {
+		out[i] = comparisonResult{Vote: f.votes[f.calls%len(f.votes)]}
+		f.calls++
+	}
+	return out
 }
 
 func seedPanelFixture(t *testing.T) (workID, saya, rei int64) {
 	t.Helper()
-	require.NoError(t, testDB.Exec(`TRUNCATE catalog_work, catalog_character RESTART IDENTITY CASCADE`).Error)
+	// The verdict cache has no FK, so the CASCADE does not reach it — without
+	// the explicit truncate, a kept verdict recorded by one test suppresses the
+	// identical (RESTART IDENTITY) pair in the next.
+	require.NoError(t, testDB.Exec(`TRUNCATE catalog_work, catalog_character,
+		catalog_character_intro_panel_verdict RESTART IDENTITY CASCADE`).Error)
 	workID = seedWorkWithIntro(t, longIntro)
 	saya = seedRosterChar(t, workID, "沙耶")
 	rei = seedRosterChar(t, workID, "玲")
@@ -219,7 +264,7 @@ func seedPanelFixture(t *testing.T) (workID, saya, rei int64) {
 func TestRunPanelAdoptsUnanimousChallenger(t *testing.T) {
 	_, saya, _ := seedPanelFixture(t)
 
-	cands, err := loadPanelCandidateWorks(context.Background(), testDB, 0, 0)
+	cands, err := loadPanelCandidateWorks(context.Background(), testDB, candidateOpts{})
 	require.NoError(t, err)
 	require.Len(t, cands, 1)
 	require.Len(t, cands[0].Roster, 1, "only the translated-machine-row holder is a target")
@@ -242,7 +287,7 @@ func TestRunPanelAdoptsUnanimousChallenger(t *testing.T) {
 	assert.EqualValues(t, sourceDerived, rows[1].SourceID)
 	assert.Equal(t, "主人公的青梅竹马,性格开朗,总是照顾身边的每一个人。", rows[1].Intro)
 
-	cands, err = loadPanelCandidateWorks(context.Background(), testDB, 0, 0)
+	cands, err = loadPanelCandidateWorks(context.Background(), testDB, candidateOpts{})
 	require.NoError(t, err)
 	assert.Empty(t, cands, "a written derived row retires the character from the panel")
 }
@@ -258,6 +303,47 @@ func TestRunPanelKeepsIncumbentOnSplit(t *testing.T) {
 	require.NoError(t, testDB.Raw(`SELECT count(*) FROM catalog_character_intro
 		WHERE character_id = ? AND source_id = ?`, saya, sourceDerived).Scan(&n).Error)
 	assert.Zero(t, n, "a split panel must not write the derived row")
+}
+
+func TestPanelKeptVerdictCacheSkipsUnchangedPair(t *testing.T) {
+	workID, saya, _ := seedPanelFixture(t)
+
+	ex := fakeExtractor{out: map[string]string{"沙耶": "主人公的青梅竹马,性格开朗,总是照顾身边的每一个人。"}}
+	judge := &fakeJudge{votes: []panelVote{voteIncumbent}}
+	require.NoError(t, run(context.Background(), testDB, ex, judge, opts{Apply: true, Panel: true}))
+
+	var row struct {
+		SrcHash       string `gorm:"column:src_hash"`
+		IncumbentHash string `gorm:"column:incumbent_hash"`
+	}
+	require.NoError(t, testDB.Raw(`SELECT src_hash, incumbent_hash
+		FROM catalog_character_intro_panel_verdict
+		WHERE work_id = ? AND character_id = ?`, workID, saya).Scan(&row).Error)
+	assert.Equal(t, hashText(longIntro), row.SrcHash)
+	assert.Equal(t, hashText("既有机翻介绍。"), row.IncumbentHash)
+
+	cands, err := loadPanelCandidateWorks(context.Background(), testDB, candidateOpts{})
+	require.NoError(t, err)
+	assert.Empty(t, cands, "an unchanged (intro, incumbent) pair is not re-judged")
+
+	require.NoError(t, testDB.Exec(`UPDATE catalog_work_intro SET intro = intro || '新的结尾。'
+		WHERE work_id = ?`, workID).Error)
+	cands, err = loadPanelCandidateWorks(context.Background(), testDB, candidateOpts{})
+	require.NoError(t, err)
+	require.Len(t, cands, 1, "a changed work intro re-admits the pair")
+	assert.Equal(t, saya, cands[0].Roster[0].CharacterID)
+}
+
+func TestPanelDryRunRecordsNoVerdict(t *testing.T) {
+	seedPanelFixture(t)
+
+	ex := fakeExtractor{out: map[string]string{"沙耶": "主人公的青梅竹马,性格开朗,总是照顾身边的每一个人。"}}
+	judge := &fakeJudge{votes: []panelVote{voteIncumbent}}
+	require.NoError(t, run(context.Background(), testDB, ex, judge, opts{Panel: true}))
+
+	var n int64
+	require.NoError(t, testDB.Raw(`SELECT count(*) FROM catalog_character_intro_panel_verdict`).Scan(&n).Error)
+	assert.Zero(t, n, "a dry run must not write verdicts")
 }
 
 func TestRunRefusesInventedPassages(t *testing.T) {

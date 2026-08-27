@@ -37,9 +37,28 @@ func CredentialFrom(c fiber.Ctx) *Credential {
 	return cred
 }
 
+func WithCredential(c fiber.Ctx, cred *Credential) {
+	c.Locals(credLocalsKey, cred)
+}
+
+func (m *Middleware) Lookup(ctx context.Context, raw string) (*Credential, error) {
+	if IsV2KeyPrefix(raw) {
+		if !ValidV2Key(raw) {
+			return nil, nil
+		}
+	} else if !HasV1KeyPrefix(raw) {
+		return nil, nil
+	}
+	return m.resolve(ctx, raw)
+}
+
 func (m *Middleware) ResolveCredential(c fiber.Ctx) error {
 	raw := extractKey(c)
-	if !HasKeyPrefix(raw) {
+	if IsV2KeyPrefix(raw) {
+		if !ValidV2Key(raw) {
+			return resp401(c)
+		}
+	} else if !HasV1KeyPrefix(raw) {
 		return resp401(c)
 	}
 	cred, err := m.resolve(c.Context(), raw)
@@ -50,7 +69,7 @@ func (m *Middleware) ResolveCredential(c fiber.Ctx) error {
 	if cred == nil {
 		return resp401(c)
 	}
-	c.Locals(credLocalsKey, cred)
+	WithCredential(c, cred)
 	return c.Next()
 }
 
@@ -187,21 +206,6 @@ func RequireTier(tier string) fiber.Handler {
 		}
 		return c.Next()
 	}
-}
-
-func ResolveContentLimit(c fiber.Ctx, requested string) string {
-	if requested != "nsfw" && requested != "all" {
-		return "sfw"
-	}
-	if NSFWCapable(c) {
-		return requested
-	}
-	return "sfw"
-}
-
-func NSFWCapable(c fiber.Ctx) bool {
-	cred := CredentialFrom(c)
-	return cred != nil && cred.NSFWAllowed && cred.HasScope(ScopeGalgameNSFW)
 }
 
 func extractKey(c fiber.Ctx) string {

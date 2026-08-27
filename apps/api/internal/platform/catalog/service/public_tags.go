@@ -73,7 +73,7 @@ func (s *PublicService) TagDetail(ctx context.Context, id int64, withWorks, nsfw
 	return rec, true, nil
 }
 
-func (s *PublicService) tagIntros(ctx context.Context, tagID int64) ([]dto.PublicTagIntro, error) {
+func (s *PublicService) tagIntros(ctx context.Context, tagID int64) ([]dto.PublicIntro, error) {
 	var rows []struct {
 		Lang     string `gorm:"column:lang"`
 		Intro    string `gorm:"column:intro"`
@@ -86,14 +86,14 @@ func (s *PublicService) tagIntros(ctx context.Context, tagID int64) ([]dto.Publi
 		`, source_id`, tagID).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
-	out := make([]dto.PublicTagIntro, 0, len(rows))
+	out := make([]dto.PublicIntro, 0, len(rows))
 	seenLang := map[string]bool{}
 	for _, r := range rows {
 		if seenLang[r.Lang] {
 			continue
 		}
 		seenLang[r.Lang] = true
-		out = append(out, dto.PublicTagIntro{Lang: r.Lang, Intro: r.Intro, Source: s.sourceKey(r.SourceID)})
+		out = append(out, dto.PublicIntro{Lang: r.Lang, Intro: r.Intro, Source: s.sourceKey(r.SourceID)})
 	}
 	return out, nil
 }

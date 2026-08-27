@@ -1,27 +1,30 @@
-export const entityName = (data: Record<string, unknown>): string | null => {
-  const dn = data.display_name
-  if (typeof dn === 'string' && dn) return dn
-  const fromMap = (o: Record<string, unknown>): string | null => {
-    for (const k of ['zh_cn', 'zh-cn', 'zh', 'ja', 'en']) {
-      const v = o[k]
-      if (typeof v === 'string' && v) return v
-    }
-    const first = Object.values(o).find((v) => typeof v === 'string' && v)
-    return typeof first === 'string' ? first : null
+const LOCALE_ORDER = ['zh-Hans', 'zh-Hant', 'zh', 'ja', 'en']
+
+const str = (v: unknown): string | null =>
+  typeof v === 'string' && v ? v : null
+
+const fromLocalized = (v: unknown): string | null => {
+  if (!v || typeof v !== 'object') return null
+  const map = v as Record<string, unknown>
+  const at = (locale: string): string | null => {
+    const row = map[locale]
+    return row && typeof row === 'object'
+      ? str((row as Record<string, unknown>).value)
+      : null
   }
-  const n = data.name
-  if (typeof n === 'string' && n) return n
-  if (n && typeof n === 'object') {
-    const o = n as Record<string, unknown>
-    if (typeof o.name === 'string' && o.name) return o.name
-    if (typeof o.latin === 'string' && o.latin) return o.latin
-    const m = fromMap(o)
-    if (m) return m
+  for (const locale of LOCALE_ORDER) {
+    const value = at(locale)
+    if (value) return value
   }
-  const ns = data.names
-  if (ns && typeof ns === 'object') {
-    const m = fromMap(ns as Record<string, unknown>)
-    if (m) return m
+  for (const locale of Object.keys(map)) {
+    const value = at(locale)
+    if (value) return value
   }
   return null
 }
+
+export const entityName = (data: Record<string, unknown>): string | null =>
+  fromLocalized(data.localized) ??
+  str(data.display_name) ??
+  str(data.latin) ??
+  str(data.name)

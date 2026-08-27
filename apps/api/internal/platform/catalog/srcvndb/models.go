@@ -71,6 +71,21 @@ type VN struct {
 
 func (VN) TableName() string { return "src_vndb.vn" }
 
+// VNTitle is the VN-grain title table. It is NOT releases_titles: a release
+// title is packaging ("… 初回限定版", "… 18+ Patch") and stamps bundle names on
+// every VN a compilation contains, which is why the zh source lane has to
+// filter it. vn.olang carries an upstream FK to vn_titles(id, lang), so every
+// VN has a row for its own original language.
+type VNTitle struct {
+	ID       string `gorm:"primaryKey;column:id" json:"id"`
+	Lang     string `gorm:"primaryKey;column:lang" json:"lang"`
+	Official bool   `gorm:"not null" json:"official"`
+	Title    string `gorm:"not null" json:"title"`
+	Latin    string `gorm:"not null" json:"latin"`
+}
+
+func (VNTitle) TableName() string { return "src_vndb.vn_titles" }
+
 // Staged from the separate votes dump, not from the database dump. That dump
 // omits every vote cast by a user whose list is private, so Total is at most
 // VN.CVotecount and typically a few percent under it — the two are different

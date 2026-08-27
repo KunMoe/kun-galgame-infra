@@ -103,6 +103,11 @@ const (
 	ErrImageNotFound         = 80013
 	ErrImageBadRequest       = 80014
 	ErrImageUploadDisabled   = 80015
+
+	ErrStoreInvalidProduct  = 90001
+	ErrStoreQuotaExceeded   = 90002
+	ErrStoreLinkUnavailable = 90003
+	ErrStoreUnconfigured    = 90004
 )
 
 var codeMessages = map[int]string{
@@ -208,6 +213,11 @@ var codeMessages = map[int]string{
 	ErrImageNotFound:         "图片不存在",
 	ErrImageBadRequest:       "请求格式错误",
 	ErrImageUploadDisabled:   "图片上传功能暂未开放，敬请期待",
+
+	ErrStoreInvalidProduct:  "无效的 DLsite 商品号",
+	ErrStoreQuotaExceeded:   "该应用的分销链接配额已用尽",
+	ErrStoreLinkUnavailable: "短链服务暂不可用，请稍后重试",
+	ErrStoreUnconfigured:    "分销链接服务未配置",
 }
 
 func GetMessage(code int) string {

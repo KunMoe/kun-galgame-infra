@@ -36,7 +36,7 @@ func TestApplyReviewedCSVWritesMachineRows(t *testing.T) {
 		{itoa(skipped), "レナ", "", "w3", "1", "SKIP", "glm-5.2"},   // model declined
 		{"999999", "ゴースト", "", "", "0", "幽灵", "glm-5.2"},         // character gone
 	})
-	require.NoError(t, runApplyCSV(context.Background(), testDB, path, 0))
+	require.NoError(t, runApplyCSV(context.Background(), testDB, path, 0, 0))
 
 	rows := loadAliases(t, alice)
 	require.Len(t, rows, 1)
@@ -57,7 +57,7 @@ func TestApplyReviewedCSVDropsIdentityProposals(t *testing.T) {
 		{"character_id", "name", "latin", "works", "uses", "proposed_zh", "model"},
 		{itoa(id), "雪村時音", "", "", "1", "雪村時音", "glm-5.2"},
 	})
-	require.NoError(t, runApplyCSV(context.Background(), testDB, path, 0))
+	require.NoError(t, runApplyCSV(context.Background(), testDB, path, 0, 0))
 	assert.Empty(t, loadAliases(t, id), "an identity proposal is the passthrough lane's call, not the model's")
 }
 
@@ -68,8 +68,8 @@ func TestApplyReviewedCSVIsIdempotent(t *testing.T) {
 		{"character_id", "name", "latin", "works", "uses", "proposed_zh", "model"},
 		{itoa(id), "アリス", "", "", "1", "爱丽丝", "glm-5.2"},
 	})
-	require.NoError(t, runApplyCSV(context.Background(), testDB, path, 0))
-	require.NoError(t, runApplyCSV(context.Background(), testDB, path, 0))
+	require.NoError(t, runApplyCSV(context.Background(), testDB, path, 0, 0))
+	require.NoError(t, runApplyCSV(context.Background(), testDB, path, 0, 0))
 	assert.Len(t, loadAliases(t, id), 1)
 }
 
@@ -105,8 +105,8 @@ func seedWorkWithCharacter(t *testing.T, charID int64) int64 {
 		 extra, field_provenance, created_at, updated_at)
 		VALUES (1, 'ja', 'テスト作品', 0, 0, false, '{}', '{}', now(), now()) RETURNING id`).Scan(&workID).Error)
 	require.NoError(t, testDB.Exec(`INSERT INTO catalog_work_title
-		(work_id, lang, title, kind)
-		VALUES (?, 'ja', 'テスト作品', 0)`, workID).Error)
+		(work_id, lang, title, kind, provenance)
+		VALUES (?, 'ja', 'テスト作品', 0, 0)`, workID).Error)
 	require.NoError(t, testDB.Exec(`INSERT INTO catalog_work_character
 		(work_id, character_id, kind, spoiler, matched_by, created_at, updated_at)
 		VALUES (?, ?, 0, 0, 'test', now(), now())`, workID, charID).Error)

@@ -23,7 +23,14 @@ export default defineNuxtConfig({
           sizes: '16x16',
           href: '/favicon-16x16.png'
         },
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+        { rel: 'alternate', type: 'text/plain', href: '/llms.txt', title: 'llms.txt' },
+        {
+          rel: 'alternate',
+          type: 'text/plain',
+          href: '/llms-full.txt',
+          title: 'llms-full.txt'
+        }
       ]
     }
   },

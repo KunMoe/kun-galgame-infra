@@ -196,46 +196,6 @@ func TestRequireTier(t *testing.T) {
 	}
 }
 
-func TestContentLimitGate(t *testing.T) {
-	run := func(cred *Credential, requested string) string {
-		app := fiber.New()
-		var got string
-		app.Get("/", func(c fiber.Ctx) error {
-			c.Locals(credLocalsKey, cred)
-			got = ResolveContentLimit(c, requested)
-			return c.SendStatus(fiber.StatusOK)
-		})
-		_, _ = app.Test(httptest.NewRequest("GET", "/", nil))
-		return got
-	}
-
-	if cl := run(&Credential{}, "nsfw"); cl != "sfw" {
-		t.Errorf("no scope/flag: content_limit = %q, want sfw", cl)
-	}
-	if cl := run(&Credential{NSFWAllowed: true}, "nsfw"); cl != "sfw" {
-		t.Errorf("flag but no scope: content_limit = %q, want sfw", cl)
-	}
-	if cl := run(&Credential{NSFWAllowed: true, Scopes: []string{ScopeGalgameNSFW}}, "nsfw"); cl != "nsfw" {
-		t.Errorf("scope+flag: content_limit = %q, want nsfw", cl)
-	}
-	if cl := run(&Credential{NSFWAllowed: true, Scopes: []string{ScopeGalgameNSFW}}, "sfw"); cl != "sfw" {
-		t.Errorf("requested sfw: content_limit = %q, want sfw", cl)
-	}
-
-	authorized := &Credential{NSFWAllowed: true, Scopes: []string{ScopeGalgameNSFW}}
-	if cl := run(authorized, "all"); cl != "all" {
-		t.Errorf("scope+flag requesting all: content_limit = %q, want all", cl)
-	}
-	for _, req := range []string{"sfw", "nsfw", "all", ""} {
-		if cl := run(&Credential{}, req); cl != "sfw" {
-			t.Errorf("no-scope key requesting %q: content_limit = %q, want sfw", req, cl)
-		}
-	}
-	if cl := run(&Credential{NSFWAllowed: true}, "all"); cl != "sfw" {
-		t.Errorf("flag but no scope requesting all: content_limit = %q, want sfw", cl)
-	}
-}
-
 func TestResolveCacheHit(t *testing.T) {
 	store := newMemStore()
 	m := NewMiddleware(nil, store)

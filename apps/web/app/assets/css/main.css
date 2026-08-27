@@ -38,14 +38,3 @@
   --radius-xl: calc(0.75rem * var(--kun-radius-scale, 1));
   --radius-2xl: calc(1rem * var(--kun-radius-scale, 1));
 }
-
-/*
- * Opaque modal panels. KunUI's .kun-modal-panel is `bg-content1/85` (translucent)
- * — too see-through here. Force solid content1 (adapts light/dark via --content1).
- * Unlayered → wins over the Tailwind utilities layer. We deliberately KEEP the
- * panel's kun-backdrop blur (invisible behind the now-opaque bg) so the panel's
- * compositing — and therefore its open/close transform animation — is unchanged.
- */
-.kun-modal-panel {
-  background-color: oklch(var(--content1));
-}

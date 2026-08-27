@@ -1,17 +1,37 @@
 <script setup lang="ts">
-import { DEV_TIER_COLORS, MAX_APPS_PER_ACCOUNT } from '~/constants/dev'
-import type { DevApp } from '~~/shared/types/dev'
+import {
+  DEV_APP_REVIEW_COLORS,
+  DEV_APP_REVIEW_LABELS,
+  DEV_CAP_APP_CREATE,
+  DEV_DISABLED_HINT,
+  DEV_TIER_COLORS,
+  MAX_APPS_PER_ACCOUNT
+} from '~/constants/dev'
+import type { DevApp, DevPolicies } from '~~/shared/types/dev'
 
 useSeoMeta({ title: '控制台', robots: 'noindex' })
 
 const { data: appsData, refresh } = await useApiFetch<DevApp[]>('/dev/apps')
+const { data: policiesData } = await useApiFetch<DevPolicies>('/dev/policies')
+
 const apps = computed(() => appsData.value ?? [])
+const createMode = computed(
+  () => policiesData.value?.[DEV_CAP_APP_CREATE] ?? 'self_service'
+)
+const createDisabled = computed(() => createMode.value === 'disabled')
+const needsApproval = computed(() => createMode.value === 'approval')
 
 const showCreate = ref(false)
 const atLimit = computed(() => apps.value.length >= MAX_APPS_PER_ACCOUNT)
+const cannotCreate = computed(() => atLimit.value || createDisabled.value)
+
+const reviewChip = (app: DevApp) => {
+  const status = app.review_status
+  if (status !== 'pending' && status !== 'declined') return null
+  return { label: DEV_APP_REVIEW_LABELS[status], color: DEV_APP_REVIEW_COLORS[status] }
+}
 
 const handleCreated = () => {
-  showCreate.value = false
   refresh()
 }
 </script>
@@ -28,12 +48,28 @@ const handleCreated = () => {
       </div>
       <KunButton
         color="primary"
-        :disabled="atLimit"
+        :disabled="cannotCreate"
         @click="showCreate = true"
       >
         <KunIcon name="lucide:plus" class="mr-1 size-4" />
         创建应用
       </KunButton>
+    </div>
+
+    <div
+      v-if="createDisabled"
+      class="rounded-lg bg-danger-50 p-3 text-sm text-danger"
+    >
+      <KunIcon name="lucide:info" class="mr-1 inline size-4" />
+      {{ DEV_DISABLED_HINT }}：平台暂不接受新应用注册，已有应用不受影响。
+    </div>
+
+    <div
+      v-else-if="needsApproval"
+      class="rounded-lg bg-warning-50 p-3 text-sm text-warning"
+    >
+      <KunIcon name="lucide:info" class="mr-1 inline size-4" />
+      新应用需经平台审核后才会启用，审核通过前无法铸造密钥。
     </div>
 
     <div
@@ -67,6 +103,14 @@ const handleCreated = () => {
                 size="xs"
               >
                 {{ app.tier }}
+              </KunChip>
+              <KunChip
+                v-if="reviewChip(app)"
+                :color="reviewChip(app)!.color"
+                variant="flat"
+                size="xs"
+              >
+                {{ reviewChip(app)!.label }}
               </KunChip>
             </div>
             <KunIcon
@@ -111,7 +155,12 @@ const handleCreated = () => {
         <p class="mt-1 text-sm text-default-500">
           创建第一个应用,即可领取密钥并调用开放 API。
         </p>
-        <KunButton color="primary" class="mt-4" @click="showCreate = true">
+        <KunButton
+          color="primary"
+          class="mt-4"
+          :disabled="createDisabled"
+          @click="showCreate = true"
+        >
           <KunIcon name="lucide:plus" class="mr-1 size-4" />
           创建应用
         </KunButton>
@@ -119,8 +168,8 @@ const handleCreated = () => {
     </KunCard>
 
     <DashboardCreateAppModal
-      v-if="showCreate"
-      @close="showCreate = false"
+      v-model:open="showCreate"
+      :needs-approval="needsApproval"
       @created="handleCreated"
     />
   </div>

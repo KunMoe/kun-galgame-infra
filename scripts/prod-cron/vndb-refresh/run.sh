@@ -23,16 +23,26 @@ mkdir -p logs state
 LOG="logs/run-$(date -u +%F).log"
 exec >>"$LOG" 2>&1
 exec 9>"$BASE/.lock"; flock -n 9 || { echo "another run holds the lock; exit"; exit 0; }
+LOCKED=1
 # Report the outcome. A failing run alerts immediately; a succeeding run
 # stamps state/last-success, which is what /root/lib/watchdog.sh reads to
 # notice a job that has silently stopped running at all — the failure mode a
 # trap inside this script can never see, because it looks exactly like
 # silence. An alert that cannot be delivered must not fail the run itself.
+#
+# The stamp is also gated on LOCKED, set only after the flock above succeeds.
+# A run that skipped because a PREVIOUS one is still holding the lock did no
+# work, and stamping for it would turn a permanently hung run into a silent
+# weekly no-op the watchdog reads as healthy — the one failure the watchdog
+# exists to catch. Today the lock-skip also exits above this trap, so the gate
+# is redundant; it stops being redundant the moment someone moves the trap up
+# to "define cleanup first", which reads like a tidy-up and is not one. The
+# "no new dump" skip below DOES stamp: that path ran and found nothing to do.
 on_exit() {
   rc=$?
   rm -rf dump.tar.zst dump votes.gz
   if [ -f env.tmp ]; then shred -u env.tmp; fi
-  if [ "$rc" -eq 0 ]; then
+  if [ "$rc" -eq 0 ] && [ "${LOCKED:-0}" = 1 ]; then
     date -u '+%F %T' > "$BASE/state/last-success"
   else
     echo "=== FAILED (exit $rc) - sending alert ==="
@@ -92,7 +102,7 @@ echo "dump timestamp: $(cat dump/TIMESTAMP 2>/dev/null || echo unknown)"
 # Every staged table must be present BEFORE the first TRUNCATE: each file is
 # its own transaction, so a file missing halfway through would leave earlier
 # tables replaced and later ones stale — a torn staging schema.
-FILES="vn chars chars_names chars_vns images vn_relations staff staff_alias
+FILES="vn vn_titles chars chars_names chars_vns images vn_relations staff staff_alias
 vn_staff vn_seiyuu traits traits_parents chars_traits tags tags_parents tags_vn
 producers releases releases_vn releases_producers releases_platforms
 releases_titles extlinks releases_extlinks vn_extlinks producers_extlinks
@@ -147,7 +157,7 @@ run() {
 # slower but bounded. Remove once the compose sets shm_size on postgres.
 DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$KUN_PG_PASSWORD}"; B="host=127.0.0.1 port=5432 user=$U password=$P sslmode=disable options='"'"'-c max_parallel_workers_per_gather=0'"'"'"; CAT="$B dbname=kun_catalog"; EG="$B dbname=erogamescape"; DL="$B dbname=dlsite"'
 
-# 4. Re-stage the 28 src_vndb tables plus vn_vote_stats (env-config tool, no --dsn).
+# 4. Re-stage the 29 src_vndb tables plus vn_vote_stats (env-config tool, no --dsn).
 run ingest-vndb --dump-dir /w/dump/db --votes-file /w/votes.gz
 
 # 5. Resurrection tripwire, BEFORE any Gold write.
@@ -194,6 +204,44 @@ echo "roster plans $PLANNED new characters (ceiling $ROSTER_CEILING)"
 #     dead in one transaction and strip every VNDB link from the site.
 run sh -c "$DSNSH"'; audit-vndb-anchors --dsn "$CAT" --apply'
 
+# 5c. Mint stage — admit VNs that have appeared upstream since the last run as
+#     new catalog works. Until wave 211 nothing did this: every VNDB consumer
+#     below is gated on works that ALREADY carry an exact vndb anchor, so a VN
+#     that no work pointed at could never become one and the mirror grew
+#     without the catalog following. It runs here, after the tripwire and the
+#     audit, because the tripwire's charter is "before any Gold write" and this
+#     step is one.
+#
+#     Admission is finished + in-development only; cancelled VNs stay out
+#     (the ~1,500 cancelled entries already carrying anchors are historic
+#     accidents, not a precedent). A vid is taken as claimed by an anchor of
+#     ANY link_kind, not just exact — a merge demotes both surviving exacts to
+#     probable, and minting a probably-linked vid would resurrect exactly what
+#     the merge folded away.
+#
+#     WHY the ceiling: organic weekly growth is a few dozen VNs. A plan past
+#     the ceiling means either the anchor table lost rows or step 4 staged a
+#     partial vn table, and either way the run must stop before it mints
+#     thousands of duplicate works — a mint is far more expensive to undo than
+#     to skip.
+#     NOTE for the first armed run: the historic backlog is ~480 unanchored
+#     finished/in-dev VNs accumulated since the anchors were first built, so
+#     the first pass WILL trip this ceiling. Drain it by hand in canary slices
+#     (`import-vndb-works --limit 100 --apply`, inspect, repeat) before letting
+#     the weekly job own it; do not just raise the number.
+VNDB_WORKS_CEILING=300
+run import-vndb-works > state/vndb-works-dry.log 2>&1 || {
+  echo "FATAL: vndb works dry run failed"; cat state/vndb-works-dry.log; exit 1; }
+WPLANNED=$(sed -n 's/.*works_created=\([0-9]*\).*/\1/p' state/vndb-works-dry.log | tail -1)
+[ -n "$WPLANNED" ] || { echo "FATAL: could not read works_created from the vndb works dry run"; cat state/vndb-works-dry.log; exit 1; }
+echo "vndb-works plans $WPLANNED new works (ceiling $VNDB_WORKS_CEILING)"
+[ "$WPLANNED" -le "$VNDB_WORKS_CEILING" ] || {
+  echo "FATAL: vndb work mint plan $WPLANNED exceeds the ceiling — the anchor table or"
+  echo "       the staged vn table may be short. Inspect state/vndb-works-dry.log, then"
+  echo "       drain the backlog in canary slices before re-arming."
+  exit 1; }
+run import-vndb-works --apply
+
 # 6. Family re-run: identity/anchors first, then edges, then derived.
 #    All steps are idempotent (upsert / ON CONFLICT DO NOTHING / change-detected
 #    or a whole-lane rebuild). A failure aborts the run and leaves
@@ -221,6 +269,14 @@ run import-galgame-credits --source vndb --apply
 #      r-ids whose anchor sits under a work upstream no longer maps them to.
 #      It blocks nothing; a non-empty file means there is adjudication waiting.
 run import-vndb-releases --apply --stale-anchors-out /w/stale-anchors.tsv
+
+# 6a3. Chinese source titles. It reads the release titles 6a2 just refreshed and
+#      fills the zh slot of any work that has no SOURCE Chinese title yet, which
+#      is every work 5c minted a few minutes ago. Fill-missing only: a title a
+#      human published is never overwritten, and a machine title is superseded
+#      rather than duplicated. Prod-proven idempotent (wave 210: a second pass
+#      wrote zero).
+run sh -c "$DSNSH"'; backfill-work-zh-titles --dsn "$CAT" --mode source --source vndb --apply'
 
 # 6b. Character facets for the characters 6a just created.
 run sh -c "$DSNSH"'; import-character-traits --dsn "$CAT" --apply'

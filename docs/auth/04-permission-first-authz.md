@@ -132,7 +132,8 @@ type NonDelegable map[Permission]bool      // 叠加层永不可授予的键(§7
 | `oauth.clients.privileged_config` | ren | 敏感客户端字段(ren-only scope / auto_consent / display_order) |
 | `oauth.sites.manage_all` | ren | 跨创建者管理站点与 OAuth 客户端;**没有此键的 admin 只看得见、只改得动自己创建的行**(`sites.created_by_user_id` / `oauth_clients.created_by_user_id`;NULL 归属者=历史行与开发者门户应用,仅 ren 可及);**不可委派** |
 | `artifact.files.manage` | ren | artifact 文件浏览/删除/回收 |
-| `devapi.manage` | admin, ren | 开发者平台管理面(启用应用 / tier / 铸·轮换·吊销 key) |
+| `devapi.manage` | admin, ren | 开发者平台管理面(启用应用 / tier / 铸·轮换·吊销 key / 审 scope 申请与应用申请) |
+| `devapi.policy_manage` | ren | 改开发者平台策略矩阵(自助创建/需审批/关闭,以及自助管理应用与密钥);矩阵对 admin 只读可见;**不可委派** |
 
 > **`edit.*` 命名段说明**:编辑引擎的字段策略键以 `edit.<entity 全名>` 起头
 > (`edit.galgame.game.*` / `edit.catalog.work*` / `edit.catalog.taxonomy*`),

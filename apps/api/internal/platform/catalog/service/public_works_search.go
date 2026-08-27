@@ -38,6 +38,7 @@ type WorksSearchFilter struct {
 	Page           int
 	Limit          int
 	Include        WorksListInclude
+	Fields         PublicFields
 	SearchIntro    bool
 }
 
@@ -47,6 +48,7 @@ var worksSearchFacetAttr = map[string]string{
 	"claimed":        "claimed",
 	"tag_id":         "tag_ids",
 	"label_id":       "label_ids",
+	"company_id":     "label_ids",
 	"engine_id":      "engine_ids",
 	"series_id":      "series_ids",
 	"source":         "source_keys",
@@ -126,7 +128,7 @@ func (s *PublicService) WorksSearch(ctx context.Context, f WorksSearchFilter) (d
 		return dto.PublicWorksSearchData{}, err
 	}
 
-	items, err := s.hydrateWorkIDs(ctx, res.IDs, f.NSFW, f.Include)
+	items, err := s.hydrateWorkIDs(ctx, res.IDs, f.NSFW, f.Include, f.Fields)
 	if err != nil {
 		return dto.PublicWorksSearchData{}, err
 	}
@@ -253,7 +255,7 @@ func normalizeVNDBID(q string) string {
 	return strings.ToLower(q)
 }
 
-func (s *PublicService) hydrateWorkIDs(ctx context.Context, ids []int64, nsfw bool, inc WorksListInclude) ([]dto.PublicWorkListItem, error) {
+func (s *PublicService) hydrateWorkIDs(ctx context.Context, ids []int64, nsfw bool, inc WorksListInclude, sel PublicFields) ([]dto.PublicWorkListItem, error) {
 	if len(ids) == 0 {
 		return []dto.PublicWorkListItem{}, nil
 	}
@@ -296,5 +298,5 @@ func (s *PublicService) hydrateWorkIDs(ctx context.Context, ids []int64, nsfw bo
 			src = append(src, row)
 		}
 	}
-	return s.enrichWorkListItems(ctx, src, nsfw, inc)
+	return s.enrichWorkListItems(ctx, src, nsfw, inc, sel)
 }

@@ -1,12 +1,8 @@
 <script setup lang="ts">
+import { docsFaceLabel } from '~/constants/docs'
 import type { DevUsageDayFace } from '~~/shared/types/dev'
 
 defineProps<{ rows: DevUsageDayFace[] }>()
-
-const faceLabel: Record<string, string> = {
-  galgame: 'Galgame',
-  catalog: 'Catalog'
-}
 </script>
 
 <template>
@@ -16,7 +12,7 @@ const faceLabel: Record<string, string> = {
         <thead>
           <tr class="border-b border-default-200 text-left text-default-400">
             <th class="px-4 py-2 font-medium">日期</th>
-            <th class="px-4 py-2 font-medium">面</th>
+            <th class="px-4 py-2 font-medium">接口</th>
             <th class="px-4 py-2 text-right font-medium">请求数</th>
             <th class="px-4 py-2 text-right font-medium">4xx</th>
             <th class="px-4 py-2 text-right font-medium">5xx</th>
@@ -32,7 +28,7 @@ const faceLabel: Record<string, string> = {
             <td class="px-4 py-2 font-mono text-default-500">{{ row.day }}</td>
             <td class="px-4 py-2">
               <KunChip color="default" variant="flat" size="xs">
-                {{ faceLabel[row.face] ?? row.face }}
+                {{ docsFaceLabel(row.face) }}
               </KunChip>
             </td>
             <td class="px-4 py-2 text-right font-medium text-foreground">

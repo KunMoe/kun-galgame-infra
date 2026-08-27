@@ -40,35 +40,35 @@ func RegisterPlaytimeOps(api huma.API, svc *service.UserPlaytimeService) {
 	huma.Register(api, huma.Operation{
 		OperationID: "reportPlaytime", Method: http.MethodPut,
 		Path:    PlaytimePrefix + "/works/{workID}",
-		Summary: "Report the bearer token's own playtime on a work. The body carries the ABSOLUTE cumulative total in minutes, never a delta — re-sending the same number is a no-op, which makes the call safe to retry. Keyed by (user, work, client): a second app of the same user reports alongside, not over. Requires playtime:write",
+		Summary: "Report the bearer token's own playtime on a work. The body carries the ABSOLUTE cumulative total in minutes, never a delta — re-sending the same number is a no-op, which makes the call safe to retry. Keyed by (user, work, client): a second app of the same user reports alongside, not over. Any app with a user access token may call this; playtime:write is not required.",
 		Tags:    tags,
 	}, s.report)
 
 	huma.Register(api, huma.Operation{
 		OperationID: "reportPlaytimeByRef", Method: http.MethodPut,
 		Path:    PlaytimePrefix + "/by-ref/{source}/{externalID}",
-		Summary: "Report playtime addressing the work by an external id the client already holds (vndb/dlsite/getchu/bangumi …) instead of a catalog work id. Only EXACT anchors resolve; the response echoes the resolved work_id, which the client should cache. 404 when nothing is anchored to that id. Requires playtime:write",
+		Summary: "Report playtime addressing the work by an external id the client already holds (vndb/dlsite/getchu/bangumi …) instead of a catalog work id. Only EXACT anchors resolve; the response echoes the resolved work_id, which the client should cache. 404 when nothing is anchored to that id. Any app with a user access token may call this; playtime:write is not required.",
 		Tags:    tags,
 	}, s.reportByRef)
 
 	huma.Register(api, huma.Operation{
 		OperationID: "reportPlaytimeBatch", Method: http.MethodPost,
 		Path:    PlaytimePrefix + "/batch",
-		Summary: "Report up to 200 works in one call — the first-login library sync. Each item is accepted or rejected on its own and the response reports per-item outcomes; a single bad item never fails the batch. Requires playtime:write",
+		Summary: "Report up to 200 works in one call — the first-login library sync. Each item is accepted or rejected on its own and the response reports per-item outcomes; a single bad item never fails the batch. Any app with a user access token may call this; playtime:write is not required.",
 		Tags:    tags,
 	}, s.reportBatch)
 
 	huma.Register(api, huma.Operation{
 		OperationID: "listOwnPlaytime", Method: http.MethodGet,
 		Path:    PlaytimePrefix + "/mine",
-		Summary: "Page the bearer token's own playtime rows in (updated_at) order — the sync-back leg for a second device. Hand `cursor` back as ?updated_since= to fetch only what changed. Requires playtime:read",
+		Summary: "Page the bearer token's own playtime rows in (updated_at) order — the sync-back leg for a second device. Hand `cursor` back as ?updated_since= to fetch only what changed. Any app with a user access token may call this; playtime:read is not required.",
 		Tags:    tags,
 	}, s.listMine)
 
 	huma.Register(api, huma.Operation{
 		OperationID: "getOwnPlaytimeForWork", Method: http.MethodGet,
 		Path:    PlaytimePrefix + "/works/{workID}",
-		Summary: "The bearer token's own playtime on ONE work, folded across their applications (MAX minutes — two apps watching one save file are not two playthroughs). `playtime` is null when the user has never reported here; that is a 200, not a 404. This is the call a rating form makes to offer 'you played 30h — attach it?'. Requires playtime:read",
+		Summary: "The bearer token's own playtime on ONE work, folded across their applications (MAX minutes — two apps watching one save file are not two playthroughs). `playtime` is null when the user has never reported here; that is a 200, not a 404. This is the call a rating form makes to offer 'you played 30h — attach it?'. Any app with a user access token may call this; playtime:read is not required.",
 		Tags:    tags,
 	}, s.getMine)
 }
@@ -100,9 +100,6 @@ type playtimeRecordOutput struct {
 }
 
 func (s *PlaytimeServer) report(ctx context.Context, in *playtimeReportInput) (*playtimeRecordOutput, error) {
-	if he := requireScope(ctx, ScopePlaytimeWrite); he != nil {
-		return nil, he
-	}
 	uid, clientID, he := playtimeActor(ctx)
 	if he != nil {
 		return nil, he
@@ -121,9 +118,6 @@ type playtimeByRefInput struct {
 }
 
 func (s *PlaytimeServer) reportByRef(ctx context.Context, in *playtimeByRefInput) (*playtimeRecordOutput, error) {
-	if he := requireScope(ctx, ScopePlaytimeWrite); he != nil {
-		return nil, he
-	}
 	uid, clientID, he := playtimeActor(ctx)
 	if he != nil {
 		return nil, he
@@ -185,9 +179,6 @@ type playtimeBatchOutput struct {
 }
 
 func (s *PlaytimeServer) reportBatch(ctx context.Context, in *playtimeBatchInput) (*playtimeBatchOutput, error) {
-	if he := requireScope(ctx, ScopePlaytimeWrite); he != nil {
-		return nil, he
-	}
 	uid, clientID, he := playtimeActor(ctx)
 	if he != nil {
 		return nil, he
@@ -257,9 +248,6 @@ type playtimeMineOutput struct {
 }
 
 func (s *PlaytimeServer) listMine(ctx context.Context, in *playtimeMineInput) (*playtimeMineOutput, error) {
-	if he := requireScope(ctx, ScopePlaytimeRead); he != nil {
-		return nil, he
-	}
 	uid := userIDFromCtx(ctx)
 	var since time.Time
 	if in.UpdatedSince != "" {
@@ -298,9 +286,6 @@ type playtimeSelfOutput struct {
 }
 
 func (s *PlaytimeServer) getMine(ctx context.Context, in *playtimeSelfInput) (*playtimeSelfOutput, error) {
-	if he := requireScope(ctx, ScopePlaytimeRead); he != nil {
-		return nil, he
-	}
 	uid := userIDFromCtx(ctx)
 	got, err := s.svc.GetMine(ctx, uid, in.WorkID)
 	if err != nil {

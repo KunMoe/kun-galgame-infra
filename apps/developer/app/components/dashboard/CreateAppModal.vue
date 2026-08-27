@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import type { DevApp } from '~~/shared/types/dev'
 
-const emit = defineEmits<{ close: []; created: [DevApp] }>()
+const props = defineProps<{ needsApproval?: boolean }>()
+const emit = defineEmits<{ created: [DevApp] }>()
 
+const open = defineModel<boolean>('open', { required: true })
 const api = useApi()
-const show = ref(true)
 
 const name = ref('')
 const description = ref('')
 const error = ref('')
 const isLoading = ref(false)
 
-watch(show, (val) => {
-  if (!val) emit('close')
+watch(open, (val) => {
+  if (!val) return
+  name.value = ''
+  description.value = ''
+  error.value = ''
 })
 
 const handleSubmit = async () => {
@@ -27,7 +31,11 @@ const handleSubmit = async () => {
     if (description.value.trim()) body.description = description.value.trim()
     const res = await api.post<DevApp>('/dev/apps', body)
     if (res.code === 0 && res.data) {
-      useKunMessage('应用已创建', 'success')
+      useKunMessage(
+        props.needsApproval ? '已提交，等待平台审核' : '应用已创建',
+        'success'
+      )
+      open.value = false
       emit('created', res.data)
     } else {
       error.value = res.message || '创建失败'
@@ -39,9 +47,16 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="show" size="md">
+  <KunModal v-model="open" size="md" aria-label="创建应用">
     <div class="space-y-4">
       <h2 class="text-xl font-bold text-foreground">创建应用</h2>
+
+      <p
+        v-if="needsApproval"
+        class="rounded-lg bg-warning-50 p-3 text-sm text-warning"
+      >
+        平台当前对新应用启用审核：提交后应用先进入待审核，通过后才启用并可铸造密钥。
+      </p>
 
       <KunInput
         v-model="name"
@@ -61,7 +76,7 @@ const handleSubmit = async () => {
       </div>
 
       <div class="flex justify-end gap-3">
-        <KunButton color="default" variant="flat" @click="show = false">
+        <KunButton color="default" variant="flat" @click="open = false">
           取消
         </KunButton>
         <KunButton color="primary" :disabled="isLoading" @click="handleSubmit">

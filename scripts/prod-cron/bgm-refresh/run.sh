@@ -13,16 +13,26 @@ mkdir -p logs state
 LOG="logs/run-$(date -u +%F).log"
 exec >>"$LOG" 2>&1
 exec 9>"$BASE/.lock"; flock -n 9 || { echo "another run holds the lock; exit"; exit 0; }
+LOCKED=1
 # Report the outcome. A failing run alerts immediately; a succeeding run
 # stamps state/last-success, which is what /root/lib/watchdog.sh reads to
 # notice a job that has silently stopped running at all — the failure mode a
 # trap inside this script can never see, because it looks exactly like
 # silence. An alert that cannot be delivered must not fail the run itself.
+#
+# The stamp is also gated on LOCKED, set only after the flock above succeeds.
+# A run that skipped because a PREVIOUS one is still holding the lock did no
+# work, and stamping for it would turn a permanently hung run into a silent
+# weekly no-op the watchdog reads as healthy — the one failure the watchdog
+# exists to catch. Today the lock-skip also exits above this trap, so the gate
+# is redundant; it stops being redundant the moment someone moves the trap up
+# to "define cleanup first", which reads like a tidy-up and is not one. The
+# "no new dump" skip below DOES stamp: that path ran and found nothing to do.
 on_exit() {
   rc=$?
   rm -f dump.zip
   if [ -f env.tmp ]; then shred -u env.tmp; fi
-  if [ "$rc" -eq 0 ]; then
+  if [ "$rc" -eq 0 ] && [ "${LOCKED:-0}" = 1 ]; then
     date -u '+%F %T' > "$BASE/state/last-success"
   else
     echo "=== FAILED (exit $rc) - sending alert ==="
@@ -103,6 +113,12 @@ run sh -c "$DSNSH"'; backfill-entity-intros --dsn "$CAT" --eg-dsn "$EG" --apply'
 # tool's flags change in infra, fix this file in the same PR.
 run sh -c "$DSNSH"'; backfill-release-meta --dsn "$CAT" --dlsite-dsn "$DL" --eg-dsn "$EG" --apply'
 run sh -c "$DSNSH"'; backfill-bgm-work-meta --dsn "$CAT" --apply'
+# Chinese source titles from the subject.name_cn the ingest above just
+# replaced — work-level metadata, so it belongs beside the meta step rather
+# than with the edge tools. Fill-missing only: a title a human published is
+# never overwritten, and a machine title is superseded rather than duplicated.
+# Prod-proven idempotent (wave 210: a second pass wrote zero).
+run sh -c "$DSNSH"'; backfill-work-zh-titles --dsn "$CAT" --mode source --source bgm --apply'
 run import-galgame-credits --source bangumi --apply
 run import-work-relations --source all --run
 # Derived series (wave 184): re-cluster the grown relation graph. Reaper

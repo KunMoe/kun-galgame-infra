@@ -14,7 +14,6 @@ type DeveloperAPIKey struct {
 	KeyPrefix       string         `gorm:"size:24;not null;index" json:"key_prefix"`
 	Last4           string         `gorm:"size:4;not null" json:"last4"`
 	Scopes          datatypes.JSON `gorm:"type:jsonb;not null" json:"scopes"`
-	NSFWAllowed     bool           `gorm:"not null" json:"nsfw_allowed"`
 	ExpiresAt       *time.Time     `json:"expires_at,omitempty"`
 	RevokedAt       *time.Time     `json:"revoked_at,omitempty"`
 	LastUsedAt      *time.Time     `json:"last_used_at,omitempty"`
@@ -45,8 +44,14 @@ type DeveloperAPIUsage struct {
 	// Those two faces retired in wave-161 P5, but the column stays 40: historical
 	// usage rows still carry their names, and re-narrowing a varchar is how a
 	// future long face gets silently truncated instead of loudly rejected.
-	Face  string `gorm:"size:40;not null;uniqueIndex:idx_usage_day,priority:3" json:"face"`
-	Day   string `gorm:"size:10;not null;uniqueIndex:idx_usage_day,priority:4" json:"day"`
+	Face string `gorm:"size:40;not null;uniqueIndex:idx_usage_day,priority:3" json:"face"`
+	Day  string `gorm:"size:10;not null;uniqueIndex:idx_usage_day,priority:4" json:"day"`
+	// The MATCHED ROUTE PATTERN (/v1/catalog/works/:id), never a concrete path —
+	// a concrete id would make one row per work per key per day. Unbounded `text`
+	// rather than a varchar for the reason the Face comment above records: a face
+	// that outgrew its column poisoned every later flush in the same batch, and a
+	// route pattern is exactly the kind of value that grows.
+	Path  string `gorm:"type:text;not null;uniqueIndex:idx_usage_day,priority:5" json:"path"`
 	Count int64  `gorm:"not null" json:"count"`
 	// Explicit column tags: GORM's naming strategy renders Status4xx as
 	// "status4xx" (no underscore before a digit — the acronym/digit trap), but

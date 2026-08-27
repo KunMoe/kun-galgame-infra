@@ -289,7 +289,7 @@ const runBatch = async () => {
       </table>
     </div>
 
-    <KunModal v-model="createOpen">
+    <KunModal v-model="createOpen" aria-label="注册主体类型">
       <div class="space-y-4">
         <h2 class="text-foreground text-xl font-bold">注册主体类型</h2>
         <KunInput v-model="form.site" label="站点" placeholder="如 kungal" />
@@ -319,7 +319,7 @@ const runBatch = async () => {
       </div>
     </KunModal>
 
-    <KunModal v-model="batchOpen">
+    <KunModal v-model="batchOpen" aria-label="批量添加主体类型">
       <div class="space-y-4">
         <h2 class="text-foreground text-xl font-bold">批量添加主体类型</h2>
         <p class="text-default-500 text-sm">
@@ -361,7 +361,7 @@ const runBatch = async () => {
       </div>
     </KunModal>
 
-    <KunModal v-model="editOpen">
+    <KunModal v-model="editOpen" aria-label="编辑回调">
       <div class="space-y-4">
         <h2 class="text-foreground text-xl font-bold">
           编辑回调 · {{ editTarget?.site }}/{{ editTarget?.key }}

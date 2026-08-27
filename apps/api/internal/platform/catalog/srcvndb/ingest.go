@@ -29,7 +29,7 @@ func EnsureSchema(db *gorm.DB) error {
 		}
 	}
 	if err := db.AutoMigrate(
-		&VN{}, &VNRelation{}, &Char{}, &CharName{}, &CharVN{}, &Image{},
+		&VN{}, &VNTitle{}, &VNRelation{}, &Char{}, &CharName{}, &CharVN{}, &Image{},
 		&Staff{}, &StaffAlias{}, &VNStaff{}, &VNSeiyuu{},
 		&Trait{}, &TraitParent{}, &CharTrait{}, &Tag{}, &TagParent{}, &TagVN{},
 		&Release{}, &ReleaseVN{}, &ReleaseProducer{}, &ReleasePlatform{}, &ReleaseTitle{}, &Producer{},
@@ -43,7 +43,7 @@ func EnsureSchema(db *gorm.DB) error {
 }
 
 var Files = []string{
-	"vn", "chars", "chars_names", "chars_vns", "images",
+	"vn", "vn_titles", "chars", "chars_names", "chars_vns", "images",
 	"vn_relations",
 	"staff", "staff_alias", "vn_staff", "vn_seiyuu",
 	"traits", "traits_parents", "chars_traits",
@@ -216,6 +216,7 @@ const batchSize = 2000
 
 var loaders = map[string]func(tx *gorm.DB, now time.Time) tableLoader{
 	"vn":                  newVNLoader,
+	"vn_titles":           newVNTitleLoader,
 	"vn_relations":        newVNRelationLoader,
 	"chars":               newCharLoader,
 	"chars_names":         newCharNameLoader,

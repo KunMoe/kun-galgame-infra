@@ -42,11 +42,12 @@ func Run(db *gorm.DB) error {
 		&model.CatalogLabelIntro{}, // multilingual label intros (refs/proj/83 E2b)
 		&model.CatalogCharacter{},
 		&model.CatalogCharacterAlias{},
-		&model.CatalogCharacterIntro{},       // multilingual character intros (step 65 field PR C1)
-		&model.CatalogCharacterTrait{},       // VNDB trait vocabulary (step 93)
-		&model.CatalogCharacterTraitParent{}, // trait hierarchy DAG edges (step 93, raw material)
-		&model.CatalogCharacterTraitLink{},   // character×trait links (step 93, ~2.9M rows)
-		&model.CatalogPersonIntro{},          // multilingual person intros (step 65 field PR C1)
+		&model.CatalogCharacterIntro{},             // multilingual character intros (step 65 field PR C1)
+		&model.CatalogCharacterIntroPanelVerdict{}, // P3 panel kept-verdict cache (wave 214 deferred item)
+		&model.CatalogCharacterTrait{},             // VNDB trait vocabulary (step 93)
+		&model.CatalogCharacterTraitParent{},       // trait hierarchy DAG edges (step 93, raw material)
+		&model.CatalogCharacterTraitLink{},         // character×trait links (step 93, ~2.9M rows)
+		&model.CatalogPersonIntro{},                // multilingual person intros (step 65 field PR C1)
 
 		// Polymorphic infrastructure (no FKs by design).
 		&model.CatalogRedirect{},
@@ -316,6 +317,26 @@ func preMigrate(db *gorm.DB) error {
 			END $$`).Error; err != nil {
 			return fmt.Errorf("premigrate %s.provenance: %w", t, err)
 		}
+	}
+
+	// catalog_work_title.provenance (wave 210): the same 0=source / 1=machine
+	// axis the intro and alias tables carry, added BEFORE the work-title MT lane
+	// exists — the 0 backfill is only provably correct while every title row is
+	// still one a human source wrote. The 605 forum rows the wave reclassifies to
+	// 1 are re-marked by the lane afterwards, from evidence, not by this UPDATE.
+	// Same recipe: meaningful zero → NOT NULL with no default → add nullable,
+	// backfill 0, set NOT NULL. src_hash / mt_model are NULLABLE here (only a
+	// machine row carries them), so AutoMigrate adds them by itself.
+	if err := db.Exec(`
+		DO $$
+		BEGIN
+			IF to_regclass('catalog_work_title') IS NOT NULL THEN
+				ALTER TABLE catalog_work_title ADD COLUMN IF NOT EXISTS provenance smallint;
+				UPDATE catalog_work_title SET provenance = 0 WHERE provenance IS NULL;
+				ALTER TABLE catalog_work_title ALTER COLUMN provenance SET NOT NULL;
+			END IF;
+		END $$`).Error; err != nil {
+		return fmt.Errorf("premigrate catalog_work_title.provenance: %w", err)
 	}
 
 	// The W1-pre nativization columns (refs/proj/140,

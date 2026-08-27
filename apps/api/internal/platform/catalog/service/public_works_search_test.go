@@ -484,8 +484,8 @@ func TestWorksSearchItemsAreWorksListRows(t *testing.T) {
 	if it.Updated == "" {
 		t.Fatal("updated must be present on a search row, like a browse row")
 	}
-	if it.Names == nil || it.Names.ZhCN != "五彩斑斓的世界" {
-		t.Fatalf("include=names block = %+v", it.Names)
+	if it.Localized["zh-Hans"].Value != "五彩斑斓的世界" {
+		t.Fatalf("include=names block = %+v", it.Localized)
 	}
 	if len(it.Labels) != 1 || it.Labels[0].ID != c.labelID {
 		t.Fatalf("include=labels block = %+v", it.Labels)
@@ -494,7 +494,7 @@ func TestWorksSearchItemsAreWorksListRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WorksSearch plain: %v", err)
 	}
-	if plain.Items[0].Names != nil || plain.Items[0].Labels != nil {
+	if plain.Items[0].Localized != nil || plain.Items[0].Labels != nil {
 		t.Fatalf("blocks leaked without include=: %+v", plain.Items[0])
 	}
 	if plain.Page != 1 || plain.Limit != 20 {

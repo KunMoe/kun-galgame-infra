@@ -297,9 +297,9 @@ func TestReleaseFeedIncludeBlocks(t *testing.T) {
 	require.Equal(t, 200, code)
 	items := body["data"].(map[string]any)["items"].([]any)
 	work := items[0].(map[string]any)["work"].(map[string]any)
-	names, ok := work["names"].(map[string]any)
+	names, ok := work["localized"].(map[string]any)
 	require.True(t, ok, "include=names attaches the block to the work")
-	assert.Equal(t, "アルファ", names["ja-jp"])
+	assert.Equal(t, map[string]any{"value": "アルファ", "kind": "official"}, names["ja"])
 }
 
 func TestReleaseFeedParamValidation(t *testing.T) {

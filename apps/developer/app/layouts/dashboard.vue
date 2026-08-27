@@ -16,6 +16,12 @@ const navItems = [
     match: ['/usage']
   },
   {
+    to: '/store',
+    label: '分销链接',
+    icon: 'lucide:shopping-bag',
+    match: ['/store']
+  },
+  {
     to: '/docs',
     label: 'API 文档',
     icon: 'lucide:book-open',

@@ -73,7 +73,7 @@ func TestClaimStateProjectedEverywhere(t *testing.T) {
 	}
 
 	for id, state := range want {
-		rec, found, err := svc.WorkDetail(ctx, id, PublicInclude{}, false, 0)
+		rec, found, err := svc.WorkDetail(ctx, id, PublicInclude{}, false, 0, PublicFields{})
 		if err != nil || !found {
 			t.Fatalf("WorkDetail %d: found=%v err=%v", id, found, err)
 		}
@@ -110,7 +110,7 @@ func TestClaimStateUnknownValueIsHidden(t *testing.T) {
 	claimWork(t, w.ID, "galgame_wiki", 7100)
 	setClaimState(t, w.ID, i16(99))
 
-	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail: found=%v err=%v", found, err)
 	}
@@ -126,7 +126,7 @@ func TestClaimStateDefaultsLiveForNonWikiClaimer(t *testing.T) {
 	w := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "LetmoeClaim")
 	claimWork(t, w.ID, "letmoe", 42)
 
-	rec, _, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	rec, _, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil {
 		t.Fatalf("WorkDetail: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestWorkDetailEnginesAndLinksAndCreated(t *testing.T) {
 	addExternalRef(t, model.EntityTypeWork, w.ID, srcDMM, "d_774266", model.LinkKindRelated)
 	addExternalRef(t, model.EntityTypeWork, w.ID, srcVNDB, "v999", model.LinkKindExact)
 
-	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail: found=%v err=%v", found, err)
 	}
@@ -228,7 +228,7 @@ func TestWorkDetailEnginesAndLinksAndCreated(t *testing.T) {
 	}
 
 	empty := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "EmptyBlocks")
-	rec2, _, err := svc.WorkDetail(t.Context(), empty.ID, PublicInclude{}, false, 0)
+	rec2, _, err := svc.WorkDetail(t.Context(), empty.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil {
 		t.Fatalf("WorkDetail empty: %v", err)
 	}
@@ -333,8 +333,10 @@ func TestLabelAliasesLangAndWorkCount(t *testing.T) {
 	if rec.LogoHash != supplyLogoHash {
 		t.Fatalf("label logo_hash = %q, want %q", rec.LogoHash, supplyLogoHash)
 	}
-	if len(rec.Aliases) != 1 || rec.Aliases[0] != "Milk Soft" {
-		t.Fatalf("label aliases = %+v, want [Milk Soft]", rec.Aliases)
+	if len(rec.Aliases) != 2 ||
+		rec.Aliases[0].Value != "Milk Soft" || rec.Aliases[0].Lang != "en" ||
+		rec.Aliases[1].Value != "Milk Soft" || rec.Aliases[1].Lang != "ja" {
+		t.Fatalf("label aliases = %+v, want Milk Soft under en and ja as separate rows", rec.Aliases)
 	}
 	if rec.WorkCount != 1 {
 		t.Fatalf("sfw label work_count = %d, want 1 (r18 excluded)", rec.WorkCount)
@@ -347,7 +349,7 @@ func TestLabelAliasesLangAndWorkCount(t *testing.T) {
 		t.Fatalf("nsfw label work_count = %d, want 2", recNSFW.WorkCount)
 	}
 
-	detail, _, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0)
+	detail, _, err := svc.WorkDetail(t.Context(), w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil {
 		t.Fatalf("WorkDetail: %v", err)
 	}

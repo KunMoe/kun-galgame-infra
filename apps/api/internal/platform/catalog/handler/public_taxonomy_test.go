@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"strings"
 	"testing"
 
 	"api/internal/platform/catalog/model"
@@ -189,6 +190,63 @@ func TestEngineDetailWire(t *testing.T) {
 	assert.Equal(t, "WireEngine", data["name"])
 	assert.EqualValues(t, 1, data["work_count"])
 	assert.Equal(t, []any{}, data["refs"], "refs is always present, [] when the engine has no anchor")
+}
+
+func TestTagsListIDsFilter(t *testing.T) {
+	db := openCatalogTestDB(t)
+	_, coreTagID, _ := seedTaxonomy(t, db)
+	app := taxonomyApp(db)
+
+	longtail := model.CatalogTag{Name: "wire-longtail", Tier: model.TagTierLongtail, Kind: model.TagKindContent}
+	require.NoError(t, db.Create(&longtail).Error)
+	meta := model.CatalogTag{Name: "wire-meta", Tier: model.TagTierCore, Kind: model.TagKindMeta}
+	require.NoError(t, db.Create(&meta).Error)
+
+	tagPage := func(t *testing.T, url string) (names []string, total float64) {
+		t.Helper()
+		code, body := getJSON(t, app, url)
+		require.Equal(t, 200, code)
+		data := body["data"].(map[string]any)
+		for _, it := range data["items"].([]any) {
+			names = append(names, it.(map[string]any)["name"].(string))
+		}
+		return names, data["total"].(float64)
+	}
+
+	names, total := tagPage(t, "/v1/catalog/tags?ids="+itoa(coreTagID)+","+itoa(longtail.ID))
+	assert.Equal(t, []string{"wire-tag", "wire-longtail"}, names)
+	assert.EqualValues(t, 2, total, "total converges with the ids filter like every other predicate")
+
+	names, total = tagPage(t, "/v1/catalog/tags?ids="+itoa(coreTagID)+","+itoa(longtail.ID)+"&tier=core")
+	assert.Equal(t, []string{"wire-tag"}, names, "ids is conjunctive with tier, not a bypass")
+	assert.EqualValues(t, 1, total)
+
+	names, total = tagPage(t, "/v1/catalog/tags?ids="+itoa(coreTagID)+",999999")
+	assert.Equal(t, []string{"wire-tag"}, names, "an unknown id matches nothing and is not an error")
+	assert.EqualValues(t, 1, total)
+
+	for _, raw := range []string{"abc", "0", "-5", "1.5", "1,,2", itoa(coreTagID) + ",abc"} {
+		t.Run("400 ids="+raw, func(t *testing.T) {
+			code, body := getJSON(t, app, "/v1/catalog/tags?ids="+raw)
+			require.Equal(t, 400, code)
+			assert.Equal(t, "ids must be positive integers", body["message"])
+		})
+	}
+
+	code, body := getJSON(t, app, "/v1/catalog/tags?ids="+repeatIDs(101))
+	require.Equal(t, 400, code)
+	assert.Equal(t, "at most 100 ids", body["message"])
+
+	code, _ = getJSON(t, app, "/v1/catalog/tags?ids="+repeatIDs(100))
+	assert.Equal(t, 200, code, "100 ids is the ceiling, not one past it")
+}
+
+func repeatIDs(n int) string {
+	ids := make([]string, n)
+	for i := range ids {
+		ids[i] = itoa(int64(i + 1))
+	}
+	return strings.Join(ids, ",")
 }
 
 func TestWorksListEngineIDFilter(t *testing.T) {

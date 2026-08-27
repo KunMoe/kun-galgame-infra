@@ -50,7 +50,7 @@ func TestHiddenReleaseLeavesPublicSurfaces(t *testing.T) {
 		t.Fatal("include-hidden must return the hidden row with DeletedAt set")
 	}
 
-	pub, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, true, 0)
+	pub, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, true, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("public WorkDetail: found=%v err=%v", found, err)
 	}

@@ -24,8 +24,14 @@ type candidate struct {
 	Gloss      Glossary `gorm:"-"`
 }
 
-func loadCandidates(ctx context.Context, db *gorm.DB, lane laneDef, limit, offset int) ([]candidate, error) {
+func loadCandidates(ctx context.Context, db *gorm.DB, lane laneDef, limit, offset int, entityIDs []int64) ([]candidate, error) {
 	t, id := lane.introTable, lane.idCol
+	idGate, args := ``, []any{}
+	if len(entityIDs) > 0 {
+		idGate = `
+		  AND src.entity_id IN (?)`
+		args = append(args, entityIDs)
+	}
 	q := `
 		WITH src AS (
 			SELECT DISTINCT ON (` + id + `) ` + id + ` AS entity_id, lang, source_id, intro
@@ -48,9 +54,8 @@ func loadCandidates(ctx context.Context, db *gorm.DB, lane laneDef, limit, offse
 		JOIN ` + lane.entityTable + ` e ON e.id = src.entity_id AND e.deleted_at IS NULL
 		LEFT JOIN has_zh_source hz ON hz.entity_id = src.entity_id
 		LEFT JOIN mzh ON mzh.entity_id = src.entity_id
-		WHERE hz.entity_id IS NULL
+		WHERE hz.entity_id IS NULL` + idGate + `
 		ORDER BY src.entity_id ASC`
-	args := []any{}
 	if limit > 0 {
 		q += ` LIMIT ?`
 		args = append(args, limit)

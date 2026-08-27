@@ -146,10 +146,11 @@ type WorkCore struct {
 }
 
 type WorkTitle struct {
-	Lang  string `json:"lang"`
-	Title string `json:"title"`
-	Latin string `json:"latin,omitempty"`
-	Kind  int16  `json:"kind" doc:"0=official 1=alias 2=abbreviation 3=search_hint"`
+	Lang    string `json:"lang"`
+	Title   string `json:"title"`
+	Latin   string `json:"latin,omitempty"`
+	Kind    int16  `json:"kind" doc:"0=official 1=alias 2=abbreviation 3=search_hint"`
+	Machine bool   `json:"machine,omitempty" doc:"true if this title is an LLM machine translation (no source published one for this language); omitted for source rows"`
 }
 
 type ReleaseBrief struct {

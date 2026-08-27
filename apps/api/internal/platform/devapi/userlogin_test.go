@@ -119,6 +119,9 @@ func TestValidateAppName(t *testing.T) {
 	}
 }
 
+// The fixture keeps galgame:read on purpose: it is the shape of every app
+// registered before 2026-08-18, and those rows are exactly what the filter in
+// toUserLoginView still has to strip.
 func TestToUserLoginViewKeepsCatalogEdit(t *testing.T) {
 	view := toUserLoginView(&siteModel.OAuthClient{
 		RedirectURIs:  []byte(`["https://example.com/cb"]`),
@@ -126,15 +129,15 @@ func TestToUserLoginViewKeepsCatalogEdit(t *testing.T) {
 	})
 	require.NotNil(t, view)
 	assert.Equal(t, []string{"openid", "catalog:edit"}, view.Scopes,
-		"catalog:read / galgame:read are stripped from the consent view; catalog:edit must stay")
+		"catalog:read / legacy galgame:read are stripped from the consent view; catalog:edit must stay")
 }
 
 func TestAppAllowedScopesKeyOnly(t *testing.T) {
-	assert.JSONEq(t, `["catalog:read","galgame:read"]`, string(appAllowedScopes("")))
+	assert.JSONEq(t, `["catalog:read"]`, string(appAllowedScopes("")))
 }
 
 func TestAppAllowedScopesWithConsent(t *testing.T) {
 	assert.JSONEq(t,
-		`["catalog:read","galgame:read","openid","playtime:write"]`,
+		`["catalog:read","openid","playtime:write"]`,
 		string(appAllowedScopes("openid playtime:write")))
 }

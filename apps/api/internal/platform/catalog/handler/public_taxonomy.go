@@ -3,6 +3,7 @@ package handler
 import (
 	stderrors "errors"
 	"strconv"
+	"strings"
 
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/service"
@@ -56,9 +57,25 @@ func (h *PublicHandler) TagsList(c fiber.Ctx) error {
 		}
 		f.Kind = &v
 	}
+	if raw := strings.TrimSpace(c.Query("ids")); raw != "" {
+		parts := strings.Split(raw, ",")
+		if len(parts) > 100 {
+			return response.BadRequestMsg(c, errors.ErrValidationFailed, "at most 100 ids")
+		}
+		for _, p := range parts {
+			id, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
+			if err != nil || id <= 0 {
+				return response.BadRequestMsg(c, errors.ErrInvalidParam, "ids must be positive integers")
+			}
+			f.IDs = append(f.IDs, id)
+		}
+	}
 	limit, ok := limitPub(c.Query("limit"), 20, 100)
 	if !ok {
 		return response.BadRequestMsg(c, errors.ErrInvalidParam, msgBadLimit)
+	}
+	if len(f.IDs) > 0 && c.Query("cursor") != "" {
+		return response.BadRequestMsg(c, errors.ErrInvalidParam, msgBadIDsCursor)
 	}
 	data, err := h.svc.TagsList(c.Context(), f, c.Query("cursor"), limit)
 	if err != nil {

@@ -142,7 +142,7 @@ func TestPublicSearchIndexTagsType(t *testing.T) {
 func TestEntityHitShapeFrozenForNonTagFamilies(t *testing.T) {
 	for _, entity := range []string{"name", "character", "label", "work"} {
 		hit := dto.PublicEntityHit{
-			ID: 7, EntityType: entity, Name: "テスト", Sources: []string{"vndb:v1"},
+			ID: 7, EntityType: entity, DisplayName: "テスト", Sources: []string{"vndb:v1"},
 		}
 		if entity == "work" {
 			hit.ContentRating = "all_ages"
@@ -153,7 +153,7 @@ func TestEntityHitShapeFrozenForNonTagFamilies(t *testing.T) {
 		assert.NotContainsf(t, string(raw), `"kind"`, "%s hit gained a kind key", entity)
 	}
 	raw, err := json.Marshal(dto.PublicEntityHit{
-		ID: 3, EntityType: "tag", Name: "純愛", Sources: []string{}, Tier: "core", Kind: "content",
+		ID: 3, EntityType: "tag", DisplayName: "純愛", Sources: []string{}, Tier: "core", Kind: "content",
 	})
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), `"tier":"core"`)

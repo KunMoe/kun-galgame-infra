@@ -6,28 +6,37 @@ import (
 	"api/internal/platform/catalog/model"
 )
 
-
 func alias(name, lang string, kind int16, primary, display bool) displayAlias {
 	return displayAlias{Name: name, Lang: lang, Kind: kind, IsPrimary: primary, IsDisplay: display}
 }
 
-func TestFlatAliasesExcludesDisplayAndDedupes(t *testing.T) {
+func TestRichAliasesExcludesDisplayAndDedupes(t *testing.T) {
 	rows := []displayAlias{
 		alias("緒方剛志", "ja", model.AliasKindTranslation, false, true),
 		alias("绪方刚", "zh-Hans", model.AliasKindTranslation, false, false),
 		alias("绪方刚志", "zh-Hans", model.AliasKindTranslation, true, false),
+		alias("绪方刚志", "zh-Hans", model.AliasKindTranslation, false, false),
 		alias("绪方刚志", "", model.AliasKindSpellingVariant, false, false),
 	}
-	got := flatAliases(rows)
-	if len(got) != 2 || got[0] != "绪方刚" || got[1] != "绪方刚志" {
-		t.Fatalf("flatAliases = %+v, want the two zh spellings in arrival order", got)
+	got := richAliases(rows)
+	if len(got) != 3 {
+		t.Fatalf("richAliases = %+v, want 3 entries (display row dropped, value+lang dedup)", got)
+	}
+	if got[0].Value != "绪方刚" || got[0].Lang != "zh-Hans" || got[0].Kind != "translation" {
+		t.Fatalf("richAliases[0] = %+v", got[0])
+	}
+	if got[1].Value != "绪方刚志" || got[1].Lang != "zh-Hans" {
+		t.Fatalf("richAliases[1] = %+v", got[1])
+	}
+	if got[2].Value != "绪方刚志" || got[2].Lang != "" || got[2].Kind != "spelling_variant" {
+		t.Fatalf("richAliases[2] = %+v, want the lang-less spelling kept as its own row", got[2])
 	}
 }
 
-func TestFlatAliasesEmptyIsNeverNil(t *testing.T) {
-	got := flatAliases(nil)
+func TestRichAliasesEmptyIsNeverNil(t *testing.T) {
+	got := richAliases(nil)
 	if got == nil || len(got) != 0 {
-		t.Fatalf("flatAliases(nil) = %#v, want an allocated empty slice so the face emits []", got)
+		t.Fatalf("richAliases(nil) = %#v, want an allocated empty slice so the face emits []", got)
 	}
 }
 
@@ -112,20 +121,36 @@ func TestLocalizedNamesElection(t *testing.T) {
 	}
 }
 
-func TestLocalizedNamesRefuseMachineProvenance(t *testing.T) {
+func TestLocalizedNamesMachineFillsOnlyEmptyLocales(t *testing.T) {
 	machine := alias("爱丽丝", "zh-Hans", model.AliasKindTranslation, false, false)
 	machine.Provenance = model.AliasProvenanceMachine
 	sourced := alias("アリス", "ja", model.AliasKindTranslation, true, true)
 
 	got := localizedNames([]displayAlias{machine, sourced})
-	if _, ok := got["zh-Hans"]; ok {
-		t.Fatal("a machine-translated name must never be elected into localized{} (refs/proj/178 §2)")
+	zh, ok := got["zh-Hans"]
+	if !ok || zh.Value != "爱丽丝" || !zh.Machine {
+		t.Fatalf("localized[zh-Hans] = %+v, want the machine fill-in flagged machine=true", zh)
 	}
-	if got["ja"].Value != "アリス" {
-		t.Fatalf("localized[ja] = %+v, want the sourced ja name to survive the gate", got["ja"])
+	if got["ja"].Value != "アリス" || got["ja"].Machine {
+		t.Fatalf("localized[ja] = %+v, want the sourced ja name unflagged", got["ja"])
 	}
-	if flat := flatAliases([]displayAlias{machine, sourced}); len(flat) != 1 || flat[0] != "爱丽丝" {
-		t.Fatalf("aliases[] = %+v, want the machine name still listed there", flat)
+	rich := richAliases([]displayAlias{machine, sourced})
+	if len(rich) != 1 || rich[0].Value != "爱丽丝" || !rich[0].Machine {
+		t.Fatalf("aliases[] = %+v, want the machine name listed with machine=true", rich)
+	}
+}
+
+func TestLocalizedNamesSourceBeatsMachineInSameLocale(t *testing.T) {
+	machine := alias("美坂香里", "zh-Hans", model.AliasKindTranslation, true, false)
+	machine.Provenance = model.AliasProvenanceMachine
+	sourced := alias("美坂香裡", "zh-Hans", model.AliasKindTranslation, false, false)
+
+	for _, rows := range [][]displayAlias{{machine, sourced}, {sourced, machine}} {
+		got := localizedNames(rows)
+		zh := got["zh-Hans"]
+		if zh.Value != "美坂香裡" || zh.Machine {
+			t.Fatalf("localized[zh-Hans] = %+v, want the source-provenance name to win regardless of arrival order or is_primary", zh)
+		}
 	}
 }
 

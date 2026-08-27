@@ -155,6 +155,10 @@ func (s *PublicService) LookupBatch(ctx context.Context, pairs []dto.PublicLooku
 	return out, nil
 }
 
+func (s *PublicService) LookupEntityID(ctx context.Context, source, externalID string, entityType int16) (int64, error) {
+	return s.lookupEntityID(ctx, source, externalID, entityType)
+}
+
 func (s *PublicService) lookupEntityID(ctx context.Context, source, externalID string, entityType int16) (int64, error) {
 	db := s.db.WithContext(ctx)
 
@@ -220,8 +224,10 @@ func (s *PublicService) lookupBrief(ctx context.Context, source, externalID stri
 	return briefs[workID], nil
 }
 
-func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicInclude, nsfw bool, spoilers int16) (dto.PublicCatalogWork, bool, error) {
-	detail, err := s.read.WorkByID(ctx, id, spoilers)
+func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicInclude, nsfw bool, spoilers int16, sel PublicFields) (dto.PublicCatalogWork, bool, error) {
+	withRelations := inc.Relations && sel.Wants("relations")
+	withCredits := inc.Credits && sel.Wants("credits")
+	detail, err := s.read.WorkByIDPublic(ctx, id, spoilers, withRelations, sel)
 	if err != nil {
 		if stderrors.Is(err, ErrWorkNotFound) {
 			return dto.PublicCatalogWork{}, false, nil
@@ -236,13 +242,16 @@ func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicIncl
 		return dto.PublicCatalogWork{}, false, nil
 	}
 
-	subjects := []claimSubject{{WorkID: w.ID}}
-	for _, sb := range detail.SeriesSiblings {
-		subjects = append(subjects, claimSubject{WorkID: sb.WorkID})
-	}
-	if inc.Relations {
-		for _, r := range detail.Relations {
-			subjects = append(subjects, claimSubject{WorkID: r.OtherID})
+	var subjects []claimSubject
+	if sel.Wants("claimed_by", "cover_slots", "series_siblings", "relations") {
+		subjects = append(subjects, claimSubject{WorkID: w.ID})
+		for _, sb := range detail.SeriesSiblings {
+			subjects = append(subjects, claimSubject{WorkID: sb.WorkID})
+		}
+		if withRelations {
+			for _, r := range detail.Relations {
+				subjects = append(subjects, claimSubject{WorkID: r.OtherID})
+			}
 		}
 	}
 	limits, err := s.read.loadDisplayNSFW(ctx, subjects)
@@ -258,36 +267,105 @@ func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicIncl
 		ContentRating: contentRatingKey(w.ContentRating),
 		ReleaseDate:   earliestReleaseDate(detail.Releases),
 		Titles:        publicTitles(detail.Titles),
+		Latin:         workLatin(detail.Titles, w.DisplayName),
+		Localized:     workLocalized(detail.Titles),
 		Refs:          publicRefs(detail.Refs),
 		ClaimedBy:     claimedBy(w.Site, w.ProductWorkID, w.ClaimState, limits[w.ID], w.ContentRating),
 		Created:       w.CreatedAt.UTC().Format(time.RFC3339),
 		Updated:       w.UpdatedAt.UTC().Format(time.RFC3339),
 	}
-	s.attachWorkFacets(ctx, &rec, detail, nsfw, limits[w.ID], spoilers)
-	if err = s.attachReleaseLabels(ctx, rec.Releases); err != nil {
-		return dto.PublicCatalogWork{}, false, err
+	s.attachWorkFacets(ctx, &rec, detail, nsfw,
+		effectiveDisplayNSFW(w.Site, w.ProductWorkID, limits[w.ID], w.ContentRating), spoilers)
+	if sel.Wants("releases") {
+		if err = s.attachReleaseLabels(ctx, rec.Releases); err != nil {
+			return dto.PublicCatalogWork{}, false, err
+		}
 	}
-	if rec.Engines, err = s.workEngines(ctx, id); err != nil {
-		return dto.PublicCatalogWork{}, false, err
+	if sel.Wants("engines") {
+		if rec.Engines, err = s.workEngines(ctx, id); err != nil {
+			return dto.PublicCatalogWork{}, false, err
+		}
 	}
+	// Deliberately NOT gated on ?fields=: it is the filler for work_count
+	// INSIDE tags[]/labels[]/engines[], and fields= is trim-only — a selected
+	// key's bytes must equal the unprojected ones. Its own three queries are
+	// already skipped by the empty-id guards when those blocks went unloaded.
 	if err = s.attachWorkChipCounts(ctx, &rec, nsfw); err != nil {
 		return dto.PublicCatalogWork{}, false, err
 	}
-	if rec.Links, err = s.workLinks(ctx, id); err != nil {
-		return dto.PublicCatalogWork{}, false, err
+	if sel.Wants("links") {
+		if rec.Links, err = s.workLinks(ctx, id); err != nil {
+			return dto.PublicCatalogWork{}, false, err
+		}
 	}
 	rec.SeriesSiblings = s.publicSeriesSiblings(detail.SeriesSiblings, nsfw, limits)
-	if inc.Relations {
+	if withRelations {
 		rec.Relations = s.publicRelations(detail.Relations, nsfw, limits)
 	}
-	if inc.Credits {
+	if withCredits {
 		groups, err := s.workCredits(ctx, id)
 		if err != nil {
 			return dto.PublicCatalogWork{}, false, err
 		}
 		rec.Credits = groups
 	}
+	if err = s.enrichWorkNameBlocks(ctx, &rec); err != nil {
+		return dto.PublicCatalogWork{}, false, err
+	}
 	return rec, true, nil
+}
+
+func (s *PublicService) enrichWorkNameBlocks(ctx context.Context, rec *dto.PublicCatalogWork) error {
+	charIDs := make([]int64, 0, len(rec.Characters))
+	var nameIDs []int64
+	for i := range rec.Characters {
+		charIDs = append(charIDs, rec.Characters[i].ID)
+		for j := range rec.Characters[i].Voices {
+			nameIDs = append(nameIDs, rec.Characters[i].Voices[j].ID)
+		}
+	}
+	for gi := range rec.Credits {
+		for ci := range rec.Credits[gi].Credits {
+			nameIDs = append(nameIDs, rec.Credits[gi].Credits[ci].ID)
+		}
+	}
+	charLoc, err := s.localizedFor(ctx, characterAliasSource, charIDs)
+	if err != nil {
+		return err
+	}
+	nameLoc, err := s.localizedFor(ctx, creditNameAliasSource, nameIDs)
+	if err != nil {
+		return err
+	}
+	for i := range rec.Characters {
+		rec.Characters[i].Localized = locOrEmpty(charLoc[rec.Characters[i].ID])
+		for j := range rec.Characters[i].Voices {
+			v := &rec.Characters[i].Voices[j]
+			v.Localized = locOrEmpty(nameLoc[v.ID])
+		}
+	}
+	for gi := range rec.Credits {
+		for ci := range rec.Credits[gi].Credits {
+			c := &rec.Credits[gi].Credits[ci]
+			c.Localized = locOrEmpty(nameLoc[c.ID])
+		}
+	}
+	labelBlocks := make([][]dto.PublicWorkLabel, 0, len(rec.Releases)+1)
+	labelBlocks = append(labelBlocks, rec.Labels)
+	for i := range rec.Releases {
+		labelBlocks = append(labelBlocks, rec.Releases[i].Labels)
+	}
+	if err := s.fillLabelLocalized(ctx, labelBlocks...); err != nil {
+		return err
+	}
+	briefs := make([]*dto.PublicWorkBrief, 0, len(rec.SeriesSiblings)+len(rec.Relations))
+	for i := range rec.SeriesSiblings {
+		briefs = append(briefs, &rec.SeriesSiblings[i])
+	}
+	for i := range rec.Relations {
+		briefs = append(briefs, &rec.Relations[i].Work)
+	}
+	return s.fillWorkBriefNames(ctx, briefs...)
 }
 
 func (s *PublicService) publicRelations(rels []WorkRelationRow, nsfw bool, limits map[int64]bool) []dto.PublicRelation {
@@ -309,127 +387,32 @@ func (s *PublicService) publicRelations(rels []WorkRelationRow, nsfw bool, limit
 }
 
 func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCatalogWork, detail *WorkDetail, nsfw, displayNSFW bool, spoilers int16) {
-	rec.Releases = make([]dto.PublicRelease, 0, len(detail.Releases))
-	for _, rd := range detail.Releases {
-		r := rd.Release
-		pr := dto.PublicRelease{
-			ID: r.ID, Kind: releaseKindKey(r.Kind), Date: releaseDate(r),
-			Title: derefStrPub(r.Title), Lang: derefStrPub(r.Lang),
-			Platform: derefStrPub(r.Platform), Platforms: publicPlatformsFromExtra(r.Extra),
-			Refs: make([]dto.PublicCatalogRef, 0, len(rd.Anchors)),
-		}
-		for _, a := range rd.Anchors {
-			if a.LinkKind != model.LinkKindExact {
-				continue
-			}
-			pr.Refs = append(pr.Refs, dto.PublicCatalogRef{Source: a.Source, ExternalID: a.ExternalID})
-		}
-		rec.Releases = append(rec.Releases, pr)
-	}
+	rec.Releases = s.publicWorkReleases(detail.Releases)
 	rec.Popularity = make([]dto.PublicPopularity, 0, len(detail.Popularity))
 	for _, p := range detail.Popularity {
 		rec.Popularity = append(rec.Popularity, dto.PublicPopularity{
 			Source: s.sourceKey(p.SourceID), Metric: popularityMetricKey(p.Metric), Value: p.Value,
 		})
 	}
-	rec.Ratings = make([]dto.PublicRating, 0, len(detail.Ratings))
-	for _, r := range detail.Ratings {
-		rec.Ratings = append(rec.Ratings, dto.PublicRating{
-			Source: s.sourceKey(r.SourceID), Score: r.Score, VoteCount: r.VoteCount, Rank: r.Rank,
-			Distribution: r.Distribution, Stats: r.Stats,
-		})
-	}
-	rec.Tags = make([]dto.PublicTag, 0, len(detail.Tags))
-	for _, t := range detail.Tags {
-		if t.Spoiler > spoilers {
-			continue
-		}
-		pt := dto.PublicTag{
-			Name: t.Name, Count: t.Count, Source: s.sourceKey(t.SourceID),
-			Spoiler: t.Spoiler, Sexual: t.Sexual,
-		}
-		if t.CanonicalID != nil {
-			pt.CanonicalID = *t.CanonicalID
-		}
-		if t.Tier != nil {
-			pt.Tier = tagTierKey(*t.Tier)
-		}
-		if t.Kind != nil {
-			pt.Kind = tagKindKey(*t.Kind)
-		}
-		rec.Tags = append(rec.Tags, pt)
-	}
+	rec.Ratings = s.publicDetailRatings(detail.Ratings)
+	rec.Tags = s.publicWorkTags(detail.Tags, spoilers)
 	rec.Playtimes = make([]dto.PublicPlaytime, 0, len(detail.Playtimes))
 	for _, p := range detail.Playtimes {
 		rec.Playtimes = append(rec.Playtimes, dto.PublicPlaytime{
 			Source: s.sourceKey(p.SourceID), Minutes: p.Minutes, VoteCount: p.VoteCount,
 		})
 	}
-	rec.Series = make([]dto.PublicSeries, 0, len(detail.Series))
-	for _, se := range detail.Series {
-		rec.Series = append(rec.Series, dto.PublicSeries{
-			ID: se.ID, Name: se.Name, Source: s.sourceKey(se.SourceID), MemberCount: se.MemberCount,
-		})
-	}
+	rec.Series = s.publicWorkSeries(detail.Series)
 	rec.Platforms = make([]dto.PublicPlatform, 0, len(detail.Platforms))
 	for _, p := range detail.Platforms {
 		rec.Platforms = append(rec.Platforms, dto.PublicPlatform{Platform: p.Platform, Source: s.sourceKey(p.SourceID)})
 	}
-	rec.Intro = make([]dto.PublicWorkIntro, 0, len(detail.Intros))
-	for _, in := range detail.Intros {
-		rec.Intro = append(rec.Intro, dto.PublicWorkIntro{
-			Lang: in.Lang, Intro: in.Intro, Source: s.sourceKey(in.SourceID), Machine: in.Machine,
-		})
-	}
-	rec.Covers = make([]dto.PublicCover, 0, len(detail.Covers))
-	imgMeta := s.workMediaMetaFor(ctx, detail.Covers, detail.Screenshots)
-	for _, c := range detail.Covers {
-		url := s.imageURL(c.ImageHash)
-		if url == "" {
-			continue
-		}
-		pc := dto.PublicCover{
-			URL: url, Kind: c.Kind, PortraitPinned: c.PortraitPinned,
-			Sexual: c.Sexual, Violence: c.Violence, Source: s.sourceKey(c.SourceID),
-		}
-		if m, ok := imgMeta[c.ImageHash]; ok {
-			pc.Width, pc.Height, pc.Thumbhash = m.Width, m.Height, m.Thumbhash
-		}
-		rec.Covers = append(rec.Covers, pc)
-	}
+	rec.Intros = s.workIntros(detail.Intros)
+	imgMeta := s.workMediaMetaFor(ctx, detail.Covers, detail.Screenshots, rosterImageHashes(detail.Characters)...)
+	rec.Covers = s.publicCovers(detail.Covers, imgMeta)
 	rec.CoverSlots = s.pickCoverSlots(detail.Covers, imgMeta, nsfw && displayNSFW)
-	rec.Screenshots = make([]dto.PublicScreenshot, 0, len(detail.Screenshots))
-	for _, sc := range detail.Screenshots {
-		url := s.imageURL(sc.ImageHash)
-		if url == "" {
-			continue
-		}
-		ps := dto.PublicScreenshot{
-			URL: url, Caption: sc.Caption, Sexual: sc.Sexual, Violence: sc.Violence, Source: s.sourceKey(sc.SourceID),
-		}
-		if m, ok := imgMeta[sc.ImageHash]; ok {
-			ps.Width, ps.Height, ps.Thumbhash = m.Width, m.Height, m.Thumbhash
-		}
-		rec.Screenshots = append(rec.Screenshots, ps)
-	}
-	rec.Characters = make([]dto.PublicRosterCharacter, 0, len(detail.Characters))
-	for _, ch := range detail.Characters {
-		pc := dto.PublicRosterCharacter{
-			ID: ch.CharacterID, Name: ch.DisplayName, Latin: derefStrPub(ch.Latin),
-			Kind: rosterKindKey(ch.Kind), Spoiler: ch.Spoiler, Identity: ch.Identity,
-			Voices: make([]dto.PublicRosterVoice, 0, len(ch.Va)),
-		}
-		if ch.ImageHash != nil {
-			pc.Image = s.imageURL(*ch.ImageHash)
-		}
-		if ch.FigureHash != nil {
-			pc.Figure = s.imageURL(*ch.FigureHash)
-		}
-		for _, v := range ch.Va {
-			pc.Voices = append(pc.Voices, dto.PublicRosterVoice{ID: v.CreditNameID, Name: v.Name})
-		}
-		rec.Characters = append(rec.Characters, pc)
-	}
+	rec.Screenshots = s.publicScreenshots(detail.Screenshots, imgMeta)
+	rec.Characters = s.publicRoster(detail.Characters, imgMeta)
 	rec.Labels = publicWorkLabels(detail.Labels)
 	if rec.Labels == nil {
 		rec.Labels = []dto.PublicWorkLabel{}
@@ -441,6 +424,10 @@ func (s *PublicService) imageURL(hash string) string {
 		return ""
 	}
 	return imageclient.MainURL(s.cdnBase, hash, "webp")
+}
+
+func (s *PublicService) ImageURL(hash string) string {
+	return s.imageURL(hash)
 }
 
 func (s *PublicService) sourceKey(id int16) string {
@@ -553,38 +540,7 @@ func (s *PublicService) workCredits(ctx context.Context, workID int64) ([]dto.Pu
 	if err != nil {
 		return nil, err
 	}
-	groups := make([]dto.PublicCreditGroup, 0)
-	var cur *dto.PublicCreditGroup
-	for _, r := range rows {
-		if cur == nil || cur.RoleKey != r.RoleKey {
-			groups = append(groups, dto.PublicCreditGroup{
-				RoleKey:  r.RoleKey,
-				RoleName: firstNonEmptyPub(r.RoleNameCN, r.RoleNameJA, r.RoleKey),
-			})
-			cur = &groups[len(groups)-1]
-		}
-		item := dto.PublicCreditItem{ID: r.CreditNameID, Name: r.Name, Lang: r.Lang, Identity: r.Identity}
-		if r.Latin != nil {
-			item.Latin = *r.Latin
-		}
-		if r.CharacterID != nil {
-			item.CharacterID = *r.CharacterID
-		}
-		if r.CharacterNM != nil {
-			item.Character = *r.CharacterNM
-		}
-		if r.LabelID != nil {
-			item.LabelID = *r.LabelID
-		}
-		if r.LabelNM != nil {
-			item.Label = *r.LabelNM
-		}
-		if r.SourceKey != nil {
-			item.Source = *r.SourceKey
-		}
-		cur.Credits = append(cur.Credits, item)
-	}
-	return groups, nil
+	return s.publicCreditGroups(rows), nil
 }
 
 func (s *PublicService) Name(ctx context.Context, id int64, withCredits, nsfw bool, limit, offset int) (dto.PublicName, bool, error) {
@@ -608,6 +564,7 @@ func (s *PublicService) Name(ctx context.Context, id int64, withCredits, nsfw bo
 		BirthD:      res.Head.BirthD,
 		Links:       []dto.PublicPersonLink{},
 	}
+	p.PhotoMeta = publicImageMeta(s.entityMetaFor(ctx, p.PhotoHash), p.PhotoHash)
 	if res.Head.PersonID != nil {
 		p.PersonID = *res.Head.PersonID
 		if p.Links, err = s.personLinks(ctx, p.PersonID); err != nil {
@@ -621,6 +578,17 @@ func (s *PublicService) Name(ctx context.Context, id int64, withCredits, nsfw bo
 			Lang:        sib.Lang,
 			Latin:       derefStrPub(sib.Latin),
 		})
+	}
+	sibIDs := make([]int64, len(p.Siblings))
+	for i := range p.Siblings {
+		sibIDs[i] = p.Siblings[i].ID
+	}
+	sibLoc, err := s.localizedFor(ctx, creditNameAliasSource, sibIDs)
+	if err != nil {
+		return dto.PublicName{}, false, err
+	}
+	for i := range p.Siblings {
+		p.Siblings[i].Localized = locOrEmpty(sibLoc[p.Siblings[i].ID])
 	}
 	if p.Aliases, p.Localized, err = s.nameAliases(ctx, id); err != nil {
 		return dto.PublicName{}, false, err
@@ -655,6 +623,13 @@ func (s *PublicService) Name(ctx context.Context, id int64, withCredits, nsfw bo
 				row.Roles = append(row.Roles, pr)
 			}
 			p.Credits = append(p.Credits, row)
+		}
+		creditBriefs := make([]*dto.PublicWorkBrief, len(p.Credits))
+		for i := range p.Credits {
+			creditBriefs[i] = &p.Credits[i].Work
+		}
+		if err := s.fillWorkBriefNames(ctx, creditBriefs...); err != nil {
+			return dto.PublicName{}, false, err
 		}
 		p.NextOffset = nextOffset(len(res.Works), limit, offset)
 	}
@@ -695,11 +670,16 @@ func (s *PublicService) Character(ctx context.Context, id int64, withWorks, nsfw
 		`SELECT image_hash, figure_hash FROM catalog_character WHERE id = ?`, id).Scan(&art).Error; err != nil {
 		return dto.PublicCharacter{}, false, err
 	}
+	artMeta := s.entityMetaFor(ctx, derefHashes(art.ImageHash, art.FigureHash)...)
 	if art.ImageHash != nil {
-		ch.Image = s.imageURL(*art.ImageHash)
+		if ch.Image = s.imageURL(*art.ImageHash); ch.Image != "" {
+			ch.ImageMeta = publicImageMeta(artMeta, *art.ImageHash)
+		}
 	}
 	if art.FigureHash != nil {
-		ch.Figure = s.imageURL(*art.FigureHash)
+		if ch.Figure = s.imageURL(*art.FigureHash); ch.Figure != "" {
+			ch.FigureMeta = publicImageMeta(artMeta, *art.FigureHash)
+		}
 	}
 	if withWorks {
 		briefs, err := s.claimEnrichCharacter(ctx, res.Works)
@@ -718,10 +698,31 @@ func (s *PublicService) Character(ctx context.Context, id int64, withWorks, nsfw
 			}
 			for _, v := range w.Voices {
 				row.Voices = append(row.Voices, dto.PublicVoiceName{
-					ID: v.CreditNameID, Name: v.Name, Lang: v.Lang, Latin: derefStrPub(v.Latin),
+					ID: v.CreditNameID, DisplayName: v.Name, Lang: v.Lang, Latin: derefStrPub(v.Latin),
 				})
 			}
 			ch.Works = append(ch.Works, row)
+		}
+		workBriefs := make([]*dto.PublicWorkBrief, len(ch.Works))
+		var voiceIDs []int64
+		for i := range ch.Works {
+			workBriefs[i] = &ch.Works[i].Work
+			for j := range ch.Works[i].Voices {
+				voiceIDs = append(voiceIDs, ch.Works[i].Voices[j].ID)
+			}
+		}
+		if err := s.fillWorkBriefNames(ctx, workBriefs...); err != nil {
+			return dto.PublicCharacter{}, false, err
+		}
+		voiceLoc, err := s.localizedFor(ctx, creditNameAliasSource, voiceIDs)
+		if err != nil {
+			return dto.PublicCharacter{}, false, err
+		}
+		for i := range ch.Works {
+			for j := range ch.Works[i].Voices {
+				v := &ch.Works[i].Voices[j]
+				v.Localized = locOrEmpty(voiceLoc[v.ID])
+			}
 		}
 		ch.NextOffset = nextOffset(len(res.Works), limit, offset)
 	}
@@ -740,6 +741,7 @@ func (s *PublicService) Label(ctx context.Context, id int64, withWorks, nsfw boo
 		ID: head.ID, DisplayName: head.DisplayName, Kind: labelKindKey(head.Kind), Lang: head.Lang,
 		LogoHash: head.LogoHash,
 	}
+	l.LogoMeta = publicImageMeta(s.entityMetaFor(ctx, l.LogoHash), l.LogoHash)
 	counts, err := s.workCountsFor(ctx, labelWorkEdge, []int64{id}, nsfw)
 	if err != nil {
 		return dto.PublicLabel{}, false, err
@@ -785,12 +787,19 @@ func (s *PublicService) Label(ctx context.Context, id int64, withWorks, nsfw boo
 				Kind: workLabelKindKey(w.Kind),
 			})
 		}
+		workBriefs := make([]*dto.PublicWorkBrief, len(l.Works))
+		for i := range l.Works {
+			workBriefs[i] = &l.Works[i].Work
+		}
+		if err := s.fillWorkBriefNames(ctx, workBriefs...); err != nil {
+			return dto.PublicLabel{}, false, err
+		}
 		l.NextOffset = nextOffset(len(items), limit, offset)
 	}
 	return l, true, nil
 }
 
-func (s *PublicService) labelIntros(ctx context.Context, labelID int64) ([]dto.PublicLabelIntro, error) {
+func (s *PublicService) labelIntros(ctx context.Context, labelID int64) ([]dto.PublicIntro, error) {
 	var rows []struct {
 		Lang       string `gorm:"column:lang"`
 		Intro      string `gorm:"column:intro"`
@@ -805,32 +814,32 @@ func (s *PublicService) labelIntros(ctx context.Context, labelID int64) ([]dto.P
 		`, i.source_id`, labelID).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
-	out := make([]dto.PublicLabelIntro, 0, len(rows))
+	out := make([]dto.PublicIntro, 0, len(rows))
 	seenLang := map[string]bool{}
 	for _, r := range rows {
 		if seenLang[r.Lang] {
 			continue
 		}
 		seenLang[r.Lang] = true
-		out = append(out, dto.PublicLabelIntro{Lang: r.Lang, Intro: r.Intro, Source: r.Source, Machine: r.Provenance == 1})
+		out = append(out, dto.PublicIntro{Lang: r.Lang, Intro: r.Intro, Source: r.Source, Machine: r.Provenance == 1})
 	}
 	return out, nil
 }
 
-func (s *PublicService) labelAliases(ctx context.Context, labelID int64) ([]string, map[string]dto.PublicLocalizedName, error) {
+func (s *PublicService) labelAliases(ctx context.Context, labelID int64) ([]dto.PublicAlias, map[string]dto.PublicLocalizedName, error) {
 	rows, err := s.entityAliases(ctx, labelAliasSource, labelID)
 	if err != nil {
 		return nil, nil, err
 	}
-	return flatAliases(rows), localizedNames(rows), nil
+	return richAliases(rows), localizedNames(rows), nil
 }
 
-func (s *PublicService) characterAliases(ctx context.Context, characterID int64) ([]string, map[string]dto.PublicLocalizedName, error) {
+func (s *PublicService) characterAliases(ctx context.Context, characterID int64) ([]dto.PublicAlias, map[string]dto.PublicLocalizedName, error) {
 	rows, err := s.entityAliases(ctx, characterAliasSource, characterID)
 	if err != nil {
 		return nil, nil, err
 	}
-	return flatAliases(rows), localizedNames(rows), nil
+	return richAliases(rows), localizedNames(rows), nil
 }
 
 func (s *PublicService) labelLinks(ctx context.Context, labelID int64) ([]dto.PublicLabelLink, error) {
@@ -870,12 +879,21 @@ func (s *PublicService) labelRelations(ctx context.Context, labelID int64) ([]dt
 		return nil, err
 	}
 	out := make([]dto.PublicLabelRelation, 0, len(rows))
+	ids := make([]int64, 0, len(rows))
 	for _, r := range rows {
 		key, ok := model.LabelRelationKey[r.Relation]
 		if !ok {
 			continue
 		}
-		out = append(out, dto.PublicLabelRelation{ID: r.ID, Name: r.Name, Relation: key})
+		out = append(out, dto.PublicLabelRelation{ID: r.ID, DisplayName: r.Name, Relation: key})
+		ids = append(ids, r.ID)
+	}
+	loc, err := s.localizedFor(ctx, labelAliasSource, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		out[i].Localized = locOrEmpty(loc[out[i].ID])
 	}
 	return out, nil
 }
@@ -1013,6 +1031,7 @@ func (s *PublicService) loadWorkBriefs(ctx context.Context, ids []int64, nsfw bo
 		return nil, err
 	}
 	out := make(map[int64]*dto.PublicWorkBrief, len(rows))
+	briefs := make([]*dto.PublicWorkBrief, 0, len(rows))
 	for _, r := range rows {
 		if !nsfw && isR18(r.ContentRating) {
 			continue
@@ -1022,6 +1041,10 @@ func (s *PublicService) loadWorkBriefs(ctx context.Context, ids []int64, nsfw bo
 			ContentRating: contentRatingKey(r.ContentRating),
 			ClaimedBy:     claimedBy(r.Site, r.ProductWorkID, r.ClaimState, r.DisplayNSFW, r.ContentRating),
 		}
+		briefs = append(briefs, out[r.ID])
+	}
+	if err := s.fillWorkBriefNames(ctx, briefs...); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
@@ -1153,7 +1176,10 @@ func publicTitles(titles []WorkTitleRow) []dto.PublicCatalogTitle {
 		if !ok {
 			continue
 		}
-		out = append(out, dto.PublicCatalogTitle{Lang: t.Lang, Title: t.Title, Latin: t.Latin, Kind: kind})
+		out = append(out, dto.PublicCatalogTitle{
+			Lang: t.Lang, Title: t.Title, Latin: t.Latin, Kind: kind,
+			Machine: t.Provenance == model.WorkTitleProvenanceMachine,
+		})
 	}
 	return out
 }
@@ -1264,17 +1290,20 @@ func firstNonEmptyPub(vals ...string) string {
 
 func (s *PublicService) characterTraits(ctx context.Context, characterID int64, spoilers int16, nsfw bool) ([]dto.PublicCharacterTrait, error) {
 	var rows []struct {
-		ID           int64
-		Name         string
-		NameZh       string `gorm:"column:name_zh"`
-		GroupName    *string
-		GroupNameZh  *string `gorm:"column:group_name_zh"`
-		Sexual       bool
-		SpoilerLevel int16
-		Lie          bool
+		ID              int64
+		Name            string
+		NameZh          string `gorm:"column:name_zh"`
+		NameZhProv      int16  `gorm:"column:name_zh_provenance"`
+		GroupName       *string
+		GroupNameZh     *string `gorm:"column:group_name_zh"`
+		GroupNameZhProv *int16  `gorm:"column:group_name_zh_provenance"`
+		Sexual          bool
+		SpoilerLevel    int16
+		Lie             bool
 	}
-	if err := s.db.WithContext(ctx).Raw(`SELECT t.id, t.name, t.name_zh,
+	if err := s.db.WithContext(ctx).Raw(`SELECT t.id, t.name, t.name_zh, t.name_zh_provenance,
 			g.name AS group_name, g.name_zh AS group_name_zh,
+			g.name_zh_provenance AS group_name_zh_provenance,
 			t.sexual, l.spoiler_level, l.lie
 		FROM catalog_character_trait_link l
 		JOIN catalog_character_trait t ON t.id = l.trait_id
@@ -1287,12 +1316,29 @@ func (s *PublicService) characterTraits(ctx context.Context, characterID int64, 
 	out := make([]dto.PublicCharacterTrait, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, dto.PublicCharacterTrait{
-			ID: r.ID, Name: r.Name, NameZh: r.NameZh,
-			Group: derefStrPub(r.GroupName), GroupZh: derefStrPub(r.GroupNameZh),
-			Spoiler: r.SpoilerLevel, Sexual: r.Sexual, Lie: r.Lie,
+			ID: r.ID, Name: r.Name, Group: derefStrPub(r.GroupName),
+			Localized:      traitLocalized(r.NameZh, r.NameZhProv),
+			GroupLocalized: traitLocalized(derefStrPub(r.GroupNameZh), derefI16Pub(r.GroupNameZhProv)),
+			Spoiler:        r.SpoilerLevel, Sexual: r.Sexual, Lie: r.Lie,
 		})
 	}
 	return out, nil
+}
+
+// The trait vocabulary's Chinese column is Simplified: a census of the 3,327
+// filled rows found 738 carrying simplified-only characters and none carrying a
+// traditional-only one, so the locale key is zh-Hans rather than a bare zh.
+func traitLocalized(nameZh string, provenance int16) map[string]dto.PublicLocalizedName {
+	out := map[string]dto.PublicLocalizedName{}
+	if nameZh == "" {
+		return out
+	}
+	out["zh-Hans"] = dto.PublicLocalizedName{
+		Value:   nameZh,
+		Kind:    aliasKindKey(model.AliasKindTranslation),
+		Machine: provenance == model.TraitNameZhProvenanceMachine,
+	}
+	return out
 }
 
 // sourceDerived is catalog_source 18 ("derived", first-party extraction).
@@ -1300,7 +1346,7 @@ func (s *PublicService) characterTraits(ctx context.Context, characterID int64, 
 // extraction outranks translated rows; source rows still win via provenance.
 const sourceDerived = 18
 
-func (s *PublicService) characterIntros(ctx context.Context, characterID int64) ([]dto.PublicCharacterIntro, error) {
+func (s *PublicService) characterIntros(ctx context.Context, characterID int64) ([]dto.PublicIntro, error) {
 	var rows []struct {
 		Lang       string
 		Intro      string
@@ -1314,27 +1360,27 @@ func (s *PublicService) characterIntros(ctx context.Context, characterID int64) 
 		characterID, sourceDerived).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
-	out := make([]dto.PublicCharacterIntro, 0, len(rows))
+	out := make([]dto.PublicIntro, 0, len(rows))
 	seen := map[string]bool{}
 	for _, r := range rows {
 		if seen[r.Lang] {
 			continue
 		}
 		seen[r.Lang] = true
-		out = append(out, dto.PublicCharacterIntro{Lang: r.Lang, Intro: r.Intro, Source: s.sourceKey(r.SourceID), Machine: r.Provenance == 1})
+		out = append(out, dto.PublicIntro{Lang: r.Lang, Intro: r.Intro, Source: s.sourceKey(r.SourceID), Machine: r.Provenance == 1})
 	}
 	return out, nil
 }
 
-func (s *PublicService) nameAliases(ctx context.Context, nameID int64) ([]string, map[string]dto.PublicLocalizedName, error) {
+func (s *PublicService) nameAliases(ctx context.Context, nameID int64) ([]dto.PublicAlias, map[string]dto.PublicLocalizedName, error) {
 	rows, err := s.entityAliases(ctx, creditNameAliasSource, nameID)
 	if err != nil {
 		return nil, nil, err
 	}
-	return flatAliases(rows), localizedNames(rows), nil
+	return richAliases(rows), localizedNames(rows), nil
 }
 
-func (s *PublicService) nameIntros(ctx context.Context, nameID, personID int64) ([]dto.PublicNameIntro, error) {
+func (s *PublicService) nameIntros(ctx context.Context, nameID, personID int64) ([]dto.PublicIntro, error) {
 	var personRows []struct {
 		Lang       string
 		Intro      string
@@ -1364,14 +1410,14 @@ func (s *PublicService) nameIntros(ctx context.Context, nameID, personID int64) 
 		return nil, err
 	}
 
-	out := make([]dto.PublicNameIntro, 0, len(personRows)+len(bridged))
+	out := make([]dto.PublicIntro, 0, len(personRows)+len(bridged))
 	seen := map[string]bool{}
 	add := func(lang, intro, source string, machine bool) {
 		if lang == "" || seen[lang] {
 			return
 		}
 		seen[lang] = true
-		out = append(out, dto.PublicNameIntro{Lang: lang, Intro: intro, Source: source, Machine: machine})
+		out = append(out, dto.PublicIntro{Lang: lang, Intro: intro, Source: source, Machine: machine})
 	}
 	for _, r := range personRows {
 		if r.Provenance == 0 {

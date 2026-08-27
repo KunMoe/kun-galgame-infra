@@ -1,4 +1,6 @@
 
+export type DevAppReviewStatus = '' | 'approved' | 'pending' | 'declined'
+
 export interface DevApp {
   client_id: string
   name: string
@@ -9,7 +11,14 @@ export interface DevApp {
   quota_daily: number
   key_count: number
   created_at: string
+  review_status: DevAppReviewStatus
+  review_note?: string
 }
+
+export type DevPolicyMode = 'self_service' | 'approval' | 'disabled'
+
+// Keyed by capability (app.create / app.manage / key.mint).
+export type DevPolicies = Record<string, DevPolicyMode>
 
 export interface DevKey {
   id: number
@@ -18,7 +27,6 @@ export interface DevKey {
   key_prefix: string
   last4: string
   scopes: string[]
-  nsfw_allowed: boolean
   expires_at?: string
   revoked_at?: string
   last_used_at?: string

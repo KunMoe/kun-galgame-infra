@@ -29,6 +29,7 @@ func cleanupSelf(t *testing.T) {
 	if err := testDB.Exec(`DELETE FROM oauth_clients WHERE owner_user_id IS NOT NULL OR id LIKE 'devapitest_%'`).Error; err != nil {
 		t.Fatalf("clean clients: %v", err)
 	}
+	cleanupPolicies(t)
 }
 
 func TestSelfServiceCreateAndOwnerScope(t *testing.T) {
@@ -175,10 +176,12 @@ func TestSelfServiceUsageShape(t *testing.T) {
 
 	app, _ := svc.CreateApp(ctx, owner, "used", "", nil)
 	rec := NewUsageRecorder(repo, newMemStore())
-	rec.Record(&Credential{KeyID: 11, ClientID: app.ID}, "catalog", 200)
-	rec.Record(&Credential{KeyID: 11, ClientID: app.ID}, "catalog", 404)
-	rec.Record(&Credential{KeyID: 22, ClientID: app.ID}, "catalog", 200)
-	rec.Record(&Credential{KeyID: 11, ClientID: app.ID}, "galgame", 500)
+	// Deliberately three different route patterns under face=catalog: the
+	// day+face rollup must aggregate over the path dimension, not split by it.
+	rec.Record(&Credential{KeyID: 11, ClientID: app.ID}, "catalog", "/v1/catalog/works/:id", 200)
+	rec.Record(&Credential{KeyID: 11, ClientID: app.ID}, "catalog", "/v1/catalog/search", 404)
+	rec.Record(&Credential{KeyID: 22, ClientID: app.ID}, "catalog", "/v1/catalog/lookup", 200)
+	rec.Record(&Credential{KeyID: 11, ClientID: app.ID}, "galgame", "/v1/galgame/:id", 500)
 	if err := rec.Flush(ctx); err != nil {
 		t.Fatalf("flush: %v", err)
 	}
@@ -212,12 +215,12 @@ func TestSelfServiceOwnerUsage(t *testing.T) {
 	appB, _ := svc.CreateApp(ctx, owner, "app-b", "", nil)
 
 	rec := NewUsageRecorder(repo, newMemStore())
-	rec.Record(&Credential{KeyID: 1, ClientID: appA.ID}, "catalog", 200)
-	rec.Record(&Credential{KeyID: 1, ClientID: appA.ID}, "catalog", 200)
-	rec.Record(&Credential{KeyID: 1, ClientID: appA.ID}, "catalog", 404)
-	rec.Record(&Credential{KeyID: 2, ClientID: appA.ID}, "galgame", 500)
-	rec.Record(&Credential{KeyID: 3, ClientID: appB.ID}, "catalog", 200)
-	rec.Record(&Credential{KeyID: 3, ClientID: appB.ID}, "catalog", 200)
+	rec.Record(&Credential{KeyID: 1, ClientID: appA.ID}, "catalog", "/v1/catalog/works/:id", 200)
+	rec.Record(&Credential{KeyID: 1, ClientID: appA.ID}, "catalog", "/v1/catalog/search", 200)
+	rec.Record(&Credential{KeyID: 1, ClientID: appA.ID}, "catalog", "/v1/catalog/search", 404)
+	rec.Record(&Credential{KeyID: 2, ClientID: appA.ID}, "galgame", "/v1/galgame/:id", 500)
+	rec.Record(&Credential{KeyID: 3, ClientID: appB.ID}, "catalog", "/v1/catalog/works", 200)
+	rec.Record(&Credential{KeyID: 3, ClientID: appB.ID}, "catalog", "/v1/catalog/works/:id", 200)
 	if err := rec.Flush(ctx); err != nil {
 		t.Fatalf("flush: %v", err)
 	}

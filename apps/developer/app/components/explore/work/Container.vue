@@ -3,149 +3,141 @@ useSeoMeta({ title: '作品预览', robots: 'noindex' })
 
 interface Img {
   url: string
-  sexual?: number
-  violence?: number
+  sexual?: string | null
+  violence?: string | null
   source?: string
-  kind?: string
   portrait_pinned?: boolean
 }
-interface Trait {
-  id: number
-  name: string
-  group?: string
-  sexual?: boolean
-  spoiler?: number
-  lie?: boolean
+interface WorkCharacter {
+  id: string
+  display_name: string
+  roster_role?: string
+  spoiler?: string
+  image?: Img | null
 }
-interface Character {
-  id: number
-  name: string
-  kind?: string
-  spoiler?: number
-  image?: string
-  voices?: { id: number; name: string }[]
+interface CreditEntry {
+  id: string
+  display_name: string
+  character_id?: string | null
 }
 interface CreditGroup {
   role_key: string
   role_name: string
-  credits: { id: number; name: string; lang?: string; character?: string | null }[]
+  credits: CreditEntry[]
 }
 interface WorkDetail {
-  id: number
+  id: string
   display_name?: string
   content_rating?: string
-  release_date?: string
+  release_date?: string | null
   olang?: string
   covers?: Img[]
   screenshots?: Img[]
-  tags?: { name: string; source?: string }[]
-  characters?: Character[]
+  tags?: {
+    display_name: string
+    source?: string
+    spoiler?: string
+    is_sexual?: boolean
+  }[]
+  characters?: WorkCharacter[]
   refs?: { source: string; external_id: string }[]
   releases?: {
-    id: number
-    kind?: string
-    date?: string
-    title?: string
+    id: string
+    release_kind?: string
+    date?: string | null
+    title?: string | null
     lang?: string
     platforms?: string[]
   }[]
-  ratings?: { source: string; score: number; vote_count?: number; rank?: number }[]
+  ratings?: {
+    source: string
+    score: number
+    vote_count?: number
+    rank?: number | null
+  }[]
   playtimes?: { source: string; minutes: number; vote_count?: number }[]
   popularity?: { source: string; metric: string; value: number }[]
   credits?: CreditGroup[]
   relations?: {
     relation_type?: string
     phrase?: string
-    work?: { id: number; display_name?: string; content_rating?: string }
+    work?: { id: string; display_name?: string; content_rating?: string }
   }[]
-  labels?: { id: number; display_name: string; kind?: string }[]
-  series?: { id: number; name: string; member_count?: number }[]
-  intro?: { lang: string; intro: string; machine?: boolean; source?: string }[]
-  titles?: { kind?: string; lang?: string; latin?: string; title: string }[]
-  claimed_by?: { site?: string; work_id?: number } | null
-}
-interface GalAggregate {
-  names?: Record<string, string | null>
-  images?: { banner?: { url?: string }; portrait?: { url?: string } }
-  intro?: Record<string, string | null>
-  scores?: {
-    vndb?: { rating?: number; vote_count?: number; url?: string } | null
-    bangumi?: { score?: number; rank?: number; url?: string } | null
-    eg?: { median?: number; count?: number; url?: string } | null
-  }
-  aliases?: string[]
-  links?: { id: number; name: string; link: string; source?: string }[]
-  meta?: Record<string, unknown>
+  companies?: {
+    id: string
+    display_name: string
+    company_kind?: string
+    attribution_role?: string
+  }[]
+  series?: { id: string; display_name: string; member_count?: number }[]
+  intros?: { lang: string; value: string; is_machine?: boolean; source?: string }[]
+  titles?: {
+    title_kind?: string
+    lang?: string
+    latin?: string | null
+    title: string
+  }[]
 }
 
+// v2 is default-thin: every block below the identity core has to be asked for
+// by name, and an unknown token is a 400 rather than a silently missing block.
+const WORK_INCLUDE = [
+  'titles',
+  'refs',
+  'intros',
+  'covers',
+  'screenshots',
+  'tags',
+  'characters',
+  'companies',
+  'series',
+  'releases',
+  'ratings',
+  'playtimes',
+  'popularity',
+  'relations',
+  'credits'
+].join(',')
+
 const route = useRoute()
-const workId = computed(() => Number(route.params.id))
+const workId = computed(() => String(route.params.id))
 const nsfw = computed(() => route.query.nsfw === '1')
 
 const apiKey = ref('')
 const loading = ref(true)
 const error = ref('')
 const work = ref<WorkDetail | null>(null)
-const gal = ref<GalAggregate | null>(null)
-const charTraits = ref<Record<number, Trait[]>>({})
 const entityTarget = ref<{
-  kind: 'characters' | 'names' | 'labels' | 'works'
-  id: number
+  kind: 'characters' | 'credit-names' | 'companies' | 'works'
+  id: string
 } | null>(null)
 
 const relay = async (path: string, query: Record<string, string>) => {
   const qs = new URLSearchParams(query).toString()
-  return await $fetch<{ code: number; message: string; data: unknown }>(
-    `/relay/${path}?${qs}`,
-    { headers: { Authorization: `Bearer ${apiKey.value.trim()}` } }
-  )
+  return await $fetch<WorkDetail>(`/relay/${path}?${qs}`, {
+    headers: { Authorization: `Bearer ${apiKey.value.trim()}` }
+  })
 }
 
 const load = async () => {
   loading.value = true
   error.value = ''
   work.value = null
-  gal.value = null
-  charTraits.value = {}
   entityTarget.value = null
   try {
-    const resp = await relay(`v1/catalog/works/${workId.value}`, {
-      include: 'relations,credits',
-      ...(nsfw.value && { nsfw: '1' })
+    work.value = await relay(`v2/catalog/works/${workId.value}`, {
+      include: WORK_INCLUDE,
+      ...(nsfw.value && { nsfw: 'true' })
     })
-    work.value = (resp.data as WorkDetail) ?? null
-    const cb = work.value?.claimed_by
-    if (
-      cb &&
-      typeof cb.work_id === 'number' &&
-      String(cb.site ?? '').includes('galgame')
-    ) {
-      const g = await relay(`v1/galgame/${cb.work_id}`, {
-        include: 'intro,scores,covers,links,meta',
-        content_limit: nsfw.value ? 'all' : 'sfw'
-      }).catch(() => null)
-      gal.value = (g?.data as GalAggregate) ?? null
-    }
-    const visible = (work.value?.characters ?? [])
-      .filter((c) => (c.spoiler ?? 0) === 0)
-      .slice(0, 12)
-    const traitResults = await Promise.allSettled(
-      visible.map(async (c) => {
-        const r = await relay(`v1/catalog/characters/${c.id}`, {
-          spoilers: '0',
-          ...(nsfw.value && { nsfw: '1' })
-        })
-        return { id: c.id, data: r.data as { traits?: Trait[] } | null }
-      })
-    )
-    const tm: Record<number, Trait[]> = {}
-    for (const r of traitResults)
-      if (r.status === 'fulfilled' && r.value.data?.traits?.length)
-        tm[r.value.id] = r.value.data.traits
-    charTraits.value = tm
   } catch (e) {
-    const err = e as { data?: { message?: string }; statusCode?: number }
-    error.value = err.data?.message ?? `请求失败（${err.statusCode ?? '网络错误'}）`
+    const err = e as {
+      data?: { detail?: string; title?: string }
+      statusCode?: number
+    }
+    error.value =
+      err.data?.detail ??
+      err.data?.title ??
+      `请求失败（${err.statusCode ?? '网络错误'}）`
   } finally {
     loading.value = false
   }
@@ -164,50 +156,19 @@ watch(
   }
 )
 
-const pickLocale = (
-  m: Record<string, string | null> | undefined,
-  keys: string[]
-) => {
-  if (!m) return null
-  for (const k of keys) {
-    const v = m[k]
-    if (typeof v === 'string' && v) return v
-  }
-  return null
-}
-
-const titleMain = computed(
-  () =>
-    pickLocale(gal.value?.names, ['zh-cn', 'zh_cn', 'zh-tw']) ??
-    work.value?.display_name ??
-    `#${workId.value}`
-)
-const titleJa = computed(() => {
-  const ja = pickLocale(gal.value?.names, ['ja-jp', 'ja'])
-  return ja && ja !== titleMain.value ? ja : null
-})
-const titleEn = computed(() => pickLocale(gal.value?.names, ['en-us', 'en']))
+const titleMain = computed(() => work.value?.display_name ?? `#${workId.value}`)
 
 const safeImg = (c: Img) =>
-  nsfw.value || ((c.sexual ?? 0) === 0 && (c.violence ?? 0) === 0)
+  nsfw.value ||
+  ((c.sexual ?? 'safe') === 'safe' && (c.violence ?? 'tame') === 'tame')
 
-const banner = computed(
-  () =>
-    gal.value?.images?.banner?.url ??
-    work.value?.covers?.find(safeImg)?.url ??
-    null
-)
-const portrait = computed(() => gal.value?.images?.portrait?.url ?? null)
+const banner = computed(() => work.value?.covers?.find(safeImg)?.url ?? null)
 
 const LOCALE_LABEL: Record<string, string> = {
-  'zh-cn': '中文',
-  zh_cn: '中文',
-  'zh-tw': '繁體中文',
+  zh: '中文',
   'zh-Hans': '中文',
   'zh-Hant': '繁體中文',
-  'ja-jp': '日本語',
   ja: '日本語',
-  'en-us': 'English',
   en: 'English'
 }
 interface IntroVariant {
@@ -219,29 +180,16 @@ interface IntroVariant {
 const normalizeIntro = (s: string) => s.replace(/\\\n/g, '\n').trim()
 const introVariants = computed<IntroVariant[]>(() => {
   const byText = new Map<string, IntroVariant>()
-  for (const i of work.value?.intro ?? []) {
-    const text = normalizeIntro(i.intro)
+  for (const i of work.value?.intros ?? []) {
+    const text = normalizeIntro(i.value)
     if (text && !byText.has(text))
       byText.set(text, {
         label: LOCALE_LABEL[i.lang] ?? i.lang,
         text,
-        machine: i.machine === true,
+        machine: i.is_machine === true,
         source: i.source
       })
   }
-  const gi = gal.value?.intro
-  if (gi)
-    for (const [k, v] of Object.entries(gi)) {
-      if (typeof v !== 'string') continue
-      const text = normalizeIntro(v)
-      if (text && !byText.has(text))
-        byText.set(text, {
-          label: LOCALE_LABEL[k] ?? k,
-          text,
-          machine: false,
-          source: 'galgame_wiki'
-        })
-    }
   return [...byText.values()]
 })
 const introIdx = ref(0)
@@ -255,24 +203,16 @@ watch(
 )
 const activeIntro = computed(() => introVariants.value[introIdx.value] ?? null)
 
-const aliasList = computed(() => (gal.value?.aliases ?? []).slice(0, 12))
-const aliasRest = computed(
-  () => Math.max(0, (gal.value?.aliases?.length ?? 0) - 12)
-)
 const coverList = computed(() =>
   (work.value?.covers ?? []).filter(safeImg).slice(0, 8)
 )
-const linkList = computed(() => (gal.value?.links ?? []).slice(0, 12))
-const galView = computed(() => {
-  const v = gal.value?.meta?.view
-  return typeof v === 'number' ? v : null
-})
 
 const TAG_CAP = 40
-const tags = computed(() => (work.value?.tags ?? []).slice(0, TAG_CAP))
-const tagRest = computed(
-  () => Math.max(0, (work.value?.tags?.length ?? 0) - TAG_CAP)
+const openTags = computed(() =>
+  (work.value?.tags ?? []).filter((t) => (t.spoiler ?? 'none') === 'none')
 )
+const tags = computed(() => openTags.value.slice(0, TAG_CAP))
+const tagRest = computed(() => Math.max(0, openTags.value.length - TAG_CAP))
 
 const shots = computed(() =>
   (work.value?.screenshots ?? []).filter(safeImg).slice(0, 8)
@@ -280,24 +220,40 @@ const shots = computed(() =>
 
 const chars = computed(() =>
   (work.value?.characters ?? [])
-    .filter((c) => (c.spoiler ?? 0) === 0)
+    .filter((c) => (c.spoiler ?? 'none') === 'none')
     .slice(0, 12)
 )
 const charsHidden = computed(
-  () => (work.value?.characters ?? []).filter((c) => (c.spoiler ?? 0) > 0).length
+  () =>
+    (work.value?.characters ?? []).filter(
+      (c) => (c.spoiler ?? 'none') !== 'none'
+    ).length
 )
+
+// v2 has no per-character voice block. A credit whose `character_id` is set IS
+// the voice credit for that character, so both directions come off the credits
+// block already on the page instead of one request per character.
+const voicesByCharacter = computed(() => {
+  const m = new Map<string, CreditEntry[]>()
+  for (const g of work.value?.credits ?? [])
+    for (const cr of g.credits) {
+      if (!cr.character_id) continue
+      const list = m.get(cr.character_id) ?? []
+      list.push(cr)
+      m.set(cr.character_id, list)
+    }
+  return m
+})
+const characterName = computed(() => {
+  const m = new Map<string, string>()
+  for (const c of work.value?.characters ?? []) m.set(c.id, c.display_name)
+  return m
+})
 
 const releases = computed(() => (work.value?.releases ?? []).slice(0, 10))
 const releaseRest = computed(
   () => Math.max(0, (work.value?.releases?.length ?? 0) - 10)
 )
-
-const refLink = (source: string) => {
-  const s = gal.value?.scores
-  if (source === 'vndb') return s?.vndb?.url ?? null
-  if (source === 'bangumi') return s?.bangumi?.url ?? null
-  return null
-}
 
 const fmt = (n: number) => n.toLocaleString()
 
@@ -305,14 +261,14 @@ const scorePct = (r: { score: number }) =>
   Math.max(0, Math.min(100, r.score > 10 ? r.score : r.score * 10))
 
 const METRIC_LABEL: Record<string, string> = {
-  wish: '想玩',
-  collect: '玩过',
-  doing: '在玩',
-  hold: '搁置',
-  drop: '抛弃',
-  dl_count: '下载数',
+  downloads: '下载数',
   wishlist: '愿望单',
-  review_count: '评论数'
+  reviews: '评论数',
+  bgm_wish: '想玩',
+  bgm_collect: '玩过',
+  bgm_doing: '在玩',
+  bgm_on_hold: '搁置',
+  bgm_dropped: '抛弃'
 }
 const popGroups = computed(() => {
   const by = new Map<string, { metric: string; value: number }[]>()
@@ -374,29 +330,12 @@ const popGroups = computed(() => {
         <div
           class="absolute inset-x-0 bottom-0 flex items-end gap-4 bg-background/85 p-4 backdrop-blur md:p-5"
         >
-          <div
-            v-if="portrait"
-            class="hidden w-20 shrink-0 overflow-hidden rounded-lg border border-default-200 sm:block md:w-24"
-          >
-            <KunImageNative
-              :src="portrait"
-              :alt="titleMain"
-              loading="eager"
-              class-name="aspect-[3/4] w-full object-cover"
-            />
-          </div>
           <div class="min-w-0">
             <h1
               class="truncate text-2xl font-bold tracking-tight text-foreground md:text-3xl"
             >
               {{ titleMain }}
             </h1>
-            <p v-if="titleJa" class="truncate text-base text-default-500">
-              {{ titleJa }}
-            </p>
-            <p v-if="titleEn" class="truncate text-xs text-default-400">
-              {{ titleEn }}
-            </p>
           </div>
         </div>
       </section>
@@ -406,8 +345,6 @@ const popGroups = computed(() => {
           <h1 class="text-3xl font-bold tracking-tight text-foreground">
             {{ titleMain }}
           </h1>
-          <p v-if="titleJa" class="text-lg text-default-500">{{ titleJa }}</p>
-          <p v-if="titleEn" class="text-sm text-default-400">{{ titleEn }}</p>
         </template>
         <div class="flex flex-wrap items-center gap-2 pt-1">
           <KunChip
@@ -430,10 +367,10 @@ const popGroups = computed(() => {
             原语言 {{ work.olang }}
           </KunChip>
           <button
-            v-for="l in work.labels ?? []"
+            v-for="l in work.companies ?? []"
             :key="`l-${l.id}`"
             type="button"
-            @click="entityTarget = { kind: 'labels', id: l.id }"
+            @click="entityTarget = { kind: 'companies', id: l.id }"
           >
             <KunChip color="primary" variant="flat" size="sm">
               {{ l.display_name }}
@@ -446,43 +383,23 @@ const popGroups = computed(() => {
             variant="flat"
             size="sm"
           >
-            系列 · {{ sr.name }}（{{ sr.member_count }} 部）
-          </KunChip>
-          <KunChip v-if="galView !== null" color="default" variant="flat" size="sm">
-            {{ fmt(galView) }} 次浏览
+            系列 · {{ sr.display_name }}（{{ sr.member_count }} 部）
           </KunChip>
         </div>
       </header>
 
-      <section v-if="(work.titles ?? []).length || aliasList.length">
-        <h2 class="mb-2 text-lg font-semibold text-foreground">名称与别名</h2>
-        <div
-          v-if="(work.titles ?? []).length"
-          class="mb-2 space-y-1 text-sm text-default-500"
-        >
+      <section v-if="(work.titles ?? []).length">
+        <h2 class="mb-2 text-lg font-semibold text-foreground">名称</h2>
+        <div class="space-y-1 text-sm text-default-500">
           <p v-for="(t, i) in work.titles" :key="`t-${i}`">
             <KunChip color="default" variant="flat" size="xs">
-              {{ t.kind ?? 'title' }}<template v-if="t.lang"> · {{ t.lang }}</template>
+              {{ t.title_kind ?? 'title' }}<template v-if="t.lang"> · {{ t.lang }}</template>
             </KunChip>
             <span class="ml-2 text-foreground">{{ t.title }}</span>
             <span v-if="t.latin" class="ml-2 text-xs text-default-400">
               {{ t.latin }}
             </span>
           </p>
-        </div>
-        <div v-if="aliasList.length" class="flex flex-wrap gap-1.5">
-          <KunChip
-            v-for="a in aliasList"
-            :key="a"
-            color="default"
-            variant="flat"
-            size="xs"
-          >
-            {{ a }}
-          </KunChip>
-          <span v-if="aliasRest" class="text-xs text-default-400">
-            +{{ aliasRest }}
-          </span>
         </div>
       </section>
 
@@ -573,39 +490,15 @@ const popGroups = computed(() => {
         class="flex flex-wrap items-center gap-2"
       >
         <span class="text-xs text-default-400">外部标识</span>
-        <template
+        <KunChip
           v-for="rf in work.refs"
           :key="`${rf.source}-${rf.external_id}`"
+          color="default"
+          variant="flat"
+          size="sm"
         >
-          <a
-            v-if="refLink(rf.source)"
-            :href="refLink(rf.source) ?? undefined"
-            target="_blank"
-            rel="noopener"
-          >
-            <KunChip color="primary" variant="flat" size="sm">
-              {{ rf.source }}:{{ rf.external_id }}
-            </KunChip>
-          </a>
-          <KunChip v-else color="default" variant="flat" size="sm">
-            {{ rf.source }}:{{ rf.external_id }}
-          </KunChip>
-        </template>
-      </section>
-
-      <section v-if="linkList.length" class="flex flex-wrap items-center gap-2">
-        <span class="text-xs text-default-400">官方 / 外部链接</span>
-        <a
-          v-for="lk in linkList"
-          :key="lk.id"
-          :href="lk.link"
-          target="_blank"
-          rel="noopener"
-        >
-          <KunChip color="secondary" variant="flat" size="sm">
-            {{ lk.name }}
-          </KunChip>
-        </a>
+          {{ rf.source }}:{{ rf.external_id }}
+        </KunChip>
       </section>
 
       <section v-if="introVariants.length">
@@ -684,12 +577,12 @@ const popGroups = computed(() => {
                 主图
               </KunChip>
               <KunChip
-                v-if="(cv.sexual ?? 0) > 0"
+                v-if="cv.sexual && cv.sexual !== 'safe'"
                 color="danger"
                 variant="solid"
                 size="xs"
               >
-                s{{ cv.sexual }}
+                {{ cv.sexual }}
               </KunChip>
             </div>
           </div>
@@ -701,12 +594,12 @@ const popGroups = computed(() => {
         <div class="flex flex-wrap gap-1.5">
           <KunChip
             v-for="t in tags"
-            :key="t.name"
-            color="default"
+            :key="`${t.source}-${t.display_name}`"
+            :color="t.is_sexual ? 'danger' : 'default'"
             variant="flat"
             size="xs"
           >
-            {{ t.name }}
+            {{ t.display_name }}
           </KunChip>
           <span v-if="tagRest" class="text-xs text-default-400">
             +{{ tagRest }}
@@ -733,12 +626,15 @@ const popGroups = computed(() => {
                 {{ sh.source }}
               </KunChip>
               <KunChip
-                v-if="(sh.sexual ?? 0) > 0 || (sh.violence ?? 0) > 0"
+                v-if="
+                  (sh.sexual && sh.sexual !== 'safe') ||
+                  (sh.violence && sh.violence !== 'tame')
+                "
                 color="danger"
                 variant="solid"
                 size="xs"
               >
-                s{{ sh.sexual ?? 0 }}/v{{ sh.violence ?? 0 }}
+                {{ sh.sexual ?? 'safe' }} / {{ sh.violence ?? 'tame' }}
               </KunChip>
             </div>
           </div>
@@ -755,8 +651,8 @@ const popGroups = computed(() => {
           >
             <div v-if="c.image" class="aspect-[3/4] overflow-hidden bg-default-100">
               <KunImageNative
-                :src="c.image"
-                :alt="c.name"
+                :src="c.image.url"
+                :alt="c.display_name"
                 loading="lazy"
                 class-name="h-full w-full object-cover"
               />
@@ -768,10 +664,10 @@ const popGroups = computed(() => {
                   class="truncate text-sm font-medium text-foreground hover:text-primary hover:underline"
                   @click="entityTarget = { kind: 'characters', id: c.id }"
                 >
-                  {{ c.name }}
+                  {{ c.display_name }}
                 </button>
                 <KunChip
-                  v-if="c.kind === 'main'"
+                  v-if="c.roster_role === 'main'"
                   color="primary"
                   variant="flat"
                   size="xs"
@@ -780,40 +676,20 @@ const popGroups = computed(() => {
                 </KunChip>
               </div>
               <p
-                v-if="c.voices?.length"
+                v-if="voicesByCharacter.get(c.id)?.length"
                 class="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-default-400"
               >
                 CV
                 <button
-                  v-for="v in c.voices"
+                  v-for="v in voicesByCharacter.get(c.id)"
                   :key="v.id"
                   type="button"
                   class="hover:text-primary hover:underline"
-                  @click="entityTarget = { kind: 'names', id: v.id }"
+                  @click="entityTarget = { kind: 'credit-names', id: v.id }"
                 >
-                  {{ v.name }}
+                  {{ v.display_name }}
                 </button>
               </p>
-              <div
-                v-if="charTraits[c.id]?.length"
-                class="mt-1.5 flex flex-wrap gap-1"
-              >
-                <KunChip
-                  v-for="tr in (charTraits[c.id] ?? []).slice(0, 6)"
-                  :key="tr.id"
-                  :color="tr.sexual ? 'danger' : 'default'"
-                  variant="flat"
-                  size="xs"
-                >
-                  {{ tr.name }}
-                </KunChip>
-                <span
-                  v-if="(charTraits[c.id]?.length ?? 0) > 6"
-                  class="text-xs text-default-400"
-                >
-                  +{{ (charTraits[c.id]?.length ?? 0) - 6 }}
-                </span>
-              </div>
             </div>
           </div>
         </div>
@@ -832,13 +708,15 @@ const popGroups = computed(() => {
             <div class="mt-1 flex flex-wrap gap-1.5">
               <button
                 v-for="cr in g.credits"
-                :key="`${g.role_key}-${cr.id}-${cr.character ?? ''}`"
+                :key="`${g.role_key}-${cr.id}-${cr.character_id ?? ''}`"
                 type="button"
-                @click="entityTarget = { kind: 'names', id: cr.id }"
+                @click="entityTarget = { kind: 'credit-names', id: cr.id }"
               >
                 <KunChip color="default" variant="flat" size="sm">
-                  {{ cr.name
-                  }}<template v-if="cr.character">（{{ cr.character }}）</template>
+                  {{ cr.display_name
+                  }}<template v-if="cr.character_id && characterName.get(cr.character_id)"
+                    >（{{ characterName.get(cr.character_id) }}）</template
+                  >
                 </KunChip>
               </button>
             </div>
@@ -861,12 +739,12 @@ const popGroups = computed(() => {
               rl.title
             }}</span>
             <KunChip
-              v-if="rl.kind && rl.kind !== 'complete'"
+              v-if="rl.release_kind && rl.release_kind !== 'default'"
               color="warning"
               variant="flat"
               size="xs"
             >
-              {{ rl.kind }}
+              {{ rl.release_kind }}
             </KunChip>
             <KunChip v-if="rl.lang" color="default" variant="flat" size="xs">
               {{ rl.lang }}
@@ -915,13 +793,11 @@ const popGroups = computed(() => {
       </section>
 
       <p class="border-t border-default-200 pt-4 text-xs text-default-400">
-        本页由 NextMoe 开放 API 实时渲染：
-        <code class="font-mono">/v1/catalog/works/{id}</code>（聚合 facet +
-        逐源归因）+
-        <code class="font-mono">/v1/galgame/{gid}</code>（跨面聚合：banner /
-        多语言名 / 多语言简介含机翻标注 / 别名 / 官方链接 / 三源评分）+
-        逐角色 <code class="font-mono">/v1/catalog/characters/{id}</code>
-        （traits）。同样的数据，你的应用也拿得到 ——
+        本页由 NextMoe 公开 API v2 实时渲染，只用一次
+        <code class="font-mono">GET /v2/catalog/works/{id}</code>
+        —— 封面、标签、评分、时长、热度、角色、制作人员、关联作品全部经
+        <code class="font-mono">include=</code>
+        一并取回，逐字段附来源。同样的数据，你的应用也拿得到 ——
         <NuxtLink to="/docs" class="text-primary hover:underline">
           API 文档
         </NuxtLink>

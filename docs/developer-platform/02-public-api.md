@@ -10,8 +10,9 @@
 
 - **白名单暴露**:只把精选的只读端点放进 `api.nextmoe.dev/v1/…`;internal / admin / 写端点**永不**进入公开路由(物理上不挂到公开路由组)。**wave 207 收窄措辞**:被禁的是**注册表 / 编辑写面**——改注册行、认领、merge、审核队列这一族,它们至今一条都不在公开路由上。`/v1/playtime` 是**唯一**的公开写面,且写的**不是注册表**而是调用方自己的游玩记录:凭据是**用户自己的 Bearer 令牌**(不是机器 API key),一个用户只写得到自己那几行,见 §3.8。
 - **URL 版本化** `/v1/`:一旦有了无法协调破坏性变更的外部开发者,版本化与弃用策略从"过早优化"变成"硬需求"。
-- **弃用策略**:破坏性变更必须升 `/v2/`;字段级弃用走 `Deprecation` / `Sunset` 响应头 + 门户公告 + 不少于 N 个月窗口。
-- **路径命名空间 = 面**:`/v1/catalog/*`、`/v1/galgame/*`,未来 `/v1/manga/*` 等。galgame 的领域词表(officials/tags/engines/series)全部收进 `/v1/galgame/` 之下,给未来媒介留干净的顶层命名空间。**(galgame 面已于 2026-07-30 摘牌,整族落 `410 Gone`;该命名空间原则不变。)wave 207 更正**:在产的面现在是**两个**——`/v1/catalog`(25 op,机器 API key:`X-API-Key`,或 `Authorization: Bearer nm_live_…`)与 `/v1/playtime`(5 op,**用户**访问令牌:`Authorization: Bearer <OAuth access token>`,见 §3.8),冻结 spec 合计 30 op。它们同进程(`cmd/catalog`)挂载但**凭据体系不同**,不要写成一句「公开面用 API key」。
+- **弃用策略(v1)**:字段级弃用走 `Deprecation` / `Sunset` 响应头 + 门户公告 + 不少于 N 个月窗口。主版本退役从 **v2 GA** 起算，不是从 `/v2` 上线起算。
+- **`/v2` GA(2026-08-25,上线于 2026-08-23)**:`/v2` 挂在 `cmd/catalog` 上，契约由 `docs/catalog/v2-openapi.yaml` 从真实路由生成。**preview 期结束，破坏性变更不再豁免**：上一句「破坏必须升 v2」现在无条件适用，由 `spec-breaking.yml` 的 oasdiff 门(G12)执行。凭证向所有人开放：任何应用在控制台自助铸造 `nmk_live_` / `nmk_test_`（定长 37，CRC32 校验位），不需要申请，轮换存量 `nm_live_` 钥匙换回的也是 `nmk_`；存量 `nm_live_` 继续只对 `/v1` 有效，直至单独排期的 v1 sunset。spec `info.version 2.0.0`、`info.x-stability: stable`，门户 preview 横幅已撤。v1 的 `Deprecation`/`Sunset` 自本日起算。客户端契约三句见门户 [/docs/design](https://developer.nextmoe.dev/docs/design)。
+- **路径命名空间 = 面**:`/v1/catalog/*`、`/v1/galgame/*`,未来 `/v1/manga/*` 等。galgame 的领域词表(officials/tags/engines/series)全部收进 `/v1/galgame/` 之下,给未来媒介留干净的顶层命名空间。**(galgame 面已于 2026-07-30 摘牌,整族落 `410 Gone`;该命名空间原则不变。)wave 207 更正**:在产的面现在是**两个**——`/v1/catalog`(**37 op**,wave 213 波 1 加了十二条作品子资源;机器 API key:`X-API-Key`,或 `Authorization: Bearer nm_live_…`)与 `/v1/playtime`(5 op,**用户**访问令牌:`Authorization: Bearer <OAuth access token>`,见 §3.8),冻结 spec 合计 42 op。它们同进程(`cmd/catalog`)挂载但**凭据体系不同**,不要写成一句「公开面用 API key」。
 - **公开投影与内部契约解耦**:公开面是从既有 Huma spec 精选出的**独立 spec**;内部 S2S/站点契约继续自由演进,互不牵制。
 
 ### 3.2 v1 端点清单(草案)
@@ -43,17 +44,18 @@
 
 | 公开端点(`/v1`) | scope | 说明 |
 |---|---|---|
-| `GET /v1/catalog/works/{id}` | `catalog:read` | 注册行:display_name / titles / medium / 分级 / 外部锚(来源白名单过滤,见 [06 §11](./06-security-compliance.md))/ **认领指针**(→ 内容面路由,见 [01 §3.3](./01-design.md))+ **全量聚合 facet**(wave 104 加法扩容:popularity/ratings/tags/playtimes/series/platforms/intro/covers/screenshots/characters/labels/releases——source 键归因、CDN 完整 URL、字符串词表);**R18 调用方自控**:`nsfw=1` 出 r18 作品与 r18 关系端(works/lookup/names/characters/labels 同参;characters 另有 `spoilers=0-2` + sexual traits 随 nsfw),缺省隐藏与 Phase-1 逐字节一致;`updated` 恒在(doc 106);`releases[]` 每行带 `id`+`refs[]`,`tags[]` 每行带 canonical `canonical_id/tier/kind`(doc 106,未映射省略)。**A2-1e 加法**:`created`(RFC3339,注册行**进入 catalog 的时刻**——既不是发售日也不是产品侧创建时间)、`engines[]`(`{id,name}`,恒出空为 `[]`)、`links[]`(非身份外链,见 §3.2.2)、`labels[]` 每行 `lang`、`tags[]` 的**安全轴** `spoiler`/`sexual` + `spoilers=0\|1\|2` 参数(见 §3.2.3)。**A2-R1 修复**:`titles[]` 对**认领作品**来自 wiki 桥(四名称列 + 别名,见 §3.2.5)——此前认领作品的中文名/别名整体缺席;`labels[]`/`engines[]` 每行恒带 `work_count`、`tags[]` 映射行带 `work_count`(nsfw 感知,见 §3.2.6)。**wave 200 加法**:`releases[].labels[]`——**这一版次**的公司(谁开发、谁发行),形状与作品级 `labels[]` 逐字同(一家公司一条 + `kinds[]` + `work_count`);**恒在**,该版次无已知公司时为 `[]`(同 `refs[]` 之规)。Switch 移植的发行商与英文版的发行商是**两个版次**的事实,压平到作品级后无从归因,这个键即它们各自的归宿。**wave 207 更正 · `include=` 重块**:本行的 `include=`(逗号分隔词表 `relations,credits`,**缺省两块皆不出**,未知 token 静默忽略——§3.5 条款 2)是这两块的**唯一入口**;本表此前把 `works/{id}/credits` 与 `works/{id}/relations` 列作两条独立端点,**它们从未存在**(冻结 spec 里没有这两个 path),本波删除。`include=credits` 出 `credits[]`:按 role 分组 `{role_key, role_name, credits[]}`(role 名取中文 → 日文 → role_key 回退),每条署名 `{id, name, lang, latin, character_id, character, label_id, label, source}`——`id` 是 credit_name id,可直接喂 `names/{id}`;`label_id` 见 §3.2.1 ②b,`source` 见 §3.2.1 ②d。`include=relations` 出 `relations[]`:`{relation_type, phrase, work}`,`work` 为作品 brief(带 `claimed_by`),一条边双向渲染;**`nsfw=0` 时 r18 关系端整条丢弃**而非留空壳。**wave 207 补文 · `cover_slots`**:恒出键 `cover_slots{portrait, banner}`(该调用方一张可用封面都没有时整块 `null`),每槽 `{url, width, height, thumbhash, sexual, violence, source}` 或 `null`——与 works 列表 `include=covers` 的两槽**同一个挑选器**,槽位判据(**kind × 尺寸两道,不是「非竖版即 banner」**)见 §3.2.1 ④ |
-| `GET /v1/catalog/works` | `catalog:read` | **作品浏览/列表(doc 106 G1,keyset)**:过滤 `content_rating`/`claimed`/`label_id`/`tag_id`(canonical)/`series_id`/**`engine_id`(A2-1b 第九过滤器,经 `catalog_work_engine`)**/`platform`/`released_after\|before`/`ids`(≤100);`sort=id\|updated`;item = 轻 brief(+`release_date`/`olang`/`cover` 单图/`updated`);`nsfw` 同参;`next_cursor` 末页 null。**`include=` 富 brief 块(A2-1a 加法波)**:词表 `names,intros,labels,ratings,covers`(逗号分隔,**未知 token 静默忽略**,§3.5 条款 2);每块按页内 work id **批量加载**(无 N+1),未点名即整块缺席——**缺省(无 `include=`)响应与本波前逐字节相同**。`names`/`intros` 走 D7 四键投影(见 §3.2.1 表①),`labels`/`ratings` 与详情面同形同口径(评分保持源原生分制,不聚合;**wave 200**:`labels` 一家公司一条,身份全集在 `kinds[]`),`covers` 出 `{portrait, banner}` 两槽、每槽带 `width/height/thumbhash`(见 §3.2.1);`ids=` + `include=` 即批量富取(两梯队的 batch 替代面)。**A2-1e**:`include=` 词表加 `refs`(该作品的 **exact 身份锚**,与详情面 `refs[]` 同构——work 级 ∪ release 级去重,exact-only 红线不破),`tag_id` 收**逗号分隔多值 AND**(≤10,见下)。**A2-R1 修复**:`names` 块对**认领作品**来自 wiki 桥(见 §3.2.5);`labels` 块每行恒带 `work_count`(与详情面同数,见 §3.2.6)。**A2-R4 加法**:`claim_state=`(封闭词表 `none\|live\|draft\|pending\|declined\|hidden`,逗号分隔 IN 语义,非法 token 400,不传=不闸)——**与 `works/search` 同名参数逐字同义**,词条成员列表务必传 `claim_state=live` 以排除未发布/未认领行;与搜索面不同,这里是**读时库内谓词,改态立即生效**,见 §3.2.7。**A2-R5 加法**:`content_limit=`(封闭词表 `sfw|nsfw`,逗号分隔 IN 语义,非法 token 400,不传=不闸)——**编辑展示轴,不是年龄轴 `content_rating`**;做可索引面传 `content_limit=sfw`,见 §3.2.8。**186a 加法**:`status=`(封闭词表 `live|pending`,缺省 `live` = 与本波前逐字节一致)——`pending` 是**审核队列视图**,须**双凭据**(`X-API-Key` 机器键 + 审核员**本人**的 Bearer 令牌)且**按租户钉死**,不满足条件一律 **403**,见 §3.2.9。**wave 199 加法**:`label_rollup=1`(仅在 `label_id=` 同传时生效,单传静默忽略)——把 `label_id` **沿企业图向下扩一跳**到该厂牌的 imprint / subsidiary,即「控股会社自己名下不出版任何作品」的那张页面所需的口径;经子厂牌进来的每一行带 **`via_label{id,name}`**(会社自有作品不带),**必须渲染**——不说 `via <imprint>` 的上卷页等于把子厂牌的作品悄悄改挂到母公司名下。**不跟** `spawned`(分家出去的公司,目录是它自己的)与 `succeeded_by`(公司承继 = 两实体一箭头,wave 198 已裁);人口恰为 `labels/{id}` 的 `work_count + imprint_work_count`(两数不相交) |
+| `GET /v1/catalog/works/{id}` | `catalog:read` | 注册行:display_name / titles / medium / 分级 / 外部锚(来源白名单过滤,见 [06 §11](./06-security-compliance.md))/ **认领指针**(→ 内容面路由,见 [01 §3.3](./01-design.md))+ **全量聚合 facet**(wave 104 加法扩容:popularity/ratings/tags/playtimes/series/platforms/intros/covers/screenshots/characters/labels/releases——source 键归因、CDN 完整 URL、字符串词表);**R18 由调用方传参放行**:`nsfw=1` 出 r18 作品与 r18 关系端(works/lookup/names/characters/labels 同参;characters 另有 `spoilers=0-2` + sexual traits 随 nsfw),(该参数曾于 wave 213 波 3 起须凭证具备 NSFW 能力位,**能力位已于 2026-08-25 退役**,任何 key 传即放行,见 §3.2.10);缺省(不传 `nsfw`)隐藏与 Phase-1 逐字节一致,且与是哪把 key 无关;`updated` 恒在(doc 106);`releases[]` 每行带 `id`+`refs[]`,`tags[]` 每行带 canonical `canonical_id/tier/kind`(doc 106,未映射省略)。**A2-1e 加法**:`created`(RFC3339,注册行**进入 catalog 的时刻**——既不是发售日也不是产品侧创建时间)、`engines[]`(`{id,name}`,恒出空为 `[]`)、`links[]`(非身份外链,见 §3.2.2)、`labels[]` 每行 `lang`、`tags[]` 的**安全轴** `spoiler`/`sexual` + `spoilers=0\|1\|2` 参数(见 §3.2.3)。**A2-R1 修复**:`titles[]` 对**认领作品**来自 wiki 桥(四名称列 + 别名,见 §3.2.5)——此前认领作品的中文名/别名整体缺席;`labels[]`/`engines[]` 每行恒带 `work_count`、`tags[]` 映射行带 `work_count`(nsfw 感知,见 §3.2.6)。**wave 200 加法**:`releases[].labels[]`——**这一版次**的公司(谁开发、谁发行),形状与作品级 `labels[]` 逐字同(一家公司一条 + `kinds[]` + `work_count`);**恒在**,该版次无已知公司时为 `[]`(同 `refs[]` 之规)。Switch 移植的发行商与英文版的发行商是**两个版次**的事实,压平到作品级后无从归因,这个键即它们各自的归宿。**wave 207 更正 · `include=` 重块**:本行的 `include=`(逗号分隔词表 `relations,credits`,**缺省两块皆不出**,未知 token 静默忽略——§3.5 条款 2)是这两块的**唯一入口**;本表此前把 `works/{id}/credits` 与 `works/{id}/relations` 列作两条独立端点,**它们从未存在**(冻结 spec 里没有这两个 path),本波删除。`include=credits` 出 `credits[]`:按 role 分组 `{role_key, role_name, credits[]}`(role 名取中文 → 日文 → role_key 回退),每条署名 `{id, display_name, lang, latin, localized, character_id, character, label_id, label, source}`(**🔴 wave 209**:`name`→`display_name` + 补 `localized{}`;同波作品详情的 `characters[]` 花名册行及其 `voices[]` 同此改形并补 `localized{}`,`relations[].work` 与 `series_siblings[]` 的作品 brief 补作品名字块,自 wave 212 波 B 起该块是 `latin` + `localized{}`)——`id` 是 credit_name id,可直接喂 `names/{id}`;`label_id` 见 §3.2.1 ②b,`source` 见 §3.2.1 ②d。`include=relations` 出 `relations[]`:`{relation_type, phrase, work}`,`work` 为作品 brief(带 `claimed_by`),一条边双向渲染;**`nsfw=0` 时 r18 关系端整条丢弃**而非留空壳。**wave 207 补文 · `cover_slots`**:恒出键 `cover_slots{portrait, banner}`(该调用方一张可用封面都没有时整块 `null`),每槽 `{url, width, height, thumbhash, sexual, violence, source}` 或 `null`——与 works 列表 `include=covers` 的两槽**同一个挑选器**,槽位判据(**kind × 尺寸两道,不是「非竖版即 banner」**)见 §3.2.1 ④。**wave 213 波 3 加法 · `fields=` 稀疏投影**:逗号分隔的**本响应顶层键**白名单(不传 = 全量,与本波前逐字节一致)。`id` **恒在**,点不点名都出;未知 token **静默忽略、永不 400**(§3.5 条款 2);**只裁不改形**——留下的键其值与不投影时**逐字节相同**,绝不重塑键内部;**在 `include=` 之后生效**,故 `fields=relations` 而不传 `include=relations` **不会**把块展开,那个键只是缺席(有效输出 = include 决定的形状 ∩ fields 选择 + `id`)。派生键会加载它依赖的东西(`release_date` 与 `refs` 都要读 release 行、`cover_slots` 要读 covers、`claimed_by` 要读展示轴),但**依赖自己的键仍只在被点名时才出现**。**这是查询闸,不只是序列化闸**:`works/{id}?fields=display_name,id` 只跑 **1 条**查询(作品行本身),同一条请求不投影时在测试夹具上是 **24 条**——已退役的 galgame 面只裁 marshal 之后的字节、一次查询都省不掉,那正是本波要翻的案。服务端对**顺序与重复不敏感**,但请**按字母序书写 token**:CDN 按原始 URL 做键,同一选择的两种写法是两条缓存记录 |
+| `GET /v1/catalog/works/{id}/covers` · `…/screenshots` · `…/tags` · `…/characters` · `…/credits` · `…/releases` · `…/intros` · `…/ratings` · `…/relations` · `…/series` · `…/links` · `…/engines` | `catalog:read` | **作品子资源(wave 213 波 1,十二条新端点,纯加法)**:上一行那份注册行有 29-31 个顶层键、其中 18 个是数组,tags/credits/characters/intros/releases/screenshots/covers 七块合计占 79.5% 的字节,而身份内核只占 7-9%——**只想要这部作品封面的下游站点,不该为其余的付账**。每条端点是**同一个块的独立地址**,不是它的第二种表示:item 用的就是父块的 DTO(`PublicCover`/`PublicTag`/`PublicRosterCharacter`/`PublicCreditGroup`/…),同 schema、同顺序、同挑选与压制规则,两面**共用同一个 mapper**,并有一条逐字段对拍的测试把它们钉在一起。**可见性 = 父面逐字**(LIVE galgame + `nsfw=` 同参、同 404):`works/{id}` 404 的作品,每一条子资源同样 404。**分页**:`limit` 1-100(缺省 100)+ `offset`,`next_offset` **只在确实还有行时出现**——这一面知道块的真实长度,所以它的缺席意味着「没有了」,不是「也许还有」。**有意的不对称,不是疏忽**:`works/{id}` 内嵌的数组**仍然不封顶**,给一个已发布字段加上限不是加性变更(§3.5 条款 1),统一留给 `/v2`;两面只差在边界,别的一处不差。逐条注意:`credits` 按**署名行**分页而不是按 role 组(否则单页仍然无界),跨页的 role 在两页各出一次自己的组,拼页 = 按 `role_key` 合并;`characters` 与父块一样**不设 spoiler 天花板**,每行自带 `spoiler` 交给调用方裁,故这条不收 `spoilers=`(只有 `tags` 收);`ratings` 是作品详情投影,带 `distribution`/`stats`;`relations` 不需要 `include=` 就能拿到,`nsfw=0` 时 r18 关系端整条丢弃且 `next_offset` 数的是丢完之后的行。**缓存分两档,判据是「编辑面有没有写这一块的字段」**:`ratings`/`relations` 没有编辑字段(唯一的写者是夜间评分车道与 VNDB 关系导入),`s-maxage=1800`;其余十条与 `works/{id}` 同档 `s-maxage=300`,免得编辑者的改动在子资源上比在父面上晚到。**成本**:每条只跑自己那一块的查询(实测 2-6 条,404 只花 1 条),而 `works/{id}` 一次约 30 条——`include=` 从来只是序列化开关,从不省一次查询,这十二条端点才是 |
+| `GET /v1/catalog/works` | `catalog:read` | **作品浏览/列表(doc 106 G1,keyset)**:过滤 `content_rating`/`claimed`/`label_id`/`tag_id`(canonical)/`series_id`/**`engine_id`(A2-1b 第九过滤器,经 `catalog_work_engine`)**/`platform`/`released_after\|before`/`ids`(≤100);`sort=id\|updated`;item = 轻 brief(+`release_date`/`olang`/`cover` 单图/`updated`);`nsfw` 同参(能力位已于 2026-08-25 退役,任何 key 传即放行,见 §3.2.10);`next_cursor` 末页 null。**`include=` 富 brief 块(A2-1a 加法波)**:词表 `names,intros,labels,ratings,covers`(逗号分隔,**未知 token 静默忽略**,§3.5 条款 2);每块按页内 work id **批量加载**(无 N+1),未点名即整块缺席——**缺省(无 `include=`)响应与本波前逐字节相同**。`names` 出 `latin` + `localized{}`、`intros` 出与详情面逐字相同的 `[{lang, intro, source, machine}]`(见 §3.2.1 ①),`labels`/`ratings` 与详情面同形同口径(评分保持源原生分制,不聚合;**wave 200**:`labels` 一家公司一条,身份全集在 `kinds[]`),`covers` 出 `{portrait, banner}` 两槽、每槽带 `width/height/thumbhash`(见 §3.2.1);`ids=` + `include=` 即批量富取(两梯队的 batch 替代面)。**A2-1e**:`include=` 词表加 `refs`(该作品的 **exact 身份锚**,与详情面 `refs[]` 同构——work 级 ∪ release 级去重,exact-only 红线不破),`tag_id` 收**逗号分隔多值 AND**(≤10,见下)。**A2-R1 修复**:标题对**认领作品**来自 wiki 桥(见 §3.2.5);`labels` 块每行恒带 `work_count`(与详情面同数,见 §3.2.6)。**A2-R4 加法**:`claim_state=`(封闭词表 `none\|live\|draft\|pending\|declined\|hidden`,逗号分隔 IN 语义,非法 token 400,不传=不闸)——**与 `works/search` 同名参数逐字同义**,词条成员列表务必传 `claim_state=live` 以排除未发布/未认领行;与搜索面不同,这里是**读时库内谓词,改态立即生效**,见 §3.2.7。**A2-R5 加法**:`content_limit=`(封闭词表 `sfw|nsfw`,逗号分隔 IN 语义,非法 token 400,不传=不闸)——**编辑展示轴,不是年龄轴 `content_rating`**;做可索引面传 `content_limit=sfw`,见 §3.2.8。**186a 加法**:`status=`(封闭词表 `live|pending`,缺省 `live` = 与本波前逐字节一致)——`pending` 是**审核队列视图**,须**双凭据**(`X-API-Key` 机器键 + 审核员**本人**的 Bearer 令牌)且**按租户钉死**,不满足条件一律 **403**,见 §3.2.9。**wave 199 加法**:`label_rollup=1`(仅在 `label_id=` 同传时生效,单传静默忽略)——把 `label_id` **沿企业图向下扩一跳**到该厂牌的 imprint / subsidiary,即「控股会社自己名下不出版任何作品」的那张页面所需的口径;经子厂牌进来的每一行带 **`via_label{id, display_name, localized}`**(**🔴 wave 209**:`name`→`display_name` + 补 `localized{}`;会社自有作品不带),**必须渲染**——不说 `via <imprint>` 的上卷页等于把子厂牌的作品悄悄改挂到母公司名下。**不跟** `spawned`(分家出去的公司,目录是它自己的)与 `succeeded_by`(公司承继 = 两实体一箭头,wave 198 已裁);人口恰为 `labels/{id}` 的 `work_count + imprint_work_count`(两数不相交)。**wave 213 波 3 加法 · `fields=` 稀疏投影**:逗号分隔的**每个 item 的顶层键**白名单(不传 = 全量,与本波前逐字节一致);**信封不受影响**(`items`/`next_cursor`/`total`/`page`/`limit`/`facets` 永远原样)。`id` **恒在**;未知 token **静默忽略、永不 400**(§3.5 条款 2);**只裁不改形**;**在 `include=` 之后生效**——点名一个 include 门后的键(`intros`/`labels`/`ratings`/`covers`/`refs`/`latin`/`localized`)**不会**把它展开,两个参数都要给。它同样是**查询闸**:被 fields 裁掉的 include 块不再发查询,连今天无条件跑的三条(封面、展示轴、最早发售日)也随对应键一起关掉。服务端对顺序与重复不敏感,但请**按字母序书写 token**(CDN 按原始 URL 做键) |
 | `GET /v1/catalog/changes` | `catalog:read` | **增量同步流(doc 106 G2,keyset)**:`{entity_type=work, cursor, limit}` → `[{entity_type, id, updated}]`;`next_cursor` 恒在(续轮询新行);**无 nsfw 门**(id+时间戳=身份非内容,详情跟查再门控)。**删除不经此流**——行离开 LIVE 集(软删/降级/退出 galgame 媒介)后只是从流中**静默消失**,不发 tombstone;**合并型消亡由 `GET /v1/catalog/redirects` 覆盖**(旧 id → canonical id),**镜像型消费者应周期性全量对账**(`works?sort=id` keyset 扫 id 全集,与本地镜像取差集即失效行)。`op` 字段登记为将来的加法扩展位(现不下发,消费端须按 §3.5 条款 2 忽略未知字段)。**流有意滞后 ~5 秒**(2026-07-28 cleanup 波):`updated_at` 是**语句时间**而非提交时间,不设滞后则长事务可能提交出一行 `updated_at` 已落在消费者水位之后的记录 → 该行被**永久跳过**;拒发 5 秒内的新行,使提交耗时 ≤5s 的在途事务不可能被漏掉 |
 | `GET /v1/catalog/stats` | **无需凭据** | **注册表规模计数(149b,无参数)**:**本面唯一免凭据的端点**——匿名可调、不计量、不限流(带 key 调用亦可,闸不存在即 header 被忽略);它是公开站与开发者门户在任何人持 key 之前就要渲染的那几个数字,而载荷本身不含任何可渲染内容。裸挂在 app 上、排在 `/v1/catalog` 分组之前,见 [catalog/01 §5](../catalog/01-service-and-contract.md)。`works{total, by_medium[{medium_id, medium, count}]}` 只计 **LIVE 行**(`status=live`、未软删——stub / 已合并 / 软删行不属于目录),`total` = `by_medium` 之和,构造上不可能打架;`entities{labels, characters, credit_names, persons}` 为身份族存量(有软删列的三族只计未软删行;`catalog_credit_name` 无软删列,合并即改写而非立墓碑,故整表计)。**r18 作品计入**——这是不挂任何可渲染内容的聚合数,按 nsfw 拆分反而会公布 r18 人口规模,正是 nsfw 门要藏的东西;故本端点**无 `nsfw` 参数**,每个调用方拿到同一份 payload(`Cache-Control: s-maxage=3600`)。**内部仪表盘不上公开面**:审核队列水位、LLM 判定、锚 source × tier 交叉表、来源新鲜度、孤儿计数、claim 态矩阵是**运维遥测**(它们描述注册表如何被治理),留在 S2S `GET /api/v1/catalog/stats`(见 [catalog/01 §2.7](../catalog/01-service-and-contract.md)),两份 payload 各自独立演进 |
-| `GET /v1/catalog/names/{id}`(+ `…/credits`) | `catalog:read` | 名义(credited identity;{id}=credit_name id,携 person_id+公开 sibling 名义)——**hidden 名义链接不出现在公开聚合**(既有可见性政策)。**wave 172 加法**:`photo_hash`(人物照片在图床的内容哈希,与作品封面 `image_hash` 同币种,**恒出**、空串=无照片)+ `gender` + `birth_y`/`birth_m`/`birth_d`(模糊生日,未记录则缺席);这五键**与 `person_id` 同一道可见性闸**——隐藏链接下一律不出,因为照片与生日是人物事实,公开它们等于泄露被隐藏的那条链接。**wave 175 加法**:`aliases`(**该名义自身**的书写变体,取自 `catalog_name_alias`;与厂牌 `aliases` 同形——扁平字符串、去重、剔除名义自身、**恒出**、无别名为 `[]`;主要供给 = bangumi 中文名波的 zh-Hans 行)。**wave 186 加法**:`links[]`(人物外链 `{source,url}`,供给=VNDB staff extlinks,官网/twitter/pixiv/ci-en 类型化 + 白名单站点 `web` 源完整 URL;身份空间站点 bgmtv/egs 恒不入;**随 `person_id` 同一道可见性闸**——hidden 链接下不出)。**不并入 sibling 名义的别名**:别名挂 credit_name(实体层铁律——身份在名义上),而各 sibling 自有 `/names/{id}` 记录携各自 `aliases`,并进来等于把一个身份的写法记到另一个名下。别名是**本名义的写法**、不是关于其背后人物的断言,故不受 link-visibility 闸约束。**wave 189 加法**:`intros[]` 由**双泳道**归并(每语言一条)——① **人物级** `catalog_person_intro`(catalog 原生行,自带 lang 列与行级 provenance,**随 `person_id` 同一道可见性闸**:传记是人物事实,隐藏链接下公开它等于泄露被隐藏的那条链接),② 既有 wave 108 的**名义级** bangumi 锚读时桥(per-name provenance,不构成人物身份断言)。同语言优先级 = 人物源文 > 名义桥 > 人物机翻(人物道领先是因为它**声明**语言,而桥只能由字形推断);槽内新增 `machine` 旗标,与 works/characters/labels 三面 intro 形状同构(见表③)。**孤儿名义不受影响**——无 person 链接者仍由名义桥独立作答,而孤儿是名义的绝大多数(11.9 万名义中约 10.6 万无 person 链接),此道不是等人物补齐后可退役的兜底。**wave 191 加法**:`display_name`+`lang`(名义记录名与其语言标签,`name{}` 分桶的诚实形式)+ `localized{}`(按 locale 取名的 map)——见 §3.7,分桶自本波起弃用。**wave 193 加法**:`siblings[]` 每行补 `display_name`+`lang`(191 漏了 sibling 行,而它正是分桶的最后一处消费点;刻意不补 `localized{}`,理由见 §3.7)。**🔴 wave 194 移除**:`name{}` 分桶不再下发(本记录与 `siblings[]` 行皆是),见 §3.7。v2.1 实施时由 persons/{id} 更名:实体层 credits 指向名义而非 person,公开词表与 resolve/redirects 的 "name" 键统一 |
+| `GET /v1/catalog/names/{id}`(+ `…/credits`) | `catalog:read` | 名义(credited identity;{id}=credit_name id,携 person_id+公开 sibling 名义)——**hidden 名义链接不出现在公开聚合**(既有可见性政策)。**wave 172 加法**:`photo_hash`(人物照片在图床的内容哈希,与作品封面 `image_hash` 同币种,**恒出**、空串=无照片)+ `gender` + `birth_y`/`birth_m`/`birth_d`(模糊生日,未记录则缺席);这五键**与 `person_id` 同一道可见性闸**——隐藏链接下一律不出,因为照片与生日是人物事实,公开它们等于泄露被隐藏的那条链接。**wave 175 加法**:`aliases`(**该名义自身**的书写变体,取自 `catalog_name_alias`;与厂牌 `aliases` 同形、去重、剔除名义自身、**恒出**、无别名为 `[]`;主要供给 = bangumi 中文名波的 zh-Hans 行;**🔴 wave 209 对象化** `{value, lang, kind, machine}`)。**wave 186 加法**:`links[]`(人物外链 `{source,url}`,供给=VNDB staff extlinks,官网/twitter/pixiv/ci-en 类型化 + 白名单站点 `web` 源完整 URL;身份空间站点 bgmtv/egs 恒不入;**随 `person_id` 同一道可见性闸**——hidden 链接下不出)。**不并入 sibling 名义的别名**:别名挂 credit_name(实体层铁律——身份在名义上),而各 sibling 自有 `/names/{id}` 记录携各自 `aliases`,并进来等于把一个身份的写法记到另一个名下。别名是**本名义的写法**、不是关于其背后人物的断言,故不受 link-visibility 闸约束。**wave 189 加法**:`intros[]` 由**双泳道**归并(每语言一条)——① **人物级** `catalog_person_intro`(catalog 原生行,自带 lang 列与行级 provenance,**随 `person_id` 同一道可见性闸**:传记是人物事实,隐藏链接下公开它等于泄露被隐藏的那条链接),② 既有 wave 108 的**名义级** bangumi 锚读时桥(per-name provenance,不构成人物身份断言)。同语言优先级 = 人物源文 > 名义桥 > 人物机翻(人物道领先是因为它**声明**语言,而桥只能由字形推断);槽内新增 `machine` 旗标,与 works/characters/labels 三面 intro 形状同构(见表③)。**孤儿名义不受影响**——无 person 链接者仍由名义桥独立作答,而孤儿是名义的绝大多数(11.9 万名义中约 10.6 万无 person 链接),此道不是等人物补齐后可退役的兜底。**wave 191 加法**:`display_name`+`lang`(名义记录名与其语言标签,`name{}` 分桶的诚实形式)+ `localized{}`(按 locale 取名的 map)——见 §3.7,分桶自本波起弃用。**wave 193 加法**:`siblings[]` 每行补 `display_name`+`lang`(191 漏了 sibling 行,而它正是分桶的最后一处消费点;当时刻意不补 `localized{}`,**wave 209 已补齐**,见 §3.7)。**🔴 wave 194 移除**:`name{}` 分桶不再下发(本记录与 `siblings[]` 行皆是),见 §3.7。v2.1 实施时由 persons/{id} 更名:实体层 credits 指向名义而非 person,公开词表与 resolve/redirects 的 "name" 键统一 |
 | `GET /v1/catalog/characters/{id}` | `catalog:read` | 角色(含出演,spoiler 级字段)。**wave 191 加法**:`display_name`+`lang`、`aliases[]`(**本波之前该面一条别名都不发**,bangumi 中文名波灌进 `catalog_character_alias` 的角色中文名因此对下游完全不可达)、`localized{}`——见 §3.7。**🔴 wave 194 移除**:`name{}` 分桶不再下发,见 §3.7。**⚠️ wave 204 字节语义变更(2026-08-11,wave 207 补文)**:`image`(胸像)与 `figure`(立绘)两槽现供**已去背景的透明通道图**——白底原件在槽位上被**原地换掉**(`catalog_character.image_hash` / `figure_hash` 改指抠像结果),原件只留在 `image_source_hash` / `figure_source_hash` 两列,**公开面不可达、也不会有第二个 URL 给它**。URL 形状、键名、可选性一字未动,变的是字节:合成到非白底卡片上的消费端从此拿到正确结果,而**假定不透明白底**的消费端(直接叠白、或按白底做边缘/裁切处理)会看到渲染变化。作品详情 `characters[]` 行内的同名两键同此 |
-| `GET /v1/catalog/labels` | `catalog:read` | **厂牌浏览/列表(A2-1b,keyset id ASC)**:过滤 `kind=`(封闭词表 `game_brand\|bunko\|publisher\|anime_studio\|doujin_circle\|group`,非法 token 400);item = `{id, display_name, kind, work_count, logo_hash, has_relations}`(**wave 189** 补 `has_relations`,见 §②c;**wave 170** 补 `logo_hash`:厂牌 logo 在图床的内容哈希,与作品封面 `image_hash` 同币种,空串=无 logo);**合并走掉的厂牌不出列表**(merge 软删源行 + 写 redirect,旧 id 仍由 `/v1/catalog/redirects` 覆盖)。**A2-1e**:信封加 `total`(见下) |
-| `GET /v1/catalog/labels/{id}`(+ `…/works`) | `catalog:read` | 厂牌/文库/社团;恒带 `intros[]`(多语言简介,按语言归并、`source`=来源键)与 `links[]`(官网/twitter/ci-en 外链,`{source,url}`;身份锚 exact/probable 永不入 `links`),无供给则为 `[]`;`refs[]` exact 身份锚(doc 106)。**A2-1e 加法**:`aliases[]`(别名扁平字符串,**排除 display_name**、跨语言同拼写去重,恒出)、`lang`(display_name 自身的 BCP-47 标签,未记录则省略)、`work_count`(**nsfw 感知**,与 `labels` 列表行同一聚合——详情页与来路列表永不打架)。**wave 200 更正**:作品的 `labels[]` **一家公司只出一条**,其担任的全部身份进 `kinds[]`(排序、恒非空);单数 `kind` 保留但收紧为**最具识别力的那一个**(brand → circle → developer → publisher)。此前存储粒度 `(work,label,kind)` 让「既开发又发行」的公司占两行,**56,438 部作品**因此把同一家公司印了两遍。同波作品级归属收窄为「**原语言 · 非补丁** release 的公司」,移植 / 本地化 / 补丁方下沉到 release 层(新表 `catalog_release_label`),不再压平到作品。**wave 170 加法**:`logo_hash`(厂牌 logo 在图床的内容哈希,与作品封面 `image_hash` 同币种,恒出、空串=无 logo;作品记录的 `labels[]` chip 与厂牌列表行同带此键)。**wave 186 加法**:`relations[]`(会社关系图谱,`{id,name,relation}`,relation 词表 `parent|subsidiary|imprint|imprint_of|spawned|origin|succeeded_by|formerly`,镜像双向存储读面免反转,恒出、无边为 `[]`;供给=VNDB producer relations 经 exact 锚);`links[]` 供给扩容(VNDB producer extlinks:官网/twitter/pixiv/ci-en 类型化 + 白名单站点渲染为 `web` 源完整 URL),同时修复既有 steam/pixiv/web 行此前被渲染层静默丢弃的问题。**wave 191 加法**:`localized{}`(按 locale 取名的 map;既有扁平 `aliases[]` 原样保留)——见 §3.7。**wave 199 加法**:`imprint_work_count`(恒出)——沿 imprint / subsidiary **向下一跳**能多摸到多少作品,与 `work_count` 同一 nsfw 感知 + live 认领聚合。它是**第二个数,永不并入** `work_count`:并进去就抹掉了 wave 186 建图正是为了留住的那支箭头(读者再也分不清哪些是会社自己的作品)。两个人口**不相交**(母子共同署名的作品只算在母公司一侧),故 `work_count + imprint_work_count` 恰是 `works?label_id=<id>&label_rollup=1` 翻得到的行数 |
-| `GET /v1/catalog/labels/{id}/relation-graph` | `catalog:read` | **会社关系图(wave 188)**:上一行的 `relations[]` 只有一跳,站在某品牌上看不见母公司旗下的兄弟品牌;本端点一次给出**整个连通企业家族**,供消费端直接画家族树。`data = {nodes:[{id,name,logo_hash,work_count}], edges:[{from,to,relation}]}`,两键恒出(无边为 `[]`),`nodes[0]` 恒为种子。遍历 = 自种子的**广度优先** walk + visited 防环,**depth ≤ 4、nodes ≤ 60**,上限按广度生效(截断时留下离种子最近的一圈);软删(被合并掉)的 label 任何一跳都不出;**不分页**。边读作「**`to` 是 `from` 的 `relation`**」(与 `relations[].relation` 同一读法);因图镜像存,每个事实**只出一次** —— 仅出正向四值 `parent|imprint|spawned|succeeded_by`,四个反向值(`subsidiary|imprint_of|origin|formerly`)由**反读同一条边**得到(「X 的子公司」= `to` 为 X 且 relation 为 `parent` 的边);多源同一 `(from,to,relation)` 折叠为一条,`source` 不出面。`work_count` 与 `labels/{id}.work_count`、`labels` 列表行同一 nsfw 感知聚合。种子不存在 → 404,被合并掉 → 与 `labels/{id}` 同样的 **301 + `current_id`**,无边 → **单节点零边图**(不是 404) |
-| `GET /v1/catalog/tags` | `catalog:read` | **规范 tag 浏览/列表(A2-1b,keyset id ASC)**:过滤 `tier=`(`core\|longtail\|hidden`)、`kind=`(`content\|meta`),两者皆封闭词表、非法 token 400;item = `{id, name, tier, kind, work_count, sexual}`(**A2-1f** 补 `sexual`,见 §3.2.4)。**A2-1e**:信封加 `total`(见下) |
-| `GET /v1/catalog/tags/{id}` | `catalog:read` | **规范 tag(doc 106 G5)**:`{id, name, tier, kind}`(跨源规范词表 catalog_tag);**恒带 `intros[]`(A2-1b 加法)**——多语言简介,shape 与 `labels/{id}` 的 `intros[]` 一致(`{lang, intro, source}`、按语言归并低 source_id 胜出、`source`=公开来源键),无供给则为 `[]`;`include=works` 附带该规范 tag 下的作品(经 catalog_tag_source_map ⋈ catalog_work_tag,nsfw 门),按 `limit`/`offset` 翻页,**满页时**带 `next_offset`(= `offset+limit`),不满页则省略 = 到底。**A2-1e 加法**:`work_count`(**nsfw 感知**,与 `tags` 列表行同一聚合);**A2-1f 加法**:`sexual`(tag 级性内容轴,与列表行同一派生,见 §3.2.4) |
+| `GET /v1/catalog/labels` | `catalog:read` | **厂牌浏览/列表(A2-1b,keyset id ASC)**:过滤 `kind=`(封闭词表 `game_brand\|bunko\|publisher\|anime_studio\|doujin_circle\|group`,非法 token 400);item = `{id, display_name, localized, kind, work_count, logo_hash, has_relations}`(**wave 209** 补 `localized{}`——列表行与详情同一选举,浏览页免二次查详情;**wave 189** 补 `has_relations`,见 §②c;**wave 170** 补 `logo_hash`:厂牌 logo 在图床的内容哈希,与作品封面 `image_hash` 同币种,空串=无 logo);**合并走掉的厂牌不出列表**(merge 软删源行 + 写 redirect,旧 id 仍由 `/v1/catalog/redirects` 覆盖)。**A2-1e**:信封加 `total`(见下) |
+| `GET /v1/catalog/labels/{id}`(+ `…/works`) | `catalog:read` | 厂牌/文库/社团;恒带 `intros[]`(多语言简介,按语言归并、`source`=来源键)与 `links[]`(官网/twitter/ci-en 外链,`{source,url}`;身份锚 exact/probable 永不入 `links`),无供给则为 `[]`;`refs[]` exact 身份锚(doc 106)。**A2-1e 加法**:`aliases[]`(别名,**排除 display_name**,恒出;**🔴 wave 209 对象化** `{value, lang, kind, machine}`,去重粒度从「跨语言同拼写」细化为 value+lang)、`lang`(display_name 自身的 BCP-47 标签,未记录则省略)、`work_count`(**nsfw 感知**,与 `labels` 列表行同一聚合——详情页与来路列表永不打架)。**wave 200 更正**:作品的 `labels[]` **一家公司只出一条**,其担任的全部身份进 `kinds[]`(排序、恒非空);单数 `kind` 保留但收紧为**最具识别力的那一个**(brand → circle → developer → publisher)。此前存储粒度 `(work,label,kind)` 让「既开发又发行」的公司占两行,**56,438 部作品**因此把同一家公司印了两遍。同波作品级归属收窄为「**原语言 · 非补丁** release 的公司」,移植 / 本地化 / 补丁方下沉到 release 层(新表 `catalog_release_label`),不再压平到作品。**wave 170 加法**:`logo_hash`(厂牌 logo 在图床的内容哈希,与作品封面 `image_hash` 同币种,恒出、空串=无 logo;作品记录的 `labels[]` chip 与厂牌列表行同带此键)。**wave 186 加法**:`relations[]`(会社关系图谱,`{id, display_name, localized, relation}`——**🔴 wave 209**:`name`→`display_name` + 补 `localized{}`;relation 词表 `parent|subsidiary|imprint|imprint_of|spawned|origin|succeeded_by|formerly`,镜像双向存储读面免反转,恒出、无边为 `[]`;供给=VNDB producer relations 经 exact 锚);`links[]` 供给扩容(VNDB producer extlinks:官网/twitter/pixiv/ci-en 类型化 + 白名单站点渲染为 `web` 源完整 URL),同时修复既有 steam/pixiv/web 行此前被渲染层静默丢弃的问题。**wave 191 加法**:`localized{}`(按 locale 取名的 map;既有扁平 `aliases[]` 原样保留)——见 §3.7。**wave 199 加法**:`imprint_work_count`(恒出)——沿 imprint / subsidiary **向下一跳**能多摸到多少作品,与 `work_count` 同一 nsfw 感知 + live 认领聚合。它是**第二个数,永不并入** `work_count`:并进去就抹掉了 wave 186 建图正是为了留住的那支箭头(读者再也分不清哪些是会社自己的作品)。两个人口**不相交**(母子共同署名的作品只算在母公司一侧),故 `work_count + imprint_work_count` 恰是 `works?label_id=<id>&label_rollup=1` 翻得到的行数 |
+| `GET /v1/catalog/labels/{id}/relation-graph` | `catalog:read` | **会社关系图(wave 188)**:上一行的 `relations[]` 只有一跳,站在某品牌上看不见母公司旗下的兄弟品牌;本端点一次给出**整个连通企业家族**,供消费端直接画家族树。`data = {nodes:[{id,display_name,localized{},logo_hash,work_count}], edges:[{from,to,relation}]}`,两键恒出(无边为 `[]`),`nodes[0]` 恒为种子;节点名即 §3.7 的名字原语(08-19 跟进补齐——209 当波漏掉的唯一 label 投影,原短键 `name` 为 breaking 改名)。遍历 = 自种子的**广度优先** walk + visited 防环,**depth ≤ 4、nodes ≤ 60**,上限按广度生效(截断时留下离种子最近的一圈);软删(被合并掉)的 label 任何一跳都不出;**不分页**。边读作「**`to` 是 `from` 的 `relation`**」(与 `relations[].relation` 同一读法);因图镜像存,每个事实**只出一次** —— 仅出正向四值 `parent|imprint|spawned|succeeded_by`,四个反向值(`subsidiary|imprint_of|origin|formerly`)由**反读同一条边**得到(「X 的子公司」= `to` 为 X 且 relation 为 `parent` 的边);多源同一 `(from,to,relation)` 折叠为一条,`source` 不出面。`work_count` 与 `labels/{id}.work_count`、`labels` 列表行同一 nsfw 感知聚合。种子不存在 → 404,被合并掉 → 与 `labels/{id}` 同样的 **301 + `current_id`**,无边 → **单节点零边图**(不是 404) |
+| `GET /v1/catalog/tags` | `catalog:read` | **规范 tag 浏览/列表(A2-1b,keyset id ASC)**:过滤 `tier=`(`core\|longtail\|hidden`)、`kind=`(`content\|meta`),两者皆封闭词表、非法 token 400;item = `{id, name, tier, kind, work_count, sexual}`(**A2-1f** 补 `sexual`,见 §3.2.4)。**A2-1e**:信封加 `total`(见下)。**批量加法**:`ids=`(逗号分隔规范 tag id,**≤100**,超出 400;非正整数/非数字 token 400)——**批量水合道**,与 `works?ids=` 逐字同义:`works/search?facets=tag_id` 回的 facet 行只带裸 id,用它**一次**把整页 facet 行解析成名字,而不是每行一发 `tags/{id}`。与 `tier=`/`kind=`/`has_works=` **合取**(不是旁路),不存在的 id 只是不匹配、**不报错**;`total` 与其余谓词一样随过滤收敛 |
+| `GET /v1/catalog/tags/{id}` | `catalog:read` | **规范 tag(doc 106 G5)**:`{id, name, tier, kind}`(跨源规范词表 catalog_tag);**恒带 `intros[]`(A2-1b 加法)**——多语言简介,shape 与 `labels/{id}` 的 `intros[]` 一致(**wave 209 起同一个 `PublicIntro` schema** `{lang, intro, source, machine}`,tag 面 `machine` 恒 false 见表③;按语言归并低 source_id 胜出、`source`=公开来源键),无供给则为 `[]`;`include=works` 附带该规范 tag 下的作品(经 catalog_tag_source_map ⋈ catalog_work_tag,nsfw 门),按 `limit`/`offset` 翻页,**满页时**带 `next_offset`(= `offset+limit`),不满页则省略 = 到底。**A2-1e 加法**:`work_count`(**nsfw 感知**,与 `tags` 列表行同一聚合);**A2-1f 加法**:`sexual`(tag 级性内容轴,与列表行同一派生,见 §3.2.4) |
 | `GET /v1/catalog/engines` | `catalog:read` | **引擎浏览/列表(A2-1b,keyset id ASC)**:无过滤;item = `{id, name, work_count, description, aliases}`(**A2-1e** 补齐后两键——引擎 facet 只有几百行、消费端一页渲染完,再为一行简介发第二趟请求是纯浪费)。VNDB 不发布引擎数据,该 facet 的唯一副本是 wiki 手工整理并由数据层退役波迁入的行。**A2-1e**:信封加 `total`(见下) |
 | `GET /v1/catalog/engines/{id}` | `catalog:read` | **引擎条目(A2-1b)**:`{id, name, work_count, description, aliases, refs[]}`(后两键 A2-1e 补);`refs[]` 同 names/characters/labels 的 exact-only 身份锚(doc 106 G4),A2-0 落的 wiki eid 即在此浮出。非法 id 400、无此行 404 |
 | `GET /v1/catalog/series` | `catalog:read` | **系列浏览/列表(2026-08-03 在产;wave 207 补录本行)**:keyset id ASC,与 labels / tags / engines 三条 taxonomy 道**同形**(`limit` 1-100 缺省 20、道内游标、信封带 `total`)。**它是 series id 的唯一发现入口**——系列**不进任何搜索索引**(`catalog/search` 的 `type=` 五族里没有它),没有这条道,调用方拿着 `series/{id}` 与 `works?series_id=` 却永远不知道 id 从哪来。item = `{id, display_name, source, work_count, has_nsfw}`:`work_count` **nsfw 感知**,等于**同一调用方**跟 `works?series_id=<id>` 翻页真正拿得到的行数(词条页与计数永不打架,同 §3.2 taxonomy 三道口径);`has_nsfw` 是「本行里有 r18 成员」的旗标。`source=` 泳道过滤(逗号分隔,**开词表**,未识别 token 出**空页而非 400**;现役 `curated` / `derived` / `dlsite`)见 §3.2.1 ②a——`total` 与 items 同一过滤总体。**系列无软删列**(importer 直接增删行),故本道无 `deleted_at` 谓词,未知 id 在下一行也是纯 404 |
@@ -62,8 +64,8 @@
 | `GET /v1/catalog/calendar` | `catalog:read` | **发售日历 · 月桶(A2-1c,keyset date ASC + id ASC)**:`month=YYYY-MM`(非法 400;**缺省 = 当前 Asia/Tokyo 月**,响应回显 `month`);收录**最早带年份 release 落在该月**的作品——**day 精度与 month 精度同桶**(month 精度排在该月月首,**不臆造 1 号**);item = works 列表行**逐字**(`PublicWorkListItem`,`include=` 五词表全支持),`nsfw` 同参;新增 `olang=` 人口过滤(见下);`count` = 整桶行数(非本页),`next_cursor` 末页 null;带**桶级 ETag**(见下);**A2-1e**:恒带 `meta{}` 导航框(见下) |
 | `GET /v1/catalog/calendar/pending` | `catalog:read` | **发售日历 · 月份未定桶(A2-1c,keyset id ASC)**:`year=YYYY`(非法 400;缺省 = 当前 JST 年,响应回显 `year`);收录**最早 release 只精确到年**的作品——它们**刻意不出现在该年的任何月桶**里。人口/item/`olang`/ETag 语义与月桶逐字一致;`meta` 只带 `today`(非月寻址,无月界与前后翻) |
 | `GET /v1/catalog/calendar/tba` | `catalog:read` | **发售日历 · TBA 桶(A2-1c,全局,keyset id ASC)**:有 release 行但**无一行带年份**的作品(已官宣、日期未定)。**无 release 行 = unknown,不进任何桶**——"没有 release"是"没有官宣",不是"日期待定" |
-| `GET /v1/catalog/works/search` | `catalog:read` | **作品产品搜索(A2-1d,doc 126 D5;page/limit 分页)**:自由文本 `q=` 命中作品的**全部索引标题/别名**(含 search hint,仅供检索永不下发);**`search_intro=1` 另放宽到作品简介**(A2-1f,见 §3.2.4);过滤 `tag_id`(**多值 AND**,同列表)/`label_id`/`engine_id`/`series_id`/`released_after\|before`/`olang`/`content_rating`/`claimed`/`nsfw`——**与 works 列表同名参数逐字同义**(`released_*` 同样锚在**最早带年份 release** 的组合序数上,与列表 `release_date`、日历分桶三者同源)。**144 裁定:本面 `olang` 缺省 = 不设闸(全人口)**——搜索/浏览是身份触达面,没点名语言的调用方问的是「你有什么」,故服务端不替他收窄;这与日历缺省**故意不同**(日历 = `ja` + `zh*` 族,那是策展面)。`olang=all` 与显式集合(`olang=ja,en`)两面逐字同义,开放词表语义不变。`sort=relevance\|released_desc\|released_asc\|updated\|popularity`(缺省 relevance;**空 q 时 relevance 退化为 popularity** 即浏览序;`released_*` 两个方向都把**无日期作品排在最后**;`popularity` = 跨源信号 `log1p(max(bangumi collect 架, DLsite 下载数))`,**替代弃用面的 `view`**——那是 wiki 浏览量,catalog 无对应物,故 `sort=view` 是 400)。`facets=` 封闭词表 `content_rating,olang,claimed,tag_id,label_id,engine_id,series_id,source`(**非法 token 400**;外层键 = 可直接回传的**过滤参数名**,非索引字段名;`content_rating` 分布按公开字符串键计数不出枚举整数;每 facet 至多 100 个值)。`include=` 六词表全支持。**item = works 列表行逐字**(`PublicWorkListItem`,按 id 回库水化;**Meili 文档字段永不出 wire**)。`page` 缺省 1、非正/非数字 400,`limit` 1-100 缺省 20(超限截顶、非正/非数字 400)。**`q` 恰为 VNDB 作品 id(`v19658`)时短路**为该 id 的 exact 锚精查(全文会前缀串味:`v1965` 亦命中 `v19650`),仍套用调用方全部过滤器,**无解 = 空信封而非 404**。**`total`/`facets`/`items` 同门过滤**:翻完 `total` 页恰好收满 `total` 行,sfw 调用方的 `total` **已扣除**其永远拿不到的 r18 作品——**与弃用面 `content_limit` 陷阱(总数不过滤、items 过滤、sfw 翻页丢行)明令相反**。**A2-R1 区 C 加法**:`claim_state=`(封闭词表 `none\|live\|draft\|pending\|declined\|hidden`,逗号分隔 IN 语义,非法 token 400,不传=不闸)——产品站搜索务必传 `claim_state=live` 以排除未发布/未认领行,见 §3.2.7。**A2-R5 加法**:`content_limit=`(封闭词表 `sfw|nsfw`,逗号分隔 IN 语义,非法 token 400,不传=不闸)——与 `nsfw=`/`claim_state=` 正交,同编进那一条 Meili 表达式(故 `total`/facets/items 同门),见 §3.2.8 |
-| `GET /v1/catalog/search` | `catalog:read` | **实体自动补全**(`type=names\|characters\|labels\|works\|tags`,五索引;**`tags` 为 A2-1d 加法**,hit 镜像 labels 惯例并附 `tier`/`kind`,其余四族 hit shape **逐字节冻结**)。至多 20 条扁平 hit、无过滤无分页 —— picker / 跳转框用面;**作品结果页(过滤/facets/排序/翻页/完整列表行)走 `GET /v1/catalog/works/search`** |
+| `GET /v1/catalog/works/search` | `catalog:read` | **作品产品搜索(A2-1d,doc 126 D5;page/limit 分页)**:自由文本 `q=` 命中作品的**全部索引标题/别名**(含 search hint,仅供检索永不下发);**`search_intro=1` 另放宽到作品简介**(A2-1f,见 §3.2.4);过滤 `tag_id`(**多值 AND**,同列表)/`label_id`/`engine_id`/`series_id`/`released_after\|before`/`olang`/`content_rating`/`claimed`/`nsfw`(能力位已于 2026-08-25 退役,任何 key 传即放行,见 §3.2.10)——**与 works 列表同名参数逐字同义**(`released_*` 同样锚在**最早带年份 release** 的组合序数上,与列表 `release_date`、日历分桶三者同源)。**144 裁定:本面 `olang` 缺省 = 不设闸(全人口)**——搜索/浏览是身份触达面,没点名语言的调用方问的是「你有什么」,故服务端不替他收窄;这与日历缺省**故意不同**(日历 = `ja` + `zh*` 族,那是策展面)。`olang=all` 与显式集合(`olang=ja,en`)两面逐字同义,开放词表语义不变。`sort=relevance\|released_desc\|released_asc\|updated\|popularity`(缺省 relevance;**空 q 时 relevance 退化为 popularity** 即浏览序;`released_*` 两个方向都把**无日期作品排在最后**;`popularity` = 跨源信号 `log1p(max(bangumi collect 架, DLsite 下载数))`,**替代弃用面的 `view`**——那是 wiki 浏览量,catalog 无对应物,故 `sort=view` 是 400)。`facets=` 封闭词表 `content_rating,olang,claimed,tag_id,label_id,engine_id,series_id,source`(**非法 token 400**;外层键 = 可直接回传的**过滤参数名**,非索引字段名;`content_rating` 分布按公开字符串键计数不出枚举整数;每 facet 至多 100 个值)。`include=` 六词表全支持。**item = works 列表行逐字**(`PublicWorkListItem`,按 id 回库水化;**Meili 文档字段永不出 wire**)。`page` 缺省 1、非正/非数字 400,`limit` 1-100 缺省 20(超限截顶、非正/非数字 400)。**`q` 恰为 VNDB 作品 id(`v19658`)时短路**为该 id 的 exact 锚精查(全文会前缀串味:`v1965` 亦命中 `v19650`),仍套用调用方全部过滤器,**无解 = 空信封而非 404**。**`total`/`facets`/`items` 同门过滤**:翻完 `total` 页恰好收满 `total` 行,sfw 调用方的 `total` **已扣除**其永远拿不到的 r18 作品——**与弃用面 `content_limit` 陷阱(总数不过滤、items 过滤、sfw 翻页丢行)明令相反**。**A2-R1 区 C 加法**:`claim_state=`(封闭词表 `none\|live\|draft\|pending\|declined\|hidden`,逗号分隔 IN 语义,非法 token 400,不传=不闸)——产品站搜索务必传 `claim_state=live` 以排除未发布/未认领行,见 §3.2.7。**A2-R5 加法**:`content_limit=`(封闭词表 `sfw|nsfw`,逗号分隔 IN 语义,非法 token 400,不传=不闸)——与 `nsfw=`/`claim_state=` 正交,同编进那一条 Meili 表达式(故 `total`/facets/items 同门),见 §3.2.8。**wave 213 波 3 加法 · `fields=` 稀疏投影**:逗号分隔的**每个 item 的顶层键**白名单(不传 = 全量,与本波前逐字节一致);**信封不受影响**(`items`/`next_cursor`/`total`/`page`/`limit`/`facets` 永远原样)。`id` **恒在**;未知 token **静默忽略、永不 400**(§3.5 条款 2);**只裁不改形**;**在 `include=` 之后生效**——点名一个 include 门后的键(`intros`/`labels`/`ratings`/`covers`/`refs`/`latin`/`localized`)**不会**把它展开,两个参数都要给。它同样是**查询闸**:被 fields 裁掉的 include 块不再发查询,连今天无条件跑的三条(封面、展示轴、最早发售日)也随对应键一起关掉。服务端对顺序与重复不敏感,但请**按字母序书写 token**(CDN 按原始 URL 做键) |
+| `GET /v1/catalog/search` | `catalog:read` | **实体自动补全**(`type=names\|characters\|labels\|works\|tags`,五索引;**`tags` 为 A2-1d 加法**,hit 镜像 labels 惯例并附 `tier`/`kind`)。**🔴 wave 209 改形**(此前的「hit shape 逐字节冻结」就此解除):`name` → `display_name`;各类 hit 一律补 `localized{}`(works 类 hit 的作品名字块自 wave 212 波 B 起也是它)——中文界面的搜索下拉从此不用二次查详情,见 §3.7 wave 209 节。至多 20 条扁平 hit、无过滤无分页 —— picker / 跳转框用面;**作品结果页(过滤/facets/排序/翻页/完整列表行)走 `GET /v1/catalog/works/search`** |
 | `POST /v1/catalog/resolve` | `catalog:read` | 批量旧 ID → canonical(redirect 压平语义与内部一致) |
 | `GET /v1/catalog/lookup` + `POST …/lookup/batch` | `catalog:read` | **外部 id 反查(killer,doc 19 §3.1,Phase 1)**:`?source=vndb&external_id=v19658` → work + `claimed_by` 指针;批量 ≤100。背书 = 四源 exact 锚(在产)。**`type=work\|name\|character\|label`(缺省 `work`,加法扩展)**:同一反查面按实体族分流——`work` 语义逐字不变(含 release 锚回落到属主 work),其余三族取**该族** exact 锚后委派各自详情投影(重块关闭),命中只填对应块 `name` / `character` / `label`,`work` / `claimed_by` 留空;批量每对可各带 `type`,响应回显**归一后**的 token(缺省对回显 `work`) |
 | `GET /v1/catalog/redirects` | `catalog:read` | id 收敛事件 keyset 流(内部 S2S 面公开化,doc 19 §3.3) |
@@ -136,7 +138,7 @@
 >
 > **taxonomy 三道的 `work_count` 语义(2026-07-29 A2-1b 落账;口径于 2026-07-30 wave 146 统一为 live)**:`labels` / `tags` / `engines` 每行的 `work_count` 是 **nsfw 感知**的——它等于**同一调用方**用 `works?label_id=` / `?tag_id=` / `?engine_id=` **且带 `claim_state=live`** 翻页能真正拿到的行数,也就是词条页成员列表实际发出的那一次调用。
 >
-> - sfw 调用方(缺省)的计数**剔除 r18**;`nsfw=1` 给全量。计数与成员列表**永不打架**——这是刻意反着写弃用面的 `official.galgame_count`(恒 0 却挂着非空成员列表)。
+> - sfw 调用方(缺省)的计数**剔除 r18**;`nsfw=1` 给全量(该参数的能力位已于 2026-08-25 退役,任何 key 传即放行,见 §3.2.10)。计数与成员列表**永不打架**——这是刻意反着写弃用面的 `official.galgame_count`(恒 0 却挂着非空成员列表)。
 > - 统计口径 = works 列表的种群谓词逐字复用:LIVE + galgame 媒介 + 未软删 + **`claim_state=live`**,`stub` / 其它媒介 / 软删行一律不计。
 > - ⚠️ **`claim_state=live` 闸(2026-07-30,wave 146)**:此前计数把**未发布的 draft 行**与**未认领注册行**一并算入,而词条页成员列表按 §3.2.7 传 `claim_state=live`——两个数于是**系统性不等**,计数偏高(07-30 断面 galgame 媒介:live 10,927 vs draft 53,521 + 未认领 17,560,约 6 倍)。现在计数与成员列表**同一个闸**,且由**同一个谓词编译器**产出,构造上不可能再分叉。**这三个数会一次性下降**——这是既知虚高被修好,不是计数丢失。
 > - **nsfw 轴不动**(§23「身份非内容」裁定不翻案):`nsfw` 在这三条道上仍然只管每行的 `work_count`、不管行本身是否存在,也不受本次 claim 闸影响。
@@ -165,34 +167,26 @@
 
 **playtime 面**(后端 = `cmd/catalog` 同进程挂载;**平台第二个公开面,也是第一个用「用户 Bearer 令牌」而非 API key 认证的公开面**——语义与错误面详见 §3.8):
 
-| 公开端点(`/v1`) | scope | 说明 |
+| 公开端点(`/v1`) | 凭据 | 说明 |
 |---|---|---|
-| `PUT /v1/playtime/works/{workID}` | `playtime:write` | 上报**自己**在某作品上的游玩时长。body `{minutes, status?, last_played_at?}`,`minutes` 是**绝对累计值(分钟),永远不是增量**——重发同一个数是 no-op,故该调用**可安全重试**。按 `(user, work, client)` 三元组落行:同一用户的第二个 App **并排写**而不是覆盖。作品非 LIVE / 不存在 → 404 |
-| `PUT /v1/playtime/by-ref/{source}/{externalID}` | `playtime:write` | 同上,但用客户端手里已有的**外部 id** 寻址(`vndb`/`dlsite`/`getchu`/`bangumi`…),免去先跑一趟 lookup。**只认 exact 锚**;响应回显解析出的 `work_id`(带 `resolved_from`),客户端应缓存它。源键未知 / 无锚 → 404 |
-| `POST /v1/playtime/batch` | `playtime:write` | 首次登录的**库同步**:一次最多 200 条,每条可用 `work_id` **或** `source`+`external_id` 寻址。**逐条判定**——响应给 `{accepted, refused, results[]}`,`results[i]` 带 `{index, status(ok\|not_found\|rejected), work_id, error}`;**一条坏数据永不带崩整批**(不是事务) |
-| `GET /v1/playtime/mine` | `playtime:read` | 分页拉**自己**的全部记录,按 `updated_at` 升序;`updated_since=`(RFC 3339)只取该时刻之后变化的行,`limit` 1-200 缺省 200。响应的 `cursor` 就是本页最后一行的 `updated_at`,**原样回填成下一次的 `updated_since=`** 即增量续拉——第二台设备的回灌腿 |
-| `GET /v1/playtime/works/{workID}` | `playtime:read` | 自己在**某一部**作品上的记录,**跨自己的多个 App 折叠**:`minutes` 取 **MAX**(两个 App 盯同一份存档不是两周目),`status` 取那一行的状态但**任一行 finished 即整体 finished**,`last_played_at` 取最新,另给 `clients` = 折叠了几个 App。从未上报过 → `data` 为 **`null` 且是 200,不是 404**(评分表单据此问「你玩了 30 小时,要附上吗?」) |
+| `PUT /v1/playtime/works/{workID}` | 用户令牌(任意 app) | 上报**自己**在某作品上的游玩时长。body `{minutes, status?, last_played_at?}`,`minutes` 是**绝对累计值(分钟),永远不是增量**——重发同一个数是 no-op,故该调用**可安全重试**。按 `(user, work, client)` 三元组落行:同一用户的第二个 App **并排写**而不是覆盖。作品非 LIVE / 不存在 → 404。**不需要** `playtime:write` |
+| `PUT /v1/playtime/by-ref/{source}/{externalID}` | 用户令牌(任意 app) | 同上,但用客户端手里已有的**外部 id** 寻址(`vndb`/`dlsite`/`getchu`/`bangumi`…),免去先跑一趟 lookup。**只认 exact 锚**;响应回显解析出的 `work_id`(带 `resolved_from`),客户端应缓存它。源键未知 / 无锚 → 404 |
+| `POST /v1/playtime/batch` | 用户令牌(任意 app) | 首次登录的**库同步**:一次最多 200 条,每条可用 `work_id` **或** `source`+`external_id` 寻址。**逐条判定**——响应给 `{accepted, refused, results[]}`,`results[i]` 带 `{index, status(ok\|not_found\|rejected), work_id, error}`;**一条坏数据永不带崩整批**(不是事务) |
+| `GET /v1/playtime/mine` | 用户令牌(任意 app) | 分页拉**自己**的全部记录,按 `updated_at` 升序;`updated_since=`(RFC 3339)只取该时刻之后变化的行,`limit` 1-200 缺省 200。响应的 `cursor` 就是本页最后一行的 `updated_at`,**原样回填成下一次的 `updated_since=`** 即增量续拉——第二台设备的回灌腿。**不需要** `playtime:read` |
+| `GET /v1/playtime/works/{workID}` | 用户令牌(任意 app) | 自己在**某一部**作品上的记录,**跨自己的多个 App 折叠**:`minutes` 取 **MAX**(两个 App 盯同一份存档不是两周目),`status` 取那一行的状态但**任一行 finished 即整体 finished**,`last_played_at` 取最新,另给 `clients` = 折叠了几个 App。从未上报过 → `data` 为 **`null` 且是 200,不是 404**(评分表单据此问「你玩了 30 小时,要附上吗?」) |
 
 ### 3.2.1 D7 投影约定(2026-07-29 A2-1a 落账)
 
-三张对照表,定义公开面在「多语言」「模糊日期」「机翻」三处的**投影口径**。它们描述的是既有数据的**呈现约定**,不新增任何数据源。
+四条约定,定义公开面在「多语言」「模糊日期」「机翻」「封面槽」几处的**投影口径**。它们描述的是既有数据的**呈现约定**,不新增任何数据源。
 
-**① 语言标签 → 产品四键**(用于 `works?include=names,intros`)
+**① `include=names` / `include=intros` 的语言口径**
 
-catalog 内部按 BCP-47 存语言(`ja` / `zh-Hans` / `zh-Hant` / `en`、以及历史遗留的裸 `zh`);产品面(kungal / moyu / letmoe)统一渲染四个 locale 键。投影表:
+catalog 内部按 BCP-47 存语言(`ja` / `zh-Hans` / `zh-Hant` / `en`、以及历史遗留的裸 `zh`),公开面**原样发这些标签**:`include=names` 出 `latin` + `localized{}`(键 = canonical BCP-47 tag),`include=intros` 出 `[{lang, intro, source, machine}]`。这两块此前被压进四个固定产品键(`ja-jp` / `zh-cn` / `zh-tw` / `en-us`),`ko` / `ru` 之类没有键可去的语言在块里被整批丢弃;该压缩层已于 **wave 212 波 B 整体删除**,公开面不再有任何产品键。
 
-| catalog 语言标签 | 产品键 | 备注 |
-|---|---|---|
-| `ja`、`ja-*` | `ja-jp` | |
-| `zh-Hans`、裸 `zh`、其余 `zh*` 非 Hant | `zh-cn` | 产生裸 `zh` 的来源全部是简体,故并入 |
-| `zh-Hant`、`zh-Hant-*`、`zh-TW`、`zh-HK` | `zh-tw` | |
-| `en`、`en-*` | `en-us` | |
-| **其它一切**(`ko` / `ru` / …) | **丢弃** | |
-
-- **四键之外的语言在该块里丢弃**,不是丢失:详情面 `titles[]` / `intro[]` 恒发**完整**语言集合,富 brief 块只是渲染便利。
-- **每键选唯一行**:`names` 取该键下 **kind 最低**的一行(`official`(0) > `alias`(1) > `abbreviation`(2)——与详情面 `titles[]` 的 `ORDER BY kind` 同一序),同 kind 再按行 id 升序定序;**`search_hint`(kind=3)永不公开**(既有硬规则,查询层即排除)。两个语言映射到同一键时(`zh-Hans` 与裸 `zh`),按上述定序取首行,结果稳定可重放。
-- **认领作品的四键来自 wiki 桥**(A2-R1,见 §3.2.5):`ja-jp`/`en-us`/`zh-cn`/`zh-tw` 分别由 wiki 正文的四个名称列供给;wiki **别名无语言**,故进不了任何产品键——别名只出现在详情面 `titles[]`(`kind=alias`、`lang=""`)与搜索索引里。
-- `intros` 的每语言归并在读面已完成(每语言最优来源胜出 + 机翻让位于源文,见表③),此块只做重新键控:按 lang 升序取首个落入该键的行。
+- **`include=` 的六个 token 拼写不随之改名**:`names,intros,labels,ratings,covers,refs` 逐字照旧,`include=names` 现在闸的是 `latin` + `localized{}`(未点名时**整键缺席而非发 `{}`**)。moyu 全站标题都走这个 token,改名会让它全站渲染空标题且两侧都不报错。
+- **`localized{}` 每 locale 选唯一行**:定序自 wave 210 起为 **provenance → kind → id**——`source`(0)恒压 `machine`(1),同 provenance 内再取 kind 最低的一行(`official`(0) > `alias`(1) > `abbreviation`(2),与详情面 `titles[]` 同一序),同 kind 按行 id 升序。**源标题永远赢下它的 locale,机翻只能占源没填的空位**(与实体 `localized{}` 的机器填缺同一条规矩)。**`search_hint`(kind=3)永不公开**(既有硬规则,查询层即排除)。
+- **`lang` 为空或不成其为 BCP-47 标签的行一律不入**,但不是丢失:详情面 `titles[]` 恒发**完整**行集合,搜索索引同样吃它们。wiki 正文的别名**无语言**(A2-R1,见 §3.2.5),即属此类——别名可搜可列,但不占任何 locale。
+- **`intros` 与详情面是同一个数组**:每语言归并在读面已完成(每语言最优来源胜出 + 机翻让位于源文,见表③),列表块与 `works/{id}` 的 `intros` 对同一部作品给出逐字相同的数组。
 
 **② release `date` ↔ 旧面 `release_date` + `release_precision`**
 
@@ -249,7 +243,7 @@ catalog 的 release 日期是**部分 ISO**:`YYYY` / `YYYY-MM` / `YYYY-MM-DD`,�
 | `true` | **机器翻译**(LLM,step 75 ja→zh-Hans 起):`source` 仍是**被翻译的那个源**,归因语义是"译自该源" | 展示时应标注「机翻」之类的提示,不与源文等同 |
 
 - **机翻永不冒充源文**:某语言只要存在源文行,机翻行就在读面归并中落败、根本不出现;`machine=true` 只可能出现在"该语言没有任何源文"的语言上。
-- 该旗标同时出现在详情面 `intro[]`、列表 `include=intros` 的每个槽,以及 `characters/{id}` / `labels/{id}` / `names/{id}` 的 `intros[]`,语义逐字一致——四个 intro 面同构,消费端写一个渲染器即可。
+- 该旗标同时出现在作品详情与列表 `include=intros` 的 `intros[]` 每个元素,以及 `characters/{id}` / `labels/{id}` / `names/{id}` / `tags/{id}` 的 `intros[]`,语义逐字一致——**wave 209 起五个 intro 面在 spec 层就是同一个 schema(`PublicIntro`)**,消费端写一个渲染器即可;tag 面的 `machine` 现阶段**恒 false**(`catalog_tag_intro` 无 provenance 列,写入方只有 curated 编辑面)。
 - **`names/{id}` 的双泳道特例**:该面的"某语言存在源文"判据跨**两条泳道**统一计算(人物级源文 + 名义级桥都算源文),故人物机翻只在两条道对该语言均无源文时才出现。
 
 **④ 两槽判据**(与三表同批落账;**wave 207 更正**:同一挑选器也产出详情面的 `cover_slots`,两面逐字同义——本节读作两面共同的判据)
@@ -263,6 +257,20 @@ catalog 的 release 日期是**部分 ISO**:`YYYY` / `YYYY-MM` / `YYYY-MM-DD`,�
 - 只有一张可用封面时两槽可能指向同一图,这是预期。
 - `width` / `height` / `thumbhash` 来自 image_service 的按需批量查询,**未知即三键一并省略**(消费端退回骨架屏);详情面 `covers[]` **与 `screenshots[]`** 每行同样带这三个可选键(A2-1a 加法,A2-1b 补齐 screenshots——两个粒度共用**同一次**批量查询,详情面对 image_service 仍只发一趟)。
 - sfw 调用方在**两槽**都永不见 `sexual≠0` 的封面(与列表单图 `cover` 同一规则;`violence` 同样不入门槛)。
+
+**⑤ 实体图的 `*_meta`(加法)**
+
+作品媒体(`covers` / `screenshots` / `cover_slots`)一直带 `width`/`height`/`thumbhash` + `sexual`/`violence`,**实体图此前只有一个 hash 或 URL**。现每个实体图槽旁并置一个可选对象,形状 `{width?, height?, thumbhash?, sexual?, violence?}`:
+
+| 面 | 既有键(不变) | 新增对象 |
+|---|---|---|
+| `characters/{id}`、`works/{id}` 的 `characters[]` 花名册行、`works/{id}/characters` | `image` / `figure` | `image_meta` / `figure_meta` |
+| `names/{id}` | `photo_hash` | `photo_meta` |
+| `labels/{id}`、`labels` 列表行、`labels/{id}/relation-graph` 的节点 | `logo_hash` | `logo_meta` |
+
+- **既有字符串键一字未动**,对象纯属加法;值同样取自 image_service 的按需批量查询(每个响应一趟,与封面/截图共用同一次),**查不到即整个对象缺席**,面照常作答。
+- **`sexual`** = 该图的机器分级 `0 安全 / 1 性暗示 / 2 露骨`,与作品媒体轴同一把尺(图床 `0→0, 1→1, 2→2, 3→2`)。**缺席 ≠ 0**:缺席 = 尚未评级(刚上传、夜间 grader 未跑到),`0` = 已评级且判为安全。把两者混同就是把未审图当安全图渲染。
+- **`violence`** = `0 无 / 1 暴力 / 2 血腥`,**目前恒缺席**:逐图暴力判定只有 VNDB 社区投票一处供给,那批图走的是作品媒体面;自动暴力分级实测不可用,实体图上没有可断言的值。字段先立,语义钉死为「**缺席 = 无已知判定**」——与作品媒体面 `violence` 的 `0` = 「该源没有这个轴」是同一句诚实话的两种写法。
 
 ### 3.2.2 作品级 `links[]`(2026-07-29 A2-1e 落账)
 
@@ -311,7 +319,7 @@ catalog 的 release 日期是**部分 ISO**:`YYYY` / `YYYY-MM` / `YYYY-MM-DD`,�
 
 ### 3.2.5 认领作品的标题供给(2026-07-29 A2-R1 落账;2026-07-30 W1-pre 本体化)
 
-`titles[]`(详情)、`names`(列表 `include=names`)与作品搜索索引的标题族,对**认领作品**(`claimed_by.site=galgame_wiki`)供的是 **wiki 正文的名字**——四个固定语言列 + 别名表。A2-R1 用读时桥接供这些字(catalog 自己的标题表对 87% 的认领作品是空的),**W1-pre(refs/proj/140)把该投影逐字物化进 `catalog_work_title` 并删掉桥**:同一批字,同一形状,来源改为 registry 自己的表,由镜面步跟随 wiki 编辑直至 wiki 表族退役。消费端无感——下表的「标题来源」列描述的是**供给内容**,不再是读取路径。
+`titles[]`(详情)、`localized{}`(列表 `include=names`)与作品搜索索引的标题族,对**认领作品**(`claimed_by.site=galgame_wiki`)供的是 **wiki 正文的名字**——四个固定语言列 + 别名表。A2-R1 用读时桥接供这些字(catalog 自己的标题表对 87% 的认领作品是空的),**W1-pre(refs/proj/140)把该投影逐字物化进 `catalog_work_title` 并删掉桥**:同一批字,同一形状,来源改为 registry 自己的表,由镜面步跟随 wiki 编辑直至 wiki 表族退役。消费端无感——下表的「标题来源」列描述的是**供给内容**,不再是读取路径。
 
 | 作品形态 | 标题来源 |
 |---|---|
@@ -319,7 +327,7 @@ catalog 的 release 日期是**部分 ISO**:`YYYY` / `YYYY-MM` / `YYYY-MM-DD`,�
 | **无正文**(未认领) | catalog 自己的标题行,逐字不变 |
 
 - **一份真相**:认领作品的名字只有一套。桥接时代它只读桥、绝不回落到 catalog 标题行;本体化后镜面步在其属权范围内做**真差分**(增/改/**删**),wiki 编辑删掉的名字这边跟着消失,历史残行被清掉而不是被遮蔽。
-- **别名不编造语言**:wiki 不记录别名的语言,故 `lang` 为空串。空 `lang` 落不进 §3.2.1 的四键投影,所以别名**只**出现在 `titles[]` 与搜索索引,不进 `names` 块——这正是想要的:别名可搜可列,但不占某个 locale 的名字槽位。
+- **别名不编造语言**:wiki 不记录别名的语言,故 `lang` 为空串。空 `lang` 不是 BCP-47 标签,落不进 §3.2.1 ① 的 `localized{}`,所以别名**只**出现在 `titles[]` 与搜索索引——这正是想要的:别名可搜可列,但不占某个 locale 的名字位。
 - **同名只出一次**:别名字符串与某个名称列**完全相同**时只渲染一次(取 `official` 那行)。
 - **`latin`**:wiki 正文没有罗马音列,故桥接行不带 `latin`;catalog 原生行的 `latin` 一如既往。
 - ⚠️ **搜索新鲜度**:桥接标题进入搜索索引由 `reindex-catalog` 承载(每日 cron + 上线即时跑一次),所以 wiki 侧改名到「按新名搜得到」之间存在**一次 reindex 的滞后**;详情面/列表面是**读时**桥接,无滞后。
@@ -409,7 +417,17 @@ A2-1b 给 **taxonomy 浏览道与其详情面**发了 nsfw 感知的 `work_count
 - **`status=pending` 与 `claim_state=` 不可同传**(400):本参数**就是**那道 claim 闸,同传等于对同一个问题要两个答案。
 - **词表外 token = 响亮 400**(`status must be live|pending`),与 `sort`/`claim_state`/`content_limit` 同一姿态。
 - ⚠️ **MCP 面拿不到第二凭据**:`catalog_works_list` 工具透传本参数,但 MCP 传输只带**一个**凭据(Bearer 槽里的 API key),故经 MCP 调 `status=pending` **必然 403**。参数照样透传,是为了让拒绝来自端点本身,而不是被静默丢掉的过滤器。
+- 🔒 **本视图永不进共享缓存**(wave 213 波 3):`status=pending` 的响应带 `Cache-Control: private, no-store`,而 `status` 缺省 / `live` 仍是原来的 `public, s-maxage=60, …`(逐字节不变)。理由是这条道**随第二凭据变化**,而共享缓存只按 URL 做键——两个租户的审核员请求的是**同一个 URL**,缓存住任何一份都会把 A 站的待审队列发给 B 站。这不是「拿到旧页」,是跨租户泄露,所以选的是 `no-store` 而不是缩短 `s-maxage`。
 - ℹ️ **本闸不是「pending 行的封锁线」**:`claim_state=pending` 作为普通过滤器**早已开放**(A2-R4,见 §3.2.7),`status=pending` 提供的是**开箱即用、按租户钉死的队列视图**与它的权限门,不收窄任何既有参数。
+
+### 3.2.10 NSFW 能力闸(wave 213 波 3 加,2026-08-25 退役)
+
+**这道闸已经不存在了。** `nsfw=` 参数仍然由调用方传,而**任何持 key 的 app 传 `nsfw=true` 都直接放行**——不再有能力位、不再有审批、不再有 403。挂在 `/v1/catalog` group 上的 `requireNSFWCapability` 与 v2 的 `NSFW_CAPABILITY_REQUIRED` problem 一并摘除。
+
+- **参数语义一个字没改**:缺省(不带 `nsfw`)= sfw 投影,显式 `nsfw=true` 才含 r18,真值集(`1` / `true` / `yes`,大小写与首尾空白不敏感)仍由 handler 的同一个解析器认定,`content_rating=r18` 仍须配 `nsfw=true`(参数一致性校验,不是能力检查)。**不带 `nsfw` 的请求逐字节不变**——闸在时如此,闸走了也如此。
+- **原判据(存档)**:凭证的 `nsfw_allowed` = `developer_api_keys.nsfw_allowed` **AND** `oauth_clients.dev_nsfw_allowed`,两级由管理员授予。两列留在库里且默认值已恢复,Go 侧字段与门户的申请入口均已删除。历史遗留的 `galgame:nsfw` scope 从来不由这道闸执法,现在同样什么都不执法。
+- **退役影响面**:闸在时有效能力位为真的恰好是三把首方 S2S key,其余 30 把第三方 / 开发用 key 全为假——它们此前带 `nsfw=true` 吃 403,现在直接拿到 r18。首方调用不受影响(它们本来就放行)。
+- **不在这条链上(历史)**:`/v1/catalog/stats`(挂在 group 之上,免凭据)与 `/v1/news`(另一个 group)从来不受这道闸约束。
 
 ### 3.5 稳定性承诺
 
@@ -455,16 +473,16 @@ Content-Type: application/json
 | 键 | 含义 |
 |---|---|
 | `display_name` + `lang` | 记录名与它自身的 BCP-47 语言标签。`display_name` 恒非空;`lang` 未记录则省略。厂牌本已有这两键,本波补给角色与名义 |
-| `localized{}` | **按 locale 取名的 map**,键 = 规范大小写的 BCP-47 标签(`zh-Hans`/`ja`/…),值 = `{value, kind}`。恒出,无本地化名为 `{}` |
-| `aliases[]` | 也叫作什么(扁平字符串、去重、剔除 display_name)。厂牌与名义本已有,本波**补给角色**——此前一条都不发 |
+| `localized{}` | **按 locale 取名的 map**,键 = 规范大小写的 BCP-47 标签(`zh-Hans`/`ja`/…),值 = `{value, kind, machine}`(`machine` 为 wave 209 加法,false 时省略)。恒出,无本地化名为 `{}`。**`kind` 分两族不相交词表**:实体名 = `translation\|spelling_variant`,**作品标题 = `official\|alias\|abbreviation`**(wave 212 波 A 起 works 也发此字段) |
+| `aliases[]` | 也叫作什么(去重、剔除 display_name)。厂牌与名义本已有,本波**补给角色**——此前一条都不发。**wave 209 起从扁平字符串升级为对象数组 `{value, lang, kind, machine}`**(按 value+lang 去重,breaking,见下方 wave 209 节) |
 
 三点设计交代:
 
 1. **`localized` 是 map 不是数组。** 这个字段的全部工作就是取一次 `localized[myLocale]`,map 让它成为一行零遍历;数组会让每个消费者各写一遍扫描、各写错一遍(尤其 `zh-Hans` vs `zh` 的前缀匹配)。键是**开放词表**——哪些 locale 存在是数据不是枚举,读面不做任何值层面的归一化。
 
    **唯一的例外是标签自身的大小写(2026-08-08 修正)。** 键按 BCP-47 规范大小写发出:主子标签小写、四字母文字子标签首字母大写、两字母/三数字地区子标签大写(`pt-br` → `pt-BR`,`ZH-hans` → `zh-Hans`)。这不是发明数据——按标准自己的相等规则 `pt-br` 与 `pt-BR` 本就是同一个标签,而库里存的确实是 `pt-br`,不折叠则查 `pt-BR` 的消费者必然 miss。同理,**不成其为语言标签的值一律不进 `localized`**(库里有一行 `lang` 字面写着 `日语`):一个任何 locale 协商都匹配不上的键不是词表开放,是泄漏。这类行仍进 `aliases[]`,它在那里只是一个拼写。校验的是标签的**形状**而非 IANA 注册表——注册表校验会拒掉源日后可能填入的冷僻标签,而这里的职责是挡住非标签,不是裁定哪些语言存在。
-2. **`localized` 与 `aliases[]` 回答的是两个不同问题,故对 display_name 的处理相反。** `aliases[]` 问「还叫什么」,剔除 display_name;`localized` 问「在 X 语言里叫什么」,**保留**与 display_name 同形的值——「中文名是美坂栞」在它同时也是记录名时依然成立且有用,而丢掉它正是分桶暗示「无中文名」的成因。同 locale 多行时的择优 = `is_primary_for_locale` 优先(bangumi 波刻意设置、每 owner 至多一行且从不改选),其次 translation 优于 spelling_variant,再次按 `(name, id)` 到达序;`kind=search_hint` 行两个投影都不入(其 kind 契约即「只供检索、永不展示」)。
-3. **`localized` 里的每一个值都是源行——机翻名被读面结构性拒收(wave 178)。** 三张别名表自 wave 195 起携 `source_id` / `provenance` / `mt_model` 三列(与 `*_intro` 表同构);wave 178 的角色名残量机翻(人审 CSV 后回写)以 `provenance=machine` 落库,且**永不占 `is_primary_for_locale`**。读面在选举 `localized{}` 时**跳过一切 machine 行**——它们只入 `aliases[]`(检索、词表可达)。这是双保险:即使某条机翻行日后被误设 primary,选举闸仍拒它。理由不变:名字译错的成本远高于简介——下游站点、搜索索引、URL、用户收藏会一起钉死一个错名,且它看起来毫无异常;而假名人名的汉字化本身歧义,LLM 会自信地编一个。另注:wave 178 的**纯汉字名直通行**(字形即中文写法,`provenance=source`、与 display_name 同形)正常参与选举——见第 2 点的同形保留规则。
+2. **`localized` 与 `aliases[]` 回答的是两个不同问题,故对 display_name 的处理相反。** `aliases[]` 问「还叫什么」,剔除 display_name;`localized` 问「在 X 语言里叫什么」,**保留**与 display_name 同形的值——「中文名是美坂栞」在它同时也是记录名时依然成立且有用,而丢掉它正是分桶暗示「无中文名」的成因。同 locale 多行时的择优 = **source 行恒胜 machine 行(wave 209 起的第一层)**,其后 `is_primary_for_locale` 优先(bangumi 波刻意设置、每 owner 至多一行且从不改选),其次 translation 优于 spelling_variant,再次按 `(name, id)` 到达序;`kind=search_hint` 行两个投影都不入(其 kind 契约即「只供检索、永不展示」)。
+3. **`localized{}` 对机翻名的规则:source 恒胜,machine 只可填缺(🔄 wave 209 修订;wave 178/191 原规是结构性拒收)。** 三张别名表自 wave 195 起携 `source_id` / `provenance` / `mt_model` 三列(与 `*_intro` 表同构);机翻行以 `provenance=machine` 落库,且**永不占 `is_primary_for_locale`**。wave 191-208 期间读面在选举 `localized{}` 时**跳过一切 machine 行**——当时的理由:名字译错的成本远高于简介(下游站点、搜索索引、URL、用户收藏会一起钉死一个错名,且它看起来毫无异常),故机翻名只入 `aliases[]`。**wave 209(2026-08-18 裁决)把这道闸从「拒收」改为「填缺」**:machine 行**仅当该 locale 没有任何 source 行时**才占槽,占槽时带 `machine: true`;同 locale 只要有 source 行,machine 行仍然落选(与表③ intro 块的 shadow-never-delete 同规)。改判动因:56,149 个角色(zh 名存量的 28.4%)**只有**机翻中文名,旧闸下公开面消费者一个也拿不到——而「从 `aliases[]` 里自行猜哪条是 zh 机翻名」在扁平字符串数组上结构性不可实现。防错名钉死的保险仍在:machine 行永不占 primary、选举层 source 恒胜,且槽位带旗标——要挡机翻的消费端按 `machine` 过滤即可,不挑的消费端拿到的永远是「有权威名用权威名,没有才用机翻」。另注:wave 178 的**纯汉字名直通行**(字形即中文写法,`provenance=source`、与 display_name 同形)一直正常参与选举——见第 2 点的同形保留规则。
 
 4. **`localized` 永远是可选的,消费端必须有回退链——这是永久契约,不是过渡期妥协。** 本领域不存在 100% 覆盖,所以下游要按 `localized[myLocale]` → `display_name` → `latin` 逐级回退,**且不得把缺失渲染成空白或「暂无」**。
 
@@ -501,7 +519,50 @@ Content-Type: application/json
 - **`display_name` 与分桶的值逐字节相同。** 读面按记录自身的 `lang` 把**那一个**名字投进**唯一一个**桶(`zh*`→`zh`,`ja*` 与空→`ja`,其余→`other`),所以任何时候最多一个桶有值。也就是说,那段「按偏好顺序挑第一个非空桶」的代码,拿到的**永远就是 `display_name`**。切过去是形状变更,不是行为变更,渲染结果不变——这也是本波敢在一个窗口内直接移除的依据。
 - **真正拿到的新能力是分桶说不出的三件事**:① 日文名若有中文译名在库,分桶只发 `{"ja": …}`、`zh` 键缺席,已存在的译名**完全不可达**(这正是 `localized{}` 存在的理由);② `zh-Hans` 与 `zh-Hant` 塌进同一个 `zh` 桶;③ `lang` 为空的记录被投进 `ja` 桶,等于断言了一个源从未声明的语言。
 
-`siblings[]` **刻意不发 `localized{}`**:那要按 sibling 数量各发一次别名查询,而 sibling 本身是通往另一条 `names/{id}` 记录的链接,该记录带完整的 `localized`——需要按读者 locale 显示 sibling 名的消费者,跟着 `id` 走一步即可。
+`siblings[]` 在 wave 191-208 期间**刻意不发 `localized{}`**(顾虑是按 sibling 数量各发一次别名查询);**wave 209 起补齐**——读面对 sibling id 集合做**单次批量**选举,per-sibling 查询的顾虑不复存在,sibling 行自此与实体记录同携 `localized{}`。
+
+### wave 209(2026-08-18):公开面名字原语**终局化**
+
+此前一个实体名按投影不同有三种形状:detail 面 `display_name`、花名册/credits/relations/search hit 用 `name`、别名是裸 `[]string`。本波把 `/v1/catalog` 上**凡出现实体名的投影**统一为同一组三字段,并让 `localized{}` 覆盖到此前缺它的每一处:
+
+- **统一原语**:`display_name` + `latin`(有则)+ `localized{}`;渲染规则恒为 **`localized[locale] ?? display_name ?? latin`**,按投影分支的渲染逻辑就此作废。覆盖面:实体 detail、labels 列表行、作品详情 `characters[]`(花名册)及其 `voices[]`、`credits[]` 条目、`names/{id}` 的 `siblings[]`、label `relations[]`、`via_label`、实体 search hit。
+- **🔴 更名(breaking)**:search hit / 花名册角色与 `voices` / `credits` 条目 / label `relations` / `via_label` 的 `name` → `display_name`——同一字符串同响应换键,无值失联。
+- **🔴 `aliases[]` 对象化(breaking)**:`{value, lang, kind, machine}`,按 value+lang 去重;裸串版本答不了「哪门语言」「谁写的」两问。
+- **intro DTO 合并**:work/character/name/label/tag 五面共用一个 `PublicIntro{lang, intro, source, machine}`;tag 的 `machine` 恒 false(`catalog_tag_intro` 无 provenance 列)。
+- **加法**:`PublicWorkBrief`(relations / series_siblings / lookup / tag·label·name·character 的 works 子列表)与 works 类 search hit 补上作品名字块(与 works 列表 `include=names` 同一选举;wave 212 波 B 起该块是 `latin` + `localized{}`);name/character/label 类 hit 补 `localized{}`。
+- **机器填缺**:见第 3 点修订——machine 行只填无 source 行的 locale 槽,带 `machine: true`。
+
+全部破坏性行在 `docs/catalog/public-openapi-breaking-ignore.txt` 逐条具名;契约总述另见 `docs/catalog/01-service-and-contract.md` §1。
+
+### wave 210(2026-08-19):作品**标题**也进机器/源二分
+
+209 做完了实体名,标题还差一步。本波给 `catalog_work_title` 加上和别名表、简介表同一根 `provenance` 轴(0=source / 1=machine),并把它露到公开面。
+
+- **🔴 作品名字块的每个 locale 位对象化(breaking)**:从裸字符串变成 `{value, machine}`,`machine` 仅为真时出现。该块当时还是四个固定产品键,已于 wave 212 波 B 整体退役,但这一位旗标原样留在了接手它的 `localized{}` 条目上。逐条声明见 `public-openapi-breaking-ignore.txt`。
+- **加法**:详情面 `titles[]` 每行补 `machine`(仅为真时出现);S2S 读面 `WorkTitle` 同补。
+- **选举**:见 §3.2.1 ① 的定序修订——**源标题永远赢下自己的 locale**,机翻只填空位。要「只看人写的标题」的消费端按 `machine` 过滤即可;要「locale 里有个能读的名字」的消费端什么都不用做。
+- **为什么需要这个旗标**:本波开始把日文原名机翻成中文标题写进目录。没有旗标,「发行商真的发过的中文名」和「我们翻的」在线上无从分辨,消费端也就没法选。供给侧同时补齐了两条**源**泳道(bangumi `name_cn`、VNDB 非机翻中文 release 标题),它们写的是 provenance=0——机翻只覆盖这两条都供不出的残量。
+
+### wave 212(2026-08-19):works 补齐名字原语,四槽兼容层退役
+
+209 统一了每个带名实体,210 给标题加上 provenance 轴——但**作品本身**从未拿到 209 的那组原语,它此前只有专为论坛留的四槽 `names{ja-jp, zh-cn, zh-tw, en-us}`。四槽是有损的:`lang` 为 ko/ru/vi 或未标注的标题没有槽位可去,构造上不可达。**A 波**给作品补上同一组原语并与四槽双发,**B 波**在论坛与 moyu 两家消费端迁完并上线后把兼容层整层删掉。
+
+**A 波(加法)**
+
+- **四个作品投影补 `latin` + `localized{}`**:`works/{id}` 详情(**恒带**,空为 `{}`)、`works` 列表行(**仅 `include=names`**,未点名时**整键缺席而非发 `{}`**,因为「没请求」和「没有」是两个断言)、作品 brief(与标题同一次查询,恒带)、works 类 search hit(只补 `localized{}`,`latin` 本已有)。
+- **选举沿用四槽那一套**:同一批标题行、同一个 `(provenance, kind, id)` 定序、同一个 first-row-wins 扫描,源标题恒胜机翻、official 胜 alias,机翻占空位时带 `machine: true`。差别只在键——`localized{}` 的键是**任意 canonical BCP-47 tag**(`zh-hant` → `zh-Hant`,**裸 `zh` 保留、不猜字形**)而不是四个固定产品键,`lang` 为空或不成其为标签的行不入(它们仍在 `titles[]` 可列可搜)。
+- **⚠️ `kind` 是两套不相交的词表**:实体名说 `translation|spelling_variant`,**作品标题说 `official|alias|abbreviation`**。同一个 `PublicLocalizedName` 结构承载两族,按实体类型读,别拿一套词表去校验另一套。
+- **`latin`**:顺序扫标题行,取第一条 `title == display_name` 的行的 `latin`;无此行或该行无 latin 则整键缺席。
+- **同波两处加法件**(relation-graph 节点的 `localized{}` 连同 `name`→`display_name` 改名已由同日独立波先行完成):`labels` 列表行补 `aliases[]`(与详情同语义,和该行 `localized{}` 共用同一次批查,不增查询)· 角色 `traits[]` 补 `localized{}` + `group_localized{}`(键恒 `zh-Hans`,`machine` 如实映射 `name_zh_provenance`)。
+- **文档注记**:`tags/{id}` 的 `intros[].machine` **恒 false**,因为 `catalog_tag_intro` 没有 provenance 列——该旗在这一面记的是「未知」,不是「人写的」。
+
+**B 波(删除,🔴 均为 breaking,逐条声明在 `public-openapi-breaking-ignore.txt`)**
+
+- **四个作品投影的名字块整体删除**,渲染改用 `localized[locale] ?? display_name ?? latin`。公开面自此**不存在任何 `ja-jp` / `zh-cn` / `zh-tw` / `en-us` 键**。
+- **`works` 列表的 `intros` 从四槽对象改成数组** `[{lang, intro, source, machine}]`——即 `works/{id}` 自 wave 209 起发的那个 `PublicIntro` 数组:一语言一元素,同一批行、同一套选举,两面对同一部作品给出逐字相同的数组。`include=intros` 未点名时整键缺席,与此前四槽块缺席同义。
+- **详情面的简介键 `intro` 更名为 `intros`**——数组、元素、次序都不变,只换键,与列表块及 label / tag / character / name 各面对齐。**S2S 读面 `/api/v1/catalog/works/{id}` 的 `intro` 是另一张面,不动。**
+- **角色 `traits[]` 的扁平 `name_zh` / `group_zh` 删除**,由 A 波补上的 `localized["zh-Hans"]` / `group_localized["zh-Hans"]` 接管(同一个串,另带 provenance)。**S2S 面的 `name_zh` / `group_name_zh` 不动。**
+- **`include=` 的六个 token 拼写刻意不动**:`names,intros,labels,ratings,covers,refs` 逐字照旧。moyu 全站标题都走 `include=names`,把 token 跟着块一起改名会让它全站渲染空标题、而两侧都不报任何错——这是本波唯一一个会静默的失败模式,故有测试专门钉住这六个拼写。
 
 ### 3.8 playtime 面:用户令牌认证的公开写面(wave 207 补文)
 
@@ -514,7 +575,7 @@ Content-Type: application/json
 | 凭据 | 机器 API key:`X-API-Key: nm_live_…`(或 `Authorization: Bearer nm_live_…`) | **用户** OAuth 访问令牌:`Authorization: Bearer <access token>` |
 | 主体 | 一把 key = 一个应用,与人无关 | 令牌里的**那一个用户**;写谁的行由令牌推导,请求里**没有** uid 参数 |
 | 门 | key 有效性 + tier + 日配额 | JWT/JWKS 验签 → 令牌须**带用户身份**,否则 401;须**绑定 OAuth client**(`client_id`),否则 403 |
-| scope | `catalog:read` | `playtime:read` / `playtime:write`,**两者都可在开发者门户自助申请**(与 `openid`/`profile`/`email` 同属 self-service 名单) |
+| scope | `catalog:read` | **无。**`playtime:read` / `playtime:write` 不再判定。任何已开通用户登录的应用,用它签出的用户令牌即可读写该用户自己的时长。这两个 scope 仍可出现在同意页(旧授权 URL 不 400),但缺它们不再 403 |
 | 限流 | key 级配额 | **每 (client, user) 每分钟 120 次**,超出 429;Redis 不可用时**fail-open** |
 
 - **令牌必须绑 client 不是形式主义**:记录按 `(user, work, client)` 三元组落行,`client_id` 是主键的一部分。没有它就没有「这条是哪个 App 报的」,读面的跨 App 折叠也就无从谈起——所以无 client 绑定的令牌(例如站内直接登录换来的那种)在本面一律 403,而不是悄悄写进一个空 client。
@@ -531,9 +592,94 @@ Content-Type: application/json
 **它如何回到公开面(以及如何不回)**
 
 - **只有 `finished` 的行进公开聚合**(`playing`/`dropped`/`on_hold` 与 `<10` 分钟的行一并剔除):聚合作业先按用户折叠(同用户多 client 取 MAX),再对用户取**中位数**,**至少 3 个上报用户**才写出一行,落 `catalog_work_playtime` 的 `nextmoe` 源。它出现在 catalog 面 `works/{id}` 的 `playtimes[]` 里,与 vndb / erogamescape 的同名块**同形同源键规则**(`source=nextmoe`)。
-- **个人行永不上公开面**:公开面看得到的只有那个中位数与上报人数;谁玩了多久只有本人的 `playtime:read` 令牌读得到。
+- **个人行永不上公开面**:公开面看得到的只有那个中位数与上报人数;谁玩了多久只有本人的用户令牌读得到。
 
 **与 MCP 的关系**:playtime 面**刻意不进 MCP 工具面**,理由见 [09 §4](./09-mcp-server.md)。
+
+### 3.9 key 上的 scope:自助集(授权制已于 2026-08-25 退役)
+
+一把机器 API key 能带哪些 scope,现在只有**两档**,判据在 `devapi.selfServiceScopes` + `devapi.checkMintScopes`:
+
+| 档 | 名单 | 谁决定 | 铸 key 时 |
+|---|---|---|---|
+| 自助 | `selfServiceScopes` = `catalog:read` / `store:read` | 调用方自己 | 控制台直接勾 |
+| 不可得 | 其余全部(`news:read` / `galgame:nsfw` / `galgame:write` / `galgame:read` …) | —— | 400 `ErrScopeNotAllowed` |
+
+**`store:read` 于 2026-08-26 进自助集**:它出生时(store 波,2026-08-25)是授权制的第二个租户;授权制整档退役后申请队列不复存在,自助勾选成为持有它的唯一路径。`/v1/store` 的请求时 scope 检查原样保留——没有它的 key 调分销面仍是 403。
+
+**`galgame:read` 于 2026-08-18 退出自助集**:`/v1/galgame` 面在 wave 146 整体退役为 `410 Gone`,该 scope 此后不被任何活路由消费。已发出的旧 key **不动、不失效**(那个 scope 本就打不开任何东西);两条铸 key 路径的空 scopes 默认改为 `[catalog:read]`。
+
+#### 授权制这一档的退役(2026-08-25)
+
+2026-08-18 到 2026-08-25 之间存在过第三档「授权制」:`grantableScopes` = `news:read`(store 波曾在退役前一天把 `store:read` 一并列入),由用户在门户提交申请、平台在管理台审批,批准后才能自助勾选。**整档连同它的表、端点与策略位一并退役**,理由是它已经无事可决:`/v2/news` 自 v2 面上线起就是匿名公开的,同一批内容在另一条路径上早已人人可读,而 `/v1/news` 还在对没走过审批队列的 key 回 403。
+
+退役后:`/v1/news` **仍要求一把有效的机器 key**,但**任意 scope 均可**——它不再检查 scope,与请求根本不带 scope 等价。`ScopeNewsRead` 常量保留在代码里,因为存量 key 的 `scopes` jsonb 里仍有这个字面量,读历史需要这个名字;那些 key **不动、不失效**,那个字符串现在什么都不执法。
+
+一并删除的东西,备查:
+
+| 已删 | 曾经是什么 |
+|---|---|
+| 表 `devapi_scope_applications`(`devapi.ScopeApplication`) | 每 `(user_id, scope)` 恰一行的申请单;`DROP TABLE IF EXISTS`,丢弃 3 行(1 approved / 2 pending,其中一条迟至 2026-08-26、退役已在进行中时才提交) |
+| `POST` / `GET /api/v1/dev/scope-applications` | 自助提交与查看自己的申请 |
+| `GET` / `POST …/approve` / `POST …/decline` `/api/v1/admin/devapi/scope-applications` | 管理台审批 |
+| 策略能力 `scope.apply` | §3.10 矩阵里的第四行(生产 `devapi_policy_overrides` 从无此行) |
+| `ErrScopeNeedsGrant` / `ErrScopeNotGrantable` / `gateForScope` | 三档判据本身 |
+
+> **迁移**:DROP 由 `go run ./cmd/migrate`(库 `kun_galgame_infra`)执行,幂等;主库迁移自 `85ea4ab` 起随每次生产部署自动跑。
+
+### 3.10 平台策略矩阵与应用审批(2026-08-18 落账)
+
+上一节管的是「一把 key 能带哪些 scope」;本节管的是**「开发者在门户里能自助做到哪一步」**,由一张 **三能力策略矩阵** 决定(2026-08-25 前是四能力)。判据在 `devapi.capabilities`(代码注册表)+ `devapi_policy_overrides`(偏离默认的行)。**没有 override 行 = 代码默认**,删行 = 回到默认。
+
+| capability | 允许的 mode | 默认 | 管什么 |
+|---|---|---|---|
+| `app.create` | `self_service` / `approval` / `disabled` | `self_service` | 自助创建应用 |
+| `app.manage` | `self_service` / `disabled` | `self_service` | 自助编辑(`PATCH /dev/apps/:id`)与停用(`DELETE /dev/apps/:id`) |
+| `key.mint` | `self_service` / `disabled` | `self_service` | 自助铸造与轮换密钥 |
+
+> 曾有第四行 `scope.apply`(提交授权制 scope 申请),随授权制一档于 2026-08-25 退役,见 §3.9。生产 `devapi_policy_overrides` 从未有过这一行,所以退役不需要清理数据。
+
+**吊销永不入闸**:`DELETE /dev/apps/:id/keys/:id` 是止损动作,任何策略都关不掉它。§3.9 的 scope 判据同样**刻意不进矩阵**——它已有自己的机制与测试钉,两处真源必漂移。
+
+**`app.create=approval` 的状态机**(`oauth_clients.dev_review_status`,值域 `approved` / `pending` / `declined`;`dev_review_note` 存拒绝理由,rune 计数上限 2000,`devapi.maxAppReviewNoteLen`):
+
+```
+自助创建 ──self_service──> approved + dev_enabled=true      （行为与本节前完全一致）
+         └─approval──────> pending  + dev_enabled=false
+pending ──admin approve──> approved + dev_enabled=true（清空 note）
+        └─admin decline──> declined + dev_enabled=false + note（理由必填）
+declined ──owner resubmit──> pending（清空 note;可先 PATCH 改名再提交）
+```
+
+- **只有 pending 可审**,对非 pending 调 approve/decline → **409**。
+- **pending / declined 不能铸 key** → **409**(不是 403:这是状态冲突,不是权限问题)。判据写成 `status ∈ {pending, declined}` 而**不是** `status != 'approved'`——OAuth 控制台建的一方 client 不认识这两列,写进去的是空串,**空串刻意 fail-open**。
+- **pending / declined 不能停用** → **409**(pending 从未启用无可停,declined 本就 inert);门户对这两态隐藏「停用」。
+- **管理台 `PATCH /admin/devapi/apps/:id` 置 `dev_enabled=true` 时同时写 `approved`**——否则控制台放行的应用仍停在 pending,其 owner 在一个活着的应用上被拒铸 key。
+- **5-app 上限把 pending / declined 一并计入**(`CountAppsByOwner` 本就不按状态过滤),否则被拒者可以无限刷申请。
+- 凭据中间件**不读** `dev_review_status`:`dev_enabled` 仍是唯一 auth 位。
+
+**自助端点**(`/api/v1/dev/*`):
+
+| 端点 | 说明 |
+|---|---|
+| `GET /api/v1/dev/policies` | 四 capability 的生效 mode map(`{"app.create":"approval", …}`),门户据此渲染禁用态与提示 |
+| `POST /api/v1/dev/apps/:client_id/resubmit` | 仅 `declined` 可用 → 打回 `pending` 并清空 note;非 declined → **409** |
+
+**管理端点**(`/api/v1/admin/devapi/*`):
+
+| 端点 | 权限 | 说明 |
+|---|---|---|
+| `GET /admin/devapi/apps?status=` | `devapi.manage` | `enabled`(缺省,兼容旧行为)/ `pending` / `declined` / `disabled` / `all`;列表项带 owner、`review_status`、`review_note`、`created_at` |
+| `POST /admin/devapi/apps/:client_id/approve` | `devapi.manage` | 仅 pending,否则 **409** |
+| `POST /admin/devapi/apps/:client_id/decline` | `devapi.manage` | body `{reason}` 必填(**rune** 计数 ≤2000),否则 **400**;仅 pending,否则 **409** |
+| `GET /admin/devapi/keys` | `devapi.manage` | 跨全部应用的密钥清单(仅元数据)。`client_id=` / `state=active\|revoked\|expired\|all` / `page` / `limit`(≤200,缺省 50)→ `{items, total, page, limit}`。**无编辑端点**:行动作复用既有 per-app rotate / revoke |
+| `GET /admin/devapi/policies` | `devapi.manage` | 注册表(labels / modes / default)+ 生效 mode + `editable`(调用者是否持 `devapi.policy_manage`) |
+| `PUT /admin/devapi/policies/:capability` | **`devapi.policy_manage`** | body `{mode}`,upsert 一行;未知 capability 或该 capability 不允许的 mode → **400** |
+| `DELETE /admin/devapi/policies/:capability` | **`devapi.policy_manage`** | 删行 = 回到代码默认 |
+
+**capability 被关闭时**,对应自助端点返回 **403**(`ErrCapabilityDisabled`),文案说明该功能当前由平台关闭。**非 owner 仍先吃 404**:策略错误绝不能变成「别人有没有这个应用」的存在性预言机。
+
+> **迁移**:本节新增一张表 `devapi_policy_overrides` + `oauth_clients` 两列,主库迁移**不随部署自动执行**——须手工 `go run ./cmd/migrate`(库 `kun_galgame_infra`)。
 
 ---
 

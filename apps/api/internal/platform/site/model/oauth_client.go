@@ -73,12 +73,13 @@ type OAuthClient struct {
 	ArtifactMaxFileSize     int64          `gorm:"default:21474836480" json:"artifact_max_file_size"`
 	ArtifactAllowedMime     datatypes.JSON `gorm:"type:jsonb" json:"artifact_allowed_mime,omitempty"`
 
-	OwnerUserID    *uint  `gorm:"index" json:"owner_user_id,omitempty"`
-	DevEnabled     bool   `gorm:"not null" json:"dev_enabled"`
-	DevTier        string `gorm:"size:20;not null" json:"dev_tier"`
-	DevNSFWAllowed bool   `gorm:"not null" json:"dev_nsfw_allowed"`
-	DevRatePerMin  int    `gorm:"not null" json:"dev_rate_per_min"`
-	DevQuotaDaily  int    `gorm:"not null" json:"dev_quota_daily"`
+	OwnerUserID     *uint  `gorm:"index" json:"owner_user_id,omitempty"`
+	DevEnabled      bool   `gorm:"not null" json:"dev_enabled"`
+	DevTier         string `gorm:"size:20;not null" json:"dev_tier"`
+	DevRatePerMin   int    `gorm:"not null" json:"dev_rate_per_min"`
+	DevQuotaDaily   int    `gorm:"not null" json:"dev_quota_daily"`
+	DevReviewStatus string `gorm:"size:20;not null" json:"dev_review_status"`
+	DevReviewNote   string `gorm:"type:text" json:"dev_review_note,omitempty"`
 
 	CatalogSite string `gorm:"size:64" json:"catalog_site,omitempty"`
 

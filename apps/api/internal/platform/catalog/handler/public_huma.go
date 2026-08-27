@@ -15,8 +15,9 @@ import (
 type publicWorkInput struct {
 	ID       int64  `path:"id" doc:"Catalog work id"`
 	Include  string `query:"include" doc:"Comma-separated heavy blocks: relations,credits (default: none)"`
-	NSFW     bool   `query:"nsfw" doc:"true/1 = serve r18 works and r18 relation ends (caller-controlled; default false = hidden)"`
+	NSFW     bool   `query:"nsfw" doc:"true/1 = serve r18 works and r18 relation ends (default false = hidden). Caller-controlled: any application key may ask for it"`
 	Spoilers int16  `query:"spoilers" doc:"Max tag spoiler level 0-2 (default 0 = safe): tags[] carries per-edge spoiler + per-tag sexual flags, and rows above this ceiling are omitted entirely. The axis is populated for the VNDB-derived vocabulary only — Bangumi/DLsite folksonomy publishes no spoiler or category concept, so those rows read 0/false"`
+	Fields   string `query:"fields" doc:"Comma-separated TOP-LEVEL keys of this response to keep (default absent = every key, byte-identical to the base contract). id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response, never reshaped. Applied AFTER include=, so fields=relations WITHOUT include=relations does not expand the block — the key is simply absent. Selecting a derived key loads what it needs (release_date and refs both read the release rows) but the dependency's own key still only appears if you named it. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"`
 }
 type publicWorkOutput struct {
 	Body Envelope[dto.PublicCatalogWork]
@@ -126,8 +127,9 @@ type publicWorksSearchInput struct {
 	Facets         string `query:"facets" doc:"Comma-separated CLOSED vocabulary: content_rating,olang,claimed,tag_id,label_id,engine_id,series_id,source. An unknown token is a 400. Each distribution is counted over the SAME filtered set as total and is keyed by the values you would pass back to that very filter (content_rating counts use the public strings, not enum ints). At most 100 values per facet"`
 	Page           int    `query:"page" doc:"1-based page number (default 1); a non-positive or non-numeric value is a 400. A page past the end is an empty page"`
 	Limit          int    `query:"limit" doc:"Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"`
-	NSFW           bool   `query:"nsfw" doc:"true/1 = include r18 works (default false = dropped from items, total AND facets alike)"`
+	NSFW           bool   `query:"nsfw" doc:"true/1 = include r18 works (default false = dropped from items, total AND facets alike). Caller-controlled: any application key may ask for it"`
 	Include        string `query:"include" doc:"Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs — the works-list vocabulary verbatim (unknown tokens ignored)"`
+	Fields         string `query:"fields" doc:"Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — total/page/limit/items/facets — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"`
 	SearchIntro    bool   `query:"search_intro" doc:"true/1 = also match q against the work SYNOPSIS, not just its titles and aliases (A2-1f). Default false = titles only, byte-identical to the pre-A2-1f result set. Indexed synopses are capped at 2000 characters per language, and a synopsis match can never outrank a title match (the title attributes are ranked first)"`
 }
 type publicWorksSearchOutput struct {
@@ -149,12 +151,13 @@ type publicWorksListInput struct {
 	Platform       string `query:"platform" doc:"vndb platform code (win/and/ios/...) — release-level and work-level rows unioned"`
 	ReleasedAfter  string `query:"released_after" doc:"YYYY-MM-DD, inclusive, over the EARLIEST release date per work"`
 	ReleasedBefore string `query:"released_before" doc:"YYYY-MM-DD, inclusive"`
-	IDs            string `query:"ids" doc:"Comma-separated work ids (max 100) — the batch-hydrate lane"`
+	IDs            string `query:"ids" doc:"Comma-separated work ids (max 100) — the batch-hydrate lane. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"`
 	Sort           string `query:"sort" enum:"id,updated" doc:"id = ascending browse order (default); updated = newest-updated first"`
-	Cursor         string `query:"cursor" doc:"Opaque keyset cursor from a prior next_cursor; omit for the first page"`
-	Limit          int    `query:"limit" doc:"Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"`
-	NSFW           bool   `query:"nsfw" doc:"true/1 = include r18 works (default false = dropped)"`
-	Include        string `query:"include" doc:"Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs (default: none — the response is then byte-identical to the base contract). Unknown tokens are ignored. names/intros are keyed by the four product locales ja-jp/zh-cn/zh-tw/en-us; covers carries the portrait + banner slots with width/height/thumbhash; refs carries the work exact identity anchors, detail-face shape"`
+	Cursor         string `query:"cursor" doc:"Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"`
+	Limit          int    `query:"limit" doc:"Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400"`
+	NSFW           bool   `query:"nsfw" doc:"true/1 = include r18 works (default false = dropped). Caller-controlled: any application key may ask for it"`
+	Include        string `query:"include" doc:"Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs (default: none — the response is then byte-identical to the base contract). Unknown tokens are ignored. names carries latin + localized{}; intros carries one intro per language, detail-face shape; covers carries the portrait + banner slots with width/height/thumbhash; refs carries the work exact identity anchors, detail-face shape"`
+	Fields         string `query:"fields" doc:"Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — items/next_cursor — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries"`
 }
 type publicWorksListOutput struct {
 	Body Envelope[dto.PublicWorksListData]
@@ -220,10 +223,11 @@ type publicLabelsListOutput struct {
 type publicTagsListInput struct {
 	Tier     string `query:"tier" enum:"core,longtail,hidden" doc:"Filter by display tier; a token outside this closed set is a 400"`
 	Kind     string `query:"kind" enum:"content,meta" doc:"Filter by tag kind; a token outside this closed set is a 400"`
-	Cursor   string `query:"cursor" doc:"Opaque keyset cursor from a prior next_cursor; omit for the first page"`
-	Limit    int    `query:"limit" doc:"Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400"`
+	Cursor   string `query:"cursor" doc:"Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk"`
+	Limit    int    `query:"limit" doc:"Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400"`
 	NSFW     bool   `query:"nsfw" doc:"true/1 = count r18 works in work_count (default false = excluded, matching what an sfw works?tag_id= call returns)"`
 	HasWorks bool   `query:"has_works" doc:"true/1 = only tags whose work_count is > 0 under the same nsfw setting (default false = every tag); total converges with the filter"`
+	IDs      string `query:"ids" doc:"Comma-separated tag ids (max 100) — the batch-hydrate lane; this is how you resolve the bare tag_id rows of a works/search facet block to names in one call instead of one detail call per row. This lane DOES NOT PAGINATE: every named id that also passes the other filters comes back in one response, next_cursor is always absent, and limit is ignored. Passing cursor= alongside it is a 400"`
 }
 type publicTagsListOutput struct {
 	Body Envelope[dto.PublicTagsListData]
@@ -418,7 +422,13 @@ func SetupCatalogPublicSpec(app *fiber.App) huma.API {
 			"consumer cursor and be skipped forever. " +
 			"DELETIONS DO NOT FLOW THROUGH THIS FEED — a row that leaves the LIVE set simply stops appearing; " +
 			"merge-style disappearances are covered by /v1/catalog/redirects, and mirror-style consumers should " +
-			"periodically reconcile the full id set via works?sort=id.",
+			"periodically reconcile the full id set via works?sort=id. " +
+			"WATERMARK GUARANTEE: any write that changes what a work's public face renders — its own columns and " +
+			"every works?include= block (names, intros, labels, ratings, covers, refs) plus release_date — moves " +
+			"that work's updated_at, so a full mirror can be driven from this feed alone. The guarantee covers " +
+			"sub-resource and fan-out writes (a cover detached, a label logo cleared, an anchor confirmed or " +
+			"killed, a release edited, a merge rehanging facets onto the survivor), and it is one-directional: " +
+			"updated_at moving does not promise the rendered bytes differ, so consumers must diff, not trust.",
 		Tags: tags,
 	}, func(context.Context, *publicChangesInput) (*publicChangesOutput, error) {
 		return &publicChangesOutput{}, nil
@@ -546,6 +556,8 @@ func SetupCatalogPublicSpec(app *fiber.App) huma.API {
 	}, func(context.Context, *publicCalendarTBAInput) (*publicCalendarTBAOutput, error) {
 		return &publicCalendarTBAOutput{}, nil
 	})
+
+	registerWorkSubresourceSpecs(api, tags)
 
 	RegisterPlaytimeOps(api, nil)
 	return api

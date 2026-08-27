@@ -26,6 +26,7 @@ func (h *PublicHandler) WorksSearch(c fiber.Ctx) error {
 		NSFW:        nsfwQuery(c),
 		OLang:       worksSearchOLang(c.Query("olang")),
 		Include:     service.ParseWorksListInclude(c.Query("include")),
+		Fields:      fieldsQuery(c),
 	}
 
 	f.Sort = strings.TrimSpace(c.Query("sort"))
@@ -103,7 +104,7 @@ func (h *PublicHandler) WorksSearch(c fiber.Ctx) error {
 		return response.InternalError(c, errors.ErrInternalServer)
 	}
 	c.Set("Cache-Control", cacheSearch)
-	return response.Success(c, data)
+	return successProjected(c, data, f.Fields, f.Fields.ProjectItems)
 }
 
 func pageNumPub(raw string) (int, bool) {

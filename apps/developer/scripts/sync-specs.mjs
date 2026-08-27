@@ -6,22 +6,30 @@
  * parameter tables / request bodies / responses, generates a ready-to-run curl
  * example per operation, and writes `app/generated/docs-model.ts`.
  *
- * The generated file is committed (same pattern as app/assets/kun-icons.ts): a
- * derived build artifact, never hand-edited. Re-run after the specs change:
+ * It then hands the same model to scripts/gen-llms.mjs, which writes the
+ * LLM-facing half into public/: llms.txt, llms-full.txt, and one Markdown twin
+ * per docs route. One entry point on purpose — CI runs this file and nothing
+ * else, so a spec change cannot refresh the reference pages while leaving the
+ * Markdown twins describing the old contract.
+ *
+ * The generated files are committed (same pattern as app/assets/kun-icons.ts):
+ * derived build artifacts, never hand-edited. Re-run after the specs change:
  *   pnpm --filter developer sync:specs
  *
  * The galgame face was dropped at wave 146 (2026-07-30): its /v1/galgame
  * projection was delisted and its spec deleted.
  *
- * Three spec files, four faces. `public-openapi.yaml` carries catalog (API-key,
- * read-only) and playtime (user-token; scope differs per method). Modelling
+ * Five spec files, six faces. `public-openapi.yaml` carries catalog (API-key,
+ * read-only) and playtime (user-token; no playtime scope required). Modelling
  * those as one face published five playtime operations as `catalog:read` with
  * an `nm_live_` key in the curl sample — a credential that face rejects.
  * `openapi.yaml` is the user-edit subset only: the third face, `edit`, claims
  * `/api/v1/user/catalog/edit` and names every op under that prefix as include
  * or exclude. The rest of that spec (S2S, claims, covers, submit) is a
  * first-party surface and is not portal-documented. `news/public-openapi.yaml`
- * is the fourth face, an API-key face whose scope is grant-only.
+ * is the fourth face, an API-key face that requires no particular scope (it was
+ * grant-only until the news:read retirement on 2026-08-25), and
+ * `store/public-openapi.yaml` is the fifth, an API-key face gated by store:read.
  *
  * Operation GROUPING is derived here, not in the specs: the OpenAPI tags put
  * every operation of a face in one bucket (`catalog-public`, `playtime`, …),
@@ -32,234 +40,26 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
+import {
+  API_HOST,
+  CATALOG_SPEC,
+  EDIT_EXCLUDED_OPERATION_IDS,
+  EXPECTED_OPERATION_COUNTS,
+  FACE_GROUPS,
+  FACES,
+  NEWS_SPEC,
+  NO_AUTH,
+  OPERATION_AUTH_OVERRIDES,
+  PUBLIC_SPEC,
+  STORE_SPEC,
+  USER_TOKEN_AUTH,
+  V2_SPEC
+} from './faces.mjs'
+import { writeLlmArtifacts } from './gen-llms.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = join(__dirname, '..', '..', '..')
 const OUTPUT = join(__dirname, '..', 'app/generated/docs-model.ts')
-
-const API_HOST = 'https://api.nextmoe.dev'
-
-const PUBLIC_SPEC = join(REPO_ROOT, 'docs/catalog/public-openapi.yaml')
-const CATALOG_SPEC = join(REPO_ROOT, 'docs/catalog/openapi.yaml')
-const NEWS_SPEC = join(REPO_ROOT, 'docs/news/public-openapi.yaml')
-
-// A face is a path prefix plus the credential that prefix accepts. The spec
-// itself carries neither: OpenAPI security schemes are not emitted by the
-// public gen target, and scope lives in prose. Both are derived here, from the
-// prefix and the method, and they are the only place the reference pages learn
-// which credential to print.
-const FACES = [
-  {
-    key: 'catalog',
-    label: '目录数据',
-    name: '目录数据 API（只读）',
-    file: PUBLIC_SPEC,
-    prefix: '/v1/catalog',
-    scope: () => 'catalog:read',
-    auth: {
-      kind: 'api_key',
-      curl: 'Authorization: Bearer nm_live_<YOUR_KEY>',
-      display: 'Authorization: Bearer nm_live_…',
-      note: '机器 API 密钥,服务端持有'
-    }
-  },
-  {
-    key: 'playtime',
-    label: '游玩时长',
-    name: '游玩时长 API',
-    file: PUBLIC_SPEC,
-    prefix: '/v1/playtime',
-    scope: (method) => (method === 'get' ? 'playtime:read' : 'playtime:write'),
-    auth: {
-      kind: 'user_token',
-      curl: 'Authorization: Bearer <ACCESS_TOKEN>',
-      display: 'Authorization: Bearer <用户访问令牌>',
-      note: '用户授权后拿到的访问令牌,不是 API 密钥'
-    }
-  },
-  {
-    key: 'edit',
-    label: '编辑提案',
-    name: '编辑提案 API',
-    file: CATALOG_SPEC,
-    prefix: '/api/v1/user/catalog/edit',
-    include: [
-      'getEditSchemaUser',
-      'getEditSnapshotUser',
-      'createEditProposalUser',
-      'listEditProposalsUser',
-      'getEditProposalUser',
-      'withdrawEditProposalUser'
-    ],
-    scope: () => 'catalog:edit',
-    auth: {
-      kind: 'user_token',
-      curl: 'Authorization: Bearer <ACCESS_TOKEN>',
-      display: 'Authorization: Bearer <用户访问令牌>',
-      note: '用户授权后的访问令牌(OAuth 授权码 + PKCE),需 catalog:edit scope'
-    },
-    notes: [
-      '第三方应用的令牌恒为「只提案」姿态：审核、自动合入、撤销他人提案永不可；schema 投影对它 can_review=false。',
-      '每用户未决提案帽 20：经第三方应用创建提案时，该用户 open 状态提案已达 20 条则返回 429。',
-      '引用类校验发生在批准合并时：提案保存成功不等于能合入，审核者批准时可能得到 422。',
-      '准入需要两步：应用经 user_login 自助申请 catalog:edit scope；应用的 client 还须由平台绑定目录租户（catalog_site）后本面才放行——目前为人工开通，请联系平台。'
-    ]
-  },
-  {
-    key: 'news',
-    label: '资讯',
-    name: '资讯 API（授权制）',
-    file: NEWS_SPEC,
-    prefix: '/v1/news',
-    scope: () => 'news:read',
-    auth: {
-      kind: 'api_key',
-      curl: 'Authorization: Bearer nm_live_<YOUR_KEY>',
-      display: 'Authorization: Bearer nm_live_…',
-      note: '机器 API 密钥,但须带 news:read —— 该 scope 由平台授予,控制台勾不到'
-    },
-    notes: [
-      '授权制：news:read 不能在控制台自助开通。合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，所以密钥上的这个 scope 只能由平台授予；没有它的密钥调这三条路径一律 403。',
-      '这是索引，不是转载：每条只有标题、摘要与题图，正文既不下发也不留存。每一项都恒带来源块与 source_url，读者要看全文只能回到媒体自己的站点——渲染时必须把来源与链接一并展示。',
-      '撤回即不可寻址：我们撤下的、以及上游原文已消失的条目会从列表中消失，按 id 直取则 404。这个 404 是契约而不是查询失败，不要重试，也不要拿缓存副本顶上。'
-    ]
-  }
-]
-
-// Third-party tokens always 403 on these four; documenting them on the portal
-// would imply they are callable. The completeness guard below requires every
-// operation under /api/v1/user/catalog/edit to appear in include or here.
-const EDIT_EXCLUDED_OPERATION_IDS = [
-  'amendEditProposalUser',
-  'declineEditProposalUser',
-  'mergeEditProposalUser',
-  'revertEditEntityUser'
-]
-
-// Portal IA, keyed `METHOD path` so the two operations that share
-// /v1/playtime/works/{workID} land in different groups. Membership is spelled
-// out rather than matched by pattern: a guard below refuses to build when an
-// operation belongs to no group AND when a listed operation no longer exists,
-// so a spec that grows or renames a path fails the build instead of quietly
-// dropping the operation into an "other" bucket nobody reads.
-const FACE_GROUPS = {
-  catalog: [
-    {
-      key: 'discovery',
-      label: '检索与反查',
-      ops: [
-        'GET /v1/catalog/search',
-        'GET /v1/catalog/works/search',
-        'GET /v1/catalog/lookup',
-        'POST /v1/catalog/lookup/batch',
-        'POST /v1/catalog/resolve',
-        'GET /v1/catalog/redirects'
-      ]
-    },
-    {
-      key: 'works',
-      label: '作品',
-      ops: ['GET /v1/catalog/works', 'GET /v1/catalog/works/{id}']
-    },
-    {
-      key: 'releases',
-      label: '发售与日历',
-      ops: [
-        'GET /v1/catalog/releases',
-        'GET /v1/catalog/calendar',
-        'GET /v1/catalog/calendar/pending',
-        'GET /v1/catalog/calendar/tba'
-      ]
-    },
-    {
-      key: 'people',
-      label: '角色与人物',
-      ops: ['GET /v1/catalog/characters/{id}', 'GET /v1/catalog/names/{id}']
-    },
-    {
-      key: 'taxonomy',
-      label: '厂牌与标签',
-      ops: [
-        'GET /v1/catalog/labels',
-        'GET /v1/catalog/labels/{id}',
-        'GET /v1/catalog/labels/{id}/relation-graph',
-        'GET /v1/catalog/tags',
-        'GET /v1/catalog/tags/{id}'
-      ]
-    },
-    {
-      key: 'series',
-      label: '系列与引擎',
-      ops: [
-        'GET /v1/catalog/series',
-        'GET /v1/catalog/series/{id}',
-        'GET /v1/catalog/engines',
-        'GET /v1/catalog/engines/{id}'
-      ]
-    },
-    {
-      key: 'sync',
-      label: '变更流与统计',
-      ops: ['GET /v1/catalog/changes', 'GET /v1/catalog/stats']
-    }
-  ],
-  playtime: [
-    {
-      key: 'report',
-      label: '上报',
-      ops: [
-        'PUT /v1/playtime/works/{workID}',
-        'PUT /v1/playtime/by-ref/{source}/{externalID}',
-        'POST /v1/playtime/batch'
-      ]
-    },
-    {
-      key: 'sync',
-      label: '回拉',
-      ops: ['GET /v1/playtime/mine', 'GET /v1/playtime/works/{workID}']
-    }
-  ],
-  edit: [
-    {
-      key: 'schema',
-      label: 'schema 与快照',
-      ops: [
-        'GET /api/v1/user/catalog/edit/schema/{entity_type}',
-        'GET /api/v1/user/catalog/edit/snapshot'
-      ]
-    },
-    {
-      key: 'proposals',
-      label: '提案',
-      ops: [
-        'POST /api/v1/user/catalog/edit/proposals',
-        'GET /api/v1/user/catalog/edit/proposals',
-        'GET /api/v1/user/catalog/edit/proposals/{id}',
-        'POST /api/v1/user/catalog/edit/proposals/{id}/withdraw'
-      ]
-    }
-  ],
-  news: [
-    {
-      key: 'feed',
-      label: '资讯读面',
-      ops: ['GET /v1/news', 'GET /v1/news/sources', 'GET /v1/news/{id}']
-    }
-  ]
-}
-
-// The one operation whose credential differs from its face's. 2026-08-18 moved
-// /v1/catalog/stats out of the key gate: it is the counter the public site and
-// this portal's own landing page render before anyone holds a key.
-const NO_AUTH = {
-  kind: 'none',
-  curl: '',
-  display: '无需凭据',
-  note: '匿名可调 —— 目录规模是公开数字,不需要 API 密钥'
-}
-const OPERATION_AUTH_OVERRIDES = { getCatalogStatsPublic: NO_AUTH }
-
-const EXPECTED_OPERATION_COUNTS = { catalog: 25, playtime: 5, edit: 6, news: 3 }
+const PUBLIC_DIR = join(__dirname, '..', 'public')
 
 const refName = (ref) => ref.split('/').pop()
 
@@ -406,7 +206,22 @@ const buildParams = (rawParams = []) => {
 const jsonContent = (content) =>
   content?.['application/json'] || content?.['application/problem+json']
 
-const buildOperation = (method, path, op, { schemas, scope, auth }) => {
+const authForPath = (faceDef, path) => {
+  if (faceDef.key !== 'v2') return faceDef.auth
+  if (path.startsWith('/v2/me/') || path.startsWith('/v2/moderation/')) return USER_TOKEN_AUTH
+  if (
+    path.startsWith('/v2/problems') ||
+    path.startsWith('/v2/vocabularies') ||
+    path.startsWith('/v2/news') ||
+    path === '/v2/catalog/stats' ||
+    path.startsWith('/v2/catalog/schemas/')
+  ) {
+    return NO_AUTH
+  }
+  return faceDef.auth
+}
+
+const buildOperation = (method, path, op, { schemas, scope, auth, faceAuth }) => {
   const params = buildParams(op.parameters)
 
   let requestBody
@@ -436,7 +251,13 @@ const buildOperation = (method, path, op, { schemas, scope, auth }) => {
     summary: op.summary || '',
     ...(op.description && { description: op.description }),
     scope: override ? '' : scope,
-    ...(override && { auth: override }),
+    // Whatever departs from the face default must land in the model — the
+    // renderers fall back to face.auth for an op without its own. Until
+    // 2026-08-26 only OPERATION_AUTH_OVERRIDES was emitted, so every
+    // credential-free /v2 operation's page and Markdown twin printed the face's
+    // "Bearer nmk_live_…" line, and /v2/me printed a machine key for a face
+    // that takes a user token.
+    ...(effective !== faceAuth && { auth: effective }),
     params,
     ...(requestBody && { requestBody }),
     responses,
@@ -448,11 +269,32 @@ const METHODS = ['get', 'post', 'put', 'patch', 'delete']
 
 const opKey = (method, path) => `${method.toUpperCase()} ${path}`
 
+const autoGroupDefs = (faceDef, spec) => {
+  const defs = faceDef.autoGroups.map((g) => ({ key: g.key, label: g.label, ops: [] }))
+  for (const [path, item] of Object.entries(spec.paths || {})) {
+    if (!path.startsWith(faceDef.prefix)) continue
+    for (const method of METHODS) {
+      if (!item[method]) continue
+      const group = defs.find((g) => {
+        const src = faceDef.autoGroups.find((a) => a.key === g.key)
+        return src.match.test(path)
+      })
+      if (!group) {
+        throw new Error(
+          `docs-model grouping guard: ${opKey(method, path)} matches no autoGroup of face ${faceDef.key}`
+        )
+      }
+      group.ops.push(opKey(method, path))
+    }
+  }
+  return defs
+}
+
 const buildFace = (faceDef, specs) => {
   const spec = specs.get(faceDef.file)
   const schemas = spec.components?.schemas || {}
 
-  const groupDefs = FACE_GROUPS[faceDef.key]
+  const groupDefs = faceDef.autoGroups ? autoGroupDefs(faceDef, spec) : FACE_GROUPS[faceDef.key]
   if (!groupDefs) {
     throw new Error(`docs-model grouping guard: face ${faceDef.key} has no FACE_GROUPS entry`)
   }
@@ -473,11 +315,14 @@ const buildFace = (faceDef, specs) => {
         )
       }
       placed.add(key)
+      const auth = authForPath(faceDef, path)
+      const scopeFn = faceDef.scope.length >= 2 ? faceDef.scope(method, path) : faceDef.scope(method)
       buckets.get(group.key).push(
         buildOperation(method, path, op, {
           schemas,
-          scope: faceDef.scope(method),
-          auth: faceDef.auth
+          scope: scopeFn,
+          auth,
+          faceAuth: faceDef.auth
         })
       )
     }
@@ -512,6 +357,7 @@ const buildFace = (faceDef, specs) => {
     name: faceDef.name,
     baseUrl: API_HOST,
     prefix: faceDef.prefix,
+    ...(faceDef.specUrl && { specUrl: faceDef.specUrl }),
     auth: faceDef.auth,
     ...(faceDef.notes?.length && { notes: faceDef.notes }),
     groups: groupDefs.map((g) => ({
@@ -551,7 +397,7 @@ for (const face of model.faces) {
 // documented as catalog ones. Full-coverage applies to the two fully-published
 // specs only — openapi.yaml is a first-party spec whose unclaimed prefixes must
 // not trip this guard.
-for (const file of [PUBLIC_SPEC, NEWS_SPEC]) {
+for (const file of [PUBLIC_SPEC, NEWS_SPEC, STORE_SPEC, V2_SPEC]) {
   const claimed = new Set(
     model.faces
       .filter((f) => FACES.find((d) => d.key === f.key)?.file === file)
@@ -591,7 +437,7 @@ const out = `/**
  * Auto-generated by scripts/sync-specs.mjs — do not edit by hand.
  * Run \`pnpm --filter developer sync:specs\` after the public specs change.
  *
- * Three Tier-A specs projected into the render-friendly DocsModel the
+ * Four Tier-A specs projected into the render-friendly DocsModel the
  * /docs/** reference pages consume, one entry per public face.
  */
 import type { DocsModel } from '~~/shared/types/docs'
@@ -606,4 +452,9 @@ const breakdown = model.faces
   .join(', ')
 console.log(
   `Wrote docs model → app/generated/docs-model.ts (${model.faces.length} faces, ${opCount} operations: ${breakdown})`
+)
+
+const llmFiles = writeLlmArtifacts(model, PUBLIC_DIR)
+console.log(
+  `Wrote LLM artifacts → public/ (llms.txt, llms-full.txt, ${llmFiles - 2} route Markdown twins)`
 )

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"api/internal/platform/catalog/repository"
 
@@ -23,12 +24,14 @@ const (
 	decSkipSame
 )
 
-func decide(c candidate) (decision, string) {
+// force exists because the prompt is not part of the hash: after a prompt
+// rewrite every row still hashes as current, so nothing would be redone.
+func decide(c candidate, force bool) (decision, string) {
 	hash := hashCandidate(c.JaText, c.Gloss)
 	if c.MZhID == nil {
 		return decInsert, hash
 	}
-	if c.MZhSrcHash != nil && *c.MZhSrcHash == hash {
+	if !force && c.MZhSrcHash != nil && *c.MZhSrcHash == hash {
 		return decSkipSame, hash
 	}
 	return decRetrans, hash
@@ -50,6 +53,7 @@ type runner struct {
 	db      *gorm.DB
 	tr      Translator
 	stats   *Stats
+	force   bool
 	mu      sync.Mutex
 	touched []int64
 }
@@ -103,7 +107,7 @@ func (r *runner) process(ctx context.Context, cands []candidate, apply bool, del
 }
 
 func (r *runner) handle(ctx context.Context, c candidate, apply bool, delay time.Duration, idx int) {
-	dec, hash := decide(c)
+	dec, hash := decide(c, r.force)
 	switch dec {
 	case decSkipSame:
 		r.inc(&r.stats.SkipUnchanged)
@@ -137,6 +141,12 @@ func (r *runner) handle(ctx context.Context, c candidate, apply bool, delay time
 	if zh == "" {
 		r.inc(&r.stats.Errors)
 		slog.Warn("translate returned empty — refusing to write an empty machine row", "work", c.WorkID)
+		return
+	}
+	if collapsed(c.JaText, zh) {
+		r.inc(&r.stats.Collapsed)
+		slog.Warn("translation collapsed a long source into almost nothing — keeping the previous row",
+			"work", c.WorkID, "src_runes", utf8.RuneCountInString(c.JaText), "zh", zh)
 		return
 	}
 
@@ -176,4 +186,18 @@ func (r *runner) upsert(ctx context.Context, c candidate, zh, hash, mtModel stri
 		return 0, res.Error
 	}
 	return res.RowsAffected, nil
+}
+
+// Prompt rule 2 lets the model drop whole blocks that are not description, so
+// it can also drop everything. Shortness alone is not the signal — 529 machine
+// rows are legitimately under 20 characters — so the guard only fires when a
+// long source produced almost nothing, and it leaves the previous row in place
+// so the work comes back as a candidate on the next pass.
+const (
+	collapseSourceRunes = 100
+	collapseOutputRunes = 20
+)
+
+func collapsed(src, zh string) bool {
+	return utf8.RuneCountInString(src) >= collapseSourceRunes && utf8.RuneCountInString(zh) < collapseOutputRunes
 }

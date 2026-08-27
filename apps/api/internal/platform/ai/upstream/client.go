@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -34,6 +35,26 @@ func (c *Client) Configured() bool {
 }
 
 func (c *Client) Model() string { return c.model }
+
+// StatusError carries the upstream HTTP status so a caller can tell transient
+// contention from a permanent failure. Cloudflare delivers its per-minute
+// inference limit as a real 429 with body code 3021 — not as a 200 carrying an
+// error object, and not as the 401 it returns when merely overloaded — so
+// matching on the status is enough. The Error text is unchanged from the
+// fmt.Errorf it replaced; log lines and their greps still match.
+type StatusError struct {
+	Code int
+	Body string
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("upstream http %d: %s", e.Code, e.Body)
+}
+
+func IsRateLimited(err error) bool {
+	var se *StatusError
+	return errors.As(err, &se) && se.Code == http.StatusTooManyRequests
+}
 
 type ChatResult struct {
 	Content          string
@@ -103,7 +124,7 @@ func (c *Client) ChatJSON(ctx context.Context, system, user string, maxTokens in
 		return ChatResult{}, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return ChatResult{}, fmt.Errorf("upstream http %d: %s", resp.StatusCode, truncate(string(data), 300))
+		return ChatResult{}, &StatusError{Code: resp.StatusCode, Body: truncate(string(data), 300)}
 	}
 	var cr chatResponse
 	if err := json.Unmarshal(data, &cr); err != nil {

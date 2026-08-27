@@ -1,21 +1,25 @@
 <script setup lang="ts">
-import { DEV_MINTABLE_SCOPES } from '~/constants/dev'
+import { DEV_DEFAULT_SCOPES, DEV_MINTABLE_SCOPES } from '~/constants/dev'
 import type { DevKeyMinted } from '~~/shared/types/dev'
 
 const props = defineProps<{ clientId: string }>()
-const emit = defineEmits<{ close: []; minted: [DevKeyMinted] }>()
+const emit = defineEmits<{ minted: [DevKeyMinted] }>()
 
+const open = defineModel<boolean>('open', { required: true })
 const api = useApi()
-const show = ref(true)
 
 const name = ref('')
 const test = ref(false)
-const scopes = ref<string[]>([...DEV_MINTABLE_SCOPES])
+const scopes = ref<string[]>([...DEV_DEFAULT_SCOPES])
 const error = ref('')
 const isLoading = ref(false)
 
-watch(show, (val) => {
-  if (!val) emit('close')
+watch(open, (val) => {
+  if (!val) return
+  name.value = ''
+  test.value = false
+  scopes.value = [...DEV_DEFAULT_SCOPES]
+  error.value = ''
 })
 
 const toggleScope = (s: string) => {
@@ -46,6 +50,7 @@ const handleSubmit = async () => {
       body
     )
     if (res.code === 0 && res.data) {
+      open.value = false
       emit('minted', res.data)
     } else {
       error.value = res.message || '生成失败'
@@ -57,7 +62,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="show" size="md">
+  <KunModal v-model="open" size="md" aria-label="生成新密钥">
     <div class="space-y-4">
       <h2 class="text-xl font-bold text-foreground">生成新密钥</h2>
 
@@ -71,7 +76,7 @@ const handleSubmit = async () => {
       <div>
         <span class="mb-1 block text-sm font-medium text-default-500">
           Scope（权限范围）
-          <span class="text-xs text-default-400">— 默认全选公开只读 scope</span>
+          <span class="text-xs text-default-400">— 默认勾选公开只读 scope</span>
         </span>
         <div class="flex flex-wrap gap-2">
           <KunCheckBox
@@ -87,9 +92,9 @@ const handleSubmit = async () => {
       </div>
 
       <div class="rounded-lg border border-default-200 p-3">
-        <KunSwitch v-model="test" label="测试密钥（nm_test_ 前缀）" />
+        <KunSwitch v-model="test" label="测试密钥（nmk_test_ 前缀）" />
         <p class="mt-1 text-xs text-default-400">
-          — 测试密钥用于开发/联调；正式接入请使用生产密钥（nm_live_）。
+          — 测试密钥用于开发/联调；正式接入请使用生产密钥（nmk_live_）。
         </p>
       </div>
 
@@ -98,7 +103,7 @@ const handleSubmit = async () => {
       </div>
 
       <div class="flex justify-end gap-3">
-        <KunButton color="default" variant="flat" @click="show = false">
+        <KunButton color="default" variant="flat" @click="open = false">
           取消
         </KunButton>
         <KunButton color="primary" :disabled="isLoading" @click="handleSubmit">

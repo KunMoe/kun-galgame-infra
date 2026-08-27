@@ -15,11 +15,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-const (
-	ScopePlaytimeRead  = devapi.ScopePlaytimeRead
-	ScopePlaytimeWrite = devapi.ScopePlaytimeWrite
-)
-
 const PlaytimePrefix = "/v1/playtime"
 
 const playtimeMinePageSize = 200
@@ -29,8 +24,6 @@ const (
 	playtimeRateWindow = time.Minute
 )
 
-const ctxKeyScope ctxKey = "catalog:token_scope"
-
 func PlaytimeGate(limiter PlaytimeLimiter) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		uid, _ := c.Locals("user_id").(uint)
@@ -39,11 +32,10 @@ func PlaytimeGate(limiter PlaytimeLimiter) fiber.Handler {
 				"the access token carries no user identity")
 		}
 
-		scope, _ := c.Locals("user_scope").(string)
-		if !hasScope(scope, ScopePlaytimeRead) && !hasScope(scope, ScopePlaytimeWrite) {
-			return response.ForbiddenMsg(c, errors.ErrForbidden,
-				"the access token is missing the "+ScopePlaytimeRead+" / "+ScopePlaytimeWrite+" scope")
-		}
+		// playtime:read / playtime:write used to be required here. A token whose
+		// client never asked for them 403'd, so every app had to put the scopes
+		// on allowed_scopes and the authorize URL (letmoe saw "无效的权限范围").
+		// The face is open to every client-bound user token.
 
 		clientID, _ := c.Locals("token_client_id").(string)
 		if clientID == "" {
@@ -93,9 +85,6 @@ func PlaytimeBridge(ctx huma.Context, next func(huma.Context)) {
 	if id, ok := fc.Locals("user_id").(uint); ok {
 		ctx = huma.WithValue(ctx, ctxKeyUserID, int64(id))
 	}
-	if scope, ok := fc.Locals("user_scope").(string); ok {
-		ctx = huma.WithValue(ctx, ctxKeyScope, scope)
-	}
 	if clientID, ok := fc.Locals("token_client_id").(string); ok {
 		ctx = huma.WithValue(ctx, ctxKeyPlaytimeClient, clientID)
 	}
@@ -103,15 +92,6 @@ func PlaytimeBridge(ctx huma.Context, next func(huma.Context)) {
 }
 
 const ctxKeyPlaytimeClient ctxKey = "catalog:playtime_client"
-
-func requireScope(ctx context.Context, want string) *houseError {
-	scope, _ := ctx.Value(ctxKeyScope).(string)
-	if !hasScope(scope, want) {
-		return apiErrMsg(http.StatusForbidden, errors.ErrForbidden,
-			"the access token is missing the "+want+" scope")
-	}
-	return nil
-}
 
 func playtimeActor(ctx context.Context) (uid int64, clientID string, he *houseError) {
 	uid = userIDFromCtx(ctx)

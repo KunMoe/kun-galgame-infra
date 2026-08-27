@@ -26,12 +26,3 @@ html {
     overflow-y: scroll;
   }
 }
-
-/*
- * Opaque modal panels. KunUI's .kun-modal-panel is `bg-content1/85` (translucent)
- * — too see-through here. Force solid content1 (adapts light/dark via --content1).
- * Unlayered → wins over the Tailwind utilities layer.
- */
-.kun-modal-panel {
-  background-color: oklch(var(--content1));
-}

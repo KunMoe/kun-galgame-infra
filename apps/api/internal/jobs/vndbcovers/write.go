@@ -14,6 +14,7 @@ import (
 
 	"api/internal/platform/catalog/model"
 	"api/pkg/imageclient"
+	"api/pkg/imageshrink"
 
 	"gorm.io/gorm/clause"
 )
@@ -41,6 +42,12 @@ func (r *runner) fill(ctx context.Context, row planRow) {
 	if err != nil {
 		r.stats.Errors++
 		slog.Warn("download vndb cover", "work", row.WorkID, "vn", row.VNDBID, "url", row.Img.URL, "err", err)
+		return
+	}
+	body, filename, err = imageshrink.Shrink(body, filename)
+	if err != nil {
+		r.stats.Errors++
+		slog.Warn("shrink vndb cover", "work", row.WorkID, "vn", row.VNDBID, "err", err)
 		return
 	}
 	res, err := r.upload(ctx, body, filename)

@@ -37,7 +37,15 @@ export const SIDEBAR_MENU: SidebarItem[] = [
       { icon: 'lucide:link', label: '外链确认', to: '/catalog/refs', adminOnly: true },
     ],
   },
-  { icon: 'lucide:terminal', label: '开发者平台', to: '/devapi', adminOnly: true },
+  {
+    icon: 'lucide:terminal',
+    label: '开发者平台',
+    adminOnly: true,
+    children: [
+      { icon: 'lucide:layout-grid', label: '应用与策略', to: '/devapi', adminOnly: true },
+      { icon: 'lucide:key-round', label: '全部密钥', to: '/devapi/keys', adminOnly: true },
+    ],
+  },
   { icon: 'lucide:shield-check', label: '权限矩阵', to: '/permission', adminOnly: true },
   { icon: 'lucide:user', label: '个人信息', to: '/profile' },
 ]

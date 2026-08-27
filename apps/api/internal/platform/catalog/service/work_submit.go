@@ -20,6 +20,10 @@ type SubmitWorkParams struct {
 	Site          string
 	ProductWorkID int64
 	ActorUID      int64
+	// Source-derived, written straight to the column with no provenance stamp
+	// so the weekly releasemeta lane and human edits both still own the field;
+	// a rating in Fields goes through editspec and stamps curated instead.
+	ContentRating int16
 	Fields        map[string]any
 	Released      ReleaseDate
 	Trusted       bool
@@ -185,6 +189,7 @@ func (s *ClaimLifecycleService) SubmitWork(ctx context.Context, p SubmitWorkPara
 			ClaimState:      &state,
 			OLang:           model.OLangDefault,
 			Status:          model.WorkStatusLive,
+			ContentRating:   p.ContentRating,
 			Extra:           []byte(`{}`),
 			FieldProvenance: []byte(`{}`),
 		}

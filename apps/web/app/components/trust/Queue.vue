@@ -267,7 +267,7 @@ const onDecided = async () => {
       :is-loading="isLoading"
     />
 
-    <KunModal v-model="detailOpen" size="lg">
+    <KunModal v-model="detailOpen" size="lg" aria-label="审核详情">
       <div v-if="loadingDetail" class="flex justify-center py-10">
         <KunIcon
           name="lucide:loader-circle"

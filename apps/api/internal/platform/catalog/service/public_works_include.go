@@ -22,6 +22,20 @@ func (i WorksListInclude) any() bool {
 	return i.Names || i.Intros || i.Labels || i.Ratings || i.Covers || i.Refs
 }
 
+// intersect is the "fields acts AFTER include" rule: a block is loaded only
+// when the caller asked for it AND its keys can still reach the wire. names
+// carries two keys, so either one keeps it.
+func (i WorksListInclude) intersect(sel PublicFields) WorksListInclude {
+	return WorksListInclude{
+		Names:   i.Names && sel.Wants("latin", "localized"),
+		Intros:  i.Intros && sel.Wants("intros"),
+		Labels:  i.Labels && sel.Wants("labels"),
+		Ratings: i.Ratings && sel.Wants("ratings"),
+		Covers:  i.Covers && sel.Wants("covers"),
+		Refs:    i.Refs && sel.Wants("refs"),
+	}
+}
+
 func ParseWorksListInclude(raw string) WorksListInclude {
 	var inc WorksListInclude
 	for _, tok := range strings.Split(raw, ",") {
@@ -43,21 +57,6 @@ func ParseWorksListInclude(raw string) WorksListInclude {
 	return inc
 }
 
-func d7ProductKey(lang string) (string, bool) {
-	switch {
-	case lang == "ja" || strings.HasPrefix(lang, "ja-"):
-		return "ja-jp", true
-	case lang == "en" || strings.HasPrefix(lang, "en-"):
-		return "en-us", true
-	case lang == "zh-Hant" || strings.HasPrefix(lang, "zh-Hant-") || lang == "zh-TW" || lang == "zh-HK":
-		return "zh-tw", true
-	case lang == "zh" || strings.HasPrefix(lang, "zh"):
-		return "zh-cn", true
-	default:
-		return "", false
-	}
-}
-
 func (s *PublicService) attachWorkListBlocks(
 	ctx context.Context, items []dto.PublicWorkListItem, rows []workListSourceRow,
 	subjects []claimSubject, covers map[int64][]WorkCoverRow, inc WorksListInclude, nsfw bool,
@@ -77,7 +76,8 @@ func (s *PublicService) attachWorkListBlocks(
 			return err
 		}
 		for i, r := range rows {
-			items[i].Names = publicWorkNames(titles[r.ID])
+			items[i].Latin = workLatin(titles[r.ID], items[i].DisplayName)
+			items[i].Localized = workLocalized(titles[r.ID])
 		}
 	}
 	if inc.Intros {
@@ -86,7 +86,7 @@ func (s *PublicService) attachWorkListBlocks(
 			return err
 		}
 		for i, r := range rows {
-			items[i].Intros = s.publicWorkIntros(intros[r.ID])
+			items[i].Intros = s.workIntros(intros[r.ID])
 		}
 	}
 	if inc.Labels {
@@ -100,6 +100,9 @@ func (s *PublicService) attachWorkListBlocks(
 			blocks[i] = items[i].Labels
 		}
 		if err := s.fillWorkLabelCounts(ctx, blocks, nsfw); err != nil {
+			return err
+		}
+		if err := s.fillLabelLocalized(ctx, blocks...); err != nil {
 			return err
 		}
 	}
@@ -119,7 +122,8 @@ func (s *PublicService) attachWorkListBlocks(
 		}
 		meta := s.coverMetaFor(ctx, all)
 		for i, r := range rows {
-			items[i].Covers = s.pickCoverSlots(covers[r.ID], meta, nsfw && displayNSFW[r.ID])
+			items[i].Covers = s.pickCoverSlots(covers[r.ID], meta,
+				nsfw && effectiveDisplayNSFW(r.Site, r.ProductWorkID, displayNSFW[r.ID], r.ContentRating))
 		}
 	}
 	if inc.Refs {
@@ -173,71 +177,14 @@ func (s *PublicService) workListRefs(ctx context.Context, ids []int64) (map[int6
 	return out, nil
 }
 
-func publicWorkNames(titles []WorkTitleRow) *dto.PublicWorkNames {
-	var out dto.PublicWorkNames
-	filled := false
-	for _, t := range titles {
-		key, ok := d7ProductKey(t.Lang)
-		if !ok {
-			continue
-		}
-		switch key {
-		case "ja-jp":
-			if out.JaJP == "" {
-				out.JaJP, filled = t.Title, true
-			}
-		case "zh-cn":
-			if out.ZhCN == "" {
-				out.ZhCN, filled = t.Title, true
-			}
-		case "zh-tw":
-			if out.ZhTW == "" {
-				out.ZhTW, filled = t.Title, true
-			}
-		case "en-us":
-			if out.EnUS == "" {
-				out.EnUS, filled = t.Title, true
-			}
-		}
+func (s *PublicService) workIntros(rows []WorkIntroRow) []dto.PublicIntro {
+	out := make([]dto.PublicIntro, 0, len(rows))
+	for _, in := range rows {
+		out = append(out, dto.PublicIntro{
+			Lang: in.Lang, Intro: in.Intro, Source: s.sourceKey(in.SourceID), Machine: in.Machine,
+		})
 	}
-	if !filled {
-		return nil
-	}
-	return &out
-}
-
-func (s *PublicService) publicWorkIntros(intros []WorkIntroRow) *dto.PublicWorkIntros {
-	var out dto.PublicWorkIntros
-	filled := false
-	for _, in := range intros {
-		key, ok := d7ProductKey(in.Lang)
-		if !ok {
-			continue
-		}
-		slot := &dto.PublicWorkIntroSlot{Intro: in.Intro, Source: s.sourceKey(in.SourceID), Machine: in.Machine}
-		switch key {
-		case "ja-jp":
-			if out.JaJP == nil {
-				out.JaJP, filled = slot, true
-			}
-		case "zh-cn":
-			if out.ZhCN == nil {
-				out.ZhCN, filled = slot, true
-			}
-		case "zh-tw":
-			if out.ZhTW == nil {
-				out.ZhTW, filled = slot, true
-			}
-		case "en-us":
-			if out.EnUS == nil {
-				out.EnUS, filled = slot, true
-			}
-		}
-	}
-	if !filled {
-		return nil
-	}
-	return &out
+	return out
 }
 
 func publicWorkLabels(rows []LabelAttribution) []dto.PublicWorkLabel {
@@ -379,7 +326,7 @@ func (s *PublicService) scanCovers(rows []WorkCoverRow, meta map[string]ImageMet
 	var out coverCandidates
 	for i := range rows {
 		c := &rows[i]
-		if !allowSexual && c.Sexual != 0 {
+		if !allowSexual && c.Sexual >= model.SexualExplicit {
 			continue
 		}
 		if s.imageURL(c.ImageHash) == "" {

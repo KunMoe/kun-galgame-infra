@@ -86,7 +86,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="open" size="lg">
+  <KunModal v-model="open" size="lg" aria-label="存储配置">
     <div class="space-y-4">
       <h2 class="text-foreground text-xl font-bold">
         存储配置 — {{ client?.name }}

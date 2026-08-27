@@ -420,6 +420,15 @@ services:
       # connection, no second container). An unreachable kun_news degrades that
       # face to 503 and leaves catalog serving.
       KUN_NEWS_IMAGE_CLIENT_BASE_URL: http://image:9278
+      # w02 (store face) first deploy 2026-08-26: the two shortlink vars were
+      # set in the Dokploy panel and never reached the container — panel vars
+      # only exist inside a service whose compose interpolates them. The base
+      # URL is a deliberate literal: the shortener exposes its S2S face only as
+      # the `shortlink-api` alias on dokploy-network (its web proxy forwards
+      # /api and /s, not /s2s), so the public short-link origin is not a
+      # working value here.
+      KUN_STORE_SHORTLINK_BASE_URL: http://shortlink-api:7845
+      KUN_STORE_SHORTLINK_API_KEY: ${KUN_STORE_SHORTLINK_API_KEY:-}
     # S2S read/admin face stays internal — product backends (wiki/forum/moyu)
     # reach it at http://catalog:9281 over dokploy-network. The ONLY public path
     # is the open-API /v1/catalog projection routed by the labels block below.
@@ -480,6 +489,19 @@ services:
       traefik.http.routers.infra-news-pub-http.entrypoints: web
       traefik.http.routers.infra-news-pub-http.middlewares: redirect-to-https@file
       traefik.http.routers.infra-news-pub-http.service: infra-catalog-pub
+      # /v1/store — the DLsite distribution face (w02) shipped without claiming
+      # its prefix here despite the warning three comments up; post-deploy
+      # probes on 2026-08-26 answered Traefik's own "404 page not found".
+      # Reachability only; the face's key + store:read gate is the access
+      # control.
+      traefik.http.routers.infra-store-pub.rule: Host(`api.nextmoe.dev`) && PathPrefix(`/v1/store`)
+      traefik.http.routers.infra-store-pub.entrypoints: websecure
+      traefik.http.routers.infra-store-pub.tls.certresolver: letsencrypt
+      traefik.http.routers.infra-store-pub.service: infra-catalog-pub
+      traefik.http.routers.infra-store-pub-http.rule: Host(`api.nextmoe.dev`) && PathPrefix(`/v1/store`)
+      traefik.http.routers.infra-store-pub-http.entrypoints: web
+      traefik.http.routers.infra-store-pub-http.middlewares: redirect-to-https@file
+      traefik.http.routers.infra-store-pub-http.service: infra-catalog-pub
       # /v1/playtime — documented on the developer portal since launch, but no
       # router ever claimed the prefix. Probes on 2026-08-17 answered Traefik's
       # own "404 page not found". Reachability only; the face's JWT gate is the
@@ -504,6 +526,16 @@ services:
       traefik.http.routers.infra-user-catalog-pub-http.entrypoints: web
       traefik.http.routers.infra-user-catalog-pub-http.middlewares: redirect-to-https@file
       traefik.http.routers.infra-user-catalog-pub-http.service: infra-catalog-pub
+      # /v2 — public API v2 (preview). One prefix covers catalog, news, me,
+      # moderation, problems and vocabularies; all live on this process.
+      traefik.http.routers.infra-v2-pub.rule: Host(`api.nextmoe.dev`) && PathPrefix(`/v2`)
+      traefik.http.routers.infra-v2-pub.entrypoints: websecure
+      traefik.http.routers.infra-v2-pub.tls.certresolver: letsencrypt
+      traefik.http.routers.infra-v2-pub.service: infra-catalog-pub
+      traefik.http.routers.infra-v2-pub-http.rule: Host(`api.nextmoe.dev`) && PathPrefix(`/v2`)
+      traefik.http.routers.infra-v2-pub-http.entrypoints: web
+      traefik.http.routers.infra-v2-pub-http.middlewares: redirect-to-https@file
+      traefik.http.routers.infra-v2-pub-http.service: infra-catalog-pub
       traefik.http.services.infra-catalog-pub.loadbalancer.server.port: "9281"
     depends_on:
       postgres: { condition: service_healthy }

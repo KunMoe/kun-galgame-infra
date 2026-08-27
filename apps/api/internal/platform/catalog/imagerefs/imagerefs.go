@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"strings"
 
+	"api/internal/platform/catalog/repository"
+
 	"gorm.io/gorm"
 )
 
@@ -42,6 +44,10 @@ type kindSpec struct {
 	LabelColumn  string
 	Filter       string
 	DetachSet    string
+	// Works whose public face renders this kind's rows, so a detach can move
+	// their /v1/catalog/changes watermark. Empty for the kinds that reach only
+	// the character and person faces.
+	WorkIDsSQL string
 }
 
 var specs = []kindSpec{
@@ -50,12 +56,14 @@ var specs = []kindSpec{
 		HashColumn: "image_hash", EntityColumn: "work_id",
 		LabelTable: "catalog_work", LabelJoinOn: "l.id = t.work_id", LabelColumn: "display_name",
 		Filter: "", DetachSet: "",
+		WorkIDsSQL: `SELECT work_id FROM catalog_work_cover WHERE image_hash = ?`,
 	},
 	{
 		Kind: KindWorkScreenshot, Table: "catalog_work_screenshot",
 		HashColumn: "image_hash", EntityColumn: "work_id",
 		LabelTable: "catalog_work", LabelJoinOn: "l.id = t.work_id", LabelColumn: "display_name",
 		Filter: "", DetachSet: "",
+		WorkIDsSQL: `SELECT work_id FROM catalog_work_screenshot WHERE image_hash = ?`,
 	},
 	{
 		Kind: KindCharacterBust, Table: "catalog_character",
@@ -81,6 +89,9 @@ var specs = []kindSpec{
 		Kind: KindLabelLogo, Table: "catalog_label",
 		HashColumn: "logo_hash", EntityColumn: "id", LabelColumn: "display_name",
 		Filter: "t.deleted_at IS NULL", DetachSet: "''",
+		WorkIDsSQL: `SELECT wl.work_id FROM catalog_work_label wl
+			JOIN catalog_label l ON l.id = wl.label_id
+			WHERE l.logo_hash = ? AND l.deleted_at IS NULL`,
 	},
 	{
 		Kind: KindPersonPhoto, Table: "catalog_person",
@@ -173,6 +184,14 @@ func Detach(ctx context.Context, db *gorm.DB, hash string) (map[string]int64, er
 	removed := make(map[string]int64, len(specs))
 	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, s := range specs {
+			// Read the fan-out before the write: after the DELETE the rows that
+			// name the affected works are gone, so the same query returns none.
+			var works []int64
+			if s.WorkIDsSQL != "" {
+				if err := tx.Raw(s.WorkIDsSQL, hash).Scan(&works).Error; err != nil {
+					return fmt.Errorf("detach %s fan-out: %w", s.Kind, err)
+				}
+			}
 			var q string
 			if s.DetachSet == "" {
 				q = fmt.Sprintf("DELETE FROM %s AS t WHERE %s", s.Table, s.where(fmt.Sprintf("t.%s = ?", s.HashColumn)))
@@ -186,6 +205,12 @@ func Detach(ctx context.Context, db *gorm.DB, hash string) (map[string]int64, er
 				return fmt.Errorf("detach %s: %w", s.Kind, res.Error)
 			}
 			removed[s.Kind] = res.RowsAffected
+			if res.RowsAffected == 0 {
+				continue
+			}
+			if err := repository.TouchWorks(ctx, tx, works); err != nil {
+				return fmt.Errorf("detach %s touch: %w", s.Kind, err)
+			}
 		}
 		return nil
 	})

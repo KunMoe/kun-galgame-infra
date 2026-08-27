@@ -44,7 +44,7 @@ func TestReleaseLabelsAreScopedToTheirEdition(t *testing.T) {
 	addReleaseLabel(t, port.ID, cabbage, model.WorkLabelKindDeveloper)
 	addReleaseLabel(t, port.ID, hunex, model.WorkLabelKindPublisher)
 
-	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail = %v, %v", found, err)
 	}
@@ -125,7 +125,7 @@ func TestReleaseLabelsDropSoftDeletedLabels(t *testing.T) {
 		t.Fatalf("soft-delete label: %v", err)
 	}
 
-	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail = %v, %v", found, err)
 	}
@@ -153,7 +153,7 @@ func TestReleaseLabelWorkCountMatchesTheChipTarget(t *testing.T) {
 	}
 	addReleaseLabel(t, rel.ID, brand, model.WorkLabelKindPublisher)
 
-	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("WorkDetail = %v, %v", found, err)
 	}

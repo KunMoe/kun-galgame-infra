@@ -89,7 +89,7 @@ const statusMeta = (status: string): { label: string; class: string } => {
         </span>
         <span class="flex items-center gap-1.5">
           <KunIcon
-            :name="auth.kind === 'none' ? 'lucide:unlock' : 'lucide:key-round'"
+            :name="auth.kind === 'none' ? 'lucide:lock-open' : 'lucide:key-round'"
             class="size-3.5"
           />
           <code v-if="auth.curl" class="font-mono">{{ auth.display }}</code>

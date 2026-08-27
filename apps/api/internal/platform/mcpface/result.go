@@ -22,8 +22,8 @@ func errorResult(msg string) *mcp.CallToolResult {
 func authError() *mcp.CallToolResult {
 	return errorResult(
 		"Missing or malformed API key. Configure your MCP client to send the header " +
-			"`Authorization: Bearer nm_<api-key>` on the MCP endpoint. " +
-			"Mint or inspect a key at " + devPortalURL + ".",
+			"`Authorization: Bearer nmk_live_…` on the MCP endpoint. " +
+			"Mint a preview v2 key at " + devPortalURL + ".",
 	)
 }
 
@@ -44,7 +44,7 @@ func mapUpstream(status int, body []byte) *mcp.CallToolResult {
 		hint = "Rate limit or daily quota exceeded for this API key. " +
 			"Slow down and retry later; check usage at " + devPortalURL + "."
 	case 404:
-		hint = "Not found: no such record on the NextMoe catalog (it may be unpublished or NSFW-gated for this key)."
+		hint = "Not found: no such record on the NextMoe catalog (it may be unpublished, or r18 while this call omitted nsfw=true)."
 	default:
 		if status >= 500 {
 			hint = fmt.Sprintf("Upstream service error (status %d). Try again later.", status)

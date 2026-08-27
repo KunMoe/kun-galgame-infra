@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	"api/internal/platform/ai/model"
 	"api/internal/platform/ai/upstream"
@@ -241,5 +242,93 @@ func TestModerateUnparseableWithoutTruncation(t *testing.T) {
 	rows := usageRows(t, "letmoe", model.RouteModerateText)
 	if len(rows) != 1 || rows[0].Status != model.StatusUpstreamError {
 		t.Fatalf("want a single upstream_error row, got %d rows status=%v", len(rows), rows)
+	}
+}
+
+// The prod 429 body verbatim, so this fails if IsRateLimited ever stops
+// matching what Cloudflare actually sends.
+var cfRateLimit = &upstream.StatusError{
+	Code: 429,
+	Body: `{"errors":[{"message":"AiError: AiError: rate limiting: inference request per min rate reached (8700d6e7)","code":3021}],"success":false,"result":{}}`,
+}
+
+func TestModerateRetriesOnceOnRateLimit(t *testing.T) {
+	cleanTables(t)
+	up := &fakeUpstream{
+		configured: true,
+		model:      "deepseek-chat",
+		errSeq:     []error{cfRateLimit},
+		result: upstream.ChatResult{
+			Content: `{"flagged": true, "categories": ["abuse"], "score": 0.95}`,
+			Channel: "deepseek-chat",
+		},
+	}
+	s := newLLMOnly(up)
+	s.retryDelay = time.Millisecond
+
+	res, err := s.Moderate(context.Background(), ModerateParams{Site: "letmoe", Text: "you idiot"})
+	if err != nil {
+		t.Fatalf("Moderate: %v", err)
+	}
+	if !res.Flagged || res.Degraded {
+		t.Fatalf("a retried 429 must produce a real verdict, got flagged=%v degraded=%v", res.Flagged, res.Degraded)
+	}
+	if up.calls != 2 {
+		t.Fatalf("upstream calls = %d, want 2 (one 429 + one retry)", up.calls)
+	}
+
+	rows := usageRows(t, "letmoe", model.RouteModerateText)
+	if len(rows) != 2 {
+		t.Fatalf("want 2 metered rows (rate-limited + ok), got %d", len(rows))
+	}
+	if rows[0].Status != model.StatusRateLimited {
+		t.Fatalf("first row status = %d, want StatusRateLimited — the retry must stay visible", rows[0].Status)
+	}
+	if rows[1].Status != model.StatusOK {
+		t.Fatalf("second row status = %d, want StatusOK", rows[1].Status)
+	}
+}
+
+func TestModerateFailsOpenAfterSecondRateLimit(t *testing.T) {
+	cleanTables(t)
+	up := &fakeUpstream{
+		configured: true,
+		model:      "deepseek-chat",
+		errSeq:     []error{cfRateLimit, cfRateLimit},
+	}
+	s := newLLMOnly(up)
+	s.retryDelay = time.Millisecond
+
+	res, err := s.Moderate(context.Background(), ModerateParams{Site: "letmoe", Text: "you idiot"})
+	if err != nil {
+		t.Fatalf("Moderate: %v", err)
+	}
+	if !res.Degraded {
+		t.Fatalf("two 429s must still fail open as degraded")
+	}
+	if up.calls != 2 {
+		t.Fatalf("upstream calls = %d, want exactly 2 — one retry, not a loop", up.calls)
+	}
+}
+
+func TestModerateDoesNotRetryNonRateLimitError(t *testing.T) {
+	cleanTables(t)
+	up := &fakeUpstream{
+		configured: true,
+		model:      "deepseek-chat",
+		err:        &upstream.StatusError{Code: 400, Body: `{"errors":[{"message":"bad request"}]}`},
+	}
+	s := newLLMOnly(up)
+	s.retryDelay = time.Millisecond
+
+	res, err := s.Moderate(context.Background(), ModerateParams{Site: "letmoe", Text: "hi"})
+	if err != nil {
+		t.Fatalf("Moderate: %v", err)
+	}
+	if !res.Degraded {
+		t.Fatalf("a 400 still fails open")
+	}
+	if up.calls != 1 {
+		t.Fatalf("upstream calls = %d, want 1 — only a 429 is worth retrying", up.calls)
 	}
 }

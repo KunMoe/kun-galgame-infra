@@ -27,12 +27,10 @@ type resolveRow struct {
 	AppName       string
 	KeyHash       string
 	KeyScopes     []byte
-	KeyNSFW       bool
 	RevokedAt     *time.Time
 	ExpiresAt     *time.Time
 	DevEnabled    bool
 	DevTier       string
-	DevNSFW       bool
 	DevRatePerMin int
 	DevQuotaDaily int
 }
@@ -42,10 +40,10 @@ func (r *Repository) ResolveByHash(ctx context.Context, hash string, now time.Ti
 	err := r.db.WithContext(ctx).
 		Table("developer_api_keys AS k").
 		Select(`k.id AS key_id, k.client_id AS client_id, c.name AS app_name,
-			k.key_hash AS key_hash, k.scopes AS key_scopes, k.nsfw_allowed AS key_nsfw,
+			k.key_hash AS key_hash, k.scopes AS key_scopes,
 			k.revoked_at AS revoked_at, k.expires_at AS expires_at,
 			c.dev_enabled AS dev_enabled, c.dev_tier AS dev_tier,
-			c.dev_nsfw_allowed AS dev_nsfw, c.dev_rate_per_min AS dev_rate_per_min,
+			c.dev_rate_per_min AS dev_rate_per_min,
 			c.dev_quota_daily AS dev_quota_daily`).
 		Joins("JOIN oauth_clients AS c ON c.id = k.client_id").
 		Where("k.key_hash = ?", hash).
@@ -76,7 +74,6 @@ func (r *Repository) ResolveByHash(ctx context.Context, hash string, now time.Ti
 		AppName:       row.AppName,
 		Tier:          row.DevTier,
 		Scopes:        scopes,
-		NSFWAllowed:   row.KeyNSFW && row.DevNSFW,
 		RateOverride:  row.DevRatePerMin,
 		QuotaOverride: row.DevQuotaDaily,
 	}, nil
@@ -141,15 +138,6 @@ func (r *Repository) GetApp(ctx context.Context, clientID string) (*siteModel.OA
 	return &app, nil
 }
 
-func (r *Repository) ListDevApps(ctx context.Context) ([]siteModel.OAuthClient, error) {
-	var apps []siteModel.OAuthClient
-	err := r.db.WithContext(ctx).
-		Where("dev_enabled = ?", true).
-		Order("name ASC").
-		Find(&apps).Error
-	return apps, err
-}
-
 func (r *Repository) UpdateAppDevConfig(ctx context.Context, clientID string, fields map[string]any) error {
 	return r.UpdateAppFields(ctx, clientID, fields)
 }
@@ -203,6 +191,73 @@ func (r *Repository) CountActiveKeysByClient(ctx context.Context, clientID strin
 		Where("client_id = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)", clientID, now).
 		Count(&n).Error
 	return n, err
+}
+
+const (
+	KeyStateActive  = "active"
+	KeyStateRevoked = "revoked"
+	KeyStateExpired = "expired"
+	KeyStateAll     = "all"
+)
+
+type KeyListFilter struct {
+	ClientID string
+	State    string
+	Page     int
+	Limit    int
+}
+
+type AdminKeyRow struct {
+	DeveloperAPIKey
+	AppName     string `gorm:"column:app_name"`
+	OwnerUserID *uint  `gorm:"column:owner_user_id"`
+}
+
+// ListAllKeys is the cross-application key inventory behind the console's
+// global key page; the per-application list stays ListKeysByClient.
+func (r *Repository) ListAllKeys(ctx context.Context, f KeyListFilter, now time.Time) ([]AdminKeyRow, int64, error) {
+	scoped := func() *gorm.DB {
+		q := r.db.WithContext(ctx).
+			Table("developer_api_keys AS k").
+			Joins("JOIN oauth_clients AS c ON c.id = k.client_id")
+		if f.ClientID != "" {
+			q = q.Where("k.client_id = ?", f.ClientID)
+		}
+		switch f.State {
+		case KeyStateActive:
+			q = q.Where("k.revoked_at IS NULL AND (k.expires_at IS NULL OR k.expires_at > ?)", now)
+		case KeyStateRevoked:
+			q = q.Where("k.revoked_at IS NOT NULL")
+		case KeyStateExpired:
+			q = q.Where("k.revoked_at IS NULL AND k.expires_at IS NOT NULL AND k.expires_at <= ?", now)
+		}
+		return q
+	}
+
+	var total int64
+	if err := scoped().Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var rows []AdminKeyRow
+	err := scoped().
+		Select("k.*, c.name AS app_name, c.owner_user_id AS owner_user_id").
+		Order("k.created_at DESC, k.id DESC").
+		Offset((f.Page - 1) * f.Limit).
+		Limit(f.Limit).
+		Scan(&rows).Error
+	return rows, total, err
+}
+
+func (k *DeveloperAPIKey) State(now time.Time) string {
+	switch {
+	case k.RevokedAt != nil:
+		return KeyStateRevoked
+	case k.ExpiresAt != nil && !k.ExpiresAt.After(now):
+		return KeyStateExpired
+	default:
+		return KeyStateActive
+	}
 }
 
 type OwnerActiveKey struct {
@@ -333,7 +388,13 @@ func (r *Repository) UpsertUsage(ctx context.Context, rows []DeveloperAPIUsage) 
 		return nil
 	}
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "client_id"}, {Name: "key_id"}, {Name: "face"}, {Name: "day"}},
+		// Every column of idx_usage_day belongs here. A conflict target narrower
+		// than the unique index makes the upsert judge "already counted this" on
+		// the wrong tuple: correct-looking, and then 23505 rolls back the whole
+		// batched INSERT — and Flush re-merges on error, so the stall repeats.
+		Columns: []clause.Column{
+			{Name: "client_id"}, {Name: "key_id"}, {Name: "face"}, {Name: "day"}, {Name: "path"},
+		},
 		DoUpdates: clause.Assignments(map[string]any{
 			"count":      gorm.Expr("developer_api_usage.count + excluded.count"),
 			"status_4xx": gorm.Expr("developer_api_usage.status_4xx + excluded.status_4xx"),

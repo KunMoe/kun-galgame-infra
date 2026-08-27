@@ -18,8 +18,8 @@ import (
 func importAlias(t *testing.T, workID int64, lang, title string, kind int16) int64 {
 	t.Helper()
 	if err := testDB.Exec(
-		`INSERT INTO catalog_work_title (work_id, lang, title, kind)
-		 VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`, workID, lang, title, kind).Error; err != nil {
+		`INSERT INTO catalog_work_title (work_id, lang, title, kind, provenance)
+		 VALUES (?, ?, ?, ?, 0) ON CONFLICT DO NOTHING`, workID, lang, title, kind).Error; err != nil {
 		t.Fatalf("import alias %q: %v", title, err)
 	}
 	var row model.CatalogWorkTitle

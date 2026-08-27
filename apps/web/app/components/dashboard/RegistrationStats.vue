@@ -136,6 +136,7 @@ const onDailyClick = (params: { dataIndex: number }) => {
         <input
           v-model="selectedDate"
           type="date"
+          aria-label="选择要查看小时分布的日期"
           :max="latestDate"
           class="border-default-200 bg-background text-foreground rounded-lg border px-2 py-1 text-sm"
         >

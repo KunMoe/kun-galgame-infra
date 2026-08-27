@@ -108,7 +108,7 @@ const revoke = async (g: SiteRole) => {
 </script>
 
 <template>
-  <KunModal v-model="open">
+  <KunModal v-model="open" aria-label="站点角色">
     <div class="space-y-4">
       <div>
         <h2 class="text-foreground text-xl font-bold">站点角色</h2>

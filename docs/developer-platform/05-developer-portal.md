@@ -16,7 +16,7 @@
      - **按应用** / **按面** 两张分解表(各按量降序)。
      - **实时配额剩余**:每把 active key 一张卡,显示今日剩余 / 每日配额 + 用量条 + 速率上限——**直接读 Redis 执法计数器**(与限流同源,非 rollup 估算)。计数后端不可达时该区降级为「暂不可用」提示,页面其余照常(`live_unavailable`)。
   4. **OpenAPI 文档**:用 **Scalar** 渲染(MIT、Try-It 最强、支持 OAuth flow、可嵌 Nuxt);两份公开 spec(catalog 面 / galgame 面)分 tab 呈现,未来媒介面同构加 tab。
-  5. 申请更高 tier / NSFW(走审批)。
+  5. 申请更高 tier(走审批)。
 - **技术**:门户前端 Nuxt(`apps/` 下新增或并入现有);平台后端扩展 account/IdP 侧的 API(应用/key/用量 CRUD,鉴权用现有 JWT + `owner_user_id` 归属校验)。
 
 ### 9.1 登录升级为 OP 跳转 SSO(拍板 2026-07-23 · 生产部署收官 2026-07-26)
@@ -58,7 +58,7 @@
 ```json
 { "name": "Kurumi", "user_login": {
     "redirect_uris": ["http://127.0.0.1:53682/callback"],
-    "scopes": ["playtime:read", "playtime:write"] } }
+    "scopes": ["openid", "profile"] } }
 ```
 
 给出它 → app 置 `is_public=true`、`grants=["authorization_code","refresh_token"]`,scope 并入 `allowed_scopes`(`openid` 自动补)。**不给 → 完全保持原样**,本字段出现前注册的每个 app 行为逐字节不变。`user_login` 是**整体替换**而非 patch:否则删掉一个回调将永远做不到,而废弃的回调正是最该能删的东西。
@@ -68,7 +68,31 @@
 1. **回调白名单**:只收 `https://`(且不是裸 IP)与 `http://` 到 `127.0.0.1` / `[::1]` 环回。拒绝通配、fragment(隐式流的令牌通道)、userinfo(`https://example.com@evil.com/cb` 在人眼里是前者)、以及到任何非环回主机的明文 http —— 授权码就走在这个 URL 里。**`localhost` 也拒**:它过主机名解析,可以被指向别处,`127.0.0.1` 不能。
 2. **强制 PKCE**:桌面应用把二进制发给用户,里面没有秘密。标 `is_public` 即让 OAuth 服务在无 `code_challenge` 时**拒绝**它的授权码。环回回调按 **RFC 8252 §7.3 端口无关**匹配(端口是运行时才选的),scheme/host/path/query 仍精确匹配 —— 非环回 URI 永远走不到这个分支。
 3. **保留名**:同意页把应用名显示在用户账号旁边,「NextMoe 官方助手」就是我们自己托管的钓鱼页。含 nextmoe / 未萌 / kungal / 官方 / official / admin 等片段一律拒。这是地板不是滤网(存心的冒充者会用同形字),配套的是同意页上不靠猜意图的**第三方标记**(`owner_user_id` 非空)。
-4. **同意 scope 白名单**(`selfServiceUserScopes`):`openid` / `profile` / `email` / `playtime:read` / `playtime:write` / **`catalog:edit`(wave R3,2026-08-17 起)**。**注意仍不在其中的**:`image:upload`、`artifact:upload` —— 自助注册不能向人索取花我们存储的权限。往这张表里加一项是**政策决定**,不是改配置;`catalog:edit` 就是这样一次政策决定,其代价已在面上收讫:第三方令牌永远 `ModerationCapped`(只能提案、不能裁决),且每用户未决提案帽 20(429)。写共享语料因此始终隔着一道人审。
+4. **同意 scope 白名单**(`selfServiceUserScopes`):`openid` / `profile` / `email` / `playtime:read` / `playtime:write` / **`catalog:edit`(wave R3,2026-08-17 起)**。**`playtime:read` / `playtime:write` 仍可申请,但调 `/v1/playtime` 与 `/v2/me/playtimes` 不再需要它们**——任何已开通用户登录的应用都能读写该用户自己的时长。这两个词留在白名单里只是为了让旧授权 URL 不 400。**注意仍不在其中的**:`image:upload`、`artifact:upload` —— 自助注册不能向人索取花我们存储的权限。往这张表里加一项是**政策决定**,不是改配置;`catalog:edit` 就是这样一次政策决定,其代价已在面上收讫:第三方令牌永远 `ModerationCapped`(只能提案、不能裁决),且每用户未决提案帽 20(429)。写共享语料因此始终隔着一道人审。
 
-它与 API key 的 scope 白名单(`selfServiceScopes` = 两个只读)**故意分开**:两者管的是不同凭证。一个说机器 key 匿名能干什么,另一个说应用**能向人要什么**。合并就等于让只读 key 的白名单去决定同意页的政策。
+它与 API key 的 scope 白名单(`selfServiceScopes`,2026-08-18 起只剩 `catalog:read`)**故意分开**:两者管的是不同凭证。一个说机器 key 匿名能干什么,另一个说应用**能向人要什么**。合并就等于让只读 key 的白名单去决定同意页的政策。
+
+### 9.3 授权制 scope 的申请通道(2026-08-18 建,2026-08-25 退役)
+
+这条通道存在过一周。它把 `news:read` 的"联系平台"变成门户里的一次申请:自助面两条端点(`POST` / `GET /api/v1/dev/scope-applications`)、管理侧三条(`/api/v1/admin/devapi/scope-applications*`)、铸密钥对话框里的授权制条目(`components/keys/ScopeApplyModal.vue`)、管理台的「Scope 申请审核」面板(`components/devapi/ScopeApplications.vue`),以及承载它们的 `devapi_scope_applications` 表。
+
+**整条通道于 2026-08-25 删除**,连同它唯一的申请对象:`/v1/news` 不再检查 scope,一把有效的机器 key 就够了,而同一批内容在 `/v2/news` 上匿名可读已有一段时间。审批队列因此没有任何东西可决——留着它只是让人排队等一个必然的"是"。裁定与备查清单见 [02 §3.9](./02-public-api.md)。
+
+铸密钥对话框现在只剩自助复选框一组(`components/keys/MintModal.vue`);管理台 `/devapi` 页少了审核面板那一节。
+
+### 9.4 平台策略矩阵 + 应用审批流(2026-08-18)
+
+到本节前,门户的自助面是**无级别的**:注册即建应用、建完即启用、启用即能铸 key。这在只有我们自己用的时候是对的默认;一旦第三方真的进来,平台就需要一个能在**不改代码、不改部署**的前提下收紧或临时关停某一步的旋钮。本节把这个旋钮做成一张矩阵。
+
+**矩阵**(能力 × 允许的 mode,判据表见 [02 §3.10](./02-public-api.md)):`app.create`(自助 / 需审批 / 关闭)、`app.manage`、`key.mint`(后两者只有自助 / 关闭)。本波起手是四能力,第四行 `scope.apply` 随 §9.3 于 2026-08-25 退役。默认全开 —— **平台出厂是开放的,策略只做收紧**,所以任何一行缺 override 都等于今天的行为,升级这一波对现有开发者是零可见变化。
+
+**吊销永远不入闸**。关掉 `key.mint` 的场景是「先别再发新钥匙了」,不是「谁也别想止损」;把 revoke 一起关掉会让一次泄漏在策略打开之前无法收敛。
+
+**为什么是 ren-only**:改矩阵不是日常运营动作(那是 `devapi.manage` 管的:调 tier、配额、审应用),而是**改平台对外承诺**——「现在还能不能自助注册」这句话对所有第三方同时生效。故新增 `devapi.policy_manage`,**只进 ren 捆**且标 `non_delegable`(先例:`oauth.permissions.manage`)。管理台的矩阵对 admin **可见但只读**,并明示「仅 ren 可改」——看得见才知道当下是什么政策,看不见只会让人反复去问。
+
+**审批流**只加了三个状态、没有第四个:`approved` / `pending` / `declined`。`withdraw`(申请人撤回)**故意不做**——待审的申请撤回等价于停用一个从未启用的应用,而 `declined` → resubmit 已经覆盖了「想改了再来」这条真实路径;多一个状态就多一组迁移与四处 UI 分支,换不到任何新能力。
+
+**门户表现**(`apps/developer`):dashboard 拉 `GET /dev/policies` → `approval` 时创建对话框顶部挂提示、提交后回执「已提交,等待平台审核」;`disabled` 时创建按钮禁用并说明原因。应用卡片与详情页对 `pending` / `declined` 挂状态 chip;`declined` 展示拒绝理由 + 「重新提交」按钮(→ resubmit 端点),两态都**隐藏「停用」**并在密钥区写「审核通过后可铸造密钥」。`key.mint=disabled` → 铸造 / 轮换禁用(吊销照常);`app.manage=disabled` → 编辑 / 停用禁用。
+
+**管理台表现**(`apps/web`):`/devapi` 页顶部为策略矩阵卡(`components/devapi/PolicyMatrix.vue`,改动走确认弹窗;选中「默认」那格即 `DELETE` 掉 override 行),应用列表加状态过滤(`enabled` / `pending` / `declined` / `disabled` / `all`,缺省 `enabled` 兼容现状)并在卡片上显示 review 状态,`components/devapi/PendingApps.vue` 是待审应用面板(通过 / 拒绝,拒绝须填理由)。新页 `/devapi/keys`(`components/devapi/Keys.vue`)是**跨全部应用的密钥清单**:按状态与应用过滤、分页,只展示前缀与后四位等元数据,行动作 rotate / revoke 直接复用既有 per-app 端点 —— 这一页刻意**不新增编辑端点**,「编辑 token」在这个平台上从来就只有轮换与吊销两个动作。
 

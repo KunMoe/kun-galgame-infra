@@ -74,6 +74,52 @@ func TestAliasProvenanceColumnShape(t *testing.T) {
 	}
 }
 
+// Wave 210 puts the same provenance axis on catalog_work_title, and the
+// backfill half of it can only be exercised by taking the column away again:
+// on a fresh database AutoMigrate creates it NOT NULL from the model and the
+// preMigrate block is a no-op, which is exactly the path production does NOT
+// take.
+func TestWorkTitleProvenanceBackfillsExistingRows(t *testing.T) {
+	prov := shapeOf(t, "catalog_work_title", "provenance")
+	assert.Equal(t, "NO", prov.Nullable, "catalog_work_title.provenance must be NOT NULL")
+	assert.Empty(t, prov.Default, "catalog_work_title.provenance must have no default")
+	for _, col := range []string{"src_hash", "mt_model"} {
+		// Nullable: only a machine row has a source hash or a model name, and
+		// NULL is how a source row says it has neither.
+		assert.Equal(t, "YES", shapeOf(t, "catalog_work_title", col).Nullable,
+			"catalog_work_title.%s must stay nullable", col)
+	}
+
+	var mediumID int16
+	require.NoError(t, testDB.Raw(`SELECT id FROM catalog_medium ORDER BY id LIMIT 1`).Scan(&mediumID).Error)
+	if mediumID == 0 {
+		t.Skip("registry not seeded in this database")
+	}
+	var workID int64
+	require.NoError(t, testDB.Raw(`
+		INSERT INTO catalog_work (medium_id, olang, display_name, content_rating, status,
+			display_nsfw, extra, field_provenance, created_at, updated_at)
+		VALUES (?, 'ja', 'wave210 backfill fixture', 0, 0, false, '{}', '{}', now(), now())
+		RETURNING id`, mediumID).Scan(&workID).Error)
+	t.Cleanup(func() {
+		testDB.Exec(`DELETE FROM catalog_work_title WHERE work_id = ?`, workID)
+		testDB.Exec(`DELETE FROM catalog_work WHERE id = ?`, workID)
+	})
+
+	require.NoError(t, testDB.Exec(`ALTER TABLE catalog_work_title DROP COLUMN provenance`).Error)
+	require.NoError(t, testDB.Exec(`
+		INSERT INTO catalog_work_title (work_id, lang, title, kind)
+		VALUES (?, 'ja', 'wave210 pre-column row', 0)`, workID).Error)
+
+	require.NoError(t, Run(testDB))
+
+	var got []int16
+	require.NoError(t, testDB.Raw(
+		`SELECT provenance FROM catalog_work_title WHERE work_id = ?`, workID).Scan(&got).Error)
+	assert.Equal(t, []int16{0}, got, "a row that predates the column is source, not machine")
+	assert.Equal(t, "NO", shapeOf(t, "catalog_work_title", "provenance").Nullable)
+}
+
 // The lang heal is data repair living in a schema migration, which is only
 // defensible while it stays exactly as narrow as it claims to be: it must fix
 // the malformed values, leave a legally-empty lang alone, and be a no-op on

@@ -30,7 +30,6 @@ type AppConfig struct {
 	OwnerUserID    *uint
 	DevEnabled     *bool
 	DevTier        *string
-	DevNSFWAllowed *bool
 	DevRatePerMin  *int
 	DevQuotaDaily  *int
 }
@@ -47,15 +46,19 @@ func (s *AdminService) UpdateAppConfig(ctx context.Context, clientID string, cfg
 	}
 	if cfg.DevEnabled != nil {
 		fields["dev_enabled"] = *cfg.DevEnabled
+		// The console's enable path is itself an approval: without this a row
+		// enabled straight from the app list would stay 'pending' and its owner
+		// would still be refused a key on a live application.
+		if *cfg.DevEnabled {
+			fields["dev_review_status"] = AppReviewApproved
+			fields["dev_review_note"] = ""
+		}
 	}
 	if cfg.DevTier != nil {
 		if !validTier(*cfg.DevTier) {
 			return nil, ErrInvalidTier
 		}
 		fields["dev_tier"] = *cfg.DevTier
-	}
-	if cfg.DevNSFWAllowed != nil {
-		fields["dev_nsfw_allowed"] = *cfg.DevNSFWAllowed
 	}
 	if cfg.DevRatePerMin != nil {
 		fields["dev_rate_per_min"] = *cfg.DevRatePerMin
@@ -69,8 +72,8 @@ func (s *AdminService) UpdateAppConfig(ctx context.Context, clientID string, cfg
 	return s.repo.GetApp(ctx, clientID)
 }
 
-func (s *AdminService) ListApps(ctx context.Context) ([]AppView, error) {
-	apps, err := s.repo.ListDevApps(ctx)
+func (s *AdminService) ListApps(ctx context.Context, filter string) ([]AppView, error) {
+	apps, err := s.repo.ListAppsByFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +100,7 @@ func (s *AdminService) MintKey(ctx context.Context, clientID string, in MintKeyI
 	}
 	scopes := in.Scopes
 	if len(scopes) == 0 {
-		scopes = []string{ScopeCatalogRead, ScopeGalgameRead}
+		scopes = []string{ScopeCatalogRead}
 	}
 	key, plaintext, err := s.buildKey(clientID, in.Name, in.Test, scopes, createdBy)
 	if err != nil {
@@ -114,6 +117,10 @@ func (s *AdminService) ListKeys(ctx context.Context, clientID string) ([]Develop
 	return s.repo.ListKeysByClient(ctx, clientID)
 }
 
+func (s *AdminService) ListAllKeys(ctx context.Context, f KeyListFilter) ([]AdminKeyRow, int64, error) {
+	return s.repo.ListAllKeys(ctx, f, time.Now())
+}
+
 func (s *AdminService) RotateKey(ctx context.Context, keyID, createdBy uint) (*DeveloperAPIKey, string, error) {
 	old, err := s.repo.GetKey(ctx, keyID)
 	if err != nil {
@@ -123,7 +130,8 @@ func (s *AdminService) RotateKey(ctx context.Context, keyID, createdBy uint) (*D
 	if len(old.Scopes) > 0 {
 		_ = json.Unmarshal(old.Scopes, &scopes)
 	}
-	newKey, plaintext, err := s.buildKeyWithNSFW(old.ClientID, old.Name, strings.HasPrefix(old.KeyPrefix, TestPrefix), scopes, old.NSFWAllowed, createdBy)
+	test := strings.HasPrefix(old.KeyPrefix, TestPrefix) || strings.HasPrefix(old.KeyPrefix, V2TestPrefix)
+	newKey, plaintext, err := s.buildKey(old.ClientID, old.Name, test, scopes, createdBy)
 	if err != nil {
 		return nil, "", err
 	}
@@ -164,15 +172,7 @@ func (s *AdminService) GetKeyForClient(ctx context.Context, clientID string, key
 }
 
 func (s *AdminService) buildKey(clientID, name string, test bool, scopes []string, createdBy uint) (*DeveloperAPIKey, string, error) {
-	return s.buildKeyWithNSFW(clientID, name, test, scopes, false, createdBy)
-}
-
-func (s *AdminService) buildKeyWithNSFW(clientID, name string, test bool, scopes []string, nsfw bool, createdBy uint) (*DeveloperAPIKey, string, error) {
-	prefix := LivePrefix
-	if test {
-		prefix = TestPrefix
-	}
-	plaintext, err := GenerateKey(prefix)
+	plaintext, err := GenerateV2Key(!test)
 	if err != nil {
 		return nil, "", err
 	}
@@ -188,7 +188,6 @@ func (s *AdminService) buildKeyWithNSFW(clientID, name string, test bool, scopes
 		KeyPrefix:       kp,
 		Last4:           last4,
 		Scopes:          datatypes.JSON(scopesJSON),
-		NSFWAllowed:     nsfw,
 		CreatedByUserID: createdBy,
 	}, plaintext, nil
 }

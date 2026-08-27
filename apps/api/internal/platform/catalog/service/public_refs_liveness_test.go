@@ -29,7 +29,7 @@ func TestPublicRefsDropDeadAnchors(t *testing.T) {
 	addExternalRef(t, model.EntityTypeWork, w.ID, srcDlsite, "RJ42", model.LinkKindExact)
 	markRefDead(t, model.EntityTypeWork, w.ID, srcVNDB, "v42")
 
-	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0)
+	rec, found, err := svc.WorkDetail(ctx, w.ID, PublicInclude{}, false, 0, PublicFields{})
 	if err != nil || !found {
 		t.Fatalf("detail: found=%v err=%v", found, err)
 	}

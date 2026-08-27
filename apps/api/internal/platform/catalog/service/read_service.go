@@ -151,6 +151,8 @@ type WorkCharacterRow struct {
 type WorkCharacterVARow struct {
 	CreditNameID int64
 	Name         string
+	Lang         string
+	Latin        *string
 }
 
 type RefDetail struct {
@@ -212,18 +214,35 @@ func (s *ReadService) WorkByAnchor(ctx context.Context, sourceKey, externalID st
 			return nil, err
 		}
 	}
-	return s.loadWorkDetail(ctx, workID, 0, false)
+	return s.loadWorkDetail(ctx, workID, workDetailOpts{withRelations: true})
 }
 
 func (s *ReadService) WorkByID(ctx context.Context, workID int64, spoilers int16) (*WorkDetail, error) {
-	return s.loadWorkDetail(ctx, workID, spoilers, false)
+	return s.loadWorkDetail(ctx, workID, workDetailOpts{spoilers: spoilers, withRelations: true})
 }
 
 func (s *ReadService) WorkByIDIncludeHidden(ctx context.Context, workID int64, spoilers int16) (*WorkDetail, error) {
-	return s.loadWorkDetail(ctx, workID, spoilers, true)
+	return s.loadWorkDetail(ctx, workID, workDetailOpts{spoilers: spoilers, includeHidden: true, withRelations: true})
 }
 
-func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, spoilers int16, includeHidden bool) (*WorkDetail, error) {
+// WorkByIDPublic is the only entry point that may leave Relations unloaded: the
+// public face is the only caller whose response omits the block unless the
+// caller spent an ?include= token on it. Every other face renders relations
+// unconditionally and must keep passing withRelations.
+func (s *ReadService) WorkByIDPublic(ctx context.Context, workID int64, spoilers int16, withRelations bool, fields PublicFields) (*WorkDetail, error) {
+	return s.loadWorkDetail(ctx, workID, workDetailOpts{spoilers: spoilers, withRelations: withRelations, fields: fields})
+}
+
+type workDetailOpts struct {
+	spoilers      int16
+	includeHidden bool
+	withRelations bool
+	// The zero PublicFields is inactive, so every face that does not offer
+	// ?fields= keeps loading all fifteen blocks.
+	fields PublicFields
+}
+
+func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, opts workDetailOpts) (*WorkDetail, error) {
 	db := s.db.WithContext(ctx)
 	var work model.CatalogWork
 	if err := db.First(&work, workID).Error; err != nil {
@@ -235,12 +254,164 @@ func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, spoilers
 
 	detail := &WorkDetail{Work: work}
 	subj := claimSubject{WorkID: work.ID}
-	titles, err := s.loadWorkDetailTitles(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
-	}
-	detail.Titles = titles[work.ID]
+	want := opts.fields.Wants
 
+	if want("titles", "latin", "localized") {
+		titles, err := s.loadWorkDetailTitles(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Titles = titles[work.ID]
+	}
+
+	// release_date and the release-level half of refs are both derived from
+	// the release rows, so either of them alone still pays for this query.
+	if want("releases", "refs", "release_date") {
+		rels, err := s.loadWorkReleases(ctx, workID, opts.includeHidden)
+		if err != nil {
+			return nil, err
+		}
+		detail.Releases = rels
+	}
+
+	if want("labels") {
+		if err := db.Raw(`SELECT wl.label_id, l.display_name, l.kind AS label_kind, wl.kind AS kind, l.lang, l.logo_hash
+			FROM catalog_work_label wl JOIN catalog_label l ON l.id = wl.label_id AND l.deleted_at IS NULL
+			WHERE wl.work_id = ? ORDER BY wl.kind, l.display_name`, workID).Scan(&detail.Labels).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	if want("refs") {
+		var workRefs []struct {
+			Source     string
+			ExternalID string
+		}
+		if err := db.Raw(`SELECT s.key AS source, r.external_id
+			FROM catalog_external_ref r JOIN catalog_source s ON s.id = r.source_id
+			WHERE r.entity_type = ? AND r.entity_id = ? AND r.link_kind = ? AND r.dead_at IS NULL
+			ORDER BY s.key`, model.EntityTypeWork, workID, model.LinkKindExact).Scan(&workRefs).Error; err != nil {
+			return nil, err
+		}
+		for _, wr := range workRefs {
+			detail.Refs = append(detail.Refs, RefDetail{Source: wr.Source, ExternalID: wr.ExternalID, EntityType: model.EntityTypeWork})
+		}
+		for _, rd := range detail.Releases {
+			for _, a := range rd.Anchors {
+				if a.LinkKind == model.LinkKindExact {
+					detail.Refs = append(detail.Refs, RefDetail{
+						Source: a.Source, ExternalID: a.ExternalID,
+						EntityType: model.EntityTypeRelease, ReleaseID: rd.Release.ID,
+					})
+				}
+			}
+		}
+	}
+
+	if want("characters") {
+		chars, err := s.loadWorkCharacters(ctx, workID)
+		if err != nil {
+			return nil, err
+		}
+		detail.Characters = chars
+	}
+
+	if want("intros") {
+		intros, err := s.loadWorkIntros(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Intros = intros[work.ID]
+	}
+
+	if want("covers", "cover_slots") {
+		covers, err := s.loadWorkCovers(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Covers = covers[work.ID]
+	}
+
+	if want("screenshots") {
+		shots, err := s.loadWorkScreenshots(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Screenshots = shots[work.ID]
+	}
+
+	if want("ratings") {
+		ratings, err := s.loadWorkRatings(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Ratings = ratings[work.ID]
+	}
+
+	if want("tags") {
+		tags, err := s.loadWorkTags(ctx, []claimSubject{subj}, opts.spoilers)
+		if err != nil {
+			return nil, err
+		}
+		detail.Tags = tags[work.ID]
+	}
+
+	if want("popularity") {
+		popularity, err := s.loadWorkPopularity(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Popularity = popularity[work.ID]
+	}
+
+	if want("playtimes") {
+		playtimes, err := s.loadWorkPlaytimes(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Playtimes = playtimes[work.ID]
+	}
+
+	if want("series") {
+		series, err := s.loadWorkSeries(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Series = series[work.ID]
+	}
+
+	if want("platforms") {
+		platforms, err := s.loadWorkPlatforms(ctx, []claimSubject{subj})
+		if err != nil {
+			return nil, err
+		}
+		detail.Platforms = platforms[work.ID]
+	}
+
+	if opts.withRelations {
+		relations, err := s.loadWorkRelations(ctx, workID)
+		if err != nil {
+			return nil, err
+		}
+		detail.Relations = relations
+	}
+
+	if want("series_siblings") {
+		siblings, err := s.loadSeriesSiblings(ctx, workID)
+		if err != nil {
+			return nil, err
+		}
+		detail.SeriesSiblings = siblings
+	}
+	return detail, nil
+}
+
+type claimSubject struct {
+	WorkID int64
+}
+
+func (s *ReadService) loadWorkReleases(ctx context.Context, workID int64, includeHidden bool) ([]ReleaseDetail, error) {
+	db := s.db.WithContext(ctx)
 	var releases []model.CatalogRelease
 	relQ := db.Where("work_id = ?", workID).Order("id")
 	if includeHidden {
@@ -249,145 +420,41 @@ func (s *ReadService) loadWorkDetail(ctx context.Context, workID int64, spoilers
 	if err := relQ.Find(&releases).Error; err != nil {
 		return nil, err
 	}
-	anchorsByRelease := map[int64][]AnchorDetail{}
-	if len(releases) > 0 {
-		relIDs := make([]int64, len(releases))
-		for i, r := range releases {
-			relIDs[i] = r.ID
-		}
-		var arows []struct {
-			EntityID   int64
-			Source     string
-			ExternalID string
-			LinkKind   int16
-			MatchedBy  string
-		}
-		// Dead anchors are dropped here rather than downstream: this loader feeds
-		// the release anchor rows of every read face at once, and the previous
-		// shape filtered them only where release anchors fold into work-level
-		// refs[] — so releases[].refs[] on the public face kept rendering an
-		// anchor whose upstream record no longer exists.
-		if err := db.Raw(`SELECT r.entity_id, s.key AS source, r.external_id, r.link_kind, r.matched_by
-			FROM catalog_external_ref r JOIN catalog_source s ON s.id = r.source_id
-			WHERE r.entity_type = ? AND r.entity_id IN ? AND r.dead_at IS NULL
-			ORDER BY r.link_kind, s.key`, model.EntityTypeRelease, relIDs).Scan(&arows).Error; err != nil {
-			return nil, err
-		}
-		for _, a := range arows {
-			anchorsByRelease[a.EntityID] = append(anchorsByRelease[a.EntityID],
-				AnchorDetail{Source: a.Source, ExternalID: a.ExternalID, LinkKind: a.LinkKind, MatchedBy: a.MatchedBy})
-		}
+	if len(releases) == 0 {
+		return nil, nil
 	}
-	for _, r := range releases {
-		detail.Releases = append(detail.Releases, ReleaseDetail{Release: r, Anchors: anchorsByRelease[r.ID]})
+	relIDs := make([]int64, len(releases))
+	for i, r := range releases {
+		relIDs[i] = r.ID
 	}
-
-	if err := db.Raw(`SELECT wl.label_id, l.display_name, l.kind AS label_kind, wl.kind AS kind, l.lang, l.logo_hash
-		FROM catalog_work_label wl JOIN catalog_label l ON l.id = wl.label_id AND l.deleted_at IS NULL
-		WHERE wl.work_id = ? ORDER BY wl.kind, l.display_name`, workID).Scan(&detail.Labels).Error; err != nil {
-		return nil, err
-	}
-
-	var workRefs []struct {
+	var arows []struct {
+		EntityID   int64
 		Source     string
 		ExternalID string
+		LinkKind   int16
+		MatchedBy  string
 	}
-	if err := db.Raw(`SELECT s.key AS source, r.external_id
+	// Dead anchors are dropped here rather than downstream: this loader feeds
+	// the release anchor rows of every read face at once, and the previous
+	// shape filtered them only where release anchors fold into work-level
+	// refs[] — so releases[].refs[] on the public face kept rendering an
+	// anchor whose upstream record no longer exists.
+	if err := db.Raw(`SELECT r.entity_id, s.key AS source, r.external_id, r.link_kind, r.matched_by
 		FROM catalog_external_ref r JOIN catalog_source s ON s.id = r.source_id
-		WHERE r.entity_type = ? AND r.entity_id = ? AND r.link_kind = ? AND r.dead_at IS NULL
-		ORDER BY s.key`, model.EntityTypeWork, workID, model.LinkKindExact).Scan(&workRefs).Error; err != nil {
+		WHERE r.entity_type = ? AND r.entity_id IN ? AND r.dead_at IS NULL
+		ORDER BY r.link_kind, s.key`, model.EntityTypeRelease, relIDs).Scan(&arows).Error; err != nil {
 		return nil, err
 	}
-	for _, wr := range workRefs {
-		detail.Refs = append(detail.Refs, RefDetail{Source: wr.Source, ExternalID: wr.ExternalID, EntityType: model.EntityTypeWork})
+	anchorsByRelease := make(map[int64][]AnchorDetail, len(releases))
+	for _, a := range arows {
+		anchorsByRelease[a.EntityID] = append(anchorsByRelease[a.EntityID],
+			AnchorDetail{Source: a.Source, ExternalID: a.ExternalID, LinkKind: a.LinkKind, MatchedBy: a.MatchedBy})
 	}
-	for _, rd := range detail.Releases {
-		for _, a := range rd.Anchors {
-			if a.LinkKind == model.LinkKindExact {
-				detail.Refs = append(detail.Refs, RefDetail{
-					Source: a.Source, ExternalID: a.ExternalID,
-					EntityType: model.EntityTypeRelease, ReleaseID: rd.Release.ID,
-				})
-			}
-		}
+	out := make([]ReleaseDetail, 0, len(releases))
+	for _, r := range releases {
+		out = append(out, ReleaseDetail{Release: r, Anchors: anchorsByRelease[r.ID]})
 	}
-
-	chars, err := s.loadWorkCharacters(ctx, workID)
-	if err != nil {
-		return nil, err
-	}
-	detail.Characters = chars
-
-	intros, err := s.loadWorkIntros(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
-	}
-	detail.Intros = intros[work.ID]
-
-	covers, err := s.loadWorkCovers(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
-	}
-	detail.Covers = covers[work.ID]
-
-	shots, err := s.loadWorkScreenshots(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
-	}
-	detail.Screenshots = shots[work.ID]
-
-	ratings, err := s.loadWorkRatings(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
-	}
-	detail.Ratings = ratings[work.ID]
-
-	tags, err := s.loadWorkTags(ctx, []claimSubject{subj}, spoilers)
-	if err != nil {
-		return nil, err
-	}
-	detail.Tags = tags[work.ID]
-
-	popularity, err := s.loadWorkPopularity(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
-	}
-	detail.Popularity = popularity[work.ID]
-
-	playtimes, err := s.loadWorkPlaytimes(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
-	}
-	detail.Playtimes = playtimes[work.ID]
-
-	series, err := s.loadWorkSeries(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
-	}
-	detail.Series = series[work.ID]
-
-	platforms, err := s.loadWorkPlatforms(ctx, []claimSubject{subj})
-	if err != nil {
-		return nil, err
-	}
-	detail.Platforms = platforms[work.ID]
-
-	relations, err := s.loadWorkRelations(ctx, workID)
-	if err != nil {
-		return nil, err
-	}
-	detail.Relations = relations
-
-	siblings, err := s.loadSeriesSiblings(ctx, workID)
-	if err != nil {
-		return nil, err
-	}
-	detail.SeriesSiblings = siblings
-	return detail, nil
-}
-
-type claimSubject struct {
-	WorkID int64
+	return out, nil
 }
 
 func (s *ReadService) loadWorkIntros(ctx context.Context, subjects []claimSubject) (map[int64][]WorkIntroRow, error) {
@@ -554,9 +621,11 @@ func (s *ReadService) loadWorkCharacters(ctx context.Context, workID int64) ([]W
 		FigureHash   *string `gorm:"column:figure_hash"`
 		CreditNameID int64   `gorm:"column:credit_name_id"`
 		Name         string  `gorm:"column:name"`
+		NameLang     string  `gorm:"column:name_lang"`
+		NameLatin    *string `gorm:"column:name_latin"`
 	}
 	if err := db.Raw(`SELECT DISTINCT c.character_id, ch.display_name, ch.latin, ch.gender, ch.image_hash, ch.figure_hash,
-		cn.id AS credit_name_id, cn.name
+		cn.id AS credit_name_id, cn.name, cn.lang AS name_lang, cn.latin AS name_latin
 		FROM catalog_credit c
 		JOIN catalog_character ch ON ch.id = c.character_id
 		JOIN catalog_credit_name cn ON cn.id = c.credit_name_id
@@ -583,7 +652,7 @@ func (s *ReadService) loadWorkCharacters(ctx context.Context, workID int64) ([]W
 			}
 			byID[c.CharacterID] = row
 		}
-		row.Va = append(row.Va, WorkCharacterVARow{CreditNameID: c.CreditNameID, Name: c.Name})
+		row.Va = append(row.Va, WorkCharacterVARow{CreditNameID: c.CreditNameID, Name: c.Name, Lang: c.NameLang, Latin: c.NameLatin})
 	}
 
 	out := make([]WorkCharacterRow, 0, len(byID))

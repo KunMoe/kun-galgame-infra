@@ -152,7 +152,10 @@ func buildWorkResponse(detail *service.WorkDetail, votes map[int64]service.Cover
 		resp.Work.ProductWorkID = *detail.Work.ProductWorkID
 	}
 	for _, t := range detail.Titles {
-		resp.Titles = append(resp.Titles, dto.WorkTitle{Lang: t.Lang, Title: t.Title, Latin: t.Latin, Kind: t.Kind})
+		resp.Titles = append(resp.Titles, dto.WorkTitle{
+			Lang: t.Lang, Title: t.Title, Latin: t.Latin, Kind: t.Kind,
+			Machine: t.Provenance == model.WorkTitleProvenanceMachine,
+		})
 	}
 	for _, rd := range detail.Releases {
 		rb := dto.ReleaseBrief{ID: rd.Release.ID, Kind: rd.Release.Kind, Hidden: rd.Release.DeletedAt.Valid}

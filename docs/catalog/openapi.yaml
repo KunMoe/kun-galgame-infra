@@ -3052,6 +3052,9 @@ components:
           type: string
         latin:
           type: string
+        machine:
+          description: true if this title is an LLM machine translation (no source published one for this language); omitted for source rows
+          type: boolean
         title:
           type: string
       required:

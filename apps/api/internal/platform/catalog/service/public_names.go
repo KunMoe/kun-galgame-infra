@@ -46,39 +46,215 @@ type displayAlias struct {
 }
 
 func (s *PublicService) entityAliases(ctx context.Context, src aliasSource, ownerID int64) ([]displayAlias, error) {
+	grouped, err := s.entityAliasesBatch(ctx, src, []int64{ownerID})
+	if err != nil {
+		return nil, err
+	}
+	return grouped[ownerID], nil
+}
+
+func (s *PublicService) entityAliasesBatch(ctx context.Context, src aliasSource, ownerIDs []int64) (map[int64][]displayAlias, error) {
+	out := make(map[int64][]displayAlias, len(ownerIDs))
+	if len(ownerIDs) == 0 {
+		return out, nil
+	}
 	live := ""
 	if src.live != "" {
 		live = " AND " + src.live
 	}
 	q := fmt.Sprintf(`
-		SELECT a.name, a.lang, a.kind, a.provenance,
+		SELECT a.%s AS owner_id, a.name, a.lang, a.kind, a.provenance,
 		       a.is_primary_for_locale AS is_primary,
 		       (a.name = o.%s) AS is_display
 		FROM %s a
 		JOIN %s o ON o.id = a.%s
-		WHERE a.%s = ? AND a.kind <> ?%s
+		WHERE a.%s IN ? AND a.kind <> ?%s
 		ORDER BY a.name, a.id`,
-		src.ownerNameCol, src.table, src.ownerTable, src.ownerCol, src.ownerCol, live)
+		src.ownerCol, src.ownerNameCol, src.table, src.ownerTable, src.ownerCol, src.ownerCol, live)
 
-	var rows []displayAlias
-	if err := s.db.WithContext(ctx).Raw(q, ownerID, model.AliasKindSearchHint).Scan(&rows).Error; err != nil {
+	var rows []struct {
+		OwnerID    int64  `gorm:"column:owner_id"`
+		Name       string `gorm:"column:name"`
+		Lang       string `gorm:"column:lang"`
+		Kind       int16  `gorm:"column:kind"`
+		IsPrimary  bool   `gorm:"column:is_primary"`
+		IsDisplay  bool   `gorm:"column:is_display"`
+		Provenance int16  `gorm:"column:provenance"`
+	}
+	if err := s.db.WithContext(ctx).Raw(q, ownerIDs, model.AliasKindSearchHint).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
-	return rows, nil
+	for _, r := range rows {
+		out[r.OwnerID] = append(out[r.OwnerID], displayAlias{
+			Name: r.Name, Lang: r.Lang, Kind: r.Kind,
+			IsPrimary: r.IsPrimary, IsDisplay: r.IsDisplay, Provenance: r.Provenance,
+		})
+	}
+	return out, nil
 }
 
-func flatAliases(rows []displayAlias) []string {
-	out := make([]string, 0, len(rows))
+func (s *PublicService) localizedFor(ctx context.Context, src aliasSource, ownerIDs []int64) (map[int64]map[string]dto.PublicLocalizedName, error) {
+	grouped, err := s.entityAliasesBatch(ctx, src, ownerIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[int64]map[string]dto.PublicLocalizedName, len(grouped))
+	for id, rows := range grouped {
+		out[id] = localizedNames(rows)
+	}
+	return out, nil
+}
+
+func (s *PublicService) LocalizedForEntities(ctx context.Context, entityType string, ids []int64) (map[int64]map[string]dto.PublicLocalizedName, error) {
+	var src aliasSource
+	switch entityType {
+	case "character":
+		src = characterAliasSource
+	case "label":
+		src = labelAliasSource
+	case "name":
+		src = creditNameAliasSource
+	default:
+		return map[int64]map[string]dto.PublicLocalizedName{}, nil
+	}
+	return s.localizedFor(ctx, src, ids)
+}
+
+type WorkNameBlock struct {
+	Localized map[string]dto.PublicLocalizedName
+}
+
+func (s *PublicService) WorkNamesByID(ctx context.Context, ids []int64) (map[int64]WorkNameBlock, error) {
+	titles, err := s.workTitlesFor(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[int64]WorkNameBlock, len(titles))
+	for id, rows := range titles {
+		out[id] = WorkNameBlock{Localized: workLocalized(rows)}
+	}
+	return out, nil
+}
+
+func locOrEmpty(m map[string]dto.PublicLocalizedName) map[string]dto.PublicLocalizedName {
+	if m == nil {
+		return map[string]dto.PublicLocalizedName{}
+	}
+	return m
+}
+
+func (s *PublicService) workTitlesFor(ctx context.Context, ids []int64) (map[int64][]WorkTitleRow, error) {
+	titles := make(map[int64][]WorkTitleRow, len(ids))
+	if len(ids) == 0 {
+		return titles, nil
+	}
+	if err := s.read.nativeWorkTitles(ctx, ids, titles, false); err != nil {
+		return nil, err
+	}
+	return titles, nil
+}
+
+func (s *PublicService) fillWorkBriefNames(ctx context.Context, briefs ...*dto.PublicWorkBrief) error {
+	ids := make([]int64, 0, len(briefs))
+	for _, b := range briefs {
+		if b != nil {
+			ids = append(ids, b.ID)
+		}
+	}
+	titles, err := s.workTitlesFor(ctx, ids)
+	if err != nil {
+		return err
+	}
+	for _, b := range briefs {
+		if b == nil {
+			continue
+		}
+		rows := titles[b.ID]
+		b.Latin = workLatin(rows, b.DisplayName)
+		b.Localized = workLocalized(rows)
+	}
+	return nil
+}
+
+// workLocalized is localizedNames for work titles: same first-row-wins scan over
+// rows nativeWorkTitles already ordered by (provenance, kind, id), so a source
+// title beats a machine one and official beats alias inside a locale.
+func workLocalized(rows []WorkTitleRow) map[string]dto.PublicLocalizedName {
+	out := make(map[string]dto.PublicLocalizedName, len(rows))
+	for _, t := range rows {
+		locale, ok := canonicalLocale(t.Lang)
+		if !ok {
+			continue
+		}
+		// The kind check precedes the slot check on purpose: the detail face
+		// loads titles withHints=true, and claiming a locale for a search_hint
+		// row would drop the real title behind it.
+		kind, ok := titleKindKey(t.Kind)
+		if !ok {
+			continue
+		}
+		if _, taken := out[locale]; taken {
+			continue
+		}
+		out[locale] = dto.PublicLocalizedName{
+			Value: t.Title, Kind: kind,
+			Machine: t.Provenance == model.WorkTitleProvenanceMachine,
+		}
+	}
+	return out
+}
+
+func workLatin(rows []WorkTitleRow, displayName string) string {
+	for _, t := range rows {
+		if t.Title == displayName {
+			return t.Latin
+		}
+	}
+	return ""
+}
+
+func (s *PublicService) fillLabelLocalized(ctx context.Context, blocks ...[]dto.PublicWorkLabel) error {
+	var ids []int64
+	for _, blk := range blocks {
+		for i := range blk {
+			ids = append(ids, blk[i].ID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	loc, err := s.localizedFor(ctx, labelAliasSource, ids)
+	if err != nil {
+		return err
+	}
+	for _, blk := range blocks {
+		for i := range blk {
+			blk[i].Localized = locOrEmpty(loc[blk[i].ID])
+		}
+	}
+	return nil
+}
+
+func richAliases(rows []displayAlias) []dto.PublicAlias {
+	out := make([]dto.PublicAlias, 0, len(rows))
 	seen := make(map[string]struct{}, len(rows))
 	for _, r := range rows {
 		if r.IsDisplay {
 			continue
 		}
-		if _, dup := seen[r.Name]; dup {
+		lang := r.Lang
+		if canon, ok := canonicalLocale(r.Lang); ok {
+			lang = canon
+		}
+		key := r.Name + "\x00" + lang
+		if _, dup := seen[key]; dup {
 			continue
 		}
-		seen[r.Name] = struct{}{}
-		out = append(out, r.Name)
+		seen[key] = struct{}{}
+		out = append(out, dto.PublicAlias{
+			Value: r.Name, Lang: lang, Kind: aliasKindKey(r.Kind),
+			Machine: r.Provenance == model.AliasProvenanceMachine,
+		})
 	}
 	return out
 }
@@ -87,12 +263,6 @@ func localizedNames(rows []displayAlias) map[string]dto.PublicLocalizedName {
 	out := make(map[string]dto.PublicLocalizedName, len(rows))
 	best := make(map[string]displayAlias, len(rows))
 	for _, r := range rows {
-		// A machine-translated name may be listed and searched, but never
-		// presented as THE localized name (refs/proj/178 §2: reviewed MT
-		// names enter aliases[] only; localized{} stays source-provenance).
-		if r.Provenance == model.AliasProvenanceMachine {
-			continue
-		}
 		locale, ok := canonicalLocale(r.Lang)
 		if !ok {
 			continue
@@ -102,7 +272,10 @@ func localizedNames(rows []displayAlias) map[string]dto.PublicLocalizedName {
 			continue
 		}
 		best[locale] = r
-		out[locale] = dto.PublicLocalizedName{Value: r.Name, Kind: aliasKindKey(r.Kind)}
+		out[locale] = dto.PublicLocalizedName{
+			Value: r.Name, Kind: aliasKindKey(r.Kind),
+			Machine: r.Provenance == model.AliasProvenanceMachine,
+		}
 	}
 	return out
 }
@@ -161,7 +334,15 @@ func isASCIIAlphanumeric(s string) bool {
 	return true
 }
 
+// Machine rows fill a locale slot only when it has no source-provenance name
+// (2026-08-18 revision of the refs/proj/178 §2 gate, which excluded them from
+// localized{} entirely; the fill-in carries machine=true on the wire).
 func aliasBeats(candidate, incumbent displayAlias) bool {
+	cm := candidate.Provenance == model.AliasProvenanceMachine
+	im := incumbent.Provenance == model.AliasProvenanceMachine
+	if cm != im {
+		return im
+	}
 	if candidate.IsPrimary != incumbent.IsPrimary {
 		return candidate.IsPrimary
 	}
