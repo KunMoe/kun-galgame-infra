@@ -13,7 +13,7 @@
 
 Get one character
 
-Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits adds art and trait blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.
+Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits,aliases,intros,refs adds art, trait, name, description and anchor blocks. spoiler=none|minor|major is the ceiling of the traits block and defaults to none. Merged ids are 404 ENTITY_MERGED. Requires an application key.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -26,6 +26,7 @@ Character detail. view=full adds gender, birthday, measurements, blood_type, ins
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `spoiler` | query | 否 | string | Spoiler ceiling for the traits block: none (default), minor or major. Closed vocabulary; an unknown value is 400. Trait rows above the ceiling are not returned. Only the VNDB-derived trait vocabulary carries a spoiler level, and the default is the safe ceiling. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/characters/value" \

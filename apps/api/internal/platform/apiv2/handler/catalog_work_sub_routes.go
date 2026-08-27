@@ -11,11 +11,18 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 )
 
-type workSubInput struct {
+// Exported for the same reason as ResourceIDInput: huma drops the params of an
+// unexported embedded input struct without a word.
+type WorkSubInput struct {
 	ID     string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Decimal catalog work id."`
 	NSFW   string `query:"nsfw" maxLength:"8" doc:"true includes r18. false or absent hides r18. Only true or false."`
 	Cursor string `query:"cursor" maxLength:"512" doc:"Opaque keyset cursor from a prior next_cursor. Must start with cur_."`
 	Limit  string `query:"limit" maxLength:"8" doc:"Page size 1-100, default 20."`
+}
+
+type workTagsInput struct {
+	WorkSubInput
+	Spoiler string `query:"spoiler" maxLength:"16" doc:"Spoiler ceiling for this page: none (default), minor or major. Closed vocabulary; an unknown value is 400. Tag rows above the ceiling are not returned. Only the VNDB-derived tag vocabulary carries a spoiler level — Bangumi and DLsite folksonomy publish no spoiler concept, so those rows read none — and the default is the safe ceiling."`
 }
 
 func registerWorkSubs(api huma.API, cat *Catalog) {
@@ -27,7 +34,7 @@ func registerWorkSubs(api huma.API, cat *Catalog) {
 	catalog := []string{"catalog"}
 	huma.Register(api, subOp("getCatalogWorkCovers", "/v2/catalog/works/{id}/covers", "List covers of one work", "Work cover rows. Same items as include=covers. Requires an application key.", errs, catalog), getWorkCovers(cat))
 	huma.Register(api, subOp("getCatalogWorkScreenshots", "/v2/catalog/works/{id}/screenshots", "List screenshots of one work", "Work screenshots. Same items as include=screenshots. Requires an application key.", errs, catalog), getWorkScreenshots(cat))
-	huma.Register(api, subOp("getCatalogWorkTags", "/v2/catalog/works/{id}/tags", "List tags of one work", "Tags attached to this work. Same items as include=tags. Requires an application key.", errs, catalog), getWorkTags(cat))
+	huma.Register(api, subOp("getCatalogWorkTags", "/v2/catalog/works/{id}/tags", "List tags of one work", "Tags attached to this work. Same items as include=tags. spoiler=none|minor|major is the ceiling of this page and defaults to none, exactly as on the work detail face. Requires an application key.", errs, catalog), getWorkTags(cat))
 	huma.Register(api, subOp("getCatalogWorkCharacters", "/v2/catalog/works/{id}/characters", "List characters of one work", "Roster characters. Same items as include=characters. Requires an application key.", errs, catalog), getWorkCharacters(cat))
 	huma.Register(api, subOp("getCatalogWorkCredits", "/v2/catalog/works/{id}/credits", "List credits of one work", "Credits grouped by role. Same items as include=credits. Requires an application key.", errs, catalog), getWorkCredits(cat))
 	huma.Register(api, subOp("getCatalogWorkReleases", "/v2/catalog/works/{id}/releases", "List releases of one work", "Releases of this work. Same items as include=releases. Requires an application key.", errs, catalog), getWorkReleases(cat))
@@ -59,9 +66,9 @@ type listWorkSeriesOut struct{ Body repr.List[repr.WorkSeriesRef] }
 type listLinksOut struct{ Body repr.List[repr.WorkLink] }
 type listWorkEnginesOut struct{ Body repr.List[repr.WorkEngineRef] }
 
-func parseWorkSub(ctx context.Context, in *workSubInput) (int64, bool, string, int, error) {
+func parseWorkSub(ctx context.Context, in *WorkSubInput) (int64, bool, string, int, error) {
 	if in == nil {
-		in = &workSubInput{}
+		in = &WorkSubInput{}
 	}
 	id, ok := repr.ParseID(in.ID)
 	if !ok {
@@ -76,8 +83,8 @@ func parseWorkSub(ctx context.Context, in *workSubInput) (int64, bool, string, i
 	return id, q.NSFW, q.Cursor, q.Limit, nil
 }
 
-func getWorkCovers(cat *Catalog) func(context.Context, *workSubInput) (*listCoversOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listCoversOut, error) {
+func getWorkCovers(cat *Catalog) func(context.Context, *WorkSubInput) (*listCoversOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listCoversOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -90,8 +97,8 @@ func getWorkCovers(cat *Catalog) func(context.Context, *workSubInput) (*listCove
 	}
 }
 
-func getWorkScreenshots(cat *Catalog) func(context.Context, *workSubInput) (*listScreenshotsOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listScreenshotsOut, error) {
+func getWorkScreenshots(cat *Catalog) func(context.Context, *WorkSubInput) (*listScreenshotsOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listScreenshotsOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -104,13 +111,20 @@ func getWorkScreenshots(cat *Catalog) func(context.Context, *workSubInput) (*lis
 	}
 }
 
-func getWorkTags(cat *Catalog) func(context.Context, *workSubInput) (*listWorkTagsOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listWorkTagsOut, error) {
-		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
+func getWorkTags(cat *Catalog) func(context.Context, *workTagsInput) (*listWorkTagsOut, error) {
+	return func(ctx context.Context, in *workTagsInput) (*listWorkTagsOut, error) {
+		if in == nil {
+			in = &workTagsInput{}
+		}
+		id, nsfw, cur, limit, err := parseWorkSub(ctx, &in.WorkSubInput)
 		if err != nil {
 			return nil, err
 		}
-		page, gerr := cat.WorkTags(ctx, id, nsfw, cur, limit)
+		spoiler, serr := parseSpoiler(ctx, in.Spoiler)
+		if serr != nil {
+			return nil, serr
+		}
+		page, gerr := cat.WorkTags(ctx, id, nsfw, spoiler, cur, limit)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -118,8 +132,8 @@ func getWorkTags(cat *Catalog) func(context.Context, *workSubInput) (*listWorkTa
 	}
 }
 
-func getWorkCharacters(cat *Catalog) func(context.Context, *workSubInput) (*listWorkCharsOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listWorkCharsOut, error) {
+func getWorkCharacters(cat *Catalog) func(context.Context, *WorkSubInput) (*listWorkCharsOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listWorkCharsOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -132,8 +146,8 @@ func getWorkCharacters(cat *Catalog) func(context.Context, *workSubInput) (*list
 	}
 }
 
-func getWorkCredits(cat *Catalog) func(context.Context, *workSubInput) (*listCreditsOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listCreditsOut, error) {
+func getWorkCredits(cat *Catalog) func(context.Context, *WorkSubInput) (*listCreditsOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listCreditsOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -146,8 +160,8 @@ func getWorkCredits(cat *Catalog) func(context.Context, *workSubInput) (*listCre
 	}
 }
 
-func getWorkReleases(cat *Catalog) func(context.Context, *workSubInput) (*listReleasesOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listReleasesOut, error) {
+func getWorkReleases(cat *Catalog) func(context.Context, *WorkSubInput) (*listReleasesOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listReleasesOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -160,8 +174,8 @@ func getWorkReleases(cat *Catalog) func(context.Context, *workSubInput) (*listRe
 	}
 }
 
-func getWorkIntros(cat *Catalog) func(context.Context, *workSubInput) (*listIntrosOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listIntrosOut, error) {
+func getWorkIntros(cat *Catalog) func(context.Context, *WorkSubInput) (*listIntrosOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listIntrosOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -174,8 +188,8 @@ func getWorkIntros(cat *Catalog) func(context.Context, *workSubInput) (*listIntr
 	}
 }
 
-func getWorkRatings(cat *Catalog) func(context.Context, *workSubInput) (*listRatingsOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listRatingsOut, error) {
+func getWorkRatings(cat *Catalog) func(context.Context, *WorkSubInput) (*listRatingsOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listRatingsOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -188,8 +202,8 @@ func getWorkRatings(cat *Catalog) func(context.Context, *workSubInput) (*listRat
 	}
 }
 
-func getWorkRelations(cat *Catalog) func(context.Context, *workSubInput) (*listRelationsOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listRelationsOut, error) {
+func getWorkRelations(cat *Catalog) func(context.Context, *WorkSubInput) (*listRelationsOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listRelationsOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -202,8 +216,8 @@ func getWorkRelations(cat *Catalog) func(context.Context, *workSubInput) (*listR
 	}
 }
 
-func getWorkSeries(cat *Catalog) func(context.Context, *workSubInput) (*listWorkSeriesOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listWorkSeriesOut, error) {
+func getWorkSeries(cat *Catalog) func(context.Context, *WorkSubInput) (*listWorkSeriesOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listWorkSeriesOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -216,8 +230,8 @@ func getWorkSeries(cat *Catalog) func(context.Context, *workSubInput) (*listWork
 	}
 }
 
-func getWorkLinks(cat *Catalog) func(context.Context, *workSubInput) (*listLinksOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listLinksOut, error) {
+func getWorkLinks(cat *Catalog) func(context.Context, *WorkSubInput) (*listLinksOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listLinksOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -230,8 +244,8 @@ func getWorkLinks(cat *Catalog) func(context.Context, *workSubInput) (*listLinks
 	}
 }
 
-func getWorkEngines(cat *Catalog) func(context.Context, *workSubInput) (*listWorkEnginesOut, error) {
-	return func(ctx context.Context, in *workSubInput) (*listWorkEnginesOut, error) {
+func getWorkEngines(cat *Catalog) func(context.Context, *WorkSubInput) (*listWorkEnginesOut, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listWorkEnginesOut, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err

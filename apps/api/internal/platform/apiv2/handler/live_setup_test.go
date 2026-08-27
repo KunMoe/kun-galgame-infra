@@ -86,6 +86,7 @@ type liveFix struct {
 	NewsItem                            int64
 	CompanyEmpty, TagSexual, Attributed int64
 	CompanyLogo, NSFWMember, Sibling    int64
+	TraitMinor, CharacterNoLang         int64
 	AnchorExt                           string
 }
 
@@ -213,7 +214,8 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		catalog_character, catalog_credit_name, catalog_person, catalog_character_trait,
 		catalog_work_label, catalog_label_alias, catalog_series_member, catalog_character_trait_link,
 		catalog_work_rating, catalog_tag_intro, catalog_series_intro, catalog_person_intro,
-		catalog_name_alias, catalog_credit,
+		catalog_name_alias, catalog_credit, catalog_work_tag, catalog_label_relation,
+		catalog_character_alias, catalog_character_intro,
 		edit_revision, edit_proposal, edit_proposal_amendment
 		RESTART IDENTITY CASCADE`).Error; err != nil {
 		return liveFix{}, err
@@ -316,7 +318,8 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 
-	empt := &model.CatalogLabel{DisplayName: "Empty Brand", Lang: "ja", Kind: model.LabelKindGameBrand, FieldProvenance: empty}
+	// Lang deliberately unset: it is the null-side control for company.lang.
+	empt := &model.CatalogLabel{DisplayName: "Empty Brand", Kind: model.LabelKindGameBrand, FieldProvenance: empty}
 	if err := db.Create(empt).Error; err != nil {
 		return fx, err
 	}
@@ -342,6 +345,12 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 			return fx, err
 		}
 	}
+	if err := db.Create(&model.CatalogLabelRelation{
+		LabelID: co.ID, OtherLabelID: logo.ID,
+		Relation: model.LabelRelationParent, SourceID: 2, MatchedBy: "test",
+	}).Error; err != nil {
+		return fx, err
+	}
 
 	tg := &model.CatalogTag{Name: "live-tag", Tier: model.TagTierCore, Kind: model.TagKindContent}
 	if err := db.Create(tg).Error; err != nil {
@@ -357,6 +366,16 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 
 	if err := db.Create(&model.CatalogTagIntro{TagID: tg.ID, Lang: "zh-Hans", Intro: "标签说明", SourceID: 1}).Error; err != nil {
 		return fx, err
+	}
+
+	for _, wt := range []*model.CatalogWorkTag{
+		{WorkID: w.ID, Name: "live-tag", Count: 9, SourceID: 2, Spoiler: 0},
+		{WorkID: w.ID, Name: "live-tag-minor", Count: 5, SourceID: 2, Spoiler: 1},
+		{WorkID: w.ID, Name: "live-tag-major", Count: 3, SourceID: 2, Spoiler: 2},
+	} {
+		if err := db.Create(wt).Error; err != nil {
+			return fx, err
+		}
 	}
 
 	se := &model.CatalogSeries{DisplayName: "Live Series", SourceID: 2, ExternalID: "s-live-1"}
@@ -414,6 +433,30 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 	fx.Character = ch.ID
+	if err := db.Create(&model.CatalogCharacterAlias{
+		CharacterID: ch.ID, Name: "Live Char Alias", Lang: "en",
+		Kind: model.AliasKindTranslation, Provenance: model.AliasProvenanceSource,
+	}).Error; err != nil {
+		return fx, err
+	}
+	if err := db.Create(&model.CatalogCharacterIntro{
+		CharacterID: ch.ID, Lang: "zh-Hans", Intro: "角色简介", SourceID: 2,
+	}).Error; err != nil {
+		return fx, err
+	}
+	if err := db.Create(&model.CatalogExternalRef{
+		EntityType: model.EntityTypeCharacter, EntityID: ch.ID, SourceID: 2,
+		ExternalID: "c-live-1", LinkKind: model.LinkKindExact, MatchedBy: "test",
+	}).Error; err != nil {
+		return fx, err
+	}
+
+	// Lang deliberately unset: it is the null-side control for character.lang.
+	chNoLang := &model.CatalogCharacter{DisplayName: "Live Char No Lang", Extra: empty, FieldProvenance: empty}
+	if err := db.Create(chNoLang).Error; err != nil {
+		return fx, err
+	}
+	fx.CharacterNoLang = chNoLang.ID
 
 	birthY, birthM, gender := int16(1979), int16(4), model.GenderFemale
 	pe := &model.CatalogPerson{
@@ -454,7 +497,8 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 
-	sib := &model.CatalogCreditName{PersonID: &pe.ID, Name: "Live Credit Sibling", Lang: "ja", Kind: model.CreditNameKindPenName, FieldProvenance: empty}
+	// Lang deliberately unset: it is the null-side control for credit_name.lang.
+	sib := &model.CatalogCreditName{PersonID: &pe.ID, Name: "Live Credit Sibling", Kind: model.CreditNameKindPenName, FieldProvenance: empty}
 	if err := db.Create(sib).Error; err != nil {
 		return fx, err
 	}
@@ -491,6 +535,19 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.Trait = tr.ID
 	if err := db.Create(&model.CatalogCharacterTraitLink{CharacterID: ch.ID, TraitID: tr.ID, SpoilerLevel: 0}).Error; err != nil {
+		return fx, err
+	}
+
+	// Sorted after "Live Trait" by the trait read's ORDER BY group_tid, gorder, name,
+	// so the default-ceiling assertions that index traits[0] keep their row.
+	trMinor := &model.CatalogCharacterTrait{
+		VndbTID: "i99998", Name: "Live Trait Minor", GroupTID: "i1", Alias: "", Description: "",
+	}
+	if err := db.Create(trMinor).Error; err != nil {
+		return fx, err
+	}
+	fx.TraitMinor = trMinor.ID
+	if err := db.Create(&model.CatalogCharacterTraitLink{CharacterID: ch.ID, TraitID: trMinor.ID, SpoilerLevel: 1}).Error; err != nil {
 		return fx, err
 	}
 

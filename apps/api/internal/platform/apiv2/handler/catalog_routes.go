@@ -6,18 +6,35 @@ import (
 	"net/http"
 
 	"api/internal/platform/apiv2/collect"
+	"api/internal/platform/apiv2/parse"
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
+	"api/internal/platform/apiv2/vocab"
 
 	"github.com/danielgtaylor/huma/v2"
 )
 
-type resourceIDInput struct {
+// Exported only so it can be embedded: huma walks input structs with
+// reflect and skips every field where IsExported() is false, and an embedded
+// field takes its name from the type. With `resourceIDInput` embedded, id /
+// nsfw / view / include / fields vanished from BOTH the generated spec and
+// request binding, silently — the route still answered 200 with an empty id.
+type ResourceIDInput struct {
 	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Decimal catalog id."`
 	NSFW    string `query:"nsfw" maxLength:"8" doc:"true includes r18. false or absent hides r18. Only true or false."`
 	View    string `query:"view" maxLength:"16" doc:"basic (default) or full. Closed vocabulary."`
 	Include string `query:"include" maxLength:"1024" doc:"Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE."`
 	Fields  string `query:"fields" maxLength:"1024" doc:"Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept."`
+}
+
+type workDetailInput struct {
+	ResourceIDInput
+	Spoiler string `query:"spoiler" maxLength:"16" doc:"Spoiler ceiling for the tags block: none (default), minor or major. Closed vocabulary; an unknown value is 400. Tag rows above the ceiling are not returned. Only the VNDB-derived tag vocabulary carries a spoiler level — Bangumi and DLsite folksonomy publish no spoiler concept, so those rows read none — and the default is the safe ceiling."`
+}
+
+type characterDetailInput struct {
+	ResourceIDInput
+	Spoiler string `query:"spoiler" maxLength:"16" doc:"Spoiler ceiling for the traits block: none (default), minor or major. Closed vocabulary; an unknown value is 400. Trait rows above the ceiling are not returned. Only the VNDB-derived trait vocabulary carries a spoiler level, and the default is the safe ceiling."`
 }
 
 type getWorkOutput struct {
@@ -61,7 +78,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/works/{id}",
 		Summary:            "Get one catalog work",
-		Description:        "Work detail. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 404 without nsfw=true. Requires an application key.",
+		Description:        "Work detail. spoiler=none|minor|major is the ceiling of the tags block and defaults to none. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 404 without nsfw=true. Requires an application key.",
 		Tags:               catalog,
 		Errors:             authErrs,
 		SkipValidateParams: true,
@@ -71,7 +88,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/companies/{id}/graph",
 		Summary:            "Company family graph",
-		Description:        "Corporate-family nodes and directed edges around one company. Inverse relations are not emitted. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
+		Description:        "Corporate-family nodes and directed edges around one company. Inverse relations are not emitted. include= is validated against the company token set, so aliases, intros and links are accepted and answered without; only include=logo changes a node, adding the brand mark to the nodes that have one. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
 		Tags:               catalog,
 		Errors:             authErrs,
 		SkipValidateParams: true,
@@ -101,7 +118,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/characters/{id}",
 		Summary:            "Get one character",
-		Description:        "Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits adds art and trait blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
+		Description:        "Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits,aliases,intros,refs adds art, trait, name, description and anchor blocks. spoiler=none|minor|major is the ceiling of the traits block and defaults to none. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
 		Tags:               catalog,
 		Errors:             authErrs,
 		SkipValidateParams: true,
@@ -166,13 +183,20 @@ func registerCatalog(api huma.API, cat *Catalog) {
 	registerNews(api, cat)
 }
 
-func getCatalogWork(cat *Catalog) func(context.Context, *resourceIDInput) (*getWorkOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getWorkOutput, error) {
-		id, q, err := parseResource(ctx, in, collect.WorkSpec())
+func getCatalogWork(cat *Catalog) func(context.Context, *workDetailInput) (*getWorkOutput, error) {
+	return func(ctx context.Context, in *workDetailInput) (*getWorkOutput, error) {
+		if in == nil {
+			in = &workDetailInput{}
+		}
+		id, q, err := parseResource(ctx, &in.ResourceIDInput, collect.WorkSpec())
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetWork(ctx, id, q.NSFW, q.Include)
+		spoiler, serr := parseSpoiler(ctx, in.Spoiler)
+		if serr != nil {
+			return nil, serr
+		}
+		rec, gerr := cat.GetWork(ctx, id, q.NSFW, spoiler, q.Include)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -180,13 +204,13 @@ func getCatalogWork(cat *Catalog) func(context.Context, *resourceIDInput) (*getW
 	}
 }
 
-func getCatalogCompanyGraph(cat *Catalog) func(context.Context, *resourceIDInput) (*getCompanyGraphOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getCompanyGraphOutput, error) {
+func getCatalogCompanyGraph(cat *Catalog) func(context.Context, *ResourceIDInput) (*getCompanyGraphOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*getCompanyGraphOutput, error) {
 		id, q, err := parseResource(ctx, in, collect.CompanySpec())
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetCompanyGraph(ctx, id, q.NSFW)
+		rec, gerr := cat.GetCompanyGraph(ctx, id, q.NSFW, q.Include)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -194,8 +218,8 @@ func getCatalogCompanyGraph(cat *Catalog) func(context.Context, *resourceIDInput
 	}
 }
 
-func getCatalogCompany(cat *Catalog) func(context.Context, *resourceIDInput) (*getCompanyOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getCompanyOutput, error) {
+func getCatalogCompany(cat *Catalog) func(context.Context, *ResourceIDInput) (*getCompanyOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*getCompanyOutput, error) {
 		id, q, err := parseResource(ctx, in, collect.CompanySpec())
 		if err != nil {
 			return nil, err
@@ -208,8 +232,8 @@ func getCatalogCompany(cat *Catalog) func(context.Context, *resourceIDInput) (*g
 	}
 }
 
-func getCatalogCreditName(cat *Catalog) func(context.Context, *resourceIDInput) (*getCreditNameOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getCreditNameOutput, error) {
+func getCatalogCreditName(cat *Catalog) func(context.Context, *ResourceIDInput) (*getCreditNameOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*getCreditNameOutput, error) {
 		id, q, err := parseResource(ctx, in, collect.CreditNameSpec())
 		if err != nil {
 			return nil, err
@@ -222,13 +246,20 @@ func getCatalogCreditName(cat *Catalog) func(context.Context, *resourceIDInput) 
 	}
 }
 
-func getCatalogCharacter(cat *Catalog) func(context.Context, *resourceIDInput) (*getCharacterOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getCharacterOutput, error) {
-		id, q, err := parseResource(ctx, in, collect.CharacterSpec())
+func getCatalogCharacter(cat *Catalog) func(context.Context, *characterDetailInput) (*getCharacterOutput, error) {
+	return func(ctx context.Context, in *characterDetailInput) (*getCharacterOutput, error) {
+		if in == nil {
+			in = &characterDetailInput{}
+		}
+		id, q, err := parseResource(ctx, &in.ResourceIDInput, collect.CharacterSpec())
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetCharacter(ctx, id, q.NSFW, q.Include)
+		spoiler, serr := parseSpoiler(ctx, in.Spoiler)
+		if serr != nil {
+			return nil, serr
+		}
+		rec, gerr := cat.GetCharacter(ctx, id, q.NSFW, spoiler, q.Include)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -236,8 +267,8 @@ func getCatalogCharacter(cat *Catalog) func(context.Context, *resourceIDInput) (
 	}
 }
 
-func getCatalogTag(cat *Catalog) func(context.Context, *resourceIDInput) (*getTagOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getTagOutput, error) {
+func getCatalogTag(cat *Catalog) func(context.Context, *ResourceIDInput) (*getTagOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*getTagOutput, error) {
 		id, q, err := parseResource(ctx, in, collect.TagSpec())
 		if err != nil {
 			return nil, err
@@ -250,8 +281,8 @@ func getCatalogTag(cat *Catalog) func(context.Context, *resourceIDInput) (*getTa
 	}
 }
 
-func getCatalogSeries(cat *Catalog) func(context.Context, *resourceIDInput) (*getSeriesOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getSeriesOutput, error) {
+func getCatalogSeries(cat *Catalog) func(context.Context, *ResourceIDInput) (*getSeriesOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*getSeriesOutput, error) {
 		id, q, err := parseResource(ctx, in, collect.SeriesSpec())
 		if err != nil {
 			return nil, err
@@ -264,8 +295,8 @@ func getCatalogSeries(cat *Catalog) func(context.Context, *resourceIDInput) (*ge
 	}
 }
 
-func getCatalogEngine(cat *Catalog) func(context.Context, *resourceIDInput) (*getEngineOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getEngineOutput, error) {
+func getCatalogEngine(cat *Catalog) func(context.Context, *ResourceIDInput) (*getEngineOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*getEngineOutput, error) {
 		id, q, err := parseResource(ctx, in, collect.EngineSpec())
 		if err != nil {
 			return nil, err
@@ -278,8 +309,8 @@ func getCatalogEngine(cat *Catalog) func(context.Context, *resourceIDInput) (*ge
 	}
 }
 
-func getCatalogRelease(cat *Catalog) func(context.Context, *resourceIDInput) (*getReleaseOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getReleaseOutput, error) {
+func getCatalogRelease(cat *Catalog) func(context.Context, *ResourceIDInput) (*getReleaseOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*getReleaseOutput, error) {
 		id, q, err := parseResource(ctx, in, collect.ReleaseSpec())
 		if err != nil {
 			return nil, err
@@ -302,9 +333,9 @@ func getCatalogStats(cat *Catalog) func(context.Context, *struct{}) (*getStatsOu
 	}
 }
 
-func parseResource(ctx context.Context, in *resourceIDInput, spec collect.Spec) (int64, collect.Query, error) {
+func parseResource(ctx context.Context, in *ResourceIDInput, spec collect.Spec) (int64, collect.Query, error) {
 	if in == nil {
-		in = &resourceIDInput{}
+		in = &ResourceIDInput{}
 	}
 	id, ok := repr.ParseID(in.ID)
 	if !ok {
@@ -317,6 +348,18 @@ func parseResource(ctx context.Context, in *resourceIDInput, spec collect.Spec) 
 		return 0, collect.Query{}, withIdent(ctx, err)
 	}
 	return id, q, nil
+}
+
+func parseSpoiler(ctx context.Context, raw string) (int16, error) {
+	if raw == "" {
+		return 0, nil
+	}
+	key, err := parse.Enum(raw, "spoiler", vocab.Tokens("spoiler"))
+	if err != nil {
+		return 0, withIdent(ctx, err)
+	}
+	level, _ := repr.SpoilerFromKey(key)
+	return level, nil
 }
 
 func catalogErr(ctx context.Context, err error) error {

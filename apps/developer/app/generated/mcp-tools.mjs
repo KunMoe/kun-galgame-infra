@@ -12,7 +12,8 @@ export const mcpTools = [
       "nsfw",
       "view",
       "include",
-      "fields"
+      "fields",
+      "spoiler"
     ]
   },
   {
@@ -237,7 +238,8 @@ export const mcpTools = [
       "nsfw",
       "view",
       "include",
-      "fields"
+      "fields",
+      "spoiler"
     ]
   },
   {
@@ -393,7 +395,8 @@ export const mcpTools = [
       "id",
       "nsfw",
       "cursor",
-      "limit"
+      "limit",
+      "spoiler"
     ]
   },
   {

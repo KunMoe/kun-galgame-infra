@@ -13,7 +13,7 @@
 
 Get one catalog work
 
-Work detail. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 404 without nsfw=true. Requires an application key.
+Work detail. spoiler=none|minor|major is the ceiling of the tags block and defaults to none. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 404 without nsfw=true. Requires an application key.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -26,6 +26,7 @@ Work detail. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 40
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `spoiler` | query | 否 | string | Spoiler ceiling for the tags block: none (default), minor or major. Closed vocabulary; an unknown value is 400. Tag rows above the ceiling are not returned. Only the VNDB-derived tag vocabulary carries a spoiler level — Bangumi and DLsite folksonomy publish no spoiler concept, so those rows read none — and the default is the safe ceiling. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/works/value" \

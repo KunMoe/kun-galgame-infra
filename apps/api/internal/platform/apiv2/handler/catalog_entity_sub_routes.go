@@ -81,8 +81,8 @@ func registerCatalogEntityExtras(api huma.API, cat *Catalog) {
 	}, getCatalogTrait(cat))
 }
 
-func getCatalogCreditNameCredits(cat *Catalog) func(context.Context, *workSubInput) (*listNameCreditsOutput, error) {
-	return func(ctx context.Context, in *workSubInput) (*listNameCreditsOutput, error) {
+func getCatalogCreditNameCredits(cat *Catalog) func(context.Context, *WorkSubInput) (*listNameCreditsOutput, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listNameCreditsOutput, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -95,8 +95,8 @@ func getCatalogCreditNameCredits(cat *Catalog) func(context.Context, *workSubInp
 	}
 }
 
-func getCatalogCharacterAppearances(cat *Catalog) func(context.Context, *workSubInput) (*listAppearancesOutput, error) {
-	return func(ctx context.Context, in *workSubInput) (*listAppearancesOutput, error) {
+func getCatalogCharacterAppearances(cat *Catalog) func(context.Context, *WorkSubInput) (*listAppearancesOutput, error) {
+	return func(ctx context.Context, in *WorkSubInput) (*listAppearancesOutput, error) {
 		id, nsfw, cur, limit, err := parseWorkSub(ctx, in)
 		if err != nil {
 			return nil, err
@@ -109,8 +109,8 @@ func getCatalogCharacterAppearances(cat *Catalog) func(context.Context, *workSub
 	}
 }
 
-func getCatalogPersonCreditNames(cat *Catalog) func(context.Context, *resourceIDInput) (*listPersonNamesOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*listPersonNamesOutput, error) {
+func getCatalogPersonCreditNames(cat *Catalog) func(context.Context, *ResourceIDInput) (*listPersonNamesOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*listPersonNamesOutput, error) {
 		id, _, err := parseResource(ctx, in, collect.CreditNameSpec())
 		if err != nil {
 			return nil, err
@@ -123,8 +123,8 @@ func getCatalogPersonCreditNames(cat *Catalog) func(context.Context, *resourceID
 	}
 }
 
-func getCatalogPerson(cat *Catalog) func(context.Context, *resourceIDInput) (*getPersonOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getPersonOutput, error) {
+func getCatalogPerson(cat *Catalog) func(context.Context, *ResourceIDInput) (*getPersonOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*getPersonOutput, error) {
 		id, _, err := parseResource(ctx, in, collect.PersonSpec())
 		if err != nil {
 			return nil, err
@@ -137,8 +137,8 @@ func getCatalogPerson(cat *Catalog) func(context.Context, *resourceIDInput) (*ge
 	}
 }
 
-func getCatalogTrait(cat *Catalog) func(context.Context, *resourceIDInput) (*getTraitOutput, error) {
-	return func(ctx context.Context, in *resourceIDInput) (*getTraitOutput, error) {
+func getCatalogTrait(cat *Catalog) func(context.Context, *ResourceIDInput) (*getTraitOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*getTraitOutput, error) {
 		id, _, err := parseResource(ctx, in, collect.TraitSpec())
 		if err != nil {
 			return nil, err

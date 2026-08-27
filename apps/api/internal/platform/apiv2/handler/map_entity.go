@@ -15,7 +15,8 @@ func companyFromListItem(it dto.PublicLabelListItem, include []string, logoURL s
 	}
 	out := repr.Company{
 		Object: "company", ID: repr.ID(it.ID), DisplayName: it.DisplayName,
-		Localized: localizedFrom(it.Localized), CompanyKind: kind, WorkCount: it.WorkCount,
+		Lang: optString(it.Lang), Localized: localizedFrom(it.Localized),
+		CompanyKind: kind, WorkCount: it.WorkCount,
 	}
 	for _, t := range include {
 		switch t {
@@ -37,7 +38,8 @@ func companyFromDetail(rec dto.PublicLabel, include []string, logoURL string) re
 	}
 	out := repr.Company{
 		Object: "company", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
-		Localized: localizedFrom(rec.Localized), CompanyKind: kind, WorkCount: rec.WorkCount,
+		Lang: optString(rec.Lang), Localized: localizedFrom(rec.Localized),
+		CompanyKind: kind, WorkCount: rec.WorkCount,
 	}
 	for _, t := range include {
 		switch t {
@@ -141,7 +143,7 @@ func seriesIntrosFrom(in []dto.PublicSeriesIntro) []repr.Intro {
 func characterFromRow(it catsvc.EntityListRow) repr.Character {
 	return repr.Character{
 		Object: "character", ID: repr.ID(it.ID), DisplayName: it.DisplayName,
-		Latin: it.Latin, Localized: localizedFrom(it.Localized),
+		Latin: it.Latin, Lang: optString(it.Lang), Localized: localizedFrom(it.Localized),
 	}
 }
 
@@ -153,7 +155,8 @@ func creditNameFromRow(it catsvc.EntityListRow) repr.CreditName {
 	}
 	return repr.CreditName{
 		Object: "credit_name", ID: repr.ID(it.ID), DisplayName: it.DisplayName,
-		Latin: it.Latin, Localized: localizedFrom(it.Localized), PersonID: personID,
+		Latin: it.Latin, Lang: optString(it.Lang), Localized: localizedFrom(it.Localized),
+		PersonID: personID,
 	}
 }
 
@@ -181,6 +184,12 @@ func attachCharacterBlocks(out *repr.Character, rec dto.PublicCharacter, include
 			}
 		case "traits":
 			out.Traits = ptrSlice(cap100(characterTraitsFrom(rec.Traits)))
+		case "aliases":
+			out.Aliases = ptrSlice(cap100(entityNamesFrom(rec.Aliases)))
+		case "intros":
+			out.Intros = ptrSlice(cap100(introsFrom(rec.Intros)))
+		case "refs":
+			out.Refs = ptrSlice(cap100(refsFrom(rec.Refs)))
 		}
 	}
 }

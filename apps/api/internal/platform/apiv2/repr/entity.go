@@ -18,6 +18,7 @@ type Company struct {
 	ID          string                   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog company id."`
 	DisplayName string                   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
 	Latin       *string                  `json:"latin" maxLength:"512" doc:"null if unrecorded. Must not be used as a discriminant."`
+	Lang        *string                  `json:"lang" maxLength:"32" format:"bcp47" doc:"BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant."`
 	Localized   map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
 	CompanyKind string                   `json:"company_kind" enum:"game_brand,bunko,publisher,anime_studio,doujin_circle,group" doc:"Company registry class. No other."`
 	WorkCount   int                      `json:"work_count" minimum:"0" doc:"Works visible under the same NSFW gate."`
@@ -33,6 +34,7 @@ type CreditName struct {
 	ID          string                   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog credit-name id."`
 	DisplayName string                   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
 	Latin       *string                  `json:"latin" maxLength:"512" doc:"null if unrecorded. Must not be used as a discriminant."`
+	Lang        *string                  `json:"lang" maxLength:"32" format:"bcp47" doc:"BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant."`
 	Localized   map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
 	PersonID    *string                  `json:"person_id" pattern:"^[0-9]+$" maxLength:"20" doc:"null if this name is not linked to a person."`
 	Gender      *string                  `json:"gender,omitempty" enum:"male,female,other" doc:"Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link."`
@@ -53,6 +55,7 @@ type Character struct {
 	ID           string                   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog character id."`
 	DisplayName  string                   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
 	Latin        *string                  `json:"latin" maxLength:"512" doc:"null if unrecorded. Must not be used as a discriminant."`
+	Lang         *string                  `json:"lang" maxLength:"32" format:"bcp47" doc:"BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant."`
 	Localized    map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
 	Gender       *string                  `json:"gender,omitempty" enum:"male,female,other" doc:"Present on view=full. null if unrecorded."`
 	Birthday     *string                  `json:"birthday,omitempty" pattern:"^[0-1][0-9]-[0-3][0-9]$" maxLength:"5" doc:"MM-DD. Present on view=full. null if unrecorded. Not a date: there is no year."`
@@ -64,6 +67,9 @@ type Character struct {
 	Image        *Image                   `json:"image,omitempty" doc:"Present only when include=image and this character has an image; absent otherwise. Detail face only."`
 	Figure       *Image                   `json:"figure,omitempty" doc:"Present only when include=figure and this character has a full-body figure cutout; absent otherwise. Detail face only."`
 	Traits       *[]CharacterTrait        `json:"traits,omitempty" doc:"Present when include=traits, detail face only. Empty array if none."`
+	Aliases      *[]EntityName            `json:"aliases,omitempty" doc:"Alternate spellings of THIS character name. Present when include=aliases, detail face only. Empty array if none."`
+	Intros       *[]Intro                 `json:"intros,omitempty" doc:"Character descriptions, one per language. Present when include=intros, detail face only. Empty array if none."`
+	Refs         *[]Ref                   `json:"refs,omitempty" doc:"Exact upstream anchors of this character. Present when include=refs, detail face only. Empty array if none."`
 }
 
 type CharacterTrait struct {

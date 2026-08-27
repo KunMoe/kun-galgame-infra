@@ -12460,6 +12460,11 @@ export const docsModel: DocsModel = {
                                   "type": "string"
                                 },
                                 {
+                                  "name": "lang",
+                                  "doc": "BCP-47 language of display_name; empty when unrecorded",
+                                  "type": "string"
+                                },
+                                {
                                   "name": "localized",
                                   "required": true,
                                   "doc": "preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name",
@@ -23668,6 +23673,45 @@ export const docsModel: DocsModel = {
                           "type": "object",
                           "children": [
                             {
+                              "name": "aliases",
+                              "doc": "Alternate spellings of THIS character name. Present when include=aliases, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "alias_kind",
+                                    "required": true,
+                                    "doc": "search_hint is internal and never appears on this type.",
+                                    "enum": [
+                                      "translation",
+                                      "spelling_variant"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this name is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "doc": "BCP-47 language tag.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
                               "name": "birthday",
                               "doc": "MM-DD. Present on view=full. null if unrecorded. Not a date: there is no year.",
                               "type": "string"
@@ -23861,6 +23905,49 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "intros",
+                              "doc": "Character descriptions, one per language. Present when include=intros, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this intro is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "doc": "BCP-47 language tag.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "name": "lang",
+                              "required": true,
+                              "nullable": true,
+                              "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
                               "name": "latin",
                               "required": true,
                               "nullable": true,
@@ -23935,6 +24022,28 @@ export const docsModel: DocsModel = {
                                 "character"
                               ],
                               "type": "string"
+                            },
+                            {
+                              "name": "refs",
+                              "doc": "Exact upstream anchors of this character. Present when include=refs, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "external_id",
+                                    "required": true,
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
                             },
                             {
                               "name": "traits",
@@ -24802,7 +24911,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/characters/{id}",
               "summary": "Get one character",
-              "description": "Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits adds art and trait blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
+              "description": "Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits,aliases,intros,refs adds art, trait, name, description and anchor blocks. spoiler=none|minor|major is the ceiling of the traits block and defaults to none. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -24839,6 +24948,13 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept."
+                },
+                {
+                  "name": "spoiler",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Spoiler ceiling for the traits block: none (default), minor or major. Closed vocabulary; an unknown value is 400. Trait rows above the ceiling are not returned. Only the VNDB-derived trait vocabulary carries a spoiler level, and the default is the safe ceiling."
                 }
               ],
               "responses": [
@@ -24848,6 +24964,45 @@ export const docsModel: DocsModel = {
                   "schema": {
                     "type": "object",
                     "children": [
+                      {
+                        "name": "aliases",
+                        "doc": "Alternate spellings of THIS character name. Present when include=aliases, detail face only. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "alias_kind",
+                              "required": true,
+                              "doc": "search_hint is internal and never appears on this type.",
+                              "enum": [
+                                "translation",
+                                "spelling_variant"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "name": "is_machine",
+                              "required": true,
+                              "doc": "Whether this name is machine-translated.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "lang",
+                              "required": true,
+                              "doc": "BCP-47 language tag.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
+                              "name": "value",
+                              "required": true,
+                              "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
                       {
                         "name": "birthday",
                         "doc": "MM-DD. Present on view=full. null if unrecorded. Not a date: there is no year.",
@@ -25042,6 +25197,49 @@ export const docsModel: DocsModel = {
                         "type": "string"
                       },
                       {
+                        "name": "intros",
+                        "doc": "Character descriptions, one per language. Present when include=intros, detail face only. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "is_machine",
+                              "required": true,
+                              "doc": "Whether this intro is machine-translated.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "lang",
+                              "required": true,
+                              "doc": "BCP-47 language tag.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
+                              "name": "source",
+                              "required": true,
+                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "value",
+                              "required": true,
+                              "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "name": "lang",
+                        "required": true,
+                        "nullable": true,
+                        "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                        "format": "bcp47",
+                        "type": "string"
+                      },
+                      {
                         "name": "latin",
                         "required": true,
                         "nullable": true,
@@ -25116,6 +25314,28 @@ export const docsModel: DocsModel = {
                           "character"
                         ],
                         "type": "string"
+                      },
+                      {
+                        "name": "refs",
+                        "doc": "Exact upstream anchors of this character. Present when include=refs, detail face only. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "external_id",
+                              "required": true,
+                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "source",
+                              "required": true,
+                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
                       },
                       {
                         "name": "traits",
@@ -26286,6 +26506,14 @@ export const docsModel: DocsModel = {
                                         }
                                       ]
                                     }
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "nullable": true,
+                                    "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                                    "format": "bcp47",
+                                    "type": "string"
                                   },
                                   {
                                     "name": "latin",
@@ -29134,6 +29362,14 @@ export const docsModel: DocsModel = {
                               }
                             },
                             {
+                              "name": "lang",
+                              "required": true,
+                              "nullable": true,
+                              "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
                               "name": "latin",
                               "required": true,
                               "nullable": true,
@@ -30174,6 +30410,14 @@ export const docsModel: DocsModel = {
                         }
                       },
                       {
+                        "name": "lang",
+                        "required": true,
+                        "nullable": true,
+                        "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                        "format": "bcp47",
+                        "type": "string"
+                      },
+                      {
                         "name": "latin",
                         "required": true,
                         "nullable": true,
@@ -31137,7 +31381,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/companies/{id}/graph",
               "summary": "Company family graph",
-              "description": "Corporate-family nodes and directed edges around one company. Inverse relations are not emitted. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
+              "description": "Corporate-family nodes and directed edges around one company. Inverse relations are not emitted. include= is validated against the company token set, so aliases, intros and links are accepted and answered without; only include=logo changes a node, adding the brand mark to the nodes that have one. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -31260,6 +31504,78 @@ export const docsModel: DocsModel = {
                                   }
                                 ]
                               }
+                            },
+                            {
+                              "name": "logo",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "hash",
+                                  "required": true,
+                                  "doc": "Image-service content hash.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "height",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel height. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "sexual",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Sexual depiction. null means not assessed.",
+                                  "enum": [
+                                    "safe",
+                                    "suggestive",
+                                    "explicit"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "thumbhash",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Thumbhash. null if unknown.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "url",
+                                  "required": true,
+                                  "doc": "Absolute image URL. Never a bare hash.",
+                                  "format": "uri",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "violence",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                  "enum": [
+                                    "tame",
+                                    "violent",
+                                    "brutal"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "width",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel width. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
                             },
                             {
                               "name": "object",
@@ -32363,6 +32679,14 @@ export const docsModel: DocsModel = {
                               }
                             },
                             {
+                              "name": "lang",
+                              "required": true,
+                              "nullable": true,
+                              "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
                               "name": "latin",
                               "required": true,
                               "nullable": true,
@@ -33445,6 +33769,14 @@ export const docsModel: DocsModel = {
                             }
                           ]
                         }
+                      },
+                      {
+                        "name": "lang",
+                        "required": true,
+                        "nullable": true,
+                        "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                        "format": "bcp47",
+                        "type": "string"
                       },
                       {
                         "name": "latin",
@@ -40870,6 +41202,14 @@ export const docsModel: DocsModel = {
                                   }
                                 ]
                               }
+                            },
+                            {
+                              "name": "lang",
+                              "required": true,
+                              "nullable": true,
+                              "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                              "format": "bcp47",
+                              "type": "string"
                             },
                             {
                               "name": "latin",
@@ -59437,7 +59777,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/works/{id}",
               "summary": "Get one catalog work",
-              "description": "Work detail. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 404 without nsfw=true. Requires an application key.",
+              "description": "Work detail. spoiler=none|minor|major is the ceiling of the tags block and defaults to none. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 404 without nsfw=true. Requires an application key.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -59474,6 +59814,13 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept."
+                },
+                {
+                  "name": "spoiler",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Spoiler ceiling for the tags block: none (default), minor or major. Closed vocabulary; an unknown value is 400. Tag rows above the ceiling are not returned. Only the VNDB-derived tag vocabulary carries a spoiler level — Bangumi and DLsite folksonomy publish no spoiler concept, so those rows read none — and the default is the safe ceiling."
                 }
               ],
               "responses": [
@@ -74473,7 +74820,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/works/{id}/tags",
               "summary": "List tags of one work",
-              "description": "Tags attached to this work. Same items as include=tags. Requires an application key.",
+              "description": "Tags attached to this work. Same items as include=tags. spoiler=none|minor|major is the ceiling of this page and defaults to none, exactly as on the work detail face. Requires an application key.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -74503,6 +74850,13 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "Page size 1-100, default 20."
+                },
+                {
+                  "name": "spoiler",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Spoiler ceiling for this page: none (default), minor or major. Closed vocabulary; an unknown value is 400. Tag rows above the ceiling are not returned. Only the VNDB-derived tag vocabulary carries a spoiler level — Bangumi and DLsite folksonomy publish no spoiler concept, so those rows read none — and the default is the safe ceiling."
                 }
               ],
               "responses": [

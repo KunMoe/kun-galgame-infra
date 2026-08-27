@@ -1493,7 +1493,7 @@ curl "https://api.nextmoe.dev/v2/catalog/characters" \
 
 Get one character
 
-Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits adds art and trait blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.
+Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits,aliases,intros,refs adds art, trait, name, description and anchor blocks. spoiler=none|minor|major is the ceiling of the traits block and defaults to none. Merged ids are 404 ENTITY_MERGED. Requires an application key.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -1506,6 +1506,7 @@ Character detail. view=full adds gender, birthday, measurements, blood_type, ins
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `spoiler` | query | 否 | string | Spoiler ceiling for the traits block: none (default), minor or major. Closed vocabulary; an unknown value is 400. Trait rows above the ceiling are not returned. Only the VNDB-derived trait vocabulary carries a spoiler level, and the default is the safe ceiling. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/characters/value" \
@@ -1591,7 +1592,7 @@ curl "https://api.nextmoe.dev/v2/catalog/companies/value" \
 
 Company family graph
 
-Corporate-family nodes and directed edges around one company. Inverse relations are not emitted. Merged ids are 404 ENTITY_MERGED. Requires an application key.
+Corporate-family nodes and directed edges around one company. Inverse relations are not emitted. include= is validated against the company token set, so aliases, intros and links are accepted and answered without; only include=logo changes a node, adding the brand mark to the nodes that have one. Merged ids are 404 ENTITY_MERGED. Requires an application key.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -2270,7 +2271,7 @@ curl "https://api.nextmoe.dev/v2/catalog/works" \
 
 Get one catalog work
 
-Work detail. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 404 without nsfw=true. Requires an application key.
+Work detail. spoiler=none|minor|major is the ceiling of the tags block and defaults to none. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 404 without nsfw=true. Requires an application key.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -2283,6 +2284,7 @@ Work detail. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 40
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `spoiler` | query | 否 | string | Spoiler ceiling for the tags block: none (default), minor or major. Closed vocabulary; an unknown value is 400. Tag rows above the ceiling are not returned. Only the VNDB-derived tag vocabulary carries a spoiler level — Bangumi and DLsite folksonomy publish no spoiler concept, so those rows read none — and the default is the safe ceiling. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/works/value" \
@@ -2535,7 +2537,7 @@ curl "https://api.nextmoe.dev/v2/catalog/works/value/series" \
 
 List tags of one work
 
-Tags attached to this work. Same items as include=tags. Requires an application key.
+Tags attached to this work. Same items as include=tags. spoiler=none|minor|major is the ceiling of this page and defaults to none, exactly as on the work detail face. Requires an application key.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -2547,6 +2549,7 @@ Tags attached to this work. Same items as include=tags. Requires an application 
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
+| `spoiler` | query | 否 | string | Spoiler ceiling for this page: none (default), minor or major. Closed vocabulary; an unknown value is 400. Tag rows above the ceiling are not returned. Only the VNDB-derived tag vocabulary carries a spoiler level — Bangumi and DLsite folksonomy publish no spoiler concept, so those rows read none — and the default is the safe ceiling. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/works/value/tags" \

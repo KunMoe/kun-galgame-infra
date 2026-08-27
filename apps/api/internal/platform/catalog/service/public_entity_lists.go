@@ -18,6 +18,7 @@ type EntityListRow struct {
 	ID          int64
 	DisplayName string
 	Latin       *string
+	Lang        string
 	PersonID    *int64
 	VndbTID     string
 	NameZh      string
@@ -65,7 +66,7 @@ func (s *PublicService) CharactersList(ctx context.Context, ids []int64, cursor 
 	return s.entityIDList(ctx, entityListSpec{
 		lane:      taxonomyLaneCharacters,
 		table:     "catalog_character",
-		selectSQL: "id, display_name, latin",
+		selectSQL: "id, display_name, latin, lang",
 		deleted:   true,
 		ids:       ids, cursor: cursor, limit: limit,
 		alias: "character",
@@ -76,7 +77,7 @@ func (s *PublicService) NamesList(ctx context.Context, ids []int64, q, cursor st
 	return s.entityIDList(ctx, entityListSpec{
 		lane:      taxonomyLaneNames,
 		table:     "catalog_credit_name",
-		selectSQL: "id, name AS display_name, latin, person_id",
+		selectSQL: "id, name AS display_name, latin, lang, person_id",
 		ids:       ids, q: q, qCol: "name", cursor: cursor, limit: limit,
 		alias: "name",
 	})
@@ -199,7 +200,7 @@ func (s *PublicService) PersonNames(ctx context.Context, personID int64) ([]Enti
 	}
 	var rows []EntityListRow
 	err := s.db.WithContext(ctx).Raw(
-		`SELECT id, name AS display_name, latin, person_id
+		`SELECT id, name AS display_name, latin, lang, person_id
 		 FROM catalog_credit_name WHERE person_id = ? ORDER BY id ASC`, personID).Scan(&rows).Error
 	if err != nil {
 		return nil, false, err
