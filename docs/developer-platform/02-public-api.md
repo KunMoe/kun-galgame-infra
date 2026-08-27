@@ -2,6 +2,8 @@
 
 > 本文承载 §3.1 原则、§3.2 v1 端点清单、§3.5 稳定性承诺与演进条款、§10 OpenAPI 策略。设计与命名约定见 [01-design.md](./01-design.md);§3.3 跨面互链、§3.4 面挂载模型见 [01 §3](./01-design.md)。
 
+> 🪦 **v1 已于 2026-08-27(wave R3)整面退役。** `/v1/catalog`、`/v1/news`、`/v1/store`、`/v1/playtime`、`/api/v1/catalog`、`/api/v1/user/catalog` 六个前缀现在一律返回 `410 Gone`(仓内标准信封 `code=11`,带 `Link: <https://api.nextmoe.dev/v2>; rel="successor-version"`),服务它们的代码、spec 与门户页面已一并删除。**下文凡把某条 v1 路径写成在产的段落均为历史记录**;唯一在产的公开面是 `/v2`,契约见 [../catalog/v2-openapi.yaml](../catalog/v2-openapi.yaml) 与 [../catalog/v2-implementation-notes.md](../catalog/v2-implementation-notes.md)。
+
 ---
 
 ## 3. 公开 API 面与端点(精选 + 版本化)

@@ -262,3 +262,79 @@ oasdiff against the GA baseline reports **0 error, 8 warning** (all
 `response-property-enum-value-added`, from `claim.state` gaining `none` and
 `problem_type.domain` gaining `store`), so no entry was added to
 `v2-openapi-breaking-ignore.txt`.
+
+## Wave R3 — the total v1 teardown (2026-08-27)
+
+Wave R1 filled the last capability gaps; this wave deleted what they replaced.
+The catalog binary no longer serves any v1 face.
+
+Removed, by family:
+
+- **public `/v1/catalog`** — the fiber group in `cmd/catalog`, every
+  `public_*.go` handler, the spec twins `public_huma.go` +
+  `public_huma_work_subresources.go`, the `/v1/catalog/openapi.json` route and
+  `docs/catalog/public-openapi.yaml` (+ its breaking-ignore).
+- **`/v1/playtime`** — the mount, the gate plumbing and `user_playtime.go`. The
+  `UserPlaytimeService` stays: `/v2/me/playtimes` rides it.
+- **`/v1/news`** — the group, `news/handler/public.go`'s `PublicHandler`,
+  `SetupNewsPublicSpec` and `docs/news/public-openapi.yaml`. The parsing helpers
+  the admin queue shares moved to `news/handler/params.go`; the news services and
+  `/api/v1/admin/news` are untouched.
+- **`/v1/store`** — the group, `store/handler/public.go`, its spec twin and
+  `docs/store/public-openapi.yaml`. The store service, `dev.go` (the portal's
+  owner-usage panel) and `/v2/store` are untouched, and both v2 store ops still
+  ride the single shared `store/service.Service` instance.
+- **S2S `/api/v1/catalog`** — `S2SAuth`/`authenticateBasic`/`enforceSiteBinding`,
+  `s2s.go`, `read.go`, `edit.go`, `lifecycle.go`, `user_claims.go`, the huma API
+  build, the root `/openapi.json` dump and `docs/catalog/openapi.yaml`.
+- **user `/api/v1/user/catalog`** — `user.go`, `user_claims_face.go`,
+  `user_edit.go`, `user_edit_reads.go`, `user_read.go`, `user_cover_votes.go`
+  and `edit_images.go`.
+
+Six prefixes now answer `410 Gone` from
+`internal/platform/catalog/handler/retired.go`: `/v1/catalog`, `/v1/news`,
+`/v1/store`, `/v1/playtime`, `/api/v1/catalog`, `/api/v1/user/catalog`. The body
+is the house envelope with `code: 11`, the header is
+`Link: <https://api.nextmoe.dev/v2>; rel="successor-version"`, and neither
+`Deprecation` nor `Sunset` is sent — the face is gone, not deprecating. They are
+mounted **after** the admin groups and after the v2 setup, because fiber matches
+in registration order; `retired_test.go` proves the non-capture rather than
+assuming it (`/api/v1/admin/catalog/*` reaches its permission gate, `/v2/catalog/works`
+and `/v2/store/stats` still answer 401 problem+json).
+
+The galgame tombstone (`internal/galgameapp/publicgone.go`) named `/v1/catalog`
+as its successor, which would have become a tombstone pointing at a tombstone.
+It now points at `/v2`.
+
+Two follow-on removals the teardown forced:
+
+- `catalog/service.WorkService` (and its `deriveAnchorRating`) had exactly one
+  non-test caller, the S2S claim op. v2 mints through
+  `ClaimLifecycleService.SubmitWork`, so the type is gone;
+  `DeriveContentRating` and the shared `sourceRefR18` stay.
+- devapi usage metering was wired into the v1 fiber groups only. Deleting them
+  would have removed every writer of `developer_api_usage` and every
+  `TouchLastUsed` call, leaving the portal's usage panel and each key's
+  "last used" permanently empty with nothing failing. The recorder is now a
+  `/v2` prefix middleware recording under the face name `v2`.
+
+`nm_` v1 application keys were left in place as inert rows: nothing reads them
+any more (only `/v1` accepted the prefix, and `/v2` refuses it with
+`INVALID_CREDENTIAL`), and deleting them would take the owner's key list and
+usage history with them. **This wave carries no migration** — no model, no DDL.
+
+Plumbing that went with the specs: the `-catalog`, `-catalog-public`,
+`-news-public` and `-store-public` arms of `cmd/gen-openapi`; the matching regen
+lines and diff paths in `test.yml`; the four retired specs in
+`spec-breaking.yml`; the catalog S2S arm of `openapi-types.yml` together with
+`apps/web/shared/types/generated/catalog-api.ts` (apps/web never imported it);
+the five v1 faces in `apps/developer/scripts/faces.mjs` with their `FACE_GROUPS`
+table, `EDIT_EXCLUDED_OPERATION_IDS`, the per-operation auth override table and
+their `EXPECTED_OPERATION_COUNTS` entries; the `v1/store/` entry in the portal
+relay allowlist; and the generated per-operation Markdown twins under
+`apps/developer/public/docs/{catalog,edit,news,playtime,store}`.
+`docs/news/` and `docs/store/` held nothing else and are gone as directories.
+
+Traefik/compose were deliberately **left untouched**: the v1 routers point at the
+same catalog service that now answers 410 on those prefixes, so removing them
+would turn a documented 410 into a 404 that names no successor.

@@ -1,6 +1,7 @@
 # MCP Server(公开只读面的 AI-agent 协议适配层)
 
 > 拍板 2026-07-23(D4 提级 Phase 2,见 [01 §13](./01-design.md);派发-验收模式同 wave 08/09)。
+> 🪦 **2026-08-27(wave R3)**:v1 整面退役,MCP 工具全部改打 `/v2`。下文凡以 `/v1/...` 路径描述某条工具的后端均为历史记录——那些路径现在返回 410,工具名单以 `apps/developer/app/generated/mcp-tools.mjs` 为准。
 > 一句话定位:把**已有的公开 /v1 只读面**同时暴露为 **MCP(Model Context
 > Protocol)server**,让 AI 助手 / agent 用自然的工具调用直接查生态目录——
 > **不新造任何数据面、权限面或计量面**。

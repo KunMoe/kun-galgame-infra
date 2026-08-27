@@ -24,15 +24,14 @@ import { MCP_TOOLS } from '../shared/mcp-tools.mjs'
 
 const AUTH_MODEL = [
   '应用密钥（`Authorization: Bearer nmk_live_…`）——在 ' +
-    `${SITE_URL} 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 只有 catalog:read。` +
-    '/v2 只收 nmk_ 前缀的密钥，v1 两代都收。',
-  '用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation（以及 v1 的游玩时长、编辑提案）' +
+    `${SITE_URL} 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 有 catalog:read 与 store:read。` +
+    '/v2 只收 nmk_ 前缀的密钥。',
+  '用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation ' +
     '读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。',
-  '资讯面不再是授权制（2026-08-25 退役）：/v1/news 只要一把有效密钥，' +
-    '任意 scope 均可；news:read 不再存在申请或审批。/v2/news 则匿名即可调。',
-  'store:read 自 2026-08-26 起自助：铸密钥时勾选即可，无需申请；没有它调 /v1/store 一律 403。',
+  'v1 已于 2026-08-27 全面退役：/v1/catalog、/v1/news、/v1/store、/v1/playtime、' +
+    '/api/v1/catalog 与 /api/v1/user/catalog 一律返回 410，Link 指向 /v2。',
   '`/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 ' +
-    '`/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。'
+    '`/v2/catalog/schemas/{object}` 不要任何凭据，匿名即可调。'
 ]
 
 const mdPath = (route) => (route === '/' ? '/index.md' : `${route}.md`)

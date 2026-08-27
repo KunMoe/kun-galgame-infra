@@ -1,6 +1,8 @@
 # 01 — 服务定位与契约
 
-> catalog 是**跨媒介身份/图谱注册层**:把多来源的作品/发行/人物/署名/厂牌收敛成一套带来源锚与分级信任的规范身份。产品站通过 S2S 三端点接入;人审经 admin 三桶治理;写路径按 per-client site 绑定授权。本篇是对外契约,数据结构以生成的 [openapi.yaml](./openapi.yaml) / [admin-openapi.yaml](./admin-openapi.yaml) 为准。
+> catalog 是**跨媒介身份/图谱注册层**:把多来源的作品/发行/人物/署名/厂牌收敛成一套带来源锚与分级信任的规范身份。人审经 admin 队列治理;写路径按 per-client site 绑定授权。本篇是对外契约,数据结构以生成的 [v2-openapi.yaml](./v2-openapi.yaml) / [admin-openapi.yaml](./admin-openapi.yaml) 为准。
+>
+> 🪦 **v1 已于 2026-08-27(wave R3)整面退役。** 本篇的 **§2(S2S `/api/v1/catalog`)、§4(用户令牌面 `/api/v1/user/catalog`)以及凡以 `/v1/catalog`、`/v1/playtime` 描述公开面的段落,均为历史记录**——那些路径现在一律返回 `410 Gone`,`Link` 指向 `/v2`,服务它们的 handler 与 `openapi.yaml` / `public-openapi.yaml` 两份 spec 已删除。在产的继任面是 **`/v2`**([v2-openapi.yaml](./v2-openapi.yaml),札记见 [v2-implementation-notes.md](./v2-implementation-notes.md));**领域语义(实体模型、来源锚、分级信任、展示轴、花名册与归属边)不随路由退役,下文这部分仍然有效**。仍在产的第二个面是 admin 队列 `/api/v1/admin/catalog`。
 
 ## 1. 服务定位:registry 层 vs body 层
 

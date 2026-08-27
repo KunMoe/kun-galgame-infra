@@ -10,11 +10,12 @@
 
 | # | 文件 | 内容 | 状态 |
 |---|------|------|------|
-| 01 | [service-and-contract.md](./01-service-and-contract.md) | 服务定位、registry/body 分界、S2S 端点语义与 site 绑定、admin 四桶概述、**用户令牌面(§4:封面投票 4.1 + 编辑提案与审核 4.2 + 认领生命周期 4.3 + 只读与图片上传 4.4)**、鉴权形态、生成 spec、运维注记 | 已完成 |
-| — | [openapi.yaml](./openapi.yaml) | S2S face **+ 用户写面**的 OpenAPI 3.1(`gen-openapi -catalog` 生成) | 生成物 |
+| 01 | [service-and-contract.md](./01-service-and-contract.md) | 服务定位、registry/body 分界、admin 队列、鉴权形态、生成 spec、运维注记。**§2 S2S 与 §4 用户令牌面所述路由已于 2026-08-27 退役**,保留为历史记录 | 历史 + 在产混排 |
 | — | [admin-openapi.yaml](./admin-openapi.yaml) | admin review 队列的 OpenAPI 3.1(`gen-openapi -catalog-admin` 生成) | 生成物 |
-| — | [public-openapi.yaml](./public-openapi.yaml) | `/v1/catalog` + `/v1/playtime` 公开面的 OpenAPI 3.1(`gen-openapi -catalog-public` 生成;下游=oasdiff 破坏门 + developer 门户 docs-model) | 生成物 |
 | — | [v2-openapi.yaml](./v2-openapi.yaml) | `/v2` 公开面的 OpenAPI 3.1(`gen-openapi -catalog-v2` 生成;Huma 真路由,契约测试打这些路由) | 生成物 |
+| — | [v2-implementation-notes.md](./v2-implementation-notes.md) | v2 各波实现札记,含 wave R3 的 v1 拆除清单 | 已完成 |
+
+> 🪦 **v1 已于 2026-08-27(wave R3)整面退役。** catalog 二进制不再服务 `/v1/catalog`、`/v1/news`、`/v1/store`、`/v1/playtime`、`/api/v1/catalog`、`/api/v1/user/catalog`——六个前缀一律 `410 Gone`(信封 `code=11`,`Link` 指向 `/v2`)。S2S 与公开 v1 的两份 spec(`openapi.yaml`、`public-openapi.yaml`)随代码一并删除;唯二在产的 catalog 面是 `/v2` 与 `/api/v1/admin/catalog`。
 
 ## 一句话总结
 

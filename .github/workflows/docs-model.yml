@@ -28,14 +28,10 @@ name: docs-model
 on:
   push:
     paths: &paths
-      - "docs/catalog/public-openapi.yaml"
-      - "docs/catalog/openapi.yaml"
       # v2-openapi.yaml was missing here while faces.mjs already built the
       # portal model from it, so a commit touching only the v2 spec skipped
       # this gate and the drift landed on whoever next touched a listed path.
       - "docs/catalog/v2-openapi.yaml"
-      - "docs/news/public-openapi.yaml"
-      - "docs/store/public-openapi.yaml"
       - "apps/developer/scripts/sync-specs.mjs"
       - "apps/developer/scripts/faces.mjs"
       - "apps/developer/scripts/gen-llms.mjs"

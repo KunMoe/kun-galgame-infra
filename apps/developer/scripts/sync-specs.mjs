@@ -17,24 +17,15 @@
  *   pnpm --filter developer sync:specs
  *
  * The galgame face was dropped at wave 146 (2026-07-30): its /v1/galgame
- * projection was delisted and its spec deleted.
- *
- * Five spec files, six faces. `public-openapi.yaml` carries catalog (API-key,
- * read-only) and playtime (user-token; no playtime scope required). Modelling
- * those as one face published five playtime operations as `catalog:read` with
- * an `nm_live_` key in the curl sample — a credential that face rejects.
- * `openapi.yaml` is the user-edit subset only: the third face, `edit`, claims
- * `/api/v1/user/catalog/edit` and names every op under that prefix as include
- * or exclude. The rest of that spec (S2S, claims, covers, submit) is a
- * first-party surface and is not portal-documented. `news/public-openapi.yaml`
- * is the fourth face, an API-key face that requires no particular scope (it was
- * grant-only until the news:read retirement on 2026-08-25), and
- * `store/public-openapi.yaml` is the fifth, an API-key face gated by store:read.
+ * projection was delisted and its spec deleted. Wave R3 (2026-08-27) did the
+ * same to the whole v1 surface — the catalog public projection, playtime, the
+ * user-edit subset, news and store — so one spec file carries the one remaining
+ * face, /v2.
  *
  * Operation GROUPING is derived here, not in the specs: the OpenAPI tags put
- * every operation of a face in one bucket (`catalog-public`, `playtime`, …),
- * which is no navigation at all for a 25-operation face. The spec YAML is a
- * frozen contract and must not be edited to carry portal IA.
+ * every operation of a face in one bucket, which is no navigation at all for an
+ * 88-operation face. The spec YAML is a frozen contract and must not be edited
+ * to carry portal IA.
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -42,16 +33,9 @@ import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
 import {
   API_HOST,
-  CATALOG_SPEC,
-  EDIT_EXCLUDED_OPERATION_IDS,
   EXPECTED_OPERATION_COUNTS,
-  FACE_GROUPS,
   FACES,
-  NEWS_SPEC,
   NO_AUTH,
-  OPERATION_AUTH_OVERRIDES,
-  PUBLIC_SPEC,
-  STORE_SPEC,
   USER_TOKEN_AUTH,
   V2_SPEC
 } from './faces.mjs'
@@ -241,27 +225,24 @@ const buildOperation = (method, path, op, { schemas, scope, auth, faceAuth }) =>
     }
   })
 
-  const override = OPERATION_AUTH_OVERRIDES[op.operationId]
-  const effective = override || auth
-
   return {
     id: op.operationId,
     method,
     path,
     summary: op.summary || '',
     ...(op.description && { description: op.description }),
-    scope: override ? '' : scope,
+    scope,
     // Whatever departs from the face default must land in the model — the
     // renderers fall back to face.auth for an op without its own. Until
-    // 2026-08-26 only OPERATION_AUTH_OVERRIDES was emitted, so every
+    // 2026-08-26 only the per-operation override table was emitted, so every
     // credential-free /v2 operation's page and Markdown twin printed the face's
     // "Bearer nmk_live_…" line, and /v2/me printed a machine key for a face
     // that takes a user token.
-    ...(effective !== faceAuth && { auth: effective }),
+    ...(auth !== faceAuth && { auth }),
     params,
     ...(requestBody && { requestBody }),
     responses,
-    curl: buildCurl(method, path, params, bodyExample, effective.curl)
+    curl: buildCurl(method, path, params, bodyExample, auth.curl)
   }
 }
 
@@ -294,10 +275,7 @@ const buildFace = (faceDef, specs) => {
   const spec = specs.get(faceDef.file)
   const schemas = spec.components?.schemas || {}
 
-  const groupDefs = faceDef.autoGroups ? autoGroupDefs(faceDef, spec) : FACE_GROUPS[faceDef.key]
-  if (!groupDefs) {
-    throw new Error(`docs-model grouping guard: face ${faceDef.key} has no FACE_GROUPS entry`)
-  }
+  const groupDefs = autoGroupDefs(faceDef, spec)
   const buckets = new Map(groupDefs.map((g) => [g.key, []]))
   const placed = new Set()
 
@@ -306,12 +284,11 @@ const buildFace = (faceDef, specs) => {
     for (const method of METHODS) {
       const op = item[method]
       if (!op) continue
-      if (faceDef.include && !faceDef.include.includes(op.operationId)) continue
       const key = opKey(method, path)
       const group = groupDefs.find((g) => g.ops.includes(key))
       if (!group) {
         throw new Error(
-          `docs-model grouping guard: ${key} (${op.operationId}) belongs to no group of face ${faceDef.key} — add it to FACE_GROUPS`
+          `docs-model grouping guard: ${key} (${op.operationId}) belongs to no group of face ${faceDef.key} — add an autoGroup`
         )
       }
       placed.add(key)
@@ -333,19 +310,6 @@ const buildFace = (faceDef, specs) => {
       if (!placed.has(key)) {
         throw new Error(
           `docs-model grouping guard: face ${faceDef.key} group ${group.key} lists ${key}, which the spec no longer has`
-        )
-      }
-    }
-  }
-
-  if (faceDef.include) {
-    const builtIds = new Set(
-      [...buckets.values()].flatMap((ops) => ops.map((o) => o.id))
-    )
-    for (const id of faceDef.include) {
-      if (!builtIds.has(id)) {
-        throw new Error(
-          `docs-model coverage guard: included operation ${id} was not found under ${faceDef.prefix}`
         )
       }
     }
@@ -394,10 +358,8 @@ for (const face of model.faces) {
 
 // A path the prefixes do not claim would vanish from the reference with every
 // other guard still green, which is how five playtime operations shipped
-// documented as catalog ones. Full-coverage applies to the two fully-published
-// specs only — openapi.yaml is a first-party spec whose unclaimed prefixes must
-// not trip this guard.
-for (const file of [PUBLIC_SPEC, NEWS_SPEC, STORE_SPEC, V2_SPEC]) {
+// documented as catalog ones.
+for (const file of [V2_SPEC]) {
   const claimed = new Set(
     model.faces
       .filter((f) => FACES.find((d) => d.key === f.key)?.file === file)
@@ -412,32 +374,13 @@ for (const file of [PUBLIC_SPEC, NEWS_SPEC, STORE_SPEC, V2_SPEC]) {
   }
 }
 
-const editDef = FACES.find((f) => f.key === 'edit')
-const catalogSpec = specs.get(CATALOG_SPEC)
-const namedEditOps = new Set([
-  ...(editDef.include || []),
-  ...EDIT_EXCLUDED_OPERATION_IDS
-])
-for (const [path, item] of Object.entries(catalogSpec.paths || {})) {
-  if (!path.startsWith(editDef.prefix)) continue
-  for (const method of METHODS) {
-    const op = item[method]
-    if (!op) continue
-    if (!namedEditOps.has(op.operationId)) {
-      throw new Error(
-        `docs-model completeness guard: ${op.operationId} under ${editDef.prefix} is neither included nor excluded`
-      )
-    }
-  }
-}
-
 const opCount = model.faces.reduce((n, f) => n + faceOpCount(f), 0)
 
 const out = `/**
  * Auto-generated by scripts/sync-specs.mjs — do not edit by hand.
  * Run \`pnpm --filter developer sync:specs\` after the public specs change.
  *
- * Four Tier-A specs projected into the render-friendly DocsModel the
+ * The Tier-A v2 spec projected into the render-friendly DocsModel the
  * /docs/** reference pages consume, one entry per public face.
  */
 import type { DocsModel } from '~~/shared/types/docs'
