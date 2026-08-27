@@ -24,6 +24,9 @@ const (
 	ClaimActionDecline  ClaimAction = "decline"
 	ClaimActionBan      ClaimAction = "ban"
 	ClaimActionUnban    ClaimAction = "unban"
+	// delete soft-deletes a draft rather than moving it to another state, so
+	// it is deliberately absent from ClaimActions and transitions.
+	ClaimActionDelete ClaimAction = "delete"
 )
 
 var ClaimActions = []ClaimAction{
@@ -237,6 +240,47 @@ func (s *ClaimLifecycleService) Act(ctx context.Context, p ClaimActionParams) (*
 		return nil, err
 	}
 	return &out, nil
+}
+
+func (s *ClaimLifecycleService) DeleteDraft(ctx context.Context, workID, actorUID int64) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var work struct {
+			ID          int64
+			Site        *string
+			ClaimState  *int16
+			OwnerUserID *int64
+		}
+		if err := tx.Raw(`SELECT id, site, claim_state, owner_user_id FROM catalog_work
+		                  WHERE id = ? AND deleted_at IS NULL FOR UPDATE`, workID).
+			Scan(&work).Error; err != nil {
+			return err
+		}
+		if work.ID == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		if work.OwnerUserID == nil || *work.OwnerUserID != actorUID {
+			ownerUID := int64(0)
+			if work.OwnerUserID != nil {
+				ownerUID = *work.OwnerUserID
+			}
+			return &ClaimNotOwnedError{WorkID: workID, ActorUID: actorUID, OwnerUID: ownerUID}
+		}
+		if work.ClaimState == nil || *work.ClaimState != model.ClaimStateDraft {
+			return &ClaimTransitionError{
+				Action:  ClaimActionDelete,
+				Current: model.ClaimStateKey(work.Site, nil, work.ClaimState),
+				Allowed: []string{model.ClaimStateKeyDraft},
+			}
+		}
+		res := tx.Model(&model.CatalogWork{}).Where("id = ?", workID).Update("deleted_at", time.Now())
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
 }
 
 type claimEventRow struct {

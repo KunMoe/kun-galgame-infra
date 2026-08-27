@@ -526,7 +526,8 @@ export interface paths {
         get: operations["getCatalogWorkByIDUser"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Soft-delete one's OWN draft work. Only the entry's owner may delete it, and only while it is still a draft (claim_state=draft) — a live / pending / declined work must be withdrawn first, and a hidden or foreign work can never be deleted this way. 403 on another user's work; 409 when the work is not a draft */
+        delete: operations["deleteCatalogDraftUser"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1327,6 +1328,20 @@ export interface components {
             /** Format: int64 */
             code: number;
             data?: components["schemas"]["LabelWorksResponse"];
+            message: string;
+        };
+        "EnvelopeMapStringInterface {}": {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/EnvelopeMapStringInterface {}.json
+             */
+            readonly $schema?: string;
+            /** Format: int64 */
+            code: number;
+            data?: {
+                [key: string]: unknown;
+            };
             message: string;
         };
         EnvelopeNameWorksResponse: {
@@ -3341,6 +3356,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EnvelopeWorkByAnchorResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseError"];
+                };
+            };
+        };
+    };
+    deleteCatalogDraftUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Work id (must be one the token's user owns) */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeMapStringInterface {}"];
                 };
             };
             /** @description Error */

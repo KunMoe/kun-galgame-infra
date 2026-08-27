@@ -26,6 +26,7 @@ type SubmitWorkParams struct {
 	ContentRating int16
 	Fields        map[string]any
 	Released      ReleaseDate
+	Trusted       bool
 }
 
 type ReleaseDate struct {
@@ -178,11 +179,14 @@ func (s *ClaimLifecycleService) SubmitWork(ctx context.Context, p SubmitWorkPara
 			}
 		}
 
-		pending := model.ClaimStatePending
+		state := model.ClaimStatePending
+		if p.Trusted {
+			state = model.ClaimStateLive
+		}
 		w := model.CatalogWork{
 			MediumID:        galgameMediumID,
 			Site:            &p.Site,
-			ClaimState:      &pending,
+			ClaimState:      &state,
 			OLang:           model.OLangDefault,
 			Status:          model.WorkStatusLive,
 			ContentRating:   p.ContentRating,
@@ -240,14 +244,14 @@ func (s *ClaimLifecycleService) SubmitWork(ctx context.Context, p SubmitWorkPara
 		}
 
 		eventID, err := appendClaimEvent(tx, claimEventRow{
-			WorkID: w.ID, To: model.ClaimStatePending,
+			WorkID: w.ID, To: state,
 			ActorUID: p.ActorUID, Site: p.Site,
 		})
 		if err != nil {
 			return err
 		}
 		out.WorkID, out.ProductWorkID = w.ID, productWorkID
-		out.ClaimState, out.EventID = model.ClaimStateKeyPending, eventID
+		out.ClaimState, out.EventID = model.ClaimStateKey(&p.Site, &productWorkID, &state), eventID
 		return nil
 	})
 	if err != nil {
