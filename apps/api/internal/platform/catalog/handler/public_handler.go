@@ -609,6 +609,13 @@ func (h *PublicHandler) WorksList(c fiber.Ctx) error {
 		Include:  service.ParseWorksListInclude(c.Query("include")),
 		Fields:   fieldsQuery(c),
 		Site:     strings.TrimSpace(c.Query("site")),
+		// The zero PublicOLang curates to ja+zh (the calendar's home
+		// population). 2f326114 added the field for v2 and left this
+		// constructor unset, which silently dropped every non-ja/zh work
+		// from the v1 browse and ids= lanes — the forum saw short pages,
+		// and works?ids= contradicted works/search. v1 declares no olang=
+		// parameter: this lane is always the whole population.
+		OLang: service.PublicOLang{All: true},
 	}
 	switch sort := c.Query("sort"); sort {
 	case "", "id":
