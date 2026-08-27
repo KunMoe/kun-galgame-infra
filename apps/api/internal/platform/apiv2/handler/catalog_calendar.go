@@ -42,7 +42,7 @@ func (c *Catalog) ListCalendar(ctx context.Context, q collect.Query, month, year
 	}
 	items := make([]repr.Work, 0, len(data.Items))
 	for _, it := range data.Items {
-		items = append(items, workFromListItem(it, q.Include))
+		items = append(items, workFromListItem(it, q.Include, c.imageURL))
 	}
 	var total int64
 	if q.IncludeTotal {

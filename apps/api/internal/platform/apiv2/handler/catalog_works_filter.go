@@ -186,7 +186,7 @@ func (c *Catalog) listWorksSQL(ctx context.Context, q collect.Query, f worksFilt
 	items := make([]repr.Work, 0, len(data.Items))
 	seen := map[int64]bool{}
 	for _, it := range data.Items {
-		items = append(items, workFromListItem(it, q.Include))
+		items = append(items, workFromListItem(it, q.Include, c.imageURL))
 		seen[it.ID] = true
 	}
 	if q.Batch {
@@ -234,7 +234,7 @@ func (c *Catalog) listWorksSearch(ctx context.Context, q collect.Query, f worksF
 	}
 	items := make([]repr.Work, 0, len(data.Items))
 	for _, it := range data.Items {
-		items = append(items, workFromListItem(it, q.Include))
+		items = append(items, workFromListItem(it, q.Include, c.imageURL))
 	}
 	var next *string
 	if int64(page)*int64(data.Limit) < data.Total && len(data.Items) > 0 {
