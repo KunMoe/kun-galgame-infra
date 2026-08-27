@@ -496,6 +496,25 @@ export const mcpTools = [
     ]
   },
   {
+    "name": "listCatalogClaimEvents",
+    "method": "GET",
+    "path": "/v2/catalog/claim-events",
+    "summary": "Claim event history",
+    "needs_key": true,
+    "params": [
+      "cursor",
+      "limit",
+      "view",
+      "fields",
+      "ids",
+      "include_total",
+      "sort",
+      "site",
+      "actor_uid",
+      "work_id"
+    ]
+  },
+  {
     "name": "listCatalogCompanies",
     "method": "GET",
     "path": "/v2/catalog/companies",
@@ -746,6 +765,7 @@ export const mcpTools = [
       "claim_state",
       "content_limit",
       "site",
+      "owner_uid",
       "company_id",
       "company_rollup",
       "tag_id",

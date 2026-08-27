@@ -351,5 +351,23 @@ export const problems = [
     "title": "Source inactive",
     "description": "The news source is bound correctly but has been deactivated. detail names who to ask to restore it.",
     "type": "https://developer.nextmoe.dev/problems/news/source-inactive"
+  },
+  {
+    "code": "STORE_QUOTA_EXCEEDED",
+    "domain": "store",
+    "kebab": "store-quota-exceeded",
+    "status": 403,
+    "title": "Store quota exceeded",
+    "description": "The application has minted the maximum number of purchase links.",
+    "type": "https://developer.nextmoe.dev/problems/store/store-quota-exceeded"
+  },
+  {
+    "code": "STORE_LINK_UNAVAILABLE",
+    "domain": "store",
+    "kebab": "store-link-unavailable",
+    "status": 502,
+    "title": "Store link unavailable",
+    "description": "The link shortener is unavailable; no link was issued — there is deliberately no fallback to a bare affiliate URL.",
+    "type": "https://developer.nextmoe.dev/problems/store/store-link-unavailable"
   }
 ] as const

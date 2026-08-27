@@ -147,6 +147,8 @@ export const FACES = [
       ) {
         return ''
       }
+      if (path.startsWith('/v2/store/')) return 'store:read'
+      if (path === '/v2/catalog/claim-events') return 'catalog:read + claim_events:read'
       return 'catalog:read'
     },
     auth: {
@@ -160,7 +162,8 @@ export const FACES = [
       { key: 'catalog', label: '目录', match: /^\/v2\/catalog/ },
       { key: 'news', label: '资讯', match: /^\/v2\/news/ },
       { key: 'me', label: '我的', match: /^\/v2\/me/ },
-      { key: 'moderation', label: '审核', match: /^\/v2\/moderation/ }
+      { key: 'moderation', label: '审核', match: /^\/v2\/moderation/ },
+      { key: 'store', label: '商店', match: /^\/v2\/store/ }
     ],
     notes: [
       '正式公开：形状按 additive-only 演进，删除与改名由 CI 的 oasdiff 门拦下。第三方在门户自助铸 nmk_ 密钥即可调用，不需要申请。',
@@ -347,5 +350,5 @@ export const EXPECTED_OPERATION_COUNTS = {
   edit: 6,
   news: 3,
   store: 2,
-  v2: 84
+  v2: 88
 }

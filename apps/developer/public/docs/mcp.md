@@ -11,7 +11,7 @@
 
 NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 https://mcp.nextmoe.dev/mcp，Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——每次工具调用就是一次对公开 /v2 GET 的请求，鉴权、限流、配额与用量与直连毫无区别。工具名就是 OpenAPI operationId，清单由 cmd/gen-v2-portal 从同一份 v2 spec 生成。
 
-## 工具（54 个）
+## 工具（55 个）
 
 - `getCatalogCharacter` `GET /v2/catalog/characters/{id}`：按 id 取角色；view=full 追加性别、生日、三围、血型与 instance_of_id。nsfw 同时控 r18 作品与 sexual 系 traits 的可见性。
 - `getCatalogCharacterAppearances` `GET /v2/catalog/characters/{id}/appearances`：一个角色出演的全部作品，各带 roster_role、剧透等级与配音署名，offset 游标分页。
@@ -49,6 +49,7 @@ NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端�
 - `listCatalogCalendar` `GET /v2/catalog/calendar`：发售月历：month= / year= 选窗口，precision= 与 status= 在「已定档到月」「只知年」「已公布未定档」三个视图间切换——v1 的三条月历路径在 v2 是这一条。不接受 ids=。
 - `listCatalogChanges` `GET /v2/catalog/changes`：增量同步变更流：近期更新过的作品，最旧优先。存下 next_cursor，下次轮询只拿变化的部分。
 - `listCatalogCharacters` `GET /v2/catalog/characters`：keyset 分页浏览角色注册表。ids=/refs= 是批量水合泳道，不分页。
+- `listCatalogClaimEvents` `GET /v2/catalog/claim-events`：认领生命周期事件流，默认最新在前；sort=recorded_asc 是镜像 / 发奖 cron 按 id 水位续读的那条泳道。事件带驳回理由与操作者 uid，所以除 catalog:read 外还要运营发放的 claim_events:read。
 - `listCatalogCompanies` `GET /v2/catalog/companies`：浏览公司 / 厂牌词表本身（v1 的 labels）——用来发现 company id 再喂给 listCatalogWorks 的 company_id=。
 - `listCatalogCreditNames` `GET /v2/catalog/credit-names`：keyset 分页浏览署名注册表，q= 按名字过滤。ids=/refs= 是批量水合泳道，不分页。
 - `listCatalogEngines` `GET /v2/catalog/engines`：浏览引擎词表本身——用来发现 engine id 再喂给 listCatalogWorks 的 engine_id=。
