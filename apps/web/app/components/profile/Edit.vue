@@ -1,31 +1,44 @@
 <script setup lang="ts">
+import { resolveAvatarUrl } from '~~/shared/utils/resolveImage'
 
 const auth = useAuth()
 const user = auth.user
+const userStore = useUserStore()
 
 const name = ref('')
 const bio = ref('')
-const avatar = ref('')
 const error = ref('')
 const success = ref('')
 const isLoading = ref(false)
+
+const avatarFile = ref<Blob | null>(null)
+const avatarCrop = ref<{ reset: () => void } | null>(null)
+const {
+  uploading: avatarUploading,
+  error: avatarError,
+  upload: uploadAvatar,
+} = useAvatarUpload()
+
+const cdnBase = useRuntimeConfig().public.imageCdnBase as string
+const avatarSrc = computed(() =>
+  resolveAvatarUrl(user.value ?? null, { cdnBase, variant: '256' }, '')
+)
 
 watchEffect(() => {
   if (!user.value) return
   name.value = user.value.name ?? ''
   bio.value = user.value.bio ?? ''
-  avatar.value = user.value.avatar ?? ''
 })
 
 const dirty = computed(
   () =>
     !!user.value &&
     (name.value !== (user.value.name ?? '') ||
-      bio.value !== (user.value.bio ?? '') ||
-      avatar.value !== (user.value.avatar ?? ''))
+      bio.value !== (user.value.bio ?? ''))
 )
 
 const handleSubmit = async () => {
+  if (isLoading.value || avatarUploading.value) return
   error.value = ''
   success.value = ''
 
@@ -37,19 +50,14 @@ const handleSubmit = async () => {
     error.value = '个人简介不能超过 107 个字符'
     return
   }
-  if (avatar.value.length > 255) {
-    error.value = '头像链接过长（≤255）'
-    return
-  }
   if (!dirty.value) {
     error.value = '没有任何改动'
     return
   }
 
-  const payload: { name?: string; bio?: string; avatar?: string } = {}
+  const payload: { name?: string; bio?: string } = {}
   if (name.value !== (user.value?.name ?? '')) payload.name = name.value.trim()
   if (bio.value !== (user.value?.bio ?? '')) payload.bio = bio.value
-  if (avatar.value !== (user.value?.avatar ?? '')) payload.avatar = avatar.value
 
   isLoading.value = true
   try {
@@ -65,6 +73,17 @@ const handleSubmit = async () => {
     isLoading.value = false
   }
 }
+
+const handleAvatarUpload = async () => {
+  if (!avatarFile.value || avatarUploading.value || isLoading.value) return
+  const hash = await uploadAvatar(avatarFile.value, '/auth/me/avatar')
+  if (hash && userStore.user) {
+    userStore.setUser({ ...userStore.user, avatar_image_hash: hash })
+    useKunMessage('头像已更新', 'success')
+    avatarCrop.value?.reset()
+    avatarFile.value = null
+  }
+}
 </script>
 
 <template>
@@ -75,19 +94,34 @@ const handleSubmit = async () => {
     </h3>
 
     <form class="space-y-4" @submit.prevent="handleSubmit">
-      <div class="flex items-center gap-4">
+      <div class="space-y-2 text-center">
         <KunAvatar
-          :user="{ id: 0, name: name || '用户', avatar }"
+          :user="{ id: 0, name: name || '用户', avatar: avatarSrc }"
           size="lg"
           :is-navigation="false"
         />
-        <div class="flex-1">
-          <KunInput
-            v-model="avatar"
-            label="头像链接"
-            placeholder="https://example.com/avatar.webp"
-            autocomplete="off"
+        <CommonAvatarCrop
+          ref="avatarCrop"
+          v-model:file="avatarFile"
+          :disabled="avatarUploading || isLoading"
+        />
+        <KunButton
+          type="button"
+          variant="flat"
+          color="primary"
+          size="sm"
+          :disabled="!avatarFile || avatarUploading || isLoading"
+          @click="handleAvatarUpload"
+        >
+          <KunIcon
+            v-if="avatarUploading"
+            name="lucide:loader-circle"
+            class="mr-1 size-4 animate-spin"
           />
+          上传头像
+        </KunButton>
+        <div v-if="avatarError" class="text-danger-600 text-sm">
+          {{ avatarError }}
         </div>
       </div>
 
@@ -118,7 +152,7 @@ const handleSubmit = async () => {
         type="submit"
         color="primary"
         class="w-full"
-        :disabled="isLoading || !dirty"
+        :disabled="isLoading || !dirty || avatarUploading"
       >
         <KunIcon
           v-if="isLoading"

@@ -5,7 +5,10 @@ import { USER_STATUS_MAP } from '~/constants/admin'
 import type { UserDetail } from '~~/shared/types/user'
 
 const open = defineModel<boolean>('open', { required: true })
-const props = defineProps<{ user: { uuid: string; name: string } | null }>()
+const props = defineProps<{
+  user: { uuid: string; name: string } | null
+  reloadKey?: number
+}>()
 
 const api = useApi()
 const cdnBase = useRuntimeConfig().public.imageCdnBase as string
@@ -31,9 +34,12 @@ const load = async () => {
   }
 }
 
-watch(open, (v) => {
-  if (v && props.user) load()
-})
+watch(
+  [open, () => props.user?.uuid, () => props.reloadKey],
+  () => {
+    if (open.value && props.user) load()
+  }
+)
 
 const avatarSrc = computed(() =>
   detail.value
