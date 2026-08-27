@@ -79,12 +79,13 @@ func mustLiveV2Key() string {
 }
 
 type liveFix struct {
-	Work, Pending, Claimable, Anchored int64
-	Company, Tag, Series, Engine       int64
-	Release, Character, Person, Credit int64
-	Trait, Cover                       int64
-	NewsItem                           int64
-	AnchorExt                          string
+	Work, Pending, Claimable, Anchored  int64
+	Company, Tag, Series, Engine        int64
+	Release, Character, Person, Credit  int64
+	Trait, Cover                        int64
+	NewsItem                            int64
+	CompanyEmpty, TagSexual, Attributed int64
+	AnchorExt                           string
 }
 
 const liveNewsSource = "moyu"
@@ -204,6 +205,7 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		catalog_claim_event, catalog_external_ref, catalog_work_cover, catalog_release,
 		catalog_work, catalog_label, catalog_tag, catalog_series, catalog_engine,
 		catalog_character, catalog_credit_name, catalog_person, catalog_character_trait,
+		catalog_work_label, catalog_label_alias, catalog_series_member, catalog_character_trait_link,
 		edit_revision, edit_proposal, edit_proposal_amendment
 		RESTART IDENTITY CASCADE`).Error; err != nil {
 		return liveFix{}, err
@@ -269,11 +271,48 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 
+	// The taxonomy work counts (has_works=, series/company work_count) only
+	// count works with a LIVE claim — claimStateWhere(taxonomyLiveClaim) — so an
+	// unclaimed fixture work attributes to a label yet counts as zero.
+	attributed := &model.CatalogWork{
+		MediumID: 1, OLang: "ja", DisplayName: "Attributed Work",
+		ContentRating: model.ContentRatingAllAges, Status: model.WorkStatusLive,
+		Extra: empty, FieldProvenance: empty,
+	}
+	if err := db.Create(attributed).Error; err != nil {
+		return fx, err
+	}
+	fx.Attributed = attributed.ID
+	attrProduct := int64(10002)
+	for _, action := range []catsvc.ClaimAction{catsvc.ClaimActionClaim, catsvc.ClaimActionSubmit, catsvc.ClaimActionApprove} {
+		if _, err := claims.Act(context.Background(), catsvc.ClaimActionParams{
+			WorkID: attributed.ID, Action: action, Site: liveSite,
+			ProductWorkID: &attrProduct, ActorUID: liveUID,
+		}); err != nil {
+			return fx, err
+		}
+	}
+
 	co := &model.CatalogLabel{DisplayName: "Live Brand", Lang: "ja", Kind: model.LabelKindGameBrand, FieldProvenance: empty}
 	if err := db.Create(co).Error; err != nil {
 		return fx, err
 	}
 	fx.Company = co.ID
+	if err := db.Create(&model.CatalogWorkLabel{WorkID: attributed.ID, LabelID: co.ID, Kind: model.WorkLabelKindBrand}).Error; err != nil {
+		return fx, err
+	}
+	if err := db.Create(&model.CatalogLabelAlias{
+		LabelID: co.ID, Name: "ライブブランド", Lang: "ja",
+		Kind: model.AliasKindSpellingVariant, Provenance: model.AliasProvenanceSource,
+	}).Error; err != nil {
+		return fx, err
+	}
+
+	empt := &model.CatalogLabel{DisplayName: "Empty Brand", Lang: "ja", Kind: model.LabelKindGameBrand, FieldProvenance: empty}
+	if err := db.Create(empt).Error; err != nil {
+		return fx, err
+	}
+	fx.CompanyEmpty = empt.ID
 
 	tg := &model.CatalogTag{Name: "live-tag", Tier: model.TagTierCore, Kind: model.TagKindContent}
 	if err := db.Create(tg).Error; err != nil {
@@ -281,11 +320,20 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.Tag = tg.ID
 
+	ero := &model.CatalogTag{Name: "live-ero-tag", Tier: model.TagTierCore, Kind: model.TagKindContent, Sexual: true}
+	if err := db.Create(ero).Error; err != nil {
+		return fx, err
+	}
+	fx.TagSexual = ero.ID
+
 	se := &model.CatalogSeries{DisplayName: "Live Series", SourceID: 2, ExternalID: "s-live-1"}
 	if err := db.Create(se).Error; err != nil {
 		return fx, err
 	}
 	fx.Series = se.ID
+	if err := db.Create(&model.CatalogSeriesMember{SeriesID: se.ID, WorkID: attributed.ID, Position: 1, Kind: model.SeriesMemberKindMain}).Error; err != nil {
+		return fx, err
+	}
 
 	en := &model.CatalogEngine{Name: "LiveEngine", Description: "test", Aliases: datatypes.JSON([]byte("[]"))}
 	if err := db.Create(en).Error; err != nil {
@@ -325,6 +373,9 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 	fx.Trait = tr.ID
+	if err := db.Create(&model.CatalogCharacterTraitLink{CharacterID: ch.ID, TraitID: tr.ID, SpoilerLevel: 0}).Error; err != nil {
+		return fx, err
+	}
 
 	cv := &model.CatalogWorkCover{WorkID: w.ID, ImageHash: "livecoverhash1", Kind: "main", SourceID: 2}
 	if err := db.Create(cv).Error; err != nil {

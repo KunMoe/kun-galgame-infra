@@ -130,6 +130,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.CompanyGraph{}, repr.CompanyGraphNode{}, repr.CompanyGraphEdge{},
 			repr.ObjectSchema{}, repr.SchemaField{},
 			repr.Person{}, repr.Trait{}, repr.Measurements{}, repr.NameCredit{}, repr.NameCreditRole{}, repr.Appearance{},
+			repr.CharacterTrait{}, repr.WorkEngineRef{},
 			repr.UserPlaytime{}, repr.CoverVote{}, repr.ClaimRecord{},
 			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.DecisionRecord{}, repr.SnapshotRecord{},
 			repr.Revision{}, repr.FieldDiff{}, repr.Amendment{}, repr.EditImage{},

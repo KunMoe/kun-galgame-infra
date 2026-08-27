@@ -72,7 +72,7 @@ type Work struct {
 	Screenshots          *[]Screenshot            `json:"screenshots,omitempty" doc:"Present when include=screenshots. Empty array if none."`
 	Characters           *[]WorkCharacter         `json:"characters,omitempty" doc:"Present when include=characters. Empty array if none."`
 	Companies            *[]WorkCompany           `json:"companies,omitempty" doc:"Present when include=companies. Empty array if none."`
-	Engines              *[]Engine                `json:"engines,omitempty" doc:"Present when include=engines. Empty array if none."`
+	Engines              *[]WorkEngineRef         `json:"engines,omitempty" doc:"Present when include=engines. Empty array if none."`
 	Links                *[]WorkLink              `json:"links,omitempty" doc:"Present when include=links. Empty array if none."`
 }
 

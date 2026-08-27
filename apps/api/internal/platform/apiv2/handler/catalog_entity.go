@@ -55,6 +55,7 @@ func (c *Catalog) GetCharacter(ctx context.Context, id int64, nsfw bool, include
 			attachCharacterAttrs(&out, attrs)
 		}
 	}
+	attachCharacterBlocks(&out, rec, include)
 	return out, nil
 }
 
@@ -98,7 +99,7 @@ func (c *Catalog) GetTrait(ctx context.Context, id int64) (repr.Trait, error) {
 	}, nil
 }
 
-func (c *Catalog) GetCompany(ctx context.Context, id int64, nsfw bool) (repr.Company, error) {
+func (c *Catalog) GetCompany(ctx context.Context, id int64, nsfw bool, include []string) (repr.Company, error) {
 	if c == nil || c.Public == nil {
 		return repr.Company{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
@@ -109,14 +110,7 @@ func (c *Catalog) GetCompany(ctx context.Context, id int64, nsfw bool) (repr.Com
 	if !found {
 		return repr.Company{}, c.mergedOrNotFound(ctx, catmodel.EntityTypeLabel, "company", id)
 	}
-	kind := rec.Kind
-	if _, ok := repr.CompanyKindFromKey(kind); !ok {
-		kind = "group"
-	}
-	return repr.Company{
-		Object: "company", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
-		Localized: localizedFrom(rec.Localized), CompanyKind: kind, WorkCount: rec.WorkCount,
-	}, nil
+	return companyFromDetail(rec, include, c.Public.ImageURL(rec.LogoHash)), nil
 }
 
 func (c *Catalog) GetTag(ctx context.Context, id int64, nsfw bool) (repr.Tag, error) {
@@ -132,7 +126,7 @@ func (c *Catalog) GetTag(ctx context.Context, id int64, nsfw bool) (repr.Tag, er
 	}
 	return repr.Tag{
 		Object: "tag", ID: repr.ID(rec.ID), DisplayName: rec.Name,
-		Tier: rec.Tier, TagKind: rec.Kind, WorkCount: rec.WorkCount,
+		Tier: rec.Tier, TagKind: rec.Kind, WorkCount: rec.WorkCount, IsSexual: rec.Sexual,
 	}, nil
 }
 
@@ -147,7 +141,14 @@ func (c *Catalog) GetEngine(ctx context.Context, id int64, nsfw bool) (repr.Engi
 	if !found {
 		return repr.Engine{}, problem.New(problem.CodeNotFound, "", "", "engine not found.")
 	}
-	return repr.Engine{Object: "engine", ID: repr.ID(rec.ID), DisplayName: rec.Name, WorkCount: rec.WorkCount}, nil
+	aliases := rec.Aliases
+	if aliases == nil {
+		aliases = []string{}
+	}
+	return repr.Engine{
+		Object: "engine", ID: repr.ID(rec.ID), DisplayName: rec.Name, WorkCount: rec.WorkCount,
+		Description: rec.Description, Aliases: aliases,
+	}, nil
 }
 
 func (c *Catalog) GetSeries(ctx context.Context, id int64, nsfw bool) (repr.Series, error) {
@@ -161,7 +162,7 @@ func (c *Catalog) GetSeries(ctx context.Context, id int64, nsfw bool) (repr.Seri
 	if !found {
 		return repr.Series{}, problem.New(problem.CodeNotFound, "", "", "series not found.")
 	}
-	return repr.Series{Object: "series", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName}, nil
+	return repr.Series{Object: "series", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName, WorkCount: rec.WorkCount}, nil
 }
 
 func (c *Catalog) GetRelease(ctx context.Context, id int64, nsfw bool) (repr.Release, error) {

@@ -8,30 +8,94 @@ import (
 	catsvc "api/internal/platform/catalog/service"
 )
 
-func companyFromListItem(it dto.PublicLabelListItem) repr.Company {
+func companyFromListItem(it dto.PublicLabelListItem, include []string, logoURL string) repr.Company {
 	kind := it.Kind
 	if _, ok := repr.CompanyKindFromKey(kind); !ok {
 		kind = "group"
 	}
-	return repr.Company{
+	out := repr.Company{
 		Object: "company", ID: repr.ID(it.ID), DisplayName: it.DisplayName,
 		Localized: localizedFrom(it.Localized), CompanyKind: kind, WorkCount: it.WorkCount,
 	}
+	for _, t := range include {
+		switch t {
+		case "aliases":
+			out.Aliases = ptrSlice(cap100(entityNamesFrom(it.Aliases)))
+		case "logo":
+			if logoURL != "" {
+				out.Logo = imageFromPublicMeta(logoURL, it.LogoMeta, "")
+			}
+		}
+	}
+	return out
+}
+
+func companyFromDetail(rec dto.PublicLabel, include []string, logoURL string) repr.Company {
+	kind := rec.Kind
+	if _, ok := repr.CompanyKindFromKey(kind); !ok {
+		kind = "group"
+	}
+	out := repr.Company{
+		Object: "company", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
+		Localized: localizedFrom(rec.Localized), CompanyKind: kind, WorkCount: rec.WorkCount,
+	}
+	for _, t := range include {
+		switch t {
+		case "aliases":
+			out.Aliases = ptrSlice(cap100(entityNamesFrom(rec.Aliases)))
+		case "logo":
+			if logoURL != "" {
+				out.Logo = imageFromPublicMeta(logoURL, rec.LogoMeta, "")
+			}
+		case "intros":
+			out.Intros = ptrSlice(cap100(introsFrom(rec.Intros)))
+		case "links":
+			out.Links = ptrSlice(cap100(labelLinksFrom(rec.Links)))
+		}
+	}
+	return out
+}
+
+func entityNamesFrom(in []dto.PublicAlias) []repr.EntityName {
+	out := make([]repr.EntityName, 0, len(in))
+	for _, a := range in {
+		kind := a.Kind
+		if kind != "translation" {
+			kind = "spelling_variant"
+		}
+		out = append(out, repr.EntityName{Lang: a.Lang, Value: a.Value, AliasKind: kind, IsMachine: a.Machine})
+	}
+	return out
+}
+
+func labelLinksFrom(in []dto.PublicLabelLink) []repr.WorkLink {
+	out := make([]repr.WorkLink, 0, len(in))
+	for _, l := range in {
+		out = append(out, repr.WorkLink{Source: l.Source, URL: l.URL})
+	}
+	return out
 }
 
 func tagFromListItem(it dto.PublicTagListItem) repr.Tag {
 	return repr.Tag{
 		Object: "tag", ID: repr.ID(it.ID), DisplayName: it.Name,
-		Tier: it.Tier, TagKind: it.Kind, WorkCount: it.WorkCount,
+		Tier: it.Tier, TagKind: it.Kind, WorkCount: it.WorkCount, IsSexual: it.Sexual,
 	}
 }
 
 func engineFromListItem(it dto.PublicEngineListItem) repr.Engine {
-	return repr.Engine{Object: "engine", ID: repr.ID(it.ID), DisplayName: it.Name, WorkCount: it.WorkCount}
+	aliases := it.Aliases
+	if aliases == nil {
+		aliases = []string{}
+	}
+	return repr.Engine{
+		Object: "engine", ID: repr.ID(it.ID), DisplayName: it.Name, WorkCount: it.WorkCount,
+		Description: it.Description, Aliases: aliases,
+	}
 }
 
-func seriesFromDetail(id int64, display string) repr.Series {
-	return repr.Series{Object: "series", ID: repr.ID(id), DisplayName: display}
+func seriesFromDetail(id int64, display string, workCount int) repr.Series {
+	return repr.Series{Object: "series", ID: repr.ID(id), DisplayName: display, WorkCount: workCount}
 }
 
 func characterFromRow(it catsvc.EntityListRow) repr.Character {
@@ -62,6 +126,40 @@ func traitFromRow(it catsvc.EntityListRow) repr.Trait {
 		Object: "trait", ID: repr.ID(it.ID), DisplayName: it.DisplayName,
 		NameZh: it.NameZh, VndbTID: it.VndbTID, IsSexual: it.Sexual,
 	}
+}
+
+func attachCharacterBlocks(out *repr.Character, rec dto.PublicCharacter, include []string) {
+	for _, t := range include {
+		switch t {
+		case "image":
+			if rec.Image != "" {
+				out.Image = imageFromPublicMeta(rec.Image, rec.ImageMeta, "")
+			}
+		case "figure":
+			if rec.Figure != "" {
+				out.Figure = imageFromPublicMeta(rec.Figure, rec.FigureMeta, "")
+			}
+		case "traits":
+			out.Traits = ptrSlice(cap100(characterTraitsFrom(rec.Traits)))
+		}
+	}
+}
+
+func characterTraitsFrom(in []dto.PublicCharacterTrait) []repr.CharacterTrait {
+	out := make([]repr.CharacterTrait, 0, len(in))
+	for _, tr := range in {
+		sp, ok := repr.Spoiler(tr.Spoiler)
+		if !ok {
+			sp = "none"
+		}
+		out = append(out, repr.CharacterTrait{
+			Object: "character_trait", ID: repr.ID(tr.ID), DisplayName: tr.Name,
+			Group: optString(tr.Group), Localized: localizedFrom(tr.Localized),
+			GroupLocalized: localizedFrom(tr.GroupLocalized),
+			Spoiler:        sp, IsSexual: tr.Sexual, IsLie: tr.Lie,
+		})
+	}
+	return out
 }
 
 func characterWantsAttrs(include []string) bool {

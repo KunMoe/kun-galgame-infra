@@ -13992,6 +13992,12 @@ export const docsModel: DocsModel = {
                             }
                           },
                           {
+                            "name": "work_count",
+                            "required": true,
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          {
                             "name": "works",
                             "nullable": true,
                             "type": "array",
@@ -23550,6 +23556,78 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "figure",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "hash",
+                                  "required": true,
+                                  "doc": "Image-service content hash.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "height",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel height. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "sexual",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Sexual depiction. null means not assessed.",
+                                  "enum": [
+                                    "safe",
+                                    "suggestive",
+                                    "explicit"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "thumbhash",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Thumbhash. null if unknown.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "url",
+                                  "required": true,
+                                  "doc": "Absolute image URL. Never a bare hash.",
+                                  "format": "uri",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "violence",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                  "enum": [
+                                    "tame",
+                                    "violent",
+                                    "brutal"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "width",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel width. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            },
+                            {
                               "name": "gender",
                               "doc": "Present on view=full. null if unrecorded.",
                               "enum": [
@@ -23570,6 +23648,78 @@ export const docsModel: DocsModel = {
                               "required": true,
                               "doc": "Catalog character id.",
                               "type": "string"
+                            },
+                            {
+                              "name": "image",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "hash",
+                                  "required": true,
+                                  "doc": "Image-service content hash.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "height",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel height. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "sexual",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Sexual depiction. null means not assessed.",
+                                  "enum": [
+                                    "safe",
+                                    "suggestive",
+                                    "explicit"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "thumbhash",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Thumbhash. null if unknown.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "url",
+                                  "required": true,
+                                  "doc": "Absolute image URL. Never a bare hash.",
+                                  "format": "uri",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "violence",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                  "enum": [
+                                    "tame",
+                                    "violent",
+                                    "brutal"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "width",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel width. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
                             },
                             {
                               "name": "instance_of_id",
@@ -23651,6 +23801,113 @@ export const docsModel: DocsModel = {
                                 "character"
                               ],
                               "type": "string"
+                            },
+                            {
+                              "name": "traits",
+                              "doc": "Present when include=traits, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "display_name",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "group",
+                                    "required": true,
+                                    "nullable": true,
+                                    "doc": "Root trait group name. null for a root trait. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "group_localized",
+                                    "required": true,
+                                    "doc": "Localized names of the root group, BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                    "type": "map",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "is_machine",
+                                          "required": true,
+                                          "doc": "Whether this value is machine-translated.",
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "name": "value",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "id",
+                                    "required": true,
+                                    "doc": "Catalog trait id.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "is_lie",
+                                    "required": true,
+                                    "doc": "Whether this trait is an in-story deception.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "is_sexual",
+                                    "required": true,
+                                    "doc": "Whether this trait is in the sexual family.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "localized",
+                                    "required": true,
+                                    "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                    "type": "map",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "is_machine",
+                                          "required": true,
+                                          "doc": "Whether this value is machine-translated.",
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "name": "value",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "object",
+                                    "required": true,
+                                    "doc": "Type discriminant. Always character_trait.",
+                                    "enum": [
+                                      "character_trait"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "spoiler",
+                                    "required": true,
+                                    "doc": "Spoiler level of this trait on this character.",
+                                    "enum": [
+                                      "none",
+                                      "minor",
+                                      "major"
+                                    ],
+                                    "type": "string"
+                                  }
+                                ]
+                              }
                             },
                             {
                               "name": "weight_kg",
@@ -24411,7 +24668,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/characters/{id}",
               "summary": "Get one character",
-              "description": "Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
+              "description": "Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits adds art and trait blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -24480,6 +24737,78 @@ export const docsModel: DocsModel = {
                         "type": "string"
                       },
                       {
+                        "name": "figure",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "hash",
+                            "required": true,
+                            "doc": "Image-service content hash.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "height",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Pixel height. null if unknown.",
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          {
+                            "name": "sexual",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Sexual depiction. null means not assessed.",
+                            "enum": [
+                              "safe",
+                              "suggestive",
+                              "explicit"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "name": "source",
+                            "required": true,
+                            "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "thumbhash",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Thumbhash. null if unknown.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "url",
+                            "required": true,
+                            "doc": "Absolute image URL. Never a bare hash.",
+                            "format": "uri",
+                            "type": "string"
+                          },
+                          {
+                            "name": "violence",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                            "enum": [
+                              "tame",
+                              "violent",
+                              "brutal"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "name": "width",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Pixel width. null if unknown.",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
                         "name": "gender",
                         "doc": "Present on view=full. null if unrecorded.",
                         "enum": [
@@ -24500,6 +24829,78 @@ export const docsModel: DocsModel = {
                         "required": true,
                         "doc": "Catalog character id.",
                         "type": "string"
+                      },
+                      {
+                        "name": "image",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "hash",
+                            "required": true,
+                            "doc": "Image-service content hash.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "height",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Pixel height. null if unknown.",
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          {
+                            "name": "sexual",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Sexual depiction. null means not assessed.",
+                            "enum": [
+                              "safe",
+                              "suggestive",
+                              "explicit"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "name": "source",
+                            "required": true,
+                            "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "thumbhash",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Thumbhash. null if unknown.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "url",
+                            "required": true,
+                            "doc": "Absolute image URL. Never a bare hash.",
+                            "format": "uri",
+                            "type": "string"
+                          },
+                          {
+                            "name": "violence",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                            "enum": [
+                              "tame",
+                              "violent",
+                              "brutal"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "name": "width",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Pixel width. null if unknown.",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
                       },
                       {
                         "name": "instance_of_id",
@@ -24581,6 +24982,113 @@ export const docsModel: DocsModel = {
                           "character"
                         ],
                         "type": "string"
+                      },
+                      {
+                        "name": "traits",
+                        "doc": "Present when include=traits, detail face only. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "display_name",
+                              "required": true,
+                              "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "group",
+                              "required": true,
+                              "nullable": true,
+                              "doc": "Root trait group name. null for a root trait. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "group_localized",
+                              "required": true,
+                              "doc": "Localized names of the root group, BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                              "type": "map",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this value is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "name": "id",
+                              "required": true,
+                              "doc": "Catalog trait id.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "is_lie",
+                              "required": true,
+                              "doc": "Whether this trait is an in-story deception.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "is_sexual",
+                              "required": true,
+                              "doc": "Whether this trait is in the sexual family.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "localized",
+                              "required": true,
+                              "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                              "type": "map",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this value is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "name": "object",
+                              "required": true,
+                              "doc": "Type discriminant. Always character_trait.",
+                              "enum": [
+                                "character_trait"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "name": "spoiler",
+                              "required": true,
+                              "doc": "Spoiler level of this trait on this character.",
+                              "enum": [
+                                "none",
+                                "minor",
+                                "major"
+                              ],
+                              "type": "string"
+                            }
+                          ]
+                        }
                       },
                       {
                         "name": "weight_kg",
@@ -27894,7 +28402,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/companies",
               "summary": "List companies",
-              "description": "Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate.",
+              "description": "Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate. has_works=true keeps only companies with works visible under the same nsfw gate. include=aliases,logo fills on every lane; include=intros,links fills on the batch lane only (and on the detail face).",
               "scope": "catalog:read",
               "params": [
                 {
@@ -27973,6 +28481,13 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "true includes r18. false or absent hides r18. Only true or false."
+                },
+                {
+                  "name": "has_works",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "true keeps only companies whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every company."
                 }
               ],
               "responses": [
@@ -28024,6 +28539,45 @@ export const docsModel: DocsModel = {
                           "type": "object",
                           "children": [
                             {
+                              "name": "aliases",
+                              "doc": "Present when include=aliases. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "alias_kind",
+                                    "required": true,
+                                    "doc": "search_hint is internal and never appears on this type.",
+                                    "enum": [
+                                      "translation",
+                                      "spelling_variant"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this name is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "doc": "BCP-47 language tag.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
                               "name": "company_kind",
                               "required": true,
                               "doc": "Company registry class. No other.",
@@ -28050,11 +28604,69 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "intros",
+                              "doc": "Present when include=intros on the detail and batch lanes; the cursor list lane does not carry it. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this intro is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "doc": "BCP-47 language tag.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
                               "name": "latin",
                               "required": true,
                               "nullable": true,
                               "doc": "null if unrecorded. Must not be used as a discriminant.",
                               "type": "string"
+                            },
+                            {
+                              "name": "links",
+                              "doc": "Present when include=links on the detail and batch lanes; the cursor list lane does not carry it. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "url",
+                                    "required": true,
+                                    "doc": "Absolute URL.",
+                                    "format": "uri",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
                             },
                             {
                               "name": "localized",
@@ -28078,6 +28690,78 @@ export const docsModel: DocsModel = {
                                   }
                                 ]
                               }
+                            },
+                            {
+                              "name": "logo",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "hash",
+                                  "required": true,
+                                  "doc": "Image-service content hash.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "height",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel height. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "sexual",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Sexual depiction. null means not assessed.",
+                                  "enum": [
+                                    "safe",
+                                    "suggestive",
+                                    "explicit"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "thumbhash",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Thumbhash. null if unknown.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "url",
+                                  "required": true,
+                                  "doc": "Absolute image URL. Never a bare hash.",
+                                  "format": "uri",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "violence",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                  "enum": [
+                                    "tame",
+                                    "violent",
+                                    "brutal"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "width",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel width. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
                             },
                             {
                               "name": "object",
@@ -28848,7 +29532,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/companies/{id}",
               "summary": "Get one company",
-              "description": "Company registry row (v1 labels). Merged ids are 404 ENTITY_MERGED. Requires an application key.",
+              "description": "Company registry row (v1 labels). include=aliases,logo,intros,links adds the corresponding blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -28895,6 +29579,45 @@ export const docsModel: DocsModel = {
                     "type": "object",
                     "children": [
                       {
+                        "name": "aliases",
+                        "doc": "Present when include=aliases. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "alias_kind",
+                              "required": true,
+                              "doc": "search_hint is internal and never appears on this type.",
+                              "enum": [
+                                "translation",
+                                "spelling_variant"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "name": "is_machine",
+                              "required": true,
+                              "doc": "Whether this name is machine-translated.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "lang",
+                              "required": true,
+                              "doc": "BCP-47 language tag.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
+                              "name": "value",
+                              "required": true,
+                              "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      {
                         "name": "company_kind",
                         "required": true,
                         "doc": "Company registry class. No other.",
@@ -28921,11 +29644,69 @@ export const docsModel: DocsModel = {
                         "type": "string"
                       },
                       {
+                        "name": "intros",
+                        "doc": "Present when include=intros on the detail and batch lanes; the cursor list lane does not carry it. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "is_machine",
+                              "required": true,
+                              "doc": "Whether this intro is machine-translated.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "lang",
+                              "required": true,
+                              "doc": "BCP-47 language tag.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
+                              "name": "source",
+                              "required": true,
+                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "value",
+                              "required": true,
+                              "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      {
                         "name": "latin",
                         "required": true,
                         "nullable": true,
                         "doc": "null if unrecorded. Must not be used as a discriminant.",
                         "type": "string"
+                      },
+                      {
+                        "name": "links",
+                        "doc": "Present when include=links on the detail and batch lanes; the cursor list lane does not carry it. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "source",
+                              "required": true,
+                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "url",
+                              "required": true,
+                              "doc": "Absolute URL.",
+                              "format": "uri",
+                              "type": "string"
+                            }
+                          ]
+                        }
                       },
                       {
                         "name": "localized",
@@ -28949,6 +29730,78 @@ export const docsModel: DocsModel = {
                             }
                           ]
                         }
+                      },
+                      {
+                        "name": "logo",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "hash",
+                            "required": true,
+                            "doc": "Image-service content hash.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "height",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Pixel height. null if unknown.",
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          {
+                            "name": "sexual",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Sexual depiction. null means not assessed.",
+                            "enum": [
+                              "safe",
+                              "suggestive",
+                              "explicit"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "name": "source",
+                            "required": true,
+                            "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "thumbhash",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Thumbhash. null if unknown.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "url",
+                            "required": true,
+                            "doc": "Absolute image URL. Never a bare hash.",
+                            "format": "uri",
+                            "type": "string"
+                          },
+                          {
+                            "name": "violence",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                            "enum": [
+                              "tame",
+                              "violent",
+                              "brutal"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "name": "width",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Pixel width. null if unknown.",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
                       },
                       {
                         "name": "object",
@@ -35189,6 +36042,21 @@ export const docsModel: DocsModel = {
                           "type": "object",
                           "children": [
                             {
+                              "name": "aliases",
+                              "required": true,
+                              "doc": "Alternate spellings of the engine name. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "string"
+                              }
+                            },
+                            {
+                              "name": "description",
+                              "required": true,
+                              "doc": "Free-text description. Empty if unrecorded. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
                               "name": "display_name",
                               "required": true,
                               "doc": "Must not be used as a discriminant.",
@@ -36015,6 +36883,21 @@ export const docsModel: DocsModel = {
                   "schema": {
                     "type": "object",
                     "children": [
+                      {
+                        "name": "aliases",
+                        "required": true,
+                        "doc": "Alternate spellings of the engine name. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "name": "description",
+                        "required": true,
+                        "doc": "Free-text description. Empty if unrecorded. Must not be used as a discriminant.",
+                        "type": "string"
+                      },
                       {
                         "name": "display_name",
                         "required": true,
@@ -48652,6 +49535,13 @@ export const docsModel: DocsModel = {
                                 "series"
                               ],
                               "type": "string"
+                            },
+                            {
+                              "name": "work_count",
+                              "required": true,
+                              "doc": "Member works visible under the same NSFW gate.",
+                              "format": "int64",
+                              "type": "integer"
                             }
                           ]
                         }
@@ -49472,6 +50362,13 @@ export const docsModel: DocsModel = {
                           "series"
                         ],
                         "type": "string"
+                      },
+                      {
+                        "name": "work_count",
+                        "required": true,
+                        "doc": "Member works visible under the same NSFW gate.",
+                        "format": "int64",
+                        "type": "integer"
                       }
                     ]
                   }
@@ -50917,6 +51814,12 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "is_sexual",
+                              "required": true,
+                              "doc": "Whether this tag is in the sexual family. Filter on it before rendering a tag list to an SFW reader.",
+                              "type": "boolean"
+                            },
+                            {
                               "name": "object",
                               "required": true,
                               "doc": "Type discriminant. Always tag.",
@@ -51763,6 +52666,12 @@ export const docsModel: DocsModel = {
                         "required": true,
                         "doc": "Catalog tag id.",
                         "type": "string"
+                      },
+                      {
+                        "name": "is_sexual",
+                        "required": true,
+                        "doc": "Whether this tag is in the sexual family. Filter on it before rendering a tag list to an SFW reader.",
+                        "type": "boolean"
                       },
                       {
                         "name": "object",
