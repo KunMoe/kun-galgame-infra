@@ -59,7 +59,7 @@ func getStorePurchaseLinks(cat *Catalog) func(context.Context, *getPurchaseLinks
 		if in == nil {
 			in = &getPurchaseLinksInput{}
 		}
-		svc, err := storeService(ctx, cat)
+		svc, err := storeMinting(ctx, cat)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +80,7 @@ func getStoreStats(cat *Catalog) func(context.Context, *getStoreStatsInput) (*ge
 		if in == nil {
 			in = &getStoreStatsInput{}
 		}
-		svc, err := storeService(ctx, cat)
+		svc, err := storeBound(ctx, cat)
 		if err != nil {
 			return nil, err
 		}
@@ -110,12 +110,28 @@ func getStoreStats(cat *Catalog) func(context.Context, *getStoreStatsInput) (*ge
 // site. Carried over verbatim from the v1 face.
 const storeCachePrivate = "private"
 
-func storeService(ctx context.Context, cat *Catalog) (*storesvc.Service, error) {
-	if cat == nil || cat.Store == nil || !cat.Store.Configured() {
+func storeBound(ctx context.Context, cat *Catalog) (*storesvc.Service, error) {
+	if cat == nil || cat.Store == nil {
 		return nil, withIdent(ctx, problem.New(problem.CodeServiceUnavailable, "", "",
 			"the store link service is not configured."))
 	}
 	return cat.Store, nil
+}
+
+// Minting needs the shortener; reading stats does not — MyStats only touches the
+// database. The first cut of this face gated BOTH ops on Configured(), which
+// took the stats read away from any deployment without shortener credentials
+// even though v1 answered it there. Review caught it before it shipped.
+func storeMinting(ctx context.Context, cat *Catalog) (*storesvc.Service, error) {
+	svc, err := storeBound(ctx, cat)
+	if err != nil {
+		return nil, err
+	}
+	if !svc.Configured() {
+		return nil, withIdent(ctx, problem.New(problem.CodeServiceUnavailable, "", "",
+			"the store link service is not configured."))
+	}
+	return svc, nil
 }
 
 func storeErr(ctx context.Context, err error) error {

@@ -244,6 +244,12 @@ Shape notes worth keeping:
 - One `store/service.Service` instance is shared by the v1 and v2 faces. A
   second one would mint a second alias for the same `(client, product)` pair and
   split the click count that settlement reads.
+- **`GET /v2/store/stats` deliberately answers without the shortener**: only the
+  purchase-links op requires `Configured()`. Stats reads the database and never
+  mints, and v1's `MyStats` only required the service to exist — gating both ops
+  on `Configured()` would take the stats read away from a deployment missing the
+  shortener credentials, which is exactly the regression this wave exists to
+  avoid. An unbound service (`Catalog.Store == nil`) is the one case both refuse.
 
 Two new problem codes in a new `store` domain: `STORE_QUOTA_EXCEEDED` (403) and
 `STORE_LINK_UNAVAILABLE` (502). The 502 is deliberate and has no fallback to a

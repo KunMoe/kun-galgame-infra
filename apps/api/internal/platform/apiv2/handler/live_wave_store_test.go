@@ -193,16 +193,34 @@ func TestLiveStoreUnconfigured(t *testing.T) {
 	db := liveStoreDB(t)
 
 	// A service with no minter, which is what a deployment without the shortener
-	// credentials builds.
+	// credentials builds. Minting is dead there; the stats read is NOT — it only
+	// touches the database, and v1 answered it. The first cut of this face gated
+	// both ops on Configured() and lost that read.
 	app := liveStoreApp(t, storesvc.New(db, nil, storesvc.Options{}))
+
 	resp, body := liveStoreGet(t, app, "/v2/store/purchase-links/RJ123456", liveStoreKey)
 	require.Equal(t, 503, resp.StatusCode, string(body))
 	require.Equal(t, problem.CodeServiceUnavailable, liveProblem(t, body).Code)
 
-	app = liveStoreApp(t, nil)
 	resp, body = liveStoreGet(t, app, "/v2/store/stats", liveStoreKey)
-	require.Equal(t, 503, resp.StatusCode, string(body))
-	require.Equal(t, problem.CodeServiceUnavailable, liveProblem(t, body).Code)
+	require.Equal(t, 200, resp.StatusCode, string(body))
+	require.Equal(t, "private", resp.Header.Get("Cache-Control"))
+	var stats liveStoreStats
+	require.NoError(t, json.Unmarshal(body, &stats))
+	require.Equal(t, "store_stats", stats.Object)
+	require.Empty(t, stats.Rows, "nothing was ever minted, so there is nothing to report")
+	require.NotNil(t, stats.Rows, "rows is an empty array, never null")
+	require.Zero(t, stats.Totals.Total)
+	require.Zero(t, stats.Totals.Uniques)
+	require.Len(t, stats.ByKind, 2, "both kinds are still published, at zero")
+
+	// An unbound service is the one case both ops refuse.
+	app = liveStoreApp(t, nil)
+	for _, path := range []string{"/v2/store/purchase-links/RJ123456", "/v2/store/stats"} {
+		resp, body = liveStoreGet(t, app, path, liveStoreKey)
+		require.Equal(t, 503, resp.StatusCode, string(body))
+		require.Equal(t, problem.CodeServiceUnavailable, liveProblem(t, body).Code, path)
+	}
 }
 
 func TestLiveStoreScopeGate(t *testing.T) {
