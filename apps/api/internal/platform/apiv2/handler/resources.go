@@ -20,7 +20,7 @@ type problemType struct {
 	_           struct{} `json:"-" additionalProperties:"true"`
 	Object      string   `json:"object" enum:"problem_type" doc:"Type discriminant. Always problem_type."`
 	Code        string   `json:"code" pattern:"^[A-Z][A-Z0-9_]*[A-Z0-9]$" maxLength:"63" doc:"Top-level error code. UPPER_SNAKE."`
-	Domain      string   `json:"domain" enum:"platform,catalog,me,moderation,news" doc:"Type URI domain segment."`
+	Domain      string   `json:"domain" enum:"platform,catalog,me,moderation,news,store" doc:"Type URI domain segment."`
 	Status      int      `json:"status" minimum:"400" maximum:"599" doc:"HTTP status this code is bound to. One status per code."`
 	Type        string   `json:"type" format:"uri" maxLength:"256" doc:"Problem type URI. The last path segment is the kebab-case form of code."`
 	Title       string   `json:"title" maxLength:"128" pattern:"^[ -~]+$" doc:"Stable English phrase for this type. Does not vary per request."`

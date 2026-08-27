@@ -79,6 +79,9 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 		if roles, ok := fc.Locals("user_roles").([]string); ok {
 			ctx = huma.WithValue(ctx, ctxRoles, roles)
 		}
+		if cred := devapi.CredentialFrom(fc); cred != nil {
+			ctx = huma.WithValue(ctx, ctxCredClient, cred.ClientID)
+		}
 		next(ctx)
 	})
 	prevErr := huma.NewError
@@ -95,6 +98,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	registerMe(api, opt.Catalog)
 	registerMeWrite(api, opt.Catalog)
 	registerMeNews(api, opt.Catalog)
+	registerStore(api, opt.Catalog)
 	huma.NewError = prevErr
 	annotateSpec(api.OpenAPI())
 	return api
@@ -136,7 +140,9 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.UserPlaytime{}, repr.CoverVote{}, repr.ClaimRecord{},
 			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.DecisionRecord{}, repr.SnapshotRecord{},
 			repr.Revision{}, repr.FieldDiff{}, repr.Amendment{}, repr.EditImage{},
-			repr.NewsSubmission{},
+			repr.NewsSubmission{}, repr.ClaimEventRef{}, repr.ClaimEvent{},
+			repr.StorePurchaseLinks{}, repr.StoreCampaign{},
+			repr.StoreStats{}, repr.StoreStatRow{}, repr.StoreStatTotal{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}

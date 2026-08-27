@@ -49,6 +49,22 @@ func TestScopeStoreReadSelfService(t *testing.T) {
 	}
 }
 
+// claim_events:read is operator-granted by design: /v2/catalog/claim-events
+// carries decline reasons and the moderator uid behind every decision, which is
+// a different disclosure than the registry rows catalog:read buys. Nothing in
+// the portal may offer it as a tick-box.
+func TestScopeClaimEventsReadIsNotSelfService(t *testing.T) {
+	if ScopeClaimEventsRead != "claim_events:read" {
+		t.Errorf("ScopeClaimEventsRead = %q, want %q", ScopeClaimEventsRead, "claim_events:read")
+	}
+	if slices.Contains(selfServiceScopes, ScopeClaimEventsRead) {
+		t.Errorf("selfServiceScopes must NOT contain %q — it is granted by an operator", ScopeClaimEventsRead)
+	}
+	if err := checkMintScopes([]string{ScopeClaimEventsRead}); err != ErrScopeNotAllowed {
+		t.Errorf("minting claim_events:read = %v, want ErrScopeNotAllowed", err)
+	}
+}
+
 func TestScopeGalgameWriteSelfServiceExcluded(t *testing.T) {
 	if ScopeGalgameWrite != "galgame:write" {
 		t.Errorf("ScopeGalgameWrite = %q, want %q", ScopeGalgameWrite, "galgame:write")

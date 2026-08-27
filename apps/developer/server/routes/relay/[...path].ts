@@ -8,6 +8,7 @@ export default defineEventHandler(async (event): Promise<unknown> => {
     path === 'v2/catalog' ||
     path.startsWith('v2/news/') ||
     path === 'v2/news' ||
+    path.startsWith('v2/store/') ||
     path.startsWith('v2/problems') ||
     path.startsWith('v2/vocabularies')
   if (!allowed) {

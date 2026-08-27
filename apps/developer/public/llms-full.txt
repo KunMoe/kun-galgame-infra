@@ -9,7 +9,7 @@
 
 **署名**：目前阶段使用 NextMoe·未萌 API，可以将 API 的名字标记为『鲲 Galgame 论坛』（如果你使用 Galgame 数据）或『LetMoe·一启萌』（如果你使用同人游戏数据）。
 
-本文件内联全部 137 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
+本文件内联全部 141 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
 
 ## 给 AI 助手的指引
 
@@ -1276,7 +1276,7 @@ curl "https://api.nextmoe.dev/v1/store/me/stats" \
 
 - 路径前缀：`/v2`
 - 凭据：Authorization: Bearer nmk_live_…（v2 应用密钥,门户自助铸造,无需申请）
-- 端点数：84
+- 端点数：88
 
 > 正式公开：形状按 additive-only 演进，删除与改名由 CI 的 oasdiff 门拦下。第三方在门户自助铸 nmk_ 密钥即可调用，不需要申请。
 
@@ -1534,6 +1534,34 @@ Works this character appears in, with roster_role, spoiler, and voice credits. O
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/characters/value/appearances" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+### GET /v2/catalog/claim-events
+
+Claim event history
+
+Every claim lifecycle transition, newest first by default. sort=recorded_asc walks the same collection oldest-first by id, which is the shape a mirror or a reward cron reads with a watermark. Requires an application key with the claim_events:read scope on top of catalog:read; the scope is granted by an operator, not self-service, because events carry decline reasons and moderator actions.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：catalog:read + claim_events:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated event ids, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `sort` | query | 否 | string | recorded_desc (default) or recorded_asc. Closed. recorded_asc is the watermark walk a mirror reads. |
+| `site` | query | 否 | string | Tenant key the event was recorded under. Open vocabulary; unknown values match nothing. |
+| `actor_uid` | query | 否 | string | The claiming site's own user id of the actor. Not a catalog id. |
+| `work_id` | query | 否 | string | Catalog work id to narrow to one work's claim history. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/catalog/claim-events" \
   -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
@@ -2252,9 +2280,10 @@ Keyset-paginated work collection. q= switches to search (sort defaults to releva
 | `q` | query | 否 | string | Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant. |
 | `content_rating` | query | 否 | string | Closed: all_ages, sensitive, r18. r18 requires nsfw=true. |
 | `claimed` | query | 否 | string | true or false. Absent = no gate. |
-| `claim_state` | query | 否 | string | Comma-separated closed states: none, live, draft, pending, declined, hidden. |
+| `claim_state` | query | 否 | string | Comma-separated closed states: none, live, draft. Moderation states live on /v2/moderation/claims. |
 | `content_limit` | query | 否 | string | Comma-separated closed editorial axis: sfw, nsfw. |
 | `site` | query | 否 | string | Claiming site key. Open vocabulary; unknown values match nothing. |
+| `owner_uid` | query | 否 | string | The claiming site's own user id of the claim owner. Requires site=. Live registry filter; cannot be combined with q= or search sorts. |
 | `company_id` | query | 否 | string | Catalog company id. Live registry filter when q= is absent. |
 | `company_rollup` | query | 否 | string | true expands company_id one hop down imprint/subsidiary. Only true or false. |
 | `tag_id` | query | 否 | string | Comma-separated canonical tag ids, AND, max 10. |
@@ -2629,7 +2658,7 @@ curl "https://api.nextmoe.dev/v2/news/value"
 
 List my claims
 
-Claims the bearer submitted. Requires a user access token.
+Claims the bearer acted on. kind=submitted (the default) keeps the ones the bearer owns, kind=audited the ones the bearer only reviewed, kind=all everything they touched. claim_state= and site= narrow further, and site= also scopes first_acted_at/acted_count. Requires a user access token.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer <用户访问令牌>
@@ -2648,6 +2677,9 @@ Claims the bearer submitted. Requires a user access token.
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
+| `claim_state` | query | 否 | string | Comma-separated closed states: none, live, draft, pending, declined, hidden. |
+| `kind` | query | 否 | string | submitted (default) keeps works the bearer owns, audited keeps works the bearer reviewed but does not own, all keeps everything the bearer touched. |
+| `site` | query | 否 | string | Claiming site key. Open vocabulary; unknown values match nothing. Also scopes first_acted_at and acted_count. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/me/claims" \
@@ -2658,7 +2690,7 @@ curl "https://api.nextmoe.dev/v2/me/claims" \
 
 Submit a claim
 
-Mint or claim a work. Requires a user access token bound to a catalog site.
+Mint or claim a work. work_id claims an existing catalog work. refs= claims the work they resolve to, or mints one from display_name when none match. site_work_id with display_name and neither work_id nor refs mints a work anchored to the site's own id. Requires a user access token bound to a catalog site.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer <用户访问令牌>
@@ -2712,6 +2744,25 @@ curl -X PATCH "https://api.nextmoe.dev/v2/me/claims/value" \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"state":"live"}'
+```
+
+### DELETE /v2/me/claims/{id}
+
+Delete a draft claim
+
+Deletes a draft the caller owns; a live or pending claim must be withdrawn to draft first (PATCH state=withdrawn). This soft-deletes the catalog work row and writes no claim event. 204 with no body. Requires a user access token.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
+- scope：无需凭据
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | path | 是 | string | Catalog work id. |
+
+```bash
+curl -X DELETE "https://api.nextmoe.dev/v2/me/claims/value" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
 ### GET /v2/me/cover-votes
@@ -3282,13 +3333,54 @@ curl "https://api.nextmoe.dev/v2/moderation/snapshots/value/value" \
   -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
+## 商店
+
+### GET /v2/store/purchase-links/{product_id}
+
+Get purchase and coupon links for one product
+
+Mints (or returns) the short links this application sends readers to. The purchase link belongs to your application alone — use it verbatim, because the click counter behind it is what settlement reads. coupon_url and campaign are present only while a campaign is running. Requires an application key with the store:read scope.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：store:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `product_id` | path | 是 | string | DLsite product number. RJ is doujin, VJ is commercial. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/store/purchase-links/value" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+### GET /v2/store/stats
+
+Click statistics for my links
+
+Daily clicks on the links this application minted, over a JST-day range of at most 92 days. The bearer application is the subject — this replaces v1's /v1/store/me/stats. Requires an application key with the store:read scope.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：store:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `from` | query | 否 | string | First JST day to cover, YYYY-MM-DD. Optional; defaults to 29 days before to. |
+| `to` | query | 否 | string | Last JST day to cover, YYYY-MM-DD. Optional; defaults to today. from and to must be at most 92 days apart. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/store/stats" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
 ---
 
 # AI / MCP 接入
 
 NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 https://mcp.nextmoe.dev/mcp，Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——每次工具调用就是一次对公开 /v2 GET 的请求，鉴权、限流、配额与用量与直连毫无区别。工具名就是 OpenAPI operationId，清单由 cmd/gen-v2-portal 从同一份 v2 spec 生成。
 
-## 工具（54 个）
+## 工具（55 个）
 
 - `getCatalogCharacter` `GET /v2/catalog/characters/{id}`：按 id 取角色；view=full 追加性别、生日、三围、血型与 instance_of_id。nsfw 同时控 r18 作品与 sexual 系 traits 的可见性。
 - `getCatalogCharacterAppearances` `GET /v2/catalog/characters/{id}/appearances`：一个角色出演的全部作品，各带 roster_role、剧透等级与配音署名，offset 游标分页。
@@ -3326,6 +3418,7 @@ NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端�
 - `listCatalogCalendar` `GET /v2/catalog/calendar`：发售月历：month= / year= 选窗口，precision= 与 status= 在「已定档到月」「只知年」「已公布未定档」三个视图间切换——v1 的三条月历路径在 v2 是这一条。不接受 ids=。
 - `listCatalogChanges` `GET /v2/catalog/changes`：增量同步变更流：近期更新过的作品，最旧优先。存下 next_cursor，下次轮询只拿变化的部分。
 - `listCatalogCharacters` `GET /v2/catalog/characters`：keyset 分页浏览角色注册表。ids=/refs= 是批量水合泳道，不分页。
+- `listCatalogClaimEvents` `GET /v2/catalog/claim-events`：认领生命周期事件流，默认最新在前；sort=recorded_asc 是镜像 / 发奖 cron 按 id 水位续读的那条泳道。事件带驳回理由与操作者 uid，所以除 catalog:read 外还要运营发放的 claim_events:read。
 - `listCatalogCompanies` `GET /v2/catalog/companies`：浏览公司 / 厂牌词表本身（v1 的 labels）——用来发现 company id 再喂给 listCatalogWorks 的 company_id=。
 - `listCatalogCreditNames` `GET /v2/catalog/credit-names`：keyset 分页浏览署名注册表，q= 按名字过滤。ids=/refs= 是批量水合泳道，不分页。
 - `listCatalogEngines` `GET /v2/catalog/engines`：浏览引擎词表本身——用来发现 engine id 再喂给 listCatalogWorks 的 engine_id=。

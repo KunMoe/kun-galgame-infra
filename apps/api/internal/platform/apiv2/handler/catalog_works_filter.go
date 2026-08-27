@@ -21,6 +21,7 @@ type worksFilter struct {
 	ClaimStates    []string
 	DisplayLimits  []string
 	Site           string
+	OwnerUID       int64
 	CompanyID      int64
 	CompanyRollup  bool
 	TagIDs         []int64
@@ -52,9 +53,11 @@ func parseWorksFilter(in *listWorksInput) (worksFilter, *problem.Problem) {
 		}
 		f.Claimed = &v
 	}
+	// pending/declined/hidden are moderation-workflow states; v1 kept its pending
+	// queue behind a moderation scope, and the first v2 cut left all six states
+	// open to any catalog:read key. The queue lives on /v2/moderation/claims.
 	states, err := closedCSV(in.ClaimState, "claim_state", []string{
 		catmodel.ClaimStateKeyNone, catmodel.ClaimStateKeyLive, catmodel.ClaimStateKeyDraft,
-		catmodel.ClaimStateKeyPending, catmodel.ClaimStateKeyDeclined, catmodel.ClaimStateKeyHidden,
 	})
 	if err != nil {
 		return worksFilter{}, err
@@ -68,6 +71,17 @@ func parseWorksFilter(in *listWorksInput) (worksFilter, *problem.Problem) {
 	}
 	f.DisplayLimits = limits
 	f.Site = strings.TrimSpace(in.Site)
+	owner, err := optionalID(in.OwnerUID, "owner_uid")
+	if err != nil {
+		return worksFilter{}, err
+	}
+	f.OwnerUID = owner
+	if f.OwnerUID > 0 && f.Site == "" {
+		p := problem.New(problem.CodeValidationFailed, "", "", "owner_uid= needs site= to be unambiguous.")
+		p.Errors = []problem.FieldError{{Parameter: "owner_uid", Reason: problem.ReasonInconsistentWith,
+			Detail: "owner uids are the claiming site's own user ids; pass site= as well"}}
+		return worksFilter{}, p
+	}
 	id, err := optionalID(in.CompanyID, "company_id")
 	if err != nil {
 		return worksFilter{}, err
@@ -129,6 +143,11 @@ func (c *Catalog) ListWorksFiltered(ctx context.Context, q collect.Query, f work
 	if q.Batch || (!searchWorksRequested(q, f)) {
 		return c.listWorksSQL(ctx, q, f, inc)
 	}
+	if f.OwnerUID > 0 {
+		p := problem.New(problem.CodeMutuallyExclusiveParameters, "", "", "owner_uid= cannot be combined with q= or search sorts.")
+		p.Errors = []problem.FieldError{{Parameter: "owner_uid", Reason: problem.ReasonNotAllowedValue, Detail: "the search index carries no claim owner"}}
+		return repr.List[repr.Work]{}, p
+	}
 	return c.listWorksSearch(ctx, q, f, inc)
 }
 
@@ -142,7 +161,8 @@ func searchWorksRequested(q collect.Query, f worksFilter) bool {
 func (c *Catalog) listWorksSQL(ctx context.Context, q collect.Query, f worksFilter, inc catsvc.WorksListInclude) (repr.List[repr.Work], error) {
 	lf := catsvc.WorksListFilter{
 		ContentRating: f.ContentRating, Claimed: f.Claimed, ClaimStates: f.ClaimStates,
-		DisplayLimits: f.DisplayLimits, Site: f.Site, LabelID: f.CompanyID, LabelRollup: f.CompanyRollup,
+		DisplayLimits: f.DisplayLimits, Site: f.Site, OwnerUID: f.OwnerUID,
+		LabelID: f.CompanyID, LabelRollup: f.CompanyRollup,
 		TagIDs: f.TagIDs, SeriesID: f.SeriesID, EngineID: f.EngineID, Platform: f.Platform,
 		ReleasedAfter: f.ReleasedAfter, ReleasedBefore: f.ReleasedBefore, NSFW: q.NSFW,
 		Sort: q.Sort, OLang: f.OLang, Include: inc, IncludeTotal: q.IncludeTotal,

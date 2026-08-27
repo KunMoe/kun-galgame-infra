@@ -36,12 +36,18 @@ import (
 )
 
 var (
-	liveAppKey    = mustLiveV2Key()
-	liveAppKeyB   = mustLiveV2Key()
-	liveUserToken = "user-live-token"
-	liveUID       = int64(7)
-	liveClient    = "kungal-client"
-	liveSite      = "kungal"
+	liveAppKey      = mustLiveV2Key()
+	liveAppKeyB     = mustLiveV2Key()
+	liveAppKeyEvent = mustLiveV2Key()
+	liveUserToken   = "user-live-token"
+	// A second user on the same site holding only the "user" role: the
+	// moderation claim reads used to take any site-bound token, so without a
+	// non-reviewer there was nothing to prove the permission gate with.
+	livePlainToken = "user-live-plain-token"
+	liveUID        = int64(7)
+	livePlainUID   = int64(8)
+	liveClient     = "kungal-client"
+	liveSite       = "kungal"
 )
 
 // liveUnlimitedStore never rate-limits, but it does remember: without a real
@@ -184,15 +190,24 @@ func liveCatalog(t *testing.T) *liveEnv {
 					return &devapi.Credential{
 						KeyID: 2, Scopes: []string{devapi.ScopeCatalogRead},
 					}, nil
+				case liveAppKeyEvent:
+					return &devapi.Credential{
+						KeyID: 3, ClientID: liveClient,
+						Scopes: []string{devapi.ScopeCatalogRead, devapi.ScopeClaimEventsRead},
+					}, nil
 				default:
 					return nil, nil
 				}
 			},
 			LookupUser: func(_ context.Context, raw string) (UserIdentity, error) {
-				if raw != liveUserToken {
+				switch raw {
+				case liveUserToken:
+					return UserIdentity{UID: liveUID, ClientID: liveClient, Roles: []string{"admin"}}, nil
+				case livePlainToken:
+					return UserIdentity{UID: livePlainUID, ClientID: liveClient, Roles: []string{"user"}}, nil
+				default:
 					return UserIdentity{}, os.ErrPermission
 				}
-				return UserIdentity{UID: liveUID, ClientID: liveClient, Roles: []string{"admin"}}, nil
 			},
 			LookupSite: func(_ context.Context, clientID string) (string, error) {
 				if clientID == liveClient {
@@ -841,6 +856,9 @@ func liveAuthPath(path string) string {
 	if strings.HasPrefix(path, "/v2/me/") || strings.HasPrefix(path, "/v2/moderation/") {
 		return liveUserToken
 	}
+	if path == "/v2/catalog/claim-events" {
+		return liveAppKeyEvent
+	}
 	if strings.HasPrefix(path, "/v2/catalog/") && path != "/v2/catalog/stats" && !strings.HasPrefix(path, "/v2/catalog/schemas/") {
 		return liveAppKey
 	}
@@ -886,6 +904,7 @@ func liveSubstitute(path string, fx liveFix) string {
 	path = strings.ReplaceAll(path, "{object}", "work")
 	path = strings.ReplaceAll(path, "{work_id}", idstr(fx.Work))
 	path = strings.ReplaceAll(path, "{cover_id}", idstr(fx.Cover))
+	path = strings.ReplaceAll(path, "{product_id}", "RJ01000000")
 	path = strings.ReplaceAll(path, "{id}", idstr(id))
 	if path == "/v2/catalog/search" {
 		path += "?object=work"

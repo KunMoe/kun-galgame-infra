@@ -10,11 +10,41 @@ type UserPlaytime struct {
 }
 
 type ClaimRecord struct {
-	_           struct{} `json:"-" additionalProperties:"true"`
-	Object      string   `json:"object" enum:"claim" doc:"Type discriminant. Always claim."`
-	ID          string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog work id this claim is on."`
-	State       string   `json:"state" enum:"live,draft,pending,declined,hidden" doc:"Claim lifecycle state."`
-	DisplayName string   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
+	_             struct{}       `json:"-" additionalProperties:"true"`
+	Object        string         `json:"object" enum:"claim" doc:"Type discriminant. Always claim."`
+	ID            string         `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog work id this claim is on."`
+	State         string         `json:"state" enum:"none,live,draft,pending,declined,hidden" doc:"Claim lifecycle state. none means the work is not currently claimed by any site."`
+	DisplayName   string         `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
+	Site          string         `json:"site" maxLength:"64" doc:"Claiming site key, empty when unclaimed. Open vocabulary; must not be used as a discriminant."`
+	ProductWorkID *string        `json:"product_work_id" pattern:"^[0-9]+$" maxLength:"20" doc:"The claiming site's own work id. null when unclaimed."`
+	LastEvent     *ClaimEventRef `json:"last_event,omitempty" doc:"The newest claim event on this work, whoever acted. Present on the me faces and single-claim reads; absent on the moderation queue rows."`
+	FirstActedAt  *string        `json:"first_acted_at,omitempty" format:"date-time" maxLength:"32" doc:"RFC 3339 UTC of the bearer's first action on this work. Present on the me faces."`
+	ActedCount    *int           `json:"acted_count,omitempty" minimum:"0" doc:"How many times the bearer acted on this work, within the site= scope when given. Present on the me faces."`
+}
+
+type ClaimEventRef struct {
+	_         struct{} `json:"-" additionalProperties:"true"`
+	Object    string   `json:"object" enum:"claim_event" doc:"Type discriminant. Always claim_event."`
+	ID        string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Claim event id. Same id space as /v2/catalog/claim-events."`
+	FromState *string  `json:"from_state" enum:"none,live,draft,pending,declined,hidden" doc:"State before the event. null on the event that created the claim."`
+	ToState   string   `json:"to_state" enum:"none,live,draft,pending,declined,hidden" doc:"State after the event."`
+	Reason    *string  `json:"reason" maxLength:"2000" doc:"Actor's note, usually a decline reason. null when none was given. Must not be used as a discriminant."`
+	ActorUID  string   `json:"actor_uid" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"The claiming site's own user id of the actor — a moderator on a decision event, not necessarily the claim owner."`
+	CreatedAt string   `json:"created_at" format:"date-time" maxLength:"32" doc:"RFC 3339 UTC."`
+}
+
+type ClaimEvent struct {
+	_             struct{} `json:"-" additionalProperties:"true"`
+	Object        string   `json:"object" enum:"claim_event" doc:"Type discriminant. Always claim_event."`
+	ID            string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Claim event id. Ascending; the watermark a mirror stores."`
+	WorkID        string   `json:"work_id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog work id the event is on."`
+	FromState     *string  `json:"from_state" enum:"none,live,draft,pending,declined,hidden" doc:"State before the event. null on the event that created the claim."`
+	ToState       string   `json:"to_state" enum:"none,live,draft,pending,declined,hidden" doc:"State after the event."`
+	Reason        *string  `json:"reason" maxLength:"2000" doc:"Actor's note, usually a decline reason. null when none was given. Must not be used as a discriminant."`
+	ActorUID      string   `json:"actor_uid" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"The claiming site's own user id of the actor. Not a catalog id."`
+	Site          string   `json:"site" maxLength:"64" doc:"Tenant the event was recorded under. Open vocabulary; must not be used as a discriminant."`
+	ProductWorkID *string  `json:"product_work_id" pattern:"^[0-9]+$" maxLength:"20" doc:"The claim's CURRENT product-side id — a snapshot, not the value at event time. null when the work is unclaimed or gone."`
+	CreatedAt     string   `json:"created_at" format:"date-time" maxLength:"32" doc:"RFC 3339 UTC."`
 }
 
 type PlaytimeBatchItem struct {

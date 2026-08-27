@@ -66,7 +66,7 @@ func TestWriteOpsUnbound(t *testing.T) {
 
 func TestClaimsUnbound(t *testing.T) {
 	ctx := contextWithUser(t.Context(), 7, "client-a")
-	_, err := (*Catalog)(nil).ListMyClaims(ctx, collect.Query{})
+	_, err := (*Catalog)(nil).ListMyClaims(ctx, collect.Query{}, myClaimFilter{})
 	p, ok := err.(*problem.Problem)
 	if !ok || p.Code != problem.CodeServiceUnavailable {
 		t.Fatalf("%v", err)
@@ -100,7 +100,7 @@ func TestCreateClaimRequiresWorkIDOrRefs(t *testing.T) {
 	if p, ok = err.(*problem.Problem); !ok || p.Code != problem.CodeValidationFailed {
 		t.Fatalf("refs without display_name %v", err)
 	}
-	_, err = cat.ListMyClaims(ctx, collect.Query{Cursor: "not-an-event-id"})
+	_, err = cat.ListMyClaims(ctx, collect.Query{Cursor: "not-an-event-id"}, myClaimFilter{})
 	if p, ok = err.(*problem.Problem); !ok || p.Code != problem.CodeInvalidCursor {
 		t.Fatalf("cursor %v", err)
 	}

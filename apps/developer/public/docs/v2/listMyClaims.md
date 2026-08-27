@@ -13,7 +13,7 @@
 
 List my claims
 
-Claims the bearer submitted. Requires a user access token.
+Claims the bearer acted on. kind=submitted (the default) keeps the ones the bearer owns, kind=audited the ones the bearer only reviewed, kind=all everything they touched. claim_state= and site= narrow further, and site= also scopes first_acted_at/acted_count. Requires a user access token.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer <用户访问令牌>
@@ -32,6 +32,9 @@ Claims the bearer submitted. Requires a user access token.
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
+| `claim_state` | query | 否 | string | Comma-separated closed states: none, live, draft, pending, declined, hidden. |
+| `kind` | query | 否 | string | submitted (default) keeps works the bearer owns, audited keeps works the bearer reviewed but does not own, all keeps everything the bearer touched. |
+| `site` | query | 否 | string | Claiming site key. Open vocabulary; unknown values match nothing. Also scopes first_acted_at and acted_count. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/me/claims" \

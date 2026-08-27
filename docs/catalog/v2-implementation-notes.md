@@ -177,3 +177,88 @@ When a test database is assigned, run:
 `GOMAXPROCS=8 go test -count=1 -p 1 ./internal/platform/apiv2/... ./internal/platform/news/...`
 
 A DB-backed package that "passes" in well under a second ran nothing: read the `-v` PASS counts, not the `ok` line.
+
+## Wave R1 — v2 fills for the v1 retirement (2026-08-27)
+
+Four new operations, and the last v1-only reads that had no v2 answer are gone.
+
+| Operation | Notes |
+| --- | --- |
+| `GET /v2/catalog/claim-events` | The claim lifecycle log. `sort=recorded_asc` is the watermark walk a mirror or a reward cron reads; `site=`/`actor_uid=`/`work_id=` narrow it, `ids=` is the batch lane. Needs `claim_events:read` **on top of** `catalog:read` |
+| `DELETE /v2/me/claims/{id}` | Deletes a draft the caller owns. A live or pending claim must be withdrawn to draft first (`PATCH state=withdrawn`). Soft-deletes the `catalog_work` row and writes **no** claim event, matching v1's executor. Keyed on owner uid, not site |
+| `GET /v2/store/purchase-links/{product_id}` | v1 `/v1/store/purchase-links/:product_id` with RFC 9457 problems and no envelope |
+| `GET /v2/store/stats` | v1 `/v1/store/me/stats`. The bearer *application* is the subject, so the path drops the `me/` segment that only made sense next to a user face |
+
+`claim_events:read` is **operator-granted, never self-service** (`selfServiceScopes`
+stays `[catalog:read, store:read]`): events carry decline reasons and the
+moderator uid behind every decision, which is a different disclosure than the
+registry rows `catalog:read` buys. The gate is two-stage in `catalogAuth` —
+`catalog:read` first, then the extra scope for that one path — so a key without
+it gets `SCOPE_REQUIRED` naming the missing scope rather than a bare 403.
+
+Read parity and hardening in the same wave:
+
+- **`/v2/me/claims` returns what the service always carried.** `claimRecordFrom`
+  dropped 9 of `UserClaimItem`'s 13 fields; `site`, `product_work_id`,
+  `last_event` (id / from_state / to_state / reason / actor_uid / created_at),
+  `first_acted_at` and `acted_count` are now published. The last three come from
+  the actor aggregate, so they are present only when the row carries a last
+  event — the moderation queue rows have no aggregate and omit the block.
+- **`kind=` and filters on `/v2/me/claims`.** `submitted` (default) keeps works
+  the bearer owns, `audited` the ones they reviewed but do not own, `all`
+  everything they touched. `claim_state=` takes all six states here — this is
+  the bearer's own history, not the public registry — and `site=` also scopes
+  `first_acted_at`/`acted_count`.
+- **`claim_state=` on `/v2/catalog/works` narrows to `none,live,draft`.**
+  `pending`/`declined`/`hidden` are moderation-workflow states; v1 kept its
+  pending queue behind a moderation gate and the first v2 cut left all six open
+  to any `catalog:read` key. The queue is `/v2/moderation/claims`.
+- **`owner_uid=` on `/v2/catalog/works`** requires `site=` (owner uids are the
+  claiming site's own user ids, so they are ambiguous alone → 422
+  `INCONSISTENT_WITH`) and is refused on the search lane with
+  `MUTUALLY_EXCLUSIVE_PARAMETERS` — the search index carries no claim owner.
+- **The moderation claim reads demand `catalog.claim.review`.** `ListModerationClaims`
+  and `GetModerationClaim` only required a site-bound user token; only
+  `DecideClaim` checked the permission. A plain user could therefore read the
+  whole pending queue including decline reasons.
+- **`POST /v2/me/claims` accepts `{site_work_id, display_name}`.** That payload
+  used to fall through to the "work_id or refs is required" 422 — the only
+  anchored-mint shape v1 offered had no v2 equivalent. An existing
+  `(site, product_work_id)` anchor still returns `ALREADY_EXISTS` (409) from
+  `SubmitWork`, unchanged.
+
+Shape notes worth keeping:
+
+- `store_stat.link_kind`, not `kind`: **G8 forbids a bare `kind` property**, the
+  same rule that produced `image.cover_kind`.
+- `store_stats.from_date`/`to_date`, not `from`/`to`: G8 wants one shape per
+  property name and `FieldDiff.from`/`to` are untyped (`any`). The query
+  parameters are still `from=`/`to=` — parameters are not properties.
+- `GET /v2/store/purchase-links/{product_id}` declares 404 because **G4** requires
+  it of any path-parameter operation. Nothing mints one: `product_id` is a
+  DLsite number this service never resolves against a catalog, so an
+  unknown-but-well-formed id still gets a link.
+- Both store operations always send `Cache-Control: private`. Every response is
+  keyed to the calling application; a shared cache holding one site's short
+  links and serving them to another hands the clicks to the wrong site.
+- One `store/service.Service` instance is shared by the v1 and v2 faces. A
+  second one would mint a second alias for the same `(client, product)` pair and
+  split the click count that settlement reads.
+- **`GET /v2/store/stats` deliberately answers without the shortener**: only the
+  purchase-links op requires `Configured()`. Stats reads the database and never
+  mints, and v1's `MyStats` only required the service to exist — gating both ops
+  on `Configured()` would take the stats read away from a deployment missing the
+  shortener credentials, which is exactly the regression this wave exists to
+  avoid. An unbound service (`Catalog.Store == nil`) is the one case both refuse.
+
+Two new problem codes in a new `store` domain: `STORE_QUOTA_EXCEEDED` (403) and
+`STORE_LINK_UNAVAILABLE` (502). The 502 is deliberate and has no fallback to a
+bare affiliate URL — a raw aff link bypasses the click counter, which is the one
+thing the de-duplication promise to DLsite rests on.
+
+Edge and portal: `/v2/store` needs no new Traefik router — `infra-v2-pub` already
+matches `PathPrefix(/v2)`. The portal relay allowlist gained `v2/store/`.
+oasdiff against the GA baseline reports **0 error, 8 warning** (all
+`response-property-enum-value-added`, from `claim.state` gaining `none` and
+`problem_type.domain` gaining `store`), so no entry was added to
+`v2-openapi-breaking-ignore.txt`.

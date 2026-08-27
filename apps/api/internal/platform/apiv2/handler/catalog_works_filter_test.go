@@ -98,3 +98,84 @@ func TestListWorksFilteredQAndIDsExclusive(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 }
+
+// claim_state used to admit all six states to any catalog:read key; pending,
+// declined and hidden are moderation-workflow states and moved behind
+// /v2/moderation/claims.
+func TestParseWorksFilterClaimStateIsPublicOnly(t *testing.T) {
+	for _, state := range []string{"pending", "declined", "hidden"} {
+		_, err := parseWorksFilter(&listWorksInput{ClaimState: state})
+		if err == nil || err.Code != problem.CodeUnknownEnumValue {
+			t.Fatalf("claim_state=%s: %v", state, err)
+		}
+	}
+	f, err := parseWorksFilter(&listWorksInput{ClaimState: "none,live,draft"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.ClaimStates) != 3 {
+		t.Fatalf("claim_states %+v", f.ClaimStates)
+	}
+}
+
+func TestParseWorksFilterOwnerUID(t *testing.T) {
+	_, err := parseWorksFilter(&listWorksInput{OwnerUID: "7"})
+	if err == nil || err.Code != problem.CodeValidationFailed {
+		t.Fatalf("owner_uid without site: %v", err)
+	}
+	if len(err.Errors) != 1 || err.Errors[0].Reason != problem.ReasonInconsistentWith {
+		t.Fatalf("owner_uid field error %+v", err.Errors)
+	}
+	_, err = parseWorksFilter(&listWorksInput{OwnerUID: "nope", Site: "kungal"})
+	if err == nil || err.Code != problem.CodeInvalidParameter {
+		t.Fatalf("owner_uid non-numeric: %v", err)
+	}
+	f, err := parseWorksFilter(&listWorksInput{OwnerUID: "7", Site: "kungal"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.OwnerUID != 7 || f.Site != "kungal" {
+		t.Fatalf("%+v", f)
+	}
+}
+
+func TestListWorksFilteredRefusesOwnerUIDOnSearch(t *testing.T) {
+	cat := &Catalog{Public: &catsvc.PublicService{}, Searcher: nil}
+	f, perr := parseWorksFilter(&listWorksInput{OwnerUID: "7", Site: "kungal", Q: "kanon"})
+	if perr != nil {
+		t.Fatal(perr)
+	}
+	_, err := cat.ListWorksFiltered(t.Context(), collect.Query{}, f)
+	p, ok := err.(*problem.Problem)
+	if !ok || p.Code != problem.CodeMutuallyExclusiveParameters {
+		t.Fatalf("owner_uid + q: %v", err)
+	}
+}
+
+func TestParseMyClaimFilter(t *testing.T) {
+	f, err := parseMyClaimFilter("", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Kind != "submitted" {
+		t.Fatalf("default kind %q", f.Kind)
+	}
+	// The me face is the bearer's own history, so every state is readable here
+	// even though the public works lane only admits none/live/draft.
+	f, err = parseMyClaimFilter("pending,declined,hidden,none,live,draft", "audited", " kungal ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.ClaimStates) != 6 || f.Kind != "audited" || f.Site != "kungal" {
+		t.Fatalf("%+v", f)
+	}
+	if f, err = parseMyClaimFilter("", "all", ""); err != nil || f.Kind != "" {
+		t.Fatalf("kind=all maps to the service's empty Kind: %+v %v", f, err)
+	}
+	if _, err = parseMyClaimFilter("", "everything", ""); err == nil || err.Code != problem.CodeUnknownEnumValue {
+		t.Fatalf("kind=everything: %v", err)
+	}
+	if _, err = parseMyClaimFilter("nope", "", ""); err == nil || err.Code != problem.CodeUnknownEnumValue {
+		t.Fatalf("claim_state=nope: %v", err)
+	}
+}

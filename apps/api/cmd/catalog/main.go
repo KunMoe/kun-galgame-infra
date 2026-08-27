@@ -320,6 +320,21 @@ func setupPublicCatalog(
 	publicH := catHandler.NewPublicHandler(publicSvc, resolveSvc, searcher, statsSvc).
 		WithModeration(clientRepo)
 
+	var storeMinter storeService.Minter
+	if cfg.Store.ShortlinkBaseURL != "" && cfg.Store.ShortlinkAPIKey != "" {
+		storeMinter = shortener.New(cfg.Store.ShortlinkBaseURL, cfg.Store.ShortlinkAPIKey)
+	} else {
+		slog.Warn("store face: link shortener not configured — /v1/store and /v2/store answer 503 (set KUN_STORE_SHORTLINK_BASE_URL and KUN_STORE_SHORTLINK_API_KEY)")
+	}
+	// One instance behind both faces: the v1 and v2 store routes share the same
+	// minted aliases, so a second Service would mint a second alias for the same
+	// (client, product) pair and split the click count.
+	storeSvc := storeService.New(oauthDB, storeMinter, storeService.Options{
+		AffTemplateManiax:  cfg.Store.AffTemplateManiax,
+		AffTemplatePro:     cfg.Store.AffTemplatePro,
+		LinkQuotaPerClient: cfg.Store.LinkQuotaPerClient,
+	})
+
 	v2API := v2handler.SetupWith(application.Fiber, v2handler.Options{
 		Store:            protocol.NewRedisStore(devCache),
 		LookupCredential: mw.Lookup,
@@ -351,6 +366,7 @@ func setupPublicCatalog(
 			Engine:      editEngine,
 			EditHistory: service.NewEditHistoryService(catalogDB.DB()),
 			Uploads:     v2handler.EditImageUpload(editUpload),
+			Store:       storeSvc,
 		},
 	})
 	v2spec, err := json.Marshal(v2API.OpenAPI())
@@ -442,17 +458,7 @@ func setupPublicCatalog(
 	v1news.Get("/", newsH.List)
 	v1news.Get("/:id", newsH.Detail)
 
-	var storeMinter storeService.Minter
-	if cfg.Store.ShortlinkBaseURL != "" && cfg.Store.ShortlinkAPIKey != "" {
-		storeMinter = shortener.New(cfg.Store.ShortlinkBaseURL, cfg.Store.ShortlinkAPIKey)
-	} else {
-		slog.Warn("store face: link shortener not configured — /v1/store answers 503 (set KUN_STORE_SHORTLINK_BASE_URL and KUN_STORE_SHORTLINK_API_KEY)")
-	}
-	storeH := storeHandler.NewPublicHandler(storeService.New(oauthDB, storeMinter, storeService.Options{
-		AffTemplateManiax:  cfg.Store.AffTemplateManiax,
-		AffTemplatePro:     cfg.Store.AffTemplatePro,
-		LinkQuotaPerClient: cfg.Store.LinkQuotaPerClient,
-	}))
+	storeH := storeHandler.NewPublicHandler(storeSvc)
 	v1store := application.Fiber.Group("/v1/store",
 		mw.ResolveCredential,
 		recordUsage("store"),

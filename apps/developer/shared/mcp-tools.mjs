@@ -21,6 +21,8 @@ const DESCRIPTIONS = {
     '浏览 / 过滤作品注册表（评级 / 公司 / 标签 / 系列 / 引擎 / 平台 / 发售窗，keyset 分页，ids=/refs= 批量水合）。带 q= 时整条转为检索并按相关度排序——「查询 + 过滤」与「纯过滤」在 v2 是同一条路径。',
   listCatalogChanges:
     '增量同步变更流：近期更新过的作品，最旧优先。存下 next_cursor，下次轮询只拿变化的部分。',
+  listCatalogClaimEvents:
+    '认领生命周期事件流，默认最新在前；sort=recorded_asc 是镜像 / 发奖 cron 按 id 水位续读的那条泳道。事件带驳回理由与操作者 uid，所以除 catalog:read 外还要运营发放的 claim_events:read。',
   getCatalogCreditName:
     '按 id 取一个署名（credit name）——这是名字不是人；尚未挂到人物身份上时 person_id 为 null。',
   listCatalogCreditNames:

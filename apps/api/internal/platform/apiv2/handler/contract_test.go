@@ -49,6 +49,7 @@ func TestContractHitsEverySpecOperation(t *testing.T) {
 			url = strings.ReplaceAll(url, "{object}", "work")
 			url = strings.ReplaceAll(url, "{work_id}", "1")
 			url = strings.ReplaceAll(url, "{cover_id}", "1")
+			url = strings.ReplaceAll(url, "{product_id}", "RJ01000000")
 			if strings.Contains(url, "{") {
 				t.Fatalf("unsubstituted path param in %s", url)
 			}

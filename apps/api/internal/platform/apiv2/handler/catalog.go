@@ -14,6 +14,7 @@ import (
 	"api/internal/platform/editing"
 	newsdto "api/internal/platform/news/dto"
 	newssvc "api/internal/platform/news/service"
+	storesvc "api/internal/platform/store/service"
 )
 
 type Catalog struct {
@@ -30,6 +31,7 @@ type Catalog struct {
 	Engine      *editing.Engine
 	EditHistory *catsvc.EditHistoryService
 	Uploads     EditImageUpload
+	Store       *storesvc.Service
 }
 
 func (c *Catalog) ListWorks(ctx context.Context, q collect.Query) (repr.List[repr.Work], error) {

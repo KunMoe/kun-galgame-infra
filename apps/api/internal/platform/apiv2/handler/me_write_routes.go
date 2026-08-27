@@ -24,9 +24,16 @@ func registerMeWrite(api huma.API, cat *Catalog) {
 	}, batchMyPlaytimes(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "createMyClaim", Method: http.MethodPost, Path: "/v2/me/claims",
-		Summary: "Submit a claim", Description: "Mint or claim a work. Requires a user access token bound to a catalog site.",
-		Tags: me, Errors: writeErrs, DefaultStatus: http.StatusCreated, SkipValidateParams: true,
+		Summary:     "Submit a claim",
+		Description: "Mint or claim a work. work_id claims an existing catalog work. refs= claims the work they resolve to, or mints one from display_name when none match. site_work_id with display_name and neither work_id nor refs mints a work anchored to the site's own id. Requires a user access token bound to a catalog site.",
+		Tags:        me, Errors: writeErrs, DefaultStatus: http.StatusCreated, SkipValidateParams: true,
 	}, createMyClaim(cat))
+	huma.Register(api, huma.Operation{
+		OperationID: "deleteMyClaim", Method: http.MethodDelete, Path: "/v2/me/claims/{id}",
+		Summary:     "Delete a draft claim",
+		Description: "Deletes a draft the caller owns; a live or pending claim must be withdrawn to draft first (PATCH state=withdrawn). This soft-deletes the catalog work row and writes no claim event. 204 with no body. Requires a user access token.",
+		Tags:        me, Errors: writeErrs, DefaultStatus: http.StatusNoContent, SkipValidateParams: true,
+	}, deleteMyClaim(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "getMyClaim", Method: http.MethodGet, Path: "/v2/me/claims/{id}",
 		Summary: "Get one of my claims", Description: "id is the catalog work id. Requires a user access token.",
@@ -127,7 +134,7 @@ type claimRefBody struct {
 
 type createClaimInput struct {
 	Body struct {
-		SiteWorkID  string         `json:"site_work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"The site's own work id."`
+		SiteWorkID  string         `json:"site_work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"The site's own work id. Sent alone with display_name — no work_id, no refs — it mints a work anchored to that id."`
 		WorkID      string         `json:"work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"Existing catalog work id to claim."`
 		DisplayName string         `json:"display_name,omitempty" maxLength:"512" doc:"Required to mint when refs do not match. Must not be used as a discriminant."`
 		Refs        []claimRefBody `json:"refs,omitempty" doc:"source:external_id anchors. Used when work_id is absent."`
@@ -271,6 +278,22 @@ func getMyClaim(cat *Catalog) func(context.Context, *getClaimInput) (*getClaimOu
 			return nil, catalogErr(ctx, err)
 		}
 		return &getClaimOutput{ETag: claimETag(rec), Body: rec}, nil
+	}
+}
+
+func deleteMyClaim(cat *Catalog) func(context.Context, *getClaimInput) (*struct{}, error) {
+	return func(ctx context.Context, in *getClaimInput) (*struct{}, error) {
+		if in == nil {
+			in = &getClaimInput{}
+		}
+		id, ok := repr.ParseID(in.ID)
+		if !ok {
+			return nil, catalogErr(ctx, problemInvalidID(in.ID))
+		}
+		if err := cat.DeleteClaim(ctx, id); err != nil {
+			return nil, catalogErr(ctx, err)
+		}
+		return &struct{}{}, nil
 	}
 }
 

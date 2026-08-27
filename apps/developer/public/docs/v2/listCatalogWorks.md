@@ -35,9 +35,10 @@ Keyset-paginated work collection. q= switches to search (sort defaults to releva
 | `q` | query | 否 | string | Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant. |
 | `content_rating` | query | 否 | string | Closed: all_ages, sensitive, r18. r18 requires nsfw=true. |
 | `claimed` | query | 否 | string | true or false. Absent = no gate. |
-| `claim_state` | query | 否 | string | Comma-separated closed states: none, live, draft, pending, declined, hidden. |
+| `claim_state` | query | 否 | string | Comma-separated closed states: none, live, draft. Moderation states live on /v2/moderation/claims. |
 | `content_limit` | query | 否 | string | Comma-separated closed editorial axis: sfw, nsfw. |
 | `site` | query | 否 | string | Claiming site key. Open vocabulary; unknown values match nothing. |
+| `owner_uid` | query | 否 | string | The claiming site's own user id of the claim owner. Requires site=. Live registry filter; cannot be combined with q= or search sorts. |
 | `company_id` | query | 否 | string | Catalog company id. Live registry filter when q= is absent. |
 | `company_rollup` | query | 否 | string | true expands company_id one hop down imprint/subsidiary. Only true or false. |
 | `tag_id` | query | 否 | string | Comma-separated canonical tag ids, AND, max 10. |
