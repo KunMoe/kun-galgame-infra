@@ -9,7 +9,7 @@ import (
 	catsvc "api/internal/platform/catalog/service"
 )
 
-func (c *Catalog) GetCreditName(ctx context.Context, id int64, nsfw bool) (repr.CreditName, error) {
+func (c *Catalog) GetCreditName(ctx context.Context, id int64, nsfw bool, include []string) (repr.CreditName, error) {
 	if c == nil || c.Public == nil {
 		return repr.CreditName{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
@@ -20,15 +20,7 @@ func (c *Catalog) GetCreditName(ctx context.Context, id int64, nsfw bool) (repr.
 	if !found {
 		return repr.CreditName{}, c.mergedOrNotFound(ctx, catmodel.EntityTypeCreditName, "credit_name", id)
 	}
-	var personID *string
-	if rec.PersonID > 0 {
-		s := repr.ID(rec.PersonID)
-		personID = &s
-	}
-	return repr.CreditName{
-		Object: "credit_name", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
-		Latin: optString(rec.Latin), Localized: localizedFrom(rec.Localized), PersonID: personID,
-	}, nil
+	return creditNameFromDetail(rec, include, c.Public.ImageURL(rec.PhotoHash)), nil
 }
 
 func (c *Catalog) GetCharacter(ctx context.Context, id int64, nsfw bool, include []string) (repr.Character, error) {
@@ -113,7 +105,7 @@ func (c *Catalog) GetCompany(ctx context.Context, id int64, nsfw bool, include [
 	return companyFromDetail(rec, include, c.Public.ImageURL(rec.LogoHash)), nil
 }
 
-func (c *Catalog) GetTag(ctx context.Context, id int64, nsfw bool) (repr.Tag, error) {
+func (c *Catalog) GetTag(ctx context.Context, id int64, nsfw bool, include []string) (repr.Tag, error) {
 	if c == nil || c.Public == nil {
 		return repr.Tag{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
@@ -124,10 +116,7 @@ func (c *Catalog) GetTag(ctx context.Context, id int64, nsfw bool) (repr.Tag, er
 	if !found {
 		return repr.Tag{}, c.mergedOrNotFound(ctx, catmodel.EntityTypeTag, "tag", id)
 	}
-	return repr.Tag{
-		Object: "tag", ID: repr.ID(rec.ID), DisplayName: rec.Name,
-		Tier: rec.Tier, TagKind: rec.Kind, WorkCount: rec.WorkCount, IsSexual: rec.Sexual,
-	}, nil
+	return tagFromDetail(rec, include), nil
 }
 
 func (c *Catalog) GetEngine(ctx context.Context, id int64, nsfw bool) (repr.Engine, error) {
@@ -151,7 +140,7 @@ func (c *Catalog) GetEngine(ctx context.Context, id int64, nsfw bool) (repr.Engi
 	}, nil
 }
 
-func (c *Catalog) GetSeries(ctx context.Context, id int64, nsfw bool) (repr.Series, error) {
+func (c *Catalog) GetSeries(ctx context.Context, id int64, nsfw bool, include []string) (repr.Series, error) {
 	if c == nil || c.Public == nil {
 		return repr.Series{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
@@ -162,7 +151,7 @@ func (c *Catalog) GetSeries(ctx context.Context, id int64, nsfw bool) (repr.Seri
 	if !found {
 		return repr.Series{}, problem.New(problem.CodeNotFound, "", "", "series not found.")
 	}
-	return repr.Series{Object: "series", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName, WorkCount: rec.WorkCount}, nil
+	return seriesFromDetail(rec, include), nil
 }
 
 func (c *Catalog) GetRelease(ctx context.Context, id int64, nsfw bool) (repr.Release, error) {

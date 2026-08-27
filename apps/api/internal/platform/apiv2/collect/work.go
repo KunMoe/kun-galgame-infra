@@ -99,12 +99,19 @@ func CompanySpec() Spec {
 	}
 }
 
+var creditNameInclude = []string{"aliases", "photo", "siblings", "intros", "links", "refs"}
+
 func CreditNameSpec() Spec {
+	fields := []string{
+		"object", "id", "display_name", "latin", "localized", "person_id",
+		"gender", "birth_year", "birth_month", "birth_day",
+	}
+	fields = append(fields, creditNameInclude...)
 	return Spec{
 		Sort:    []string{"id"},
-		Include: []string{},
-		FullSet: []string{},
-		Fields:  []string{"object", "id", "display_name", "latin", "localized", "person_id"},
+		Include: creditNameInclude,
+		FullSet: creditNameInclude,
+		Fields:  fields,
 	}
 }
 
@@ -174,21 +181,29 @@ func NameCreditSpec() Spec {
 	}
 }
 
+var tagInclude = []string{"intros"}
+
 func TagSpec() Spec {
 	return Spec{
 		Sort:    []string{"id"},
-		Include: []string{},
-		FullSet: []string{},
-		Fields:  []string{"object", "id", "display_name", "tier", "tag_kind", "work_count", "is_sexual"},
+		Include: tagInclude,
+		FullSet: tagInclude,
+		Fields: []string{
+			"object", "id", "display_name", "tier", "tag_kind", "work_count", "is_sexual", "intros",
+		},
 	}
 }
+
+var seriesInclude = []string{"intros", "refs"}
 
 func SeriesSpec() Spec {
 	return Spec{
 		Sort:    []string{"id"},
-		Include: []string{},
-		FullSet: []string{},
-		Fields:  []string{"object", "id", "display_name", "work_count"},
+		Include: seriesInclude,
+		FullSet: seriesInclude,
+		Fields: []string{
+			"object", "id", "display_name", "work_count", "has_nsfw", "intros", "refs",
+		},
 	}
 }
 

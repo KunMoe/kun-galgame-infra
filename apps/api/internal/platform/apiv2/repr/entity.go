@@ -9,6 +9,7 @@ type Tag struct {
 	TagKind     string   `json:"tag_kind" enum:"content,meta" doc:"Tag vocabulary class."`
 	WorkCount   int      `json:"work_count" minimum:"0" doc:"Works visible under the same NSFW gate."`
 	IsSexual    bool     `json:"is_sexual" doc:"Whether this tag is in the sexual family. Filter on it before rendering a tag list to an SFW reader."`
+	Intros      *[]Intro `json:"intros,omitempty" doc:"Tag descriptions, one per language. Present when include=intros, detail face only. Empty array if none. is_machine is always false here: the store carries no provenance for a tag description, so false records unknown, not human-written."`
 }
 
 type Company struct {
@@ -34,6 +35,16 @@ type CreditName struct {
 	Latin       *string                  `json:"latin" maxLength:"512" doc:"null if unrecorded. Must not be used as a discriminant."`
 	Localized   map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
 	PersonID    *string                  `json:"person_id" pattern:"^[0-9]+$" maxLength:"20" doc:"null if this name is not linked to a person."`
+	Gender      *string                  `json:"gender,omitempty" enum:"male,female,other" doc:"Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link."`
+	BirthYear   *int                     `json:"birth_year,omitempty" minimum:"0" maximum:"9999" doc:"Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day."`
+	BirthMonth  *int                     `json:"birth_month,omitempty" minimum:"1" maximum:"12" doc:"Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link."`
+	BirthDay    *int                     `json:"birth_day,omitempty" minimum:"1" maximum:"31" doc:"Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link."`
+	Aliases     *[]EntityName            `json:"aliases,omitempty" doc:"Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none."`
+	Photo       *Image                   `json:"photo,omitempty" doc:"Photograph of the linked person. Present only when include=photo and there is a photo; absent otherwise. Detail face only."`
+	Siblings    *[]CreditName            `json:"siblings,omitempty" doc:"The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none."`
+	Intros      *[]Intro                 `json:"intros,omitempty" doc:"Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none."`
+	Links       *[]WorkLink              `json:"links,omitempty" doc:"External pages for the linked person. Present when include=links, detail face only. Empty array if none."`
+	Refs        *[]Ref                   `json:"refs,omitempty" doc:"Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none."`
 }
 
 type Character struct {
@@ -112,10 +123,11 @@ type Appearance struct {
 }
 
 type NameCreditRole struct {
-	_           struct{} `json:"-" additionalProperties:"true"`
-	RoleKey     string   `json:"role_key" maxLength:"64" pattern:"^[a-z][a-z0-9_]*$" doc:"Credit role token."`
-	RoleName    string   `json:"role_name" maxLength:"512" doc:"Must not be used as a discriminant."`
-	CharacterID *string  `json:"character_id" pattern:"^[0-9]+$" maxLength:"20" doc:"null if this credit is not a voice on a character."`
+	_             struct{} `json:"-" additionalProperties:"true"`
+	RoleKey       string   `json:"role_key" maxLength:"64" pattern:"^[a-z][a-z0-9_]*$" doc:"Credit role token."`
+	RoleName      string   `json:"role_name" maxLength:"512" doc:"Must not be used as a discriminant."`
+	CharacterID   *string  `json:"character_id" pattern:"^[0-9]+$" maxLength:"20" doc:"null if this credit is not a voice on a character."`
+	CharacterName *string  `json:"character_name" maxLength:"512" doc:"Display name of the voiced character. null unless this credit is a voice on a character. Must not be used as a discriminant."`
 }
 
 type Series struct {
@@ -124,6 +136,9 @@ type Series struct {
 	ID          string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog series id."`
 	DisplayName string   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
 	WorkCount   int      `json:"work_count" minimum:"0" doc:"Member works visible under the same NSFW gate."`
+	HasNSFW     bool     `json:"has_nsfw" doc:"Whether any member work sits behind the r18 display gate. Counted over the same live-claimed members as work_count but NOT narrowed by nsfw=, so a series can report true while work_count hides every such member. Carried on every lane."`
+	Intros      *[]Intro `json:"intros,omitempty" doc:"Series descriptions, one per language. Present when include=intros, detail face only. Empty array if none. is_machine is always false here: the store carries no provenance for a series description, so false records unknown, not human-written."`
+	Refs        *[]Ref   `json:"refs,omitempty" doc:"Exact upstream anchors of this series. Present when include=refs, detail face only. Empty array if none."`
 }
 
 type Engine struct {

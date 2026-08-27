@@ -35,6 +35,7 @@ func (c *Catalog) CreditNameCredits(ctx context.Context, id int64, nsfw bool, cu
 			}
 			roles = append(roles, repr.NameCreditRole{
 				RoleKey: r.RoleKey, RoleName: r.RoleName, CharacterID: ch,
+				CharacterName: optString(r.Character),
 			})
 		}
 		items = append(items, repr.NameCredit{Object: "name_credit", Work: workFromBrief(row.Work), Roles: roles})

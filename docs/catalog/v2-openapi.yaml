@@ -975,22 +975,63 @@ components:
           format: uri
           readOnly: true
           type: string
+        aliases:
+          description: Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.
+          items:
+            $ref: "#/components/schemas/EntityName"
+          type: array
+        birth_day:
+          description: Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.
+          format: int64
+          maximum: 31
+          minimum: 1
+          type: integer
+        birth_month:
+          description: Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.
+          format: int64
+          maximum: 12
+          minimum: 1
+          type: integer
+        birth_year:
+          description: "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day."
+          format: int64
+          maximum: 9999
+          minimum: 0
+          type: integer
         display_name:
           description: Must not be used as a discriminant.
           maxLength: 512
           type: string
+        gender:
+          description: Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.
+          enum:
+            - male
+            - female
+            - other
+          type: string
+          x-vocabulary-closed: true
         id:
           description: Catalog credit-name id.
           maxLength: 20
           minLength: 1
           pattern: ^[0-9]+$
           type: string
+        intros:
+          description: Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Intro"
+          type: array
         latin:
           description: null if unrecorded. Must not be used as a discriminant.
           maxLength: 512
           type:
             - string
             - "null"
+        links:
+          description: External pages for the linked person. Present when include=links, detail face only. Empty array if none.
+          items:
+            $ref: "#/components/schemas/WorkLink"
+          type: array
         localized:
           additionalProperties:
             $ref: "#/components/schemas/LocalizedText"
@@ -1009,6 +1050,19 @@ components:
           type:
             - string
             - "null"
+        photo:
+          $ref: "#/components/schemas/Image"
+          description: Photograph of the linked person. Present only when include=photo and there is a photo; absent otherwise. Detail face only.
+        refs:
+          description: Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Ref"
+          type: array
+        siblings:
+          description: The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.
+          items:
+            $ref: "#/components/schemas/CreditName"
+          type: array
       required:
         - object
         - id
@@ -3391,6 +3445,12 @@ components:
           type:
             - string
             - "null"
+        character_name:
+          description: Display name of the voiced character. null unless this credit is a voice on a character. Must not be used as a discriminant.
+          maxLength: 512
+          type:
+            - string
+            - "null"
         role_key:
           description: Credit role token.
           maxLength: 64
@@ -3404,6 +3464,7 @@ components:
         - role_key
         - role_name
         - character_id
+        - character_name
       type: object
     Names:
       additionalProperties: true
@@ -4194,6 +4255,11 @@ components:
     Rating:
       additionalProperties: true
       properties:
+        distribution:
+          description: "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count."
+          items:
+            $ref: "#/components/schemas/RatingBucket"
+          type: array
         rank:
           description: Source rank. null if unrecorded.
           format: int64
@@ -4212,6 +4278,9 @@ components:
           type: string
           x-vocabulary: sources
           x-vocabulary-closed: false
+        stats:
+          $ref: "#/components/schemas/RatingStats"
+          description: Spread of the same vote population score summarizes. Carried by erogamescape (average, stdev, min and max on its 0-100 scale) and by vndb (average only); bangumi and dlsite publish none. Present on the work detail face and on works/{id}/ratings only, never on a list face.
         vote_count:
           description: Votes backing score.
           format: int64
@@ -4222,6 +4291,60 @@ components:
         - score
         - vote_count
         - rank
+      type: object
+    RatingBucket:
+      additionalProperties: true
+      properties:
+        count:
+          description: Votes cast at this value.
+          format: int64
+          minimum: 0
+          type: integer
+        score:
+          description: "Bucket value on the source-native scale: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps."
+          format: double
+          minimum: 0
+          type: number
+      required:
+        - score
+        - count
+      type: object
+    RatingStats:
+      additionalProperties: true
+      properties:
+        average:
+          description: "Plain mean on the source-native scale. Not score: erogamescape's score is the median and vndb's is bayesian-smoothed. null if this source publishes none."
+          format: double
+          minimum: 0
+          type:
+            - number
+            - "null"
+        max:
+          description: Highest vote cast. null if this source publishes none.
+          format: double
+          minimum: 0
+          type:
+            - number
+            - "null"
+        min:
+          description: Lowest vote cast. null if this source publishes none.
+          format: double
+          minimum: 0
+          type:
+            - number
+            - "null"
+        stdev:
+          description: Standard deviation of the vote population. null if this source publishes none.
+          format: double
+          minimum: 0
+          type:
+            - number
+            - "null"
+      required:
+        - average
+        - stdev
+        - min
+        - max
       type: object
     Redirect:
       additionalProperties: true
@@ -4760,18 +4883,31 @@ components:
           description: Must not be used as a discriminant.
           maxLength: 512
           type: string
+        has_nsfw:
+          description: Whether any member work sits behind the r18 display gate. Counted over the same live-claimed members as work_count but NOT narrowed by nsfw=, so a series can report true while work_count hides every such member. Carried on every lane.
+          type: boolean
         id:
           description: Catalog series id.
           maxLength: 20
           minLength: 1
           pattern: ^[0-9]+$
           type: string
+        intros:
+          description: "Series descriptions, one per language. Present when include=intros, detail face only. Empty array if none. is_machine is always false here: the store carries no provenance for a series description, so false records unknown, not human-written."
+          items:
+            $ref: "#/components/schemas/Intro"
+          type: array
         object:
           description: Type discriminant. Always series.
           enum:
             - series
           type: string
           x-vocabulary-closed: true
+        refs:
+          description: Exact upstream anchors of this series. Present when include=refs, detail face only. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Ref"
+          type: array
         work_count:
           description: Member works visible under the same NSFW gate.
           format: int64
@@ -4782,6 +4918,7 @@ components:
         - id
         - display_name
         - work_count
+        - has_nsfw
       type: object
     SnapshotRecord:
       additionalProperties: true
@@ -4839,6 +4976,11 @@ components:
           minLength: 1
           pattern: ^[0-9]+$
           type: string
+        intros:
+          description: "Tag descriptions, one per language. Present when include=intros, detail face only. Empty array if none. is_machine is always false here: the store carries no provenance for a tag description, so false records unknown, not human-written."
+          items:
+            $ref: "#/components/schemas/Intro"
+          type: array
         is_sexual:
           description: Whether this tag is in the sexual family. Filter on it before rendering a tag list to an SFW reader.
           type: boolean
@@ -5327,6 +5469,9 @@ components:
             $ref: "#/components/schemas/LocalizedText"
           description: BCP-47 keys. Empty object if none. Must not be used as a discriminant.
           type: object
+        logo:
+          $ref: "#/components/schemas/Image"
+          description: Present when this company has a logo; absent otherwise.
         object:
           description: Type discriminant. Always company.
           enum:
@@ -6764,7 +6909,7 @@ paths:
         - catalog
   /v2/catalog/credit-names/{id}:
     get:
-      description: A credited name, not a person. person_id is null when unlinked. Requires an application key.
+      description: A credited name, not a person — this is the staff and voice-actor read surface. person_id is null when unlinked; gender and the fuzzy birth parts are person-level facts reached through that link. include=aliases,photo,siblings,intros,links,refs adds the corresponding blocks. Works this name is credited on live at /v2/catalog/credit-names/{id}/credits. Requires an application key.
       operationId: getCatalogCreditName
       parameters:
         - description: Decimal catalog id.
@@ -8906,7 +9051,7 @@ paths:
         - catalog
   /v2/catalog/series/{id}:
     get:
-      description: Series detail. Requires an application key.
+      description: Series detail. has_nsfw reports whether any member work sits behind the r18 display gate. include=intros,refs adds the corresponding blocks. Requires an application key.
       operationId: getCatalogSeries
       parameters:
         - description: Decimal catalog id.
@@ -9200,7 +9345,7 @@ paths:
         - catalog
   /v2/catalog/tags/{id}:
     get:
-      description: Canonical tag. Requires an application key.
+      description: Canonical tag. include=intros adds the per-language tag descriptions. Requires an application key.
       operationId: getCatalogTag
       parameters:
         - description: Decimal catalog id.

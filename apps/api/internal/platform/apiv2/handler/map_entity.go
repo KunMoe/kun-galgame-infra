@@ -94,8 +94,48 @@ func engineFromListItem(it dto.PublicEngineListItem) repr.Engine {
 	}
 }
 
-func seriesFromDetail(id int64, display string, workCount int) repr.Series {
-	return repr.Series{Object: "series", ID: repr.ID(id), DisplayName: display, WorkCount: workCount}
+func tagFromDetail(rec dto.PublicTagDetail, include []string) repr.Tag {
+	out := repr.Tag{
+		Object: "tag", ID: repr.ID(rec.ID), DisplayName: rec.Name,
+		Tier: rec.Tier, TagKind: rec.Kind, WorkCount: rec.WorkCount, IsSexual: rec.Sexual,
+	}
+	for _, t := range include {
+		if t == "intros" {
+			out.Intros = ptrSlice(cap100(introsFrom(rec.Intros)))
+		}
+	}
+	return out
+}
+
+func seriesFromDetail(rec dto.PublicSeriesDetail, include []string) repr.Series {
+	out := repr.Series{
+		Object: "series", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
+		WorkCount: rec.WorkCount, HasNSFW: rec.HasNSFW,
+	}
+	for _, t := range include {
+		switch t {
+		case "intros":
+			out.Intros = ptrSlice(cap100(seriesIntrosFrom(rec.Intros)))
+		case "refs":
+			out.Refs = ptrSlice(cap100(refsFrom(rec.Refs)))
+		}
+	}
+	return out
+}
+
+func seriesFromListItem(it dto.PublicSeriesListItem) repr.Series {
+	return repr.Series{
+		Object: "series", ID: repr.ID(it.ID), DisplayName: it.DisplayName,
+		WorkCount: it.WorkCount, HasNSFW: it.HasNSFW,
+	}
+}
+
+func seriesIntrosFrom(in []dto.PublicSeriesIntro) []repr.Intro {
+	out := make([]repr.Intro, 0, len(in))
+	for _, s := range in {
+		out = append(out, repr.Intro{Lang: s.Lang, Value: s.Intro, Source: s.Source})
+	}
+	return out
 }
 
 func characterFromRow(it catsvc.EntityListRow) repr.Character {

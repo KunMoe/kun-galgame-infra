@@ -20704,6 +20704,78 @@ export const docsModel: DocsModel = {
                                     }
                                   },
                                   {
+                                    "name": "logo",
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "hash",
+                                        "required": true,
+                                        "doc": "Image-service content hash.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "height",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Pixel height. null if unknown.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "sexual",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Sexual depiction. null means not assessed.",
+                                        "enum": [
+                                          "safe",
+                                          "suggestive",
+                                          "explicit"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "source",
+                                        "required": true,
+                                        "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "thumbhash",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Thumbhash. null if unknown.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "url",
+                                        "required": true,
+                                        "doc": "Absolute image URL. Never a bare hash.",
+                                        "format": "uri",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "violence",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                        "enum": [
+                                          "tame",
+                                          "violent",
+                                          "brutal"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "width",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Pixel width. null if unknown.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      }
+                                    ]
+                                  },
+                                  {
                                     "name": "object",
                                     "required": true,
                                     "doc": "Type discriminant. Always company.",
@@ -21257,6 +21329,30 @@ export const docsModel: DocsModel = {
                                 "type": "object",
                                 "children": [
                                   {
+                                    "name": "distribution",
+                                    "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "count",
+                                          "required": true,
+                                          "doc": "Votes cast at this value.",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "score",
+                                          "required": true,
+                                          "doc": "Bucket value on the source-native scale: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps.",
+                                          "format": "double",
+                                          "type": "number"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
                                     "name": "rank",
                                     "required": true,
                                     "nullable": true,
@@ -21276,6 +21372,44 @@ export const docsModel: DocsModel = {
                                     "required": true,
                                     "doc": "Open vocabulary sources. Must not be used as a discriminant.",
                                     "type": "string"
+                                  },
+                                  {
+                                    "name": "stats",
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "average",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Plain mean on the source-native scale. Not score: erogamescape's score is the median and vndb's is bayesian-smoothed. null if this source publishes none.",
+                                        "format": "double",
+                                        "type": "number"
+                                      },
+                                      {
+                                        "name": "max",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Highest vote cast. null if this source publishes none.",
+                                        "format": "double",
+                                        "type": "number"
+                                      },
+                                      {
+                                        "name": "min",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Lowest vote cast. null if this source publishes none.",
+                                        "format": "double",
+                                        "type": "number"
+                                      },
+                                      {
+                                        "name": "stdev",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Standard deviation of the vote population. null if this source publishes none.",
+                                        "format": "double",
+                                        "type": "number"
+                                      }
+                                    ]
                                   },
                                   {
                                     "name": "vote_count",
@@ -26040,9 +26174,76 @@ export const docsModel: DocsModel = {
                                 "type": "object",
                                 "children": [
                                   {
+                                    "name": "aliases",
+                                    "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "alias_kind",
+                                          "required": true,
+                                          "doc": "search_hint is internal and never appears on this type.",
+                                          "enum": [
+                                            "translation",
+                                            "spelling_variant"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "is_machine",
+                                          "required": true,
+                                          "doc": "Whether this name is machine-translated.",
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "name": "lang",
+                                          "required": true,
+                                          "doc": "BCP-47 language tag.",
+                                          "format": "bcp47",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "value",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "birth_day",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "birth_month",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "birth_year",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
                                     "name": "display_name",
                                     "required": true,
                                     "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "gender",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                    "enum": [
+                                      "male",
+                                      "female",
+                                      "other"
+                                    ],
                                     "type": "string"
                                   },
                                   {
@@ -26052,11 +26253,69 @@ export const docsModel: DocsModel = {
                                     "type": "string"
                                   },
                                   {
+                                    "name": "intros",
+                                    "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "is_machine",
+                                          "required": true,
+                                          "doc": "Whether this intro is machine-translated.",
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "name": "lang",
+                                          "required": true,
+                                          "doc": "BCP-47 language tag.",
+                                          "format": "bcp47",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "source",
+                                          "required": true,
+                                          "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "value",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
                                     "name": "latin",
                                     "required": true,
                                     "nullable": true,
                                     "doc": "null if unrecorded. Must not be used as a discriminant.",
                                     "type": "string"
+                                  },
+                                  {
+                                    "name": "links",
+                                    "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "source",
+                                          "required": true,
+                                          "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "url",
+                                          "required": true,
+                                          "doc": "Absolute URL.",
+                                          "format": "uri",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
                                   },
                                   {
                                     "name": "localized",
@@ -26096,6 +26355,108 @@ export const docsModel: DocsModel = {
                                     "nullable": true,
                                     "doc": "null if this name is not linked to a person.",
                                     "type": "string"
+                                  },
+                                  {
+                                    "name": "photo",
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "hash",
+                                        "required": true,
+                                        "doc": "Image-service content hash.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "height",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Pixel height. null if unknown.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "sexual",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Sexual depiction. null means not assessed.",
+                                        "enum": [
+                                          "safe",
+                                          "suggestive",
+                                          "explicit"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "source",
+                                        "required": true,
+                                        "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "thumbhash",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Thumbhash. null if unknown.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "url",
+                                        "required": true,
+                                        "doc": "Absolute image URL. Never a bare hash.",
+                                        "format": "uri",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "violence",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                        "enum": [
+                                          "tame",
+                                          "violent",
+                                          "brutal"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "width",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Pixel width. null if unknown.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "name": "refs",
+                                    "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "external_id",
+                                          "required": true,
+                                          "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "source",
+                                          "required": true,
+                                          "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "siblings",
+                                    "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "CreditName"
+                                    }
                                   }
                                 ]
                               }
@@ -26517,6 +26878,78 @@ export const docsModel: DocsModel = {
                                             }
                                           ]
                                         }
+                                      },
+                                      {
+                                        "name": "logo",
+                                        "type": "object",
+                                        "children": [
+                                          {
+                                            "name": "hash",
+                                            "required": true,
+                                            "doc": "Image-service content hash.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "height",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Pixel height. null if unknown.",
+                                            "format": "int64",
+                                            "type": "integer"
+                                          },
+                                          {
+                                            "name": "sexual",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Sexual depiction. null means not assessed.",
+                                            "enum": [
+                                              "safe",
+                                              "suggestive",
+                                              "explicit"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "source",
+                                            "required": true,
+                                            "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "thumbhash",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Thumbhash. null if unknown.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "url",
+                                            "required": true,
+                                            "doc": "Absolute image URL. Never a bare hash.",
+                                            "format": "uri",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "violence",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                            "enum": [
+                                              "tame",
+                                              "violent",
+                                              "brutal"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "width",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Pixel width. null if unknown.",
+                                            "format": "int64",
+                                            "type": "integer"
+                                          }
+                                        ]
                                       },
                                       {
                                         "name": "object",
@@ -27072,6 +27505,30 @@ export const docsModel: DocsModel = {
                                     "type": "object",
                                     "children": [
                                       {
+                                        "name": "distribution",
+                                        "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                                        "type": "array",
+                                        "itemsOf": {
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "count",
+                                              "required": true,
+                                              "doc": "Votes cast at this value.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "score",
+                                              "required": true,
+                                              "doc": "Bucket value on the source-native scale: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps.",
+                                              "format": "double",
+                                              "type": "number"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
                                         "name": "rank",
                                         "required": true,
                                         "nullable": true,
@@ -27091,6 +27548,44 @@ export const docsModel: DocsModel = {
                                         "required": true,
                                         "doc": "Open vocabulary sources. Must not be used as a discriminant.",
                                         "type": "string"
+                                      },
+                                      {
+                                        "name": "stats",
+                                        "type": "object",
+                                        "children": [
+                                          {
+                                            "name": "average",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Plain mean on the source-native scale. Not score: erogamescape's score is the median and vndb's is bayesian-smoothed. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          },
+                                          {
+                                            "name": "max",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Highest vote cast. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          },
+                                          {
+                                            "name": "min",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Lowest vote cast. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          },
+                                          {
+                                            "name": "stdev",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Standard deviation of the vote population. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          }
+                                        ]
                                       },
                                       {
                                         "name": "vote_count",
@@ -31754,9 +32249,76 @@ export const docsModel: DocsModel = {
                           "type": "object",
                           "children": [
                             {
+                              "name": "aliases",
+                              "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "alias_kind",
+                                    "required": true,
+                                    "doc": "search_hint is internal and never appears on this type.",
+                                    "enum": [
+                                      "translation",
+                                      "spelling_variant"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this name is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "doc": "BCP-47 language tag.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "name": "birth_day",
+                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            {
+                              "name": "birth_month",
+                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            {
+                              "name": "birth_year",
+                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            {
                               "name": "display_name",
                               "required": true,
                               "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "gender",
+                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                              "enum": [
+                                "male",
+                                "female",
+                                "other"
+                              ],
                               "type": "string"
                             },
                             {
@@ -31766,11 +32328,69 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "intros",
+                              "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this intro is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "doc": "BCP-47 language tag.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
                               "name": "latin",
                               "required": true,
                               "nullable": true,
                               "doc": "null if unrecorded. Must not be used as a discriminant.",
                               "type": "string"
+                            },
+                            {
+                              "name": "links",
+                              "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "url",
+                                    "required": true,
+                                    "doc": "Absolute URL.",
+                                    "format": "uri",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
                             },
                             {
                               "name": "localized",
@@ -31810,6 +32430,108 @@ export const docsModel: DocsModel = {
                               "nullable": true,
                               "doc": "null if this name is not linked to a person.",
                               "type": "string"
+                            },
+                            {
+                              "name": "photo",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "hash",
+                                  "required": true,
+                                  "doc": "Image-service content hash.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "height",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel height. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "sexual",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Sexual depiction. null means not assessed.",
+                                  "enum": [
+                                    "safe",
+                                    "suggestive",
+                                    "explicit"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "thumbhash",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Thumbhash. null if unknown.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "url",
+                                  "required": true,
+                                  "doc": "Absolute image URL. Never a bare hash.",
+                                  "format": "uri",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "violence",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                  "enum": [
+                                    "tame",
+                                    "violent",
+                                    "brutal"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "width",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel width. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            },
+                            {
+                              "name": "refs",
+                              "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "external_id",
+                                    "required": true,
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "name": "siblings",
+                              "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "CreditName"
+                              }
                             }
                           ]
                         }
@@ -32564,7 +33286,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/credit-names/{id}",
               "summary": "Get one credit name",
-              "description": "A credited name, not a person. person_id is null when unlinked. Requires an application key.",
+              "description": "A credited name, not a person — this is the staff and voice-actor read surface. person_id is null when unlinked; gender and the fuzzy birth parts are person-level facts reached through that link. include=aliases,photo,siblings,intros,links,refs adds the corresponding blocks. Works this name is credited on live at /v2/catalog/credit-names/{id}/credits. Requires an application key.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -32611,9 +33333,76 @@ export const docsModel: DocsModel = {
                     "type": "object",
                     "children": [
                       {
+                        "name": "aliases",
+                        "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "alias_kind",
+                              "required": true,
+                              "doc": "search_hint is internal and never appears on this type.",
+                              "enum": [
+                                "translation",
+                                "spelling_variant"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "name": "is_machine",
+                              "required": true,
+                              "doc": "Whether this name is machine-translated.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "lang",
+                              "required": true,
+                              "doc": "BCP-47 language tag.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
+                              "name": "value",
+                              "required": true,
+                              "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "name": "birth_day",
+                        "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "birth_month",
+                        "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "name": "birth_year",
+                        "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
                         "name": "display_name",
                         "required": true,
                         "doc": "Must not be used as a discriminant.",
+                        "type": "string"
+                      },
+                      {
+                        "name": "gender",
+                        "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                        "enum": [
+                          "male",
+                          "female",
+                          "other"
+                        ],
                         "type": "string"
                       },
                       {
@@ -32623,11 +33412,69 @@ export const docsModel: DocsModel = {
                         "type": "string"
                       },
                       {
+                        "name": "intros",
+                        "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "is_machine",
+                              "required": true,
+                              "doc": "Whether this intro is machine-translated.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "lang",
+                              "required": true,
+                              "doc": "BCP-47 language tag.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
+                              "name": "source",
+                              "required": true,
+                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "value",
+                              "required": true,
+                              "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      {
                         "name": "latin",
                         "required": true,
                         "nullable": true,
                         "doc": "null if unrecorded. Must not be used as a discriminant.",
                         "type": "string"
+                      },
+                      {
+                        "name": "links",
+                        "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "source",
+                              "required": true,
+                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "url",
+                              "required": true,
+                              "doc": "Absolute URL.",
+                              "format": "uri",
+                              "type": "string"
+                            }
+                          ]
+                        }
                       },
                       {
                         "name": "localized",
@@ -32667,6 +33514,108 @@ export const docsModel: DocsModel = {
                         "nullable": true,
                         "doc": "null if this name is not linked to a person.",
                         "type": "string"
+                      },
+                      {
+                        "name": "photo",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "hash",
+                            "required": true,
+                            "doc": "Image-service content hash.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "height",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Pixel height. null if unknown.",
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          {
+                            "name": "sexual",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Sexual depiction. null means not assessed.",
+                            "enum": [
+                              "safe",
+                              "suggestive",
+                              "explicit"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "name": "source",
+                            "required": true,
+                            "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "thumbhash",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Thumbhash. null if unknown.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "url",
+                            "required": true,
+                            "doc": "Absolute image URL. Never a bare hash.",
+                            "format": "uri",
+                            "type": "string"
+                          },
+                          {
+                            "name": "violence",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                            "enum": [
+                              "tame",
+                              "violent",
+                              "brutal"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "name": "width",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Pixel width. null if unknown.",
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "refs",
+                        "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "external_id",
+                              "required": true,
+                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "source",
+                              "required": true,
+                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "name": "siblings",
+                        "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "CreditName"
+                        }
                       }
                     ]
                   }
@@ -33596,6 +34545,13 @@ export const docsModel: DocsModel = {
                                     "type": "string"
                                   },
                                   {
+                                    "name": "character_name",
+                                    "required": true,
+                                    "nullable": true,
+                                    "doc": "Display name of the voiced character. null unless this credit is a voice on a character. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
                                     "name": "role_key",
                                     "required": true,
                                     "doc": "Credit role token.",
@@ -34027,6 +34983,78 @@ export const docsModel: DocsModel = {
                                             }
                                           ]
                                         }
+                                      },
+                                      {
+                                        "name": "logo",
+                                        "type": "object",
+                                        "children": [
+                                          {
+                                            "name": "hash",
+                                            "required": true,
+                                            "doc": "Image-service content hash.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "height",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Pixel height. null if unknown.",
+                                            "format": "int64",
+                                            "type": "integer"
+                                          },
+                                          {
+                                            "name": "sexual",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Sexual depiction. null means not assessed.",
+                                            "enum": [
+                                              "safe",
+                                              "suggestive",
+                                              "explicit"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "source",
+                                            "required": true,
+                                            "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "thumbhash",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Thumbhash. null if unknown.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "url",
+                                            "required": true,
+                                            "doc": "Absolute image URL. Never a bare hash.",
+                                            "format": "uri",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "violence",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                            "enum": [
+                                              "tame",
+                                              "violent",
+                                              "brutal"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "width",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Pixel width. null if unknown.",
+                                            "format": "int64",
+                                            "type": "integer"
+                                          }
+                                        ]
                                       },
                                       {
                                         "name": "object",
@@ -34582,6 +35610,30 @@ export const docsModel: DocsModel = {
                                     "type": "object",
                                     "children": [
                                       {
+                                        "name": "distribution",
+                                        "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                                        "type": "array",
+                                        "itemsOf": {
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "count",
+                                              "required": true,
+                                              "doc": "Votes cast at this value.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "score",
+                                              "required": true,
+                                              "doc": "Bucket value on the source-native scale: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps.",
+                                              "format": "double",
+                                              "type": "number"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
                                         "name": "rank",
                                         "required": true,
                                         "nullable": true,
@@ -34601,6 +35653,44 @@ export const docsModel: DocsModel = {
                                         "required": true,
                                         "doc": "Open vocabulary sources. Must not be used as a discriminant.",
                                         "type": "string"
+                                      },
+                                      {
+                                        "name": "stats",
+                                        "type": "object",
+                                        "children": [
+                                          {
+                                            "name": "average",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Plain mean on the source-native scale. Not score: erogamescape's score is the median and vndb's is bayesian-smoothed. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          },
+                                          {
+                                            "name": "max",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Highest vote cast. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          },
+                                          {
+                                            "name": "min",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Lowest vote cast. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          },
+                                          {
+                                            "name": "stdev",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Standard deviation of the vote population. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          }
+                                        ]
                                       },
                                       {
                                         "name": "vote_count",
@@ -39668,9 +40758,76 @@ export const docsModel: DocsModel = {
                           "type": "object",
                           "children": [
                             {
+                              "name": "aliases",
+                              "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "alias_kind",
+                                    "required": true,
+                                    "doc": "search_hint is internal and never appears on this type.",
+                                    "enum": [
+                                      "translation",
+                                      "spelling_variant"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this name is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "doc": "BCP-47 language tag.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "name": "birth_day",
+                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            {
+                              "name": "birth_month",
+                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            {
+                              "name": "birth_year",
+                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            {
                               "name": "display_name",
                               "required": true,
                               "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "gender",
+                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                              "enum": [
+                                "male",
+                                "female",
+                                "other"
+                              ],
                               "type": "string"
                             },
                             {
@@ -39680,11 +40837,69 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "intros",
+                              "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this intro is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "doc": "BCP-47 language tag.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
                               "name": "latin",
                               "required": true,
                               "nullable": true,
                               "doc": "null if unrecorded. Must not be used as a discriminant.",
                               "type": "string"
+                            },
+                            {
+                              "name": "links",
+                              "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "url",
+                                    "required": true,
+                                    "doc": "Absolute URL.",
+                                    "format": "uri",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
                             },
                             {
                               "name": "localized",
@@ -39724,6 +40939,108 @@ export const docsModel: DocsModel = {
                               "nullable": true,
                               "doc": "null if this name is not linked to a person.",
                               "type": "string"
+                            },
+                            {
+                              "name": "photo",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "hash",
+                                  "required": true,
+                                  "doc": "Image-service content hash.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "height",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel height. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "sexual",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Sexual depiction. null means not assessed.",
+                                  "enum": [
+                                    "safe",
+                                    "suggestive",
+                                    "explicit"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "thumbhash",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Thumbhash. null if unknown.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "url",
+                                  "required": true,
+                                  "doc": "Absolute image URL. Never a bare hash.",
+                                  "format": "uri",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "violence",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                  "enum": [
+                                    "tame",
+                                    "violent",
+                                    "brutal"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "width",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel width. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            },
+                            {
+                              "name": "refs",
+                              "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "external_id",
+                                    "required": true,
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "name": "siblings",
+                              "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "CreditName"
+                              }
                             }
                           ]
                         }
@@ -49522,10 +50839,51 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "has_nsfw",
+                              "required": true,
+                              "doc": "Whether any member work sits behind the r18 display gate. Counted over the same live-claimed members as work_count but NOT narrowed by nsfw=, so a series can report true while work_count hides every such member. Carried on every lane.",
+                              "type": "boolean"
+                            },
+                            {
                               "name": "id",
                               "required": true,
                               "doc": "Catalog series id.",
                               "type": "string"
+                            },
+                            {
+                              "name": "intros",
+                              "doc": "Series descriptions, one per language. Present when include=intros, detail face only. Empty array if none. is_machine is always false here: the store carries no provenance for a series description, so false records unknown, not human-written.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this intro is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "doc": "BCP-47 language tag.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
                             },
                             {
                               "name": "object",
@@ -49535,6 +50893,28 @@ export const docsModel: DocsModel = {
                                 "series"
                               ],
                               "type": "string"
+                            },
+                            {
+                              "name": "refs",
+                              "doc": "Exact upstream anchors of this series. Present when include=refs, detail face only. Empty array if none.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "external_id",
+                                    "required": true,
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
                             },
                             {
                               "name": "work_count",
@@ -50296,7 +51676,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/series/{id}",
               "summary": "Get one series",
-              "description": "Series detail. Requires an application key.",
+              "description": "Series detail. has_nsfw reports whether any member work sits behind the r18 display gate. include=intros,refs adds the corresponding blocks. Requires an application key.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -50349,10 +51729,51 @@ export const docsModel: DocsModel = {
                         "type": "string"
                       },
                       {
+                        "name": "has_nsfw",
+                        "required": true,
+                        "doc": "Whether any member work sits behind the r18 display gate. Counted over the same live-claimed members as work_count but NOT narrowed by nsfw=, so a series can report true while work_count hides every such member. Carried on every lane.",
+                        "type": "boolean"
+                      },
+                      {
                         "name": "id",
                         "required": true,
                         "doc": "Catalog series id.",
                         "type": "string"
+                      },
+                      {
+                        "name": "intros",
+                        "doc": "Series descriptions, one per language. Present when include=intros, detail face only. Empty array if none. is_machine is always false here: the store carries no provenance for a series description, so false records unknown, not human-written.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "is_machine",
+                              "required": true,
+                              "doc": "Whether this intro is machine-translated.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "lang",
+                              "required": true,
+                              "doc": "BCP-47 language tag.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
+                              "name": "source",
+                              "required": true,
+                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "value",
+                              "required": true,
+                              "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
                       },
                       {
                         "name": "object",
@@ -50362,6 +51783,28 @@ export const docsModel: DocsModel = {
                           "series"
                         ],
                         "type": "string"
+                      },
+                      {
+                        "name": "refs",
+                        "doc": "Exact upstream anchors of this series. Present when include=refs, detail face only. Empty array if none.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "external_id",
+                              "required": true,
+                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "source",
+                              "required": true,
+                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
                       },
                       {
                         "name": "work_count",
@@ -51814,6 +53257,41 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "intros",
+                              "doc": "Tag descriptions, one per language. Present when include=intros, detail face only. Empty array if none. is_machine is always false here: the store carries no provenance for a tag description, so false records unknown, not human-written.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "is_machine",
+                                    "required": true,
+                                    "doc": "Whether this intro is machine-translated.",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "doc": "BCP-47 language tag.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "source",
+                                    "required": true,
+                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "value",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
+                            },
+                            {
                               "name": "is_sexual",
                               "required": true,
                               "doc": "Whether this tag is in the sexual family. Filter on it before rendering a tag list to an SFW reader.",
@@ -52609,7 +54087,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/tags/{id}",
               "summary": "Get one tag",
-              "description": "Canonical tag. Requires an application key.",
+              "description": "Canonical tag. include=intros adds the per-language tag descriptions. Requires an application key.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -52666,6 +54144,41 @@ export const docsModel: DocsModel = {
                         "required": true,
                         "doc": "Catalog tag id.",
                         "type": "string"
+                      },
+                      {
+                        "name": "intros",
+                        "doc": "Tag descriptions, one per language. Present when include=intros, detail face only. Empty array if none. is_machine is always false here: the store carries no provenance for a tag description, so false records unknown, not human-written.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "object",
+                          "children": [
+                            {
+                              "name": "is_machine",
+                              "required": true,
+                              "doc": "Whether this intro is machine-translated.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "lang",
+                              "required": true,
+                              "doc": "BCP-47 language tag.",
+                              "format": "bcp47",
+                              "type": "string"
+                            },
+                            {
+                              "name": "source",
+                              "required": true,
+                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
+                              "name": "value",
+                              "required": true,
+                              "doc": "Must not be used as a discriminant.",
+                              "type": "string"
+                            }
+                          ]
+                        }
                       },
                       {
                         "name": "is_sexual",
@@ -56010,6 +57523,78 @@ export const docsModel: DocsModel = {
                                     }
                                   },
                                   {
+                                    "name": "logo",
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "hash",
+                                        "required": true,
+                                        "doc": "Image-service content hash.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "height",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Pixel height. null if unknown.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "sexual",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Sexual depiction. null means not assessed.",
+                                        "enum": [
+                                          "safe",
+                                          "suggestive",
+                                          "explicit"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "source",
+                                        "required": true,
+                                        "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "thumbhash",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Thumbhash. null if unknown.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "url",
+                                        "required": true,
+                                        "doc": "Absolute image URL. Never a bare hash.",
+                                        "format": "uri",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "violence",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                        "enum": [
+                                          "tame",
+                                          "violent",
+                                          "brutal"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "width",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Pixel width. null if unknown.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      }
+                                    ]
+                                  },
+                                  {
                                     "name": "object",
                                     "required": true,
                                     "doc": "Type discriminant. Always company.",
@@ -56563,6 +58148,30 @@ export const docsModel: DocsModel = {
                                 "type": "object",
                                 "children": [
                                   {
+                                    "name": "distribution",
+                                    "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "count",
+                                          "required": true,
+                                          "doc": "Votes cast at this value.",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "score",
+                                          "required": true,
+                                          "doc": "Bucket value on the source-native scale: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps.",
+                                          "format": "double",
+                                          "type": "number"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
                                     "name": "rank",
                                     "required": true,
                                     "nullable": true,
@@ -56582,6 +58191,44 @@ export const docsModel: DocsModel = {
                                     "required": true,
                                     "doc": "Open vocabulary sources. Must not be used as a discriminant.",
                                     "type": "string"
+                                  },
+                                  {
+                                    "name": "stats",
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "average",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Plain mean on the source-native scale. Not score: erogamescape's score is the median and vndb's is bayesian-smoothed. null if this source publishes none.",
+                                        "format": "double",
+                                        "type": "number"
+                                      },
+                                      {
+                                        "name": "max",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Highest vote cast. null if this source publishes none.",
+                                        "format": "double",
+                                        "type": "number"
+                                      },
+                                      {
+                                        "name": "min",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Lowest vote cast. null if this source publishes none.",
+                                        "format": "double",
+                                        "type": "number"
+                                      },
+                                      {
+                                        "name": "stdev",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Standard deviation of the vote population. null if this source publishes none.",
+                                        "format": "double",
+                                        "type": "number"
+                                      }
+                                    ]
                                   },
                                   {
                                     "name": "vote_count",
@@ -58250,6 +59897,78 @@ export const docsModel: DocsModel = {
                               }
                             },
                             {
+                              "name": "logo",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "hash",
+                                  "required": true,
+                                  "doc": "Image-service content hash.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "height",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel height. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                {
+                                  "name": "sexual",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Sexual depiction. null means not assessed.",
+                                  "enum": [
+                                    "safe",
+                                    "suggestive",
+                                    "explicit"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "source",
+                                  "required": true,
+                                  "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "thumbhash",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Thumbhash. null if unknown.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "url",
+                                  "required": true,
+                                  "doc": "Absolute image URL. Never a bare hash.",
+                                  "format": "uri",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "violence",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                  "enum": [
+                                    "tame",
+                                    "violent",
+                                    "brutal"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "width",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Pixel width. null if unknown.",
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              ]
+                            },
+                            {
                               "name": "object",
                               "required": true,
                               "doc": "Type discriminant. Always company.",
@@ -58803,6 +60522,30 @@ export const docsModel: DocsModel = {
                           "type": "object",
                           "children": [
                             {
+                              "name": "distribution",
+                              "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "count",
+                                    "required": true,
+                                    "doc": "Votes cast at this value.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "score",
+                                    "required": true,
+                                    "doc": "Bucket value on the source-native scale: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps.",
+                                    "format": "double",
+                                    "type": "number"
+                                  }
+                                ]
+                              }
+                            },
+                            {
                               "name": "rank",
                               "required": true,
                               "nullable": true,
@@ -58822,6 +60565,44 @@ export const docsModel: DocsModel = {
                               "required": true,
                               "doc": "Open vocabulary sources. Must not be used as a discriminant.",
                               "type": "string"
+                            },
+                            {
+                              "name": "stats",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "average",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Plain mean on the source-native scale. Not score: erogamescape's score is the median and vndb's is bayesian-smoothed. null if this source publishes none.",
+                                  "format": "double",
+                                  "type": "number"
+                                },
+                                {
+                                  "name": "max",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Highest vote cast. null if this source publishes none.",
+                                  "format": "double",
+                                  "type": "number"
+                                },
+                                {
+                                  "name": "min",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Lowest vote cast. null if this source publishes none.",
+                                  "format": "double",
+                                  "type": "number"
+                                },
+                                {
+                                  "name": "stdev",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Standard deviation of the vote population. null if this source publishes none.",
+                                  "format": "double",
+                                  "type": "number"
+                                }
+                              ]
                             },
                             {
                               "name": "vote_count",
@@ -66237,6 +68018,30 @@ export const docsModel: DocsModel = {
                           "type": "object",
                           "children": [
                             {
+                              "name": "distribution",
+                              "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "count",
+                                    "required": true,
+                                    "doc": "Votes cast at this value.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "score",
+                                    "required": true,
+                                    "doc": "Bucket value on the source-native scale: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps.",
+                                    "format": "double",
+                                    "type": "number"
+                                  }
+                                ]
+                              }
+                            },
+                            {
                               "name": "rank",
                               "required": true,
                               "nullable": true,
@@ -66256,6 +68061,44 @@ export const docsModel: DocsModel = {
                               "required": true,
                               "doc": "Open vocabulary sources. Must not be used as a discriminant.",
                               "type": "string"
+                            },
+                            {
+                              "name": "stats",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "average",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Plain mean on the source-native scale. Not score: erogamescape's score is the median and vndb's is bayesian-smoothed. null if this source publishes none.",
+                                  "format": "double",
+                                  "type": "number"
+                                },
+                                {
+                                  "name": "max",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Highest vote cast. null if this source publishes none.",
+                                  "format": "double",
+                                  "type": "number"
+                                },
+                                {
+                                  "name": "min",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Lowest vote cast. null if this source publishes none.",
+                                  "format": "double",
+                                  "type": "number"
+                                },
+                                {
+                                  "name": "stdev",
+                                  "required": true,
+                                  "nullable": true,
+                                  "doc": "Standard deviation of the vote population. null if this source publishes none.",
+                                  "format": "double",
+                                  "type": "number"
+                                }
+                              ]
                             },
                             {
                               "name": "vote_count",
@@ -67629,6 +69472,78 @@ export const docsModel: DocsModel = {
                                         }
                                       },
                                       {
+                                        "name": "logo",
+                                        "type": "object",
+                                        "children": [
+                                          {
+                                            "name": "hash",
+                                            "required": true,
+                                            "doc": "Image-service content hash.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "height",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Pixel height. null if unknown.",
+                                            "format": "int64",
+                                            "type": "integer"
+                                          },
+                                          {
+                                            "name": "sexual",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Sexual depiction. null means not assessed.",
+                                            "enum": [
+                                              "safe",
+                                              "suggestive",
+                                              "explicit"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "source",
+                                            "required": true,
+                                            "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "thumbhash",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Thumbhash. null if unknown.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "url",
+                                            "required": true,
+                                            "doc": "Absolute image URL. Never a bare hash.",
+                                            "format": "uri",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "violence",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                            "enum": [
+                                              "tame",
+                                              "violent",
+                                              "brutal"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          {
+                                            "name": "width",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Pixel width. null if unknown.",
+                                            "format": "int64",
+                                            "type": "integer"
+                                          }
+                                        ]
+                                      },
+                                      {
                                         "name": "object",
                                         "required": true,
                                         "doc": "Type discriminant. Always company.",
@@ -68182,6 +70097,30 @@ export const docsModel: DocsModel = {
                                     "type": "object",
                                     "children": [
                                       {
+                                        "name": "distribution",
+                                        "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                                        "type": "array",
+                                        "itemsOf": {
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "count",
+                                              "required": true,
+                                              "doc": "Votes cast at this value.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "score",
+                                              "required": true,
+                                              "doc": "Bucket value on the source-native scale: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps.",
+                                              "format": "double",
+                                              "type": "number"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
                                         "name": "rank",
                                         "required": true,
                                         "nullable": true,
@@ -68201,6 +70140,44 @@ export const docsModel: DocsModel = {
                                         "required": true,
                                         "doc": "Open vocabulary sources. Must not be used as a discriminant.",
                                         "type": "string"
+                                      },
+                                      {
+                                        "name": "stats",
+                                        "type": "object",
+                                        "children": [
+                                          {
+                                            "name": "average",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Plain mean on the source-native scale. Not score: erogamescape's score is the median and vndb's is bayesian-smoothed. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          },
+                                          {
+                                            "name": "max",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Highest vote cast. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          },
+                                          {
+                                            "name": "min",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Lowest vote cast. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          },
+                                          {
+                                            "name": "stdev",
+                                            "required": true,
+                                            "nullable": true,
+                                            "doc": "Standard deviation of the vote population. null if this source publishes none.",
+                                            "format": "double",
+                                            "type": "number"
+                                          }
+                                        ]
                                       },
                                       {
                                         "name": "vote_count",
