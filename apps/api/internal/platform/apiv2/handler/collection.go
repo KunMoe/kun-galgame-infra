@@ -3,10 +3,12 @@ package handler
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"api/internal/platform/apiv2/collect"
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/apiv2/repr"
 	"api/internal/platform/apiv2/vocab"
 	"api/internal/platform/devapi"
@@ -202,6 +204,19 @@ func withIdent(ctx context.Context, p *problem.Problem) *problem.Problem {
 		p.Instance = inst
 	}
 	return p
+}
+
+func credentialLimitIdentity(c fiber.Ctx) (protocol.LimitIdentity, bool) {
+	cred := devapi.CredentialFrom(c)
+	if cred == nil {
+		return protocol.LimitIdentity{}, false
+	}
+	rate, unlimited := cred.EffectiveRate()
+	quota, _ := cred.EffectiveQuota()
+	return protocol.LimitIdentity{
+		Key:  "k" + strconv.FormatUint(uint64(cred.KeyID), 10),
+		Rate: rate, Quota: quota, Unlimited: unlimited,
+	}, true
 }
 
 func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error)) fiber.Handler {
