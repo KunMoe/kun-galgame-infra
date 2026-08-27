@@ -14,6 +14,7 @@ type CompanyGraphNode struct {
 	DisplayName string                   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
 	Localized   map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
 	WorkCount   int                      `json:"work_count" minimum:"0" doc:"Works visible under the same NSFW gate."`
+	Logo        *Image                   `json:"logo,omitempty" doc:"Present only when include=logo and this node has a logo; absent otherwise."`
 }
 
 type CompanyGraphEdge struct {

@@ -30,6 +30,18 @@ func Lookup(name string) (Vocabulary, bool) {
 	return Vocabulary{}, false
 }
 
+func Tokens(name string) []string {
+	v, ok := Lookup(name)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(v.Values))
+	for _, x := range v.Values {
+		out = append(out, x.Value)
+	}
+	return out
+}
+
 func closed(name string, values []Value) Vocabulary {
 	return Vocabulary{Object: "vocabulary", Name: name, Closed: true, Values: values}
 }

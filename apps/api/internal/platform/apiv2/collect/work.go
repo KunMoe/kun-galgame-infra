@@ -93,7 +93,7 @@ func CompanySpec() Spec {
 		Include: companyInclude,
 		FullSet: companyInclude,
 		Fields: []string{
-			"object", "id", "display_name", "latin", "localized", "company_kind", "work_count",
+			"object", "id", "display_name", "latin", "lang", "localized", "company_kind", "work_count",
 			"aliases", "logo", "intros", "links",
 		},
 	}
@@ -103,7 +103,7 @@ var creditNameInclude = []string{"aliases", "photo", "siblings", "intros", "link
 
 func CreditNameSpec() Spec {
 	fields := []string{
-		"object", "id", "display_name", "latin", "localized", "person_id",
+		"object", "id", "display_name", "latin", "lang", "localized", "person_id",
 		"gender", "birth_year", "birth_month", "birth_day",
 	}
 	fields = append(fields, creditNameInclude...)
@@ -118,9 +118,9 @@ func CreditNameSpec() Spec {
 func CharacterSpec() Spec {
 	full := []string{
 		"gender", "birthday", "height_cm", "weight_kg", "measurements", "blood_type", "instance_of_id",
-		"image", "figure", "traits",
+		"image", "figure", "traits", "aliases", "intros", "refs",
 	}
-	fields := []string{"object", "id", "display_name", "latin", "localized"}
+	fields := []string{"object", "id", "display_name", "latin", "lang", "localized"}
 	fields = append(fields, full...)
 	return Spec{
 		Sort:    []string{"id"},

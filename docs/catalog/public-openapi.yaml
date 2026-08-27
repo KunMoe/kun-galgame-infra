@@ -1973,6 +1973,9 @@ components:
         kind:
           description: game_brand|bunko|publisher|anime_studio|doujin_circle|group|other
           type: string
+        lang:
+          description: BCP-47 language of display_name; empty when unrecorded
+          type: string
         localized:
           additionalProperties:
             $ref: "#/components/schemas/PublicLocalizedName"

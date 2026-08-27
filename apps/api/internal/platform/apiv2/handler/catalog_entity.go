@@ -23,11 +23,11 @@ func (c *Catalog) GetCreditName(ctx context.Context, id int64, nsfw bool, includ
 	return creditNameFromDetail(rec, include, c.Public.ImageURL(rec.PhotoHash)), nil
 }
 
-func (c *Catalog) GetCharacter(ctx context.Context, id int64, nsfw bool, include []string) (repr.Character, error) {
+func (c *Catalog) GetCharacter(ctx context.Context, id int64, nsfw bool, spoiler int16, include []string) (repr.Character, error) {
 	if c == nil || c.Public == nil {
 		return repr.Character{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
-	rec, found, err := c.Public.Character(ctx, id, false, nsfw, 0, 0, 0)
+	rec, found, err := c.Public.Character(ctx, id, false, nsfw, spoiler, 0, 0)
 	if err != nil {
 		return repr.Character{}, err
 	}
@@ -36,7 +36,7 @@ func (c *Catalog) GetCharacter(ctx context.Context, id int64, nsfw bool, include
 	}
 	out := repr.Character{
 		Object: "character", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
-		Latin: optString(rec.Latin), Localized: localizedFrom(rec.Localized),
+		Latin: optString(rec.Latin), Lang: optString(rec.Lang), Localized: localizedFrom(rec.Localized),
 	}
 	if characterWantsAttrs(include) {
 		attrs, ok, aerr := c.Public.CharacterAttributes(ctx, id)

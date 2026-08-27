@@ -13,7 +13,7 @@
 
 List tags of one work
 
-Tags attached to this work. Same items as include=tags. Requires an application key.
+Tags attached to this work. Same items as include=tags. spoiler=none|minor|major is the ceiling of this page and defaults to none, exactly as on the work detail face. Requires an application key.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -25,6 +25,7 @@ Tags attached to this work. Same items as include=tags. Requires an application 
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
+| `spoiler` | query | 否 | string | Spoiler ceiling for this page: none (default), minor or major. Closed vocabulary; an unknown value is 400. Tag rows above the ceiling are not returned. Only the VNDB-derived tag vocabulary carries a spoiler level — Bangumi and DLsite folksonomy publish no spoiler concept, so those rows read none — and the default is the safe ceiling. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/works/value/tags" \

@@ -69,7 +69,7 @@ func (c *Catalog) batchWorkIDs(ctx context.Context, q collect.Query) ([]int64, [
 	return ids, missing, nil
 }
 
-func (c *Catalog) GetWork(ctx context.Context, id int64, nsfw bool, include []string) (repr.Work, error) {
+func (c *Catalog) GetWork(ctx context.Context, id int64, nsfw bool, spoiler int16, include []string) (repr.Work, error) {
 	if c == nil || c.Public == nil {
 		return repr.Work{}, problem.New(problem.CodeServiceUnavailable, "", "", "works collection is not bound.")
 	}
@@ -82,7 +82,7 @@ func (c *Catalog) GetWork(ctx context.Context, id int64, nsfw bool, include []st
 			inc.Credits = true
 		}
 	}
-	rec, found, err := c.Public.WorkDetail(ctx, id, inc, nsfw, 0, workDetailSel(include))
+	rec, found, err := c.Public.WorkDetail(ctx, id, inc, nsfw, spoiler, workDetailSel(include))
 	if err != nil {
 		return repr.Work{}, err
 	}

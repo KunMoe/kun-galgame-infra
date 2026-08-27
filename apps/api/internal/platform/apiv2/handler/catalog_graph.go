@@ -9,7 +9,7 @@ import (
 	catmodel "api/internal/platform/catalog/model"
 )
 
-func (c *Catalog) GetCompanyGraph(ctx context.Context, id int64, nsfw bool) (repr.CompanyGraph, error) {
+func (c *Catalog) GetCompanyGraph(ctx context.Context, id int64, nsfw bool, include []string) (repr.CompanyGraph, error) {
 	if c == nil || c.Public == nil {
 		return repr.CompanyGraph{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
@@ -20,16 +20,26 @@ func (c *Catalog) GetCompanyGraph(ctx context.Context, id int64, nsfw bool) (rep
 	if !found {
 		return repr.CompanyGraph{}, c.mergedOrNotFound(ctx, catmodel.EntityTypeLabel, "company", id)
 	}
-	return companyGraphFrom(g), nil
+	return companyGraphFrom(g, include, c.imageURL), nil
 }
 
-func companyGraphFrom(g dto.PublicLabelGraph) repr.CompanyGraph {
+func companyGraphFrom(g dto.PublicLabelGraph, include []string, logoURL func(string) string) repr.CompanyGraph {
+	wantLogo := false
+	for _, t := range include {
+		if t == "logo" {
+			wantLogo = true
+		}
+	}
 	nodes := make([]repr.CompanyGraphNode, 0, len(g.Nodes))
 	for _, n := range g.Nodes {
-		nodes = append(nodes, repr.CompanyGraphNode{
+		node := repr.CompanyGraphNode{
 			Object: "company", ID: repr.ID(n.ID), DisplayName: n.DisplayName,
 			Localized: localizedFrom(n.Localized), WorkCount: n.WorkCount,
-		})
+		}
+		if wantLogo && n.LogoHash != "" && logoURL != nil {
+			node.Logo = imageFromPublicMeta(logoURL(n.LogoHash), n.LogoMeta, "")
+		}
+		nodes = append(nodes, node)
 	}
 	edges := make([]repr.CompanyGraphEdge, 0, len(g.Edges))
 	for _, e := range g.Edges {

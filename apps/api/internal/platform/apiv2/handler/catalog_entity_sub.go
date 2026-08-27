@@ -72,7 +72,8 @@ func (c *Catalog) CharacterAppearances(ctx context.Context, id int64, nsfw bool,
 		for _, v := range row.Voices {
 			voices = append(voices, repr.CreditName{
 				Object: "credit_name", ID: repr.ID(v.ID), DisplayName: v.DisplayName,
-				Latin: optString(v.Latin), Localized: localizedFrom(v.Localized),
+				Latin: optString(v.Latin), Lang: optString(v.Lang),
+				Localized: localizedFrom(v.Localized),
 			})
 		}
 		items = append(items, repr.Appearance{

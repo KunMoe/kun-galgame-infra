@@ -321,6 +321,19 @@ func Spoiler(v int16) (string, bool) {
 	}
 }
 
+func SpoilerFromKey(key string) (int16, bool) {
+	switch key {
+	case "none":
+		return 0, true
+	case "minor":
+		return 1, true
+	case "major":
+		return 2, true
+	default:
+		return 0, false
+	}
+}
+
 func ContentLimit(v string) (string, bool) {
 	switch v {
 	case model.DisplayLimitKeySFW, model.DisplayLimitKeyNSFW:

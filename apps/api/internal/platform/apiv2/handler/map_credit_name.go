@@ -13,7 +13,8 @@ func creditNameFromDetail(rec dto.PublicName, include []string, photoURL string)
 	}
 	out := repr.CreditName{
 		Object: "credit_name", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
-		Latin: optString(rec.Latin), Localized: localizedFrom(rec.Localized), PersonID: personID,
+		Latin: optString(rec.Latin), Lang: optString(rec.Lang),
+		Localized: localizedFrom(rec.Localized), PersonID: personID,
 		BirthYear: intFromI16(rec.BirthY), BirthMonth: intFromI16(rec.BirthM), BirthDay: intFromI16(rec.BirthD),
 	}
 	out.Gender, _ = repr.Gender(rec.Gender)
@@ -43,7 +44,8 @@ func siblingNamesFrom(in []dto.PublicSiblingName, personID *string) []repr.Credi
 	for _, s := range in {
 		out = append(out, repr.CreditName{
 			Object: "credit_name", ID: repr.ID(s.ID), DisplayName: s.DisplayName,
-			Latin: optString(s.Latin), Localized: localizedFrom(s.Localized), PersonID: personID,
+			Latin: optString(s.Latin), Lang: optString(s.Lang),
+			Localized: localizedFrom(s.Localized), PersonID: personID,
 		})
 	}
 	return out

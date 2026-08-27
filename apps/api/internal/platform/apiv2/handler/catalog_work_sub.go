@@ -66,12 +66,12 @@ func (c *Catalog) WorkScreenshots(ctx context.Context, id int64, nsfw bool, curs
 	return repr.NewList(screenshotsFrom(data.Items), collect.EncodeOffset(derefInt(data.NextOffset))), nil
 }
 
-func (c *Catalog) WorkTags(ctx context.Context, id int64, nsfw bool, cursor string, limit int) (repr.List[repr.WorkTag], error) {
+func (c *Catalog) WorkTags(ctx context.Context, id int64, nsfw bool, spoiler int16, cursor string, limit int) (repr.List[repr.WorkTag], error) {
 	offset, limit, err := c.subPage(cursor, limit)
 	if err != nil {
 		return repr.List[repr.WorkTag]{}, err
 	}
-	data, found, err := c.Public.WorkTags(ctx, id, nsfw, 0, limit, offset)
+	data, found, err := c.Public.WorkTags(ctx, id, nsfw, spoiler, limit, offset)
 	if err != nil {
 		return repr.List[repr.WorkTag]{}, err
 	}
