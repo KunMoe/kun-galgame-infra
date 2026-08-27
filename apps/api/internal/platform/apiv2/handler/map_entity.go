@@ -21,7 +21,7 @@ func companyFromListItem(it dto.PublicLabelListItem, include []string, logoURL s
 	for _, t := range include {
 		switch t {
 		case "aliases":
-			out.Aliases = ptrSlice(cap100(entityNamesFrom(it.Aliases)))
+			out.Aliases = ptrSlice(entityNamesFrom(it.Aliases))
 		case "logo":
 			if logoURL != "" {
 				out.Logo = imageFromPublicMeta(logoURL, it.LogoMeta, "")
@@ -44,15 +44,15 @@ func companyFromDetail(rec dto.PublicLabel, include []string, logoURL string) re
 	for _, t := range include {
 		switch t {
 		case "aliases":
-			out.Aliases = ptrSlice(cap100(entityNamesFrom(rec.Aliases)))
+			out.Aliases = ptrSlice(entityNamesFrom(rec.Aliases))
 		case "logo":
 			if logoURL != "" {
 				out.Logo = imageFromPublicMeta(logoURL, rec.LogoMeta, "")
 			}
 		case "intros":
-			out.Intros = ptrSlice(cap100(introsFrom(rec.Intros)))
+			out.Intros = ptrSlice(introsFrom(rec.Intros))
 		case "links":
-			out.Links = ptrSlice(cap100(labelLinksFrom(rec.Links)))
+			out.Links = ptrSlice(labelLinksFrom(rec.Links))
 		}
 	}
 	return out
@@ -103,7 +103,7 @@ func tagFromDetail(rec dto.PublicTagDetail, include []string) repr.Tag {
 	}
 	for _, t := range include {
 		if t == "intros" {
-			out.Intros = ptrSlice(cap100(introsFrom(rec.Intros)))
+			out.Intros = ptrSlice(introsFrom(rec.Intros))
 		}
 	}
 	return out
@@ -117,9 +117,9 @@ func seriesFromDetail(rec dto.PublicSeriesDetail, include []string) repr.Series 
 	for _, t := range include {
 		switch t {
 		case "intros":
-			out.Intros = ptrSlice(cap100(seriesIntrosFrom(rec.Intros)))
+			out.Intros = ptrSlice(seriesIntrosFrom(rec.Intros))
 		case "refs":
-			out.Refs = ptrSlice(cap100(refsFrom(rec.Refs)))
+			out.Refs = ptrSlice(refsFrom(rec.Refs))
 		}
 	}
 	return out
@@ -183,13 +183,13 @@ func attachCharacterBlocks(out *repr.Character, rec dto.PublicCharacter, include
 				out.Figure = imageFromPublicMeta(rec.Figure, rec.FigureMeta, "")
 			}
 		case "traits":
-			out.Traits = ptrSlice(cap100(characterTraitsFrom(rec.Traits)))
+			out.Traits = ptrSlice(characterTraitsFrom(rec.Traits))
 		case "aliases":
-			out.Aliases = ptrSlice(cap100(entityNamesFrom(rec.Aliases)))
+			out.Aliases = ptrSlice(entityNamesFrom(rec.Aliases))
 		case "intros":
-			out.Intros = ptrSlice(cap100(introsFrom(rec.Intros)))
+			out.Intros = ptrSlice(introsFrom(rec.Intros))
 		case "refs":
-			out.Refs = ptrSlice(cap100(refsFrom(rec.Refs)))
+			out.Refs = ptrSlice(refsFrom(rec.Refs))
 		}
 	}
 }

@@ -21,19 +21,19 @@ func creditNameFromDetail(rec dto.PublicName, include []string, photoURL string)
 	for _, t := range include {
 		switch t {
 		case "aliases":
-			out.Aliases = ptrSlice(cap100(entityNamesFrom(rec.Aliases)))
+			out.Aliases = ptrSlice(entityNamesFrom(rec.Aliases))
 		case "photo":
 			if rec.PhotoHash != "" {
 				out.Photo = imageFromPublicMeta(photoURL, rec.PhotoMeta, "")
 			}
 		case "siblings":
-			out.Siblings = ptrSlice(cap100(siblingNamesFrom(rec.Siblings, personID)))
+			out.Siblings = ptrSlice(siblingNamesFrom(rec.Siblings, personID))
 		case "intros":
-			out.Intros = ptrSlice(cap100(introsFrom(rec.Intros)))
+			out.Intros = ptrSlice(introsFrom(rec.Intros))
 		case "links":
-			out.Links = ptrSlice(cap100(personLinksFrom(rec.Links)))
+			out.Links = ptrSlice(personLinksFrom(rec.Links))
 		case "refs":
-			out.Refs = ptrSlice(cap100(refsFrom(rec.Refs)))
+			out.Refs = ptrSlice(refsFrom(rec.Refs))
 		}
 	}
 	return out

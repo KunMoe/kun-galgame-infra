@@ -27,16 +27,16 @@ func workFromListItem(it dto.PublicWorkListItem, include []string, logoURL func(
 		want[t] = true
 	}
 	if want["intros"] {
-		w.Intros = ptrSlice(cap100(introsFrom(it.Intros)))
+		w.Intros = ptrSlice(introsFrom(it.Intros))
 	}
 	if want["companies"] {
-		w.Companies = ptrSlice(cap100(workCompaniesFrom(it.Labels, logoURL)))
+		w.Companies = ptrSlice(workCompaniesFrom(it.Labels, logoURL))
 	}
 	if want["ratings"] {
-		w.Ratings = ptrSlice(cap100(ratingsFrom(it.Ratings)))
+		w.Ratings = ptrSlice(ratingsFrom(it.Ratings))
 	}
 	if want["refs"] {
-		w.Refs = ptrSlice(cap100(refsFrom(it.Refs)))
+		w.Refs = ptrSlice(refsFrom(it.Refs))
 	}
 	return w
 }
@@ -66,58 +66,58 @@ func attachWorkIncludes(w *repr.Work, rec dto.PublicCatalogWork, include []strin
 		want[t] = true
 	}
 	if want["titles"] {
-		w.Titles = ptrSlice(cap100(titlesFrom(rec.Titles)))
+		w.Titles = ptrSlice(titlesFrom(rec.Titles))
 	}
 	if want["refs"] {
-		w.Refs = ptrSlice(cap100(refsFrom(rec.Refs)))
+		w.Refs = ptrSlice(refsFrom(rec.Refs))
 	}
 	if want["relations"] {
-		w.Relations = ptrSlice(cap100(relationsFrom(rec.Relations)))
+		w.Relations = ptrSlice(relationsFrom(rec.Relations))
 	}
 	if want["credits"] {
-		w.Credits = ptrSlice(cap100(creditGroupsFrom(rec.Credits)))
+		w.Credits = ptrSlice(creditGroupsFrom(rec.Credits))
 	}
 	if want["releases"] {
-		w.Releases = ptrSlice(cap100(releasesFrom(rec.Releases)))
+		w.Releases = ptrSlice(releasesFrom(rec.Releases))
 	}
 	if want["popularity"] {
-		w.Popularity = ptrSlice(cap100(popularityFrom(rec.Popularity)))
+		w.Popularity = ptrSlice(popularityFrom(rec.Popularity))
 	}
 	if want["ratings"] {
-		w.Ratings = ptrSlice(cap100(ratingsFrom(rec.Ratings)))
+		w.Ratings = ptrSlice(ratingsFrom(rec.Ratings))
 	}
 	if want["tags"] {
-		w.Tags = ptrSlice(cap100(workTagsFrom(rec.Tags)))
+		w.Tags = ptrSlice(workTagsFrom(rec.Tags))
 	}
 	if want["playtimes"] {
-		w.Playtimes = ptrSlice(cap100(playtimesFrom(rec.Playtimes)))
+		w.Playtimes = ptrSlice(playtimesFrom(rec.Playtimes))
 	}
 	if want["series"] {
-		w.Series = ptrSlice(cap100(workSeriesFrom(rec.Series)))
+		w.Series = ptrSlice(workSeriesFrom(rec.Series))
 	}
 	if want["platforms"] {
-		w.Platforms = ptrSlice(cap100(platformsFrom(rec.Platforms)))
+		w.Platforms = ptrSlice(platformsFrom(rec.Platforms))
 	}
 	if want["intros"] {
-		w.Intros = ptrSlice(cap100(introsFrom(rec.Intros)))
+		w.Intros = ptrSlice(introsFrom(rec.Intros))
 	}
 	if want["covers"] {
-		w.Covers = ptrSlice(cap100(coversFrom(rec.Covers)))
+		w.Covers = ptrSlice(coversFrom(rec.Covers))
 	}
 	if want["screenshots"] {
-		w.Screenshots = ptrSlice(cap100(screenshotsFrom(rec.Screenshots)))
+		w.Screenshots = ptrSlice(screenshotsFrom(rec.Screenshots))
 	}
 	if want["characters"] {
-		w.Characters = ptrSlice(cap100(workCharactersFrom(rec.Characters)))
+		w.Characters = ptrSlice(workCharactersFrom(rec.Characters))
 	}
 	if want["companies"] {
-		w.Companies = ptrSlice(cap100(workCompaniesFrom(rec.Labels, logoURL)))
+		w.Companies = ptrSlice(workCompaniesFrom(rec.Labels, logoURL))
 	}
 	if want["engines"] {
-		w.Engines = ptrSlice(cap100(workEnginesFrom(rec.Engines)))
+		w.Engines = ptrSlice(workEnginesFrom(rec.Engines))
 	}
 	if want["links"] {
-		w.Links = ptrSlice(cap100(workLinksFrom(rec.Links)))
+		w.Links = ptrSlice(workLinksFrom(rec.Links))
 	}
 }
 
