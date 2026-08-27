@@ -2,7 +2,7 @@
 
 > **这个面已经完全不存在了。本页是墓碑,不是契约。**
 >
-> 下面没有任何可调用的路由。如果你在找「galgame 的 API」,答案是 **`/v1/catalog`**。
+> 下面没有任何可调用的路由。如果你在找「galgame 的 API」,答案是 **`/v2`**。
 
 ## 现状
 
@@ -11,7 +11,7 @@
 | `GET /v1/galgame`、`/v1/galgame/*` | **`410 Gone`**(仓内标准信封 `{code, message}`,`code=11`;保留 `Link: rel="successor-version"`) |
 | `/internal/galgame/*` 平台工作流面(15 读 + 2 S2S feed + meta) | **已摘除**(2026-07-31,N5 W 窗 P5) |
 | `/internal` 用户写面(06a)、提案面(06b)、`/api` staff 面 | **已摘除**(同上) |
-| 后继面 | **`/v1/catalog`** — <https://developer.nextmoe.dev/docs/catalog> |
+| 后继面 | **`/v2`** — <https://developer.nextmoe.dev/docs/v2>(2026-08-27 前指向 `/v1/catalog`,该面随 wave R3 一并退役) |
 
 代码侧只剩 `apps/api/internal/galgameapp/publicgone.go` 一个文件,作用就是回 410。
 `internal/platform/galgame/**` 已于 2026-08-04 整包删除,只留 `perm`(纯权限词表,不碰库)。

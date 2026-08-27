@@ -77,7 +77,7 @@ const tiles = computed(() => [
         </code>
         ,然后调一次
         <code class="rounded bg-default-100 px-1.5 py-0.5 font-mono text-xs">
-          GET /v1/store/purchase-links/{product_id}
+          GET /v2/store/purchase-links/{product_id}
         </code>
         就会铸出你的第一条链接,数据随后出现在这里。
       </p>
@@ -86,7 +86,7 @@ const tiles = computed(() => [
           去控制台铸密钥
           <KunIcon name="lucide:arrow-right" class="ml-1 size-4" />
         </KunButton>
-        <KunButton variant="flat" size="md" @click="navigateTo('/docs/store')">
+        <KunButton variant="flat" size="md" @click="navigateTo('/docs/v2')">
           <KunIcon name="lucide:book-open" class="mr-1 size-4" />
           阅读接入文档
         </KunButton>

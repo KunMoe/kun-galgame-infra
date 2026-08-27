@@ -56,7 +56,11 @@ plus the Nuxt frontends. catalog (:9281) hosts the catalog faces and the
 `/v1/galgame` **410 tombstone only** (`galgameapp.MountRetiredPublic`); the
 standalone galgame service (:9280) and every live galgame face are retired,
 so do not reintroduce a galgame HTTP client or treat the retired galgame
-route table as a live contract. Ctrl-C stops only the hot stack; the base
+route table as a live contract. Since wave R3 (2026-08-27) the **whole v1
+catalog surface is 410 tombstones too** (`catHandler.MountRetiredV1`:
+`/v1/catalog`, `/v1/news`, `/v1/store`, `/v1/playtime`, `/api/v1/catalog`,
+`/api/v1/user/catalog`) — the live public face is `/v2`, and the live
+first-party faces are `/api/v1/admin/catalog` and `/api/v1/admin/news`. Ctrl-C stops only the hot stack; the base
 stays up. Before assuming a base service isn't running, check — a past mistake
 was starting a second copy of one that was already up.
 

@@ -1,9 +1,10 @@
 #!/bin/sh
 # Daily playtime aggregation (catalog). Folds the per-user reports that
-# downstream Galgame managers write to /v1/playtime (catalog_user_playtime)
-# into the public per-source estimate (catalog_work_playtime, source
-# `nextmoe`), which the read face already renders alongside vndb and
-# erogamescape without knowing where the number came from.
+# downstream Galgame managers write to /v2/me/playtimes (catalog_user_playtime;
+# /v1/playtime was retired 2026-08-27) into the public per-source estimate
+# (catalog_work_playtime, source `nextmoe`), which the read face already
+# renders alongside vndb and erogamescape without knowing where the number
+# came from.
 #
 # Why this must be a job and not a write-time trigger: the published number is
 # a MEDIAN over distinct finishers, so it changes when the POPULATION changes,

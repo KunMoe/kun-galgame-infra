@@ -8,7 +8,7 @@ const { faces, faceOperationCount } = useDocs()
 useSeoMeta({
   title: 'API 文档',
   description:
-    'NextMoe 开放 API 参考：正式面 v2（目录数据 / 资讯 / 用户面 / 审核面），以及仍在线的 v1 四个面。鉴权、限流，以及每个端点的参数 / 响应 / curl 示例。'
+    'NextMoe 开放 API 参考：正式面 v2（目录数据 / 资讯 / 用户面 / 审核面 / 商店）。鉴权、限流，以及每个端点的参数 / 响应 / curl 示例。'
 })
 
 const totalOperations = computed(() =>
@@ -26,9 +26,9 @@ const specFaces = computed(() => faces.filter((f) => f.specUrl))
         NextMoe 开放 API
       </h1>
       <p class="mt-3 max-w-2xl text-default-500">
-        {{ totalOperations }} 个公开端点。新接入请走
+        {{ totalOperations }} 个公开端点，全部在
         <NuxtLink to="/docs/v2" class="text-primary hover:underline">v2</NuxtLink>
-        —— 它是正式面，此后只做加法；v1 的四个面仍在线，文档一并保留在这里。数据本身是同一份：同一部作品在
+        —— 它是唯一的公开面，此后只做加法；v1 的五个面已于 2026-08-27 退役，那些路径一律返回 410。数据本身是同一份：同一部作品在
         VNDB、Bangumi、DLsite、ErogameScape、Ci-en、Getchu
         六个源各有一个页面，我们把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上这个答案取自哪个源。
       </p>

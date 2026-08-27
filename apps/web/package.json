@@ -9,7 +9,6 @@
     "generate": "nuxt generate",
     "gen:types:artifact": "pnpm dlx openapi-typescript@7.13.0 ../../docs/artifact/openapi.yaml -o shared/types/generated/artifact-api.ts",
     "gen:types:artifact-admin": "pnpm dlx openapi-typescript@7.13.0 ../../docs/artifact/admin-openapi.yaml -o shared/types/generated/artifact-admin-api.ts",
-    "gen:types:catalog": "pnpm dlx openapi-typescript@7.13.0 ../../docs/catalog/openapi.yaml -o shared/types/generated/catalog-api.ts",
     "gen:types:catalog-admin": "pnpm dlx openapi-typescript@7.13.0 ../../docs/catalog/admin-openapi.yaml -o shared/types/generated/catalog-admin-api.ts",
     "gen:types:trust-admin": "pnpm dlx openapi-typescript@7.13.0 ../../docs/trust/admin-openapi.yaml -o shared/types/generated/trust-admin-api.ts",
     "gen:types:ai-admin": "pnpm dlx openapi-typescript@7.13.0 ../../docs/ai/admin-openapi.yaml -o shared/types/generated/ai-admin-api.ts",

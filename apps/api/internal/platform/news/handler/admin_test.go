@@ -2,7 +2,9 @@ package handler
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"api/internal/platform/news/model"
@@ -10,6 +12,17 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 )
+
+func do(t *testing.T, app *fiber.App, path string) (int, string) {
+	t.Helper()
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, path, nil))
+	if err != nil {
+		t.Fatalf("request %s: %v", path, err)
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(b)
+}
 
 type stubClients struct {
 	client *siteModel.OAuthClient
@@ -114,5 +127,26 @@ func TestAdminPagingParams(t *testing.T) {
 	}
 	if _, ok := parseID("0"); ok {
 		t.Error("id 0 must be rejected")
+	}
+}
+
+// TestUnknownLaneIsRejected: filtering on a lane that does not exist would
+// return a well-formed empty queue, which reads as "there is no news" rather
+// than "you asked wrong". The face must say so instead.
+func TestUnknownLaneIsRejected(t *testing.T) {
+	if lanesKnown([]string{"weekly"}) {
+		t.Error("an unknown lane must be rejected")
+	}
+	if !lanesKnown([]string{"news", "column"}) {
+		t.Error("both real lanes must be accepted")
+	}
+	if !lanesKnown(nil) {
+		t.Error("no lane filter at all means every lane, not an error")
+	}
+	if got := parseCSV(" ymgal , galgame_hihyou "); len(got) != 2 || got[0] != "ymgal" {
+		t.Errorf("parseCSV = %v", got)
+	}
+	if got := parseCSV("all"); got != nil {
+		t.Errorf("parseCSV(all) = %v, want nil (no filter)", got)
 	}
 }

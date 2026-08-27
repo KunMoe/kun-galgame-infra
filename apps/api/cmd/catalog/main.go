@@ -18,7 +18,6 @@ import (
 	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/catalog/editspec"
 	catHandler "api/internal/platform/catalog/handler"
-	catalogPerm "api/internal/platform/catalog/perm"
 	"api/internal/platform/catalog/repository"
 	catalogSearch "api/internal/platform/catalog/search"
 	"api/internal/platform/catalog/service"
@@ -28,7 +27,6 @@ import (
 	newsService "api/internal/platform/news/service"
 	"api/internal/platform/permissions"
 	siteRepo "api/internal/platform/site/repository"
-	storeHandler "api/internal/platform/store/handler"
 	storeService "api/internal/platform/store/service"
 	"api/internal/platform/store/shortener"
 	"api/pkg/config"
@@ -78,7 +76,6 @@ func main() {
 	resolveSvc := service.NewResolveService(redirects)
 	mergeSvc := service.NewMergeService(catalogDB.DB(), resolveSvc,
 		repository.NewProposalRepository(catalogDB.DB()), repository.NewRevisionRepository(catalogDB.DB()))
-	workSvc := service.NewWorkService(catalogDB.DB(), resolveSvc)
 	queueSvc := service.NewAdminQueueService(catalogDB.DB(), mergeSvc)
 
 	readSvc := service.NewReadService(catalogDB.DB())
@@ -98,14 +95,10 @@ func main() {
 	application.Fiber.Use(middleware.CORS(cfg.Server.CORSOrigin))
 
 	clientRepo := siteRepo.NewOAuthClientRepository(application.DB.DB())
-	application.Fiber.Use("/api/v1/catalog", catHandler.S2SAuth(clientRepo))
 
 	tokenVerifier := oidctoken.NewVerifierWithJWKS(cfg.JWT.Secret, cfg.OIDC.JWKSURL)
 	application.Fiber.Use("/api/v1/admin/catalog",
 		middleware.JWTAuth(tokenVerifier), catHandler.AdminGate(clientRepo))
-
-	application.Fiber.Use(catHandler.UserPrefix,
-		middleware.JWTAuth(tokenVerifier), catHandler.UserGate(clientRepo))
 
 	var devCache *cache.RedisCache
 	if rc, err := cache.NewRedisCache(cfg.Redis); err != nil {
@@ -115,11 +108,6 @@ func main() {
 	}
 	devStore := devapi.NewRedisStore(devCache)
 
-	application.Fiber.Use(catHandler.PlaytimePrefix,
-		middleware.JWTAuth(tokenVerifier),
-		catHandler.PlaytimeGate(catHandler.NewPlaytimeLimiter(devStore)))
-
-	s2sAPI := catHandler.Setup(application.Fiber, resolveSvc, workSvc, readSvc, searcher, statsSvc)
 	claimSvc := service.NewClaimLifecycleService(catalogDB.DB())
 	catHandler.SetupAdmin(application.Fiber, queueSvc, mergeSvc, claimSvc,
 		service.NewImageReferenceService(catalogDB.DB()))
@@ -130,52 +118,8 @@ func main() {
 		os.Exit(1)
 	}
 	editEngine := editing.NewEngine(catalogDB.DB(), editRegistry)
-	catHandler.SetupEdit(s2sAPI, editEngine, catHandler.PermResolvers{
-		"catalog": catalogPerm.Resolver,
-	})
-	catHandler.SetupLifecycle(s2sAPI, claimSvc, editEngine, catHandler.PermResolvers{
-		"catalog": catalogPerm.Resolver,
-	})
 	coverVoteSvc := service.NewCoverVoteService(catalogDB.DB())
-	catHandler.SetupUser(application.Fiber, coverVoteSvc, editEngine, catHandler.PermResolvers{
-		"catalog": catalogPerm.Resolver,
-	}, claimSvc, readSvc)
-
 	playtimeSvc := service.NewUserPlaytimeService(catalogDB.DB())
-	catHandler.SetupPlaytime(application.Fiber, playtimeSvc)
-
-	catalogSpec, err := json.Marshal(catHandler.SetupCatalogPublicSpec(fiber.New()).OpenAPI())
-	if err != nil {
-		slog.Error("marshal catalog public spec", "error", err)
-		os.Exit(1)
-	}
-	application.Fiber.Get("/v1/catalog/openapi.json", func(c fiber.Ctx) error {
-		c.Set("Content-Type", "application/json")
-		c.Set("Cache-Control", "public, max-age=3600")
-		return c.Send(catalogSpec)
-	})
-
-	newsSpec, err := json.Marshal(newsHandler.SetupNewsPublicSpec(fiber.New()).OpenAPI())
-	if err != nil {
-		slog.Error("marshal news public spec", "error", err)
-		os.Exit(1)
-	}
-	application.Fiber.Get("/v1/news/openapi.json", func(c fiber.Ctx) error {
-		c.Set("Content-Type", "application/json")
-		c.Set("Cache-Control", "public, max-age=3600")
-		return c.Send(newsSpec)
-	})
-
-	storeSpec, err := json.Marshal(storeHandler.SetupStorePublicSpec(fiber.New()).OpenAPI())
-	if err != nil {
-		slog.Error("marshal store public spec", "error", err)
-		os.Exit(1)
-	}
-	application.Fiber.Get("/v1/store/openapi.json", func(c fiber.Ctx) error {
-		c.Set("Content-Type", "application/json")
-		c.Set("Cache-Control", "public, max-age=3600")
-		return c.Send(storeSpec)
-	})
 
 	// kun_news is a SECOND database on a process whose primary job is catalog.
 	// An unreachable news database degrades the news face to 503 instead of
@@ -186,7 +130,7 @@ func main() {
 	var newsAdminSvc *newsService.AdminService
 	var newsWriteSvc *newsService.SubmissionService
 	if newsDB, err := database.NewPostgresDB(cfg.NewsDatabase); err != nil {
-		slog.Warn("news db connect failed — /v1/news degraded to 503", "dbname", cfg.NewsDatabase.DBName, "error", err)
+		slog.Warn("news db connect failed — /v2/news degraded to 503", "dbname", cfg.NewsDatabase.DBName, "error", err)
 	} else {
 		defer func() {
 			if err := newsDB.Close(); err != nil {
@@ -215,15 +159,11 @@ func main() {
 		clientRepo, tokenVerifier, devStore, devCache, newsSvc, newsWriteSvc, editRegistry, playtimeSvc, coverVoteSvc, claimSvc, editEngine)
 
 	galgameapp.MountRetiredPublic(application)
-
-	application.Fiber.Get("/openapi.json", func(c fiber.Ctx) error {
-		b, err := json.Marshal(s2sAPI.OpenAPI())
-		if err != nil {
-			return err
-		}
-		c.Set("Content-Type", "application/json")
-		return c.Send(b)
-	})
+	// Wave R3 (2026-08-27): every v1 face this binary served is gone, so the
+	// prefixes answer 410. Mounted here, after the admin groups and after
+	// setupPublicCatalog registered /v2 — fiber matches in registration order,
+	// and an earlier mount would put the tombstone in front of a live route.
+	catHandler.MountRetiredV1(application.Fiber)
 
 	permCtx, cancelPerm := context.WithCancel(context.Background())
 	defer cancelPerm()
@@ -304,7 +244,7 @@ func setupPublicCatalog(
 	// daily catalog refping keeps out of the image GC. Unset credentials
 	// disable the leg (503) rather than silently falling back to the wrong
 	// site, which would strand every editor upload outside the refping sweep.
-	var editUpload catHandler.EditImageUpload
+	var editUpload v2handler.EditImageUpload
 	if cfg.CatalogImageClient.ClientID != "" && cfg.CatalogImageClient.ClientSecret != "" {
 		editUpload = imageclient.New(imageclient.Config{
 			BaseURL:      cfg.CatalogImageClient.BaseURL,
@@ -315,24 +255,31 @@ func setupPublicCatalog(
 	} else {
 		slog.Warn("catalog edit face: catalog image client not configured — editor image upload disabled (503)")
 	}
-	catHandler.SetupUserEditImages(application.Fiber, editUpload)
 	publicSvc.WithWorksSearch(searcher)
-	publicH := catHandler.NewPublicHandler(publicSvc, resolveSvc, searcher, statsSvc).
-		WithModeration(clientRepo)
 
 	var storeMinter storeService.Minter
 	if cfg.Store.ShortlinkBaseURL != "" && cfg.Store.ShortlinkAPIKey != "" {
 		storeMinter = shortener.New(cfg.Store.ShortlinkBaseURL, cfg.Store.ShortlinkAPIKey)
 	} else {
-		slog.Warn("store face: link shortener not configured — /v1/store and /v2/store answer 503 (set KUN_STORE_SHORTLINK_BASE_URL and KUN_STORE_SHORTLINK_API_KEY)")
+		slog.Warn("store face: link shortener not configured — /v2/store answers 503 (set KUN_STORE_SHORTLINK_BASE_URL and KUN_STORE_SHORTLINK_API_KEY)")
 	}
-	// One instance behind both faces: the v1 and v2 store routes share the same
-	// minted aliases, so a second Service would mint a second alias for the same
-	// (client, product) pair and split the click count.
 	storeSvc := storeService.New(oauthDB, storeMinter, storeService.Options{
 		AffTemplateManiax:  cfg.Store.AffTemplateManiax,
 		AffTemplatePro:     cfg.Store.AffTemplatePro,
 		LinkQuotaPerClient: cfg.Store.LinkQuotaPerClient,
+	})
+
+	// Wave R3 moved the metering here from the v1 groups. Deleting the v1 faces
+	// removed every writer of developer_api_usage and every TouchLastUsed call,
+	// which would have left the portal's usage panel and each key's "last used"
+	// permanently empty with nothing failing.
+	application.Fiber.Use("/v2", func(c fiber.Ctx) error {
+		err := c.Next()
+		if cred := devapi.CredentialFrom(c); cred != nil {
+			usageRec.Record(cred, "v2", c.Route().Path, c.Response().StatusCode())
+			go usageRec.TouchLastUsed(context.Background(), cred)
+		}
+		return err
 	})
 
 	v2API := v2handler.SetupWith(application.Fiber, v2handler.Options{
@@ -379,95 +326,6 @@ func setupPublicCatalog(
 		c.Set("Cache-Control", "public, max-age=3600")
 		return c.Send(v2spec)
 	})
-
-	recordUsage := func(face string) fiber.Handler {
-		return func(c fiber.Ctx) error {
-			err := c.Next()
-			if cred := devapi.CredentialFrom(c); cred != nil {
-				usageRec.Record(cred, face, c.Route().Path, c.Response().StatusCode())
-				go usageRec.TouchLastUsed(context.Background(), cred)
-			}
-			return err
-		}
-	}
-
-	// Credential-free: the catalogue-size counters the public site and the
-	// developer portal's landing page render before anyone holds a key.
-	// Fiber matches its stack in registration order and a Group's handlers are
-	// a prefix Use, so this line must stay ABOVE the group — moved below it the
-	// route still resolves, silently back behind the key gate.
-	application.Fiber.Get("/v1/catalog/stats", publicH.Stats)
-
-	v1 := application.Fiber.Group("/v1/catalog",
-		mw.ResolveCredential,
-		recordUsage("catalog"),
-		mw.RateLimit,
-		mw.Quota,
-		devapi.RequireScope(devapi.ScopeCatalogRead),
-		middleware.ETag(),
-	)
-
-	v1.Get("/lookup", publicH.Lookup)
-	v1.Post("/lookup/batch", publicH.LookupBatch)
-	v1.Post("/resolve", publicH.Resolve)
-	v1.Get("/redirects", publicH.Redirects)
-	v1.Get("/search", publicH.Search)
-	v1.Get("/works", middleware.OptionalJWT(tokenVerifier), publicH.WorksList)
-	v1.Get("/works/search", publicH.WorksSearch)
-	v1.Get("/changes", publicH.Changes)
-	v1.Get("/releases", publicH.Releases)
-	v1.Get("/calendar", publicH.Calendar)
-	v1.Get("/calendar/pending", publicH.CalendarPending)
-	v1.Get("/calendar/tba", publicH.CalendarTBA)
-	v1.Get("/labels", publicH.LabelsList)
-	v1.Get("/tags", publicH.TagsList)
-	v1.Get("/engines", publicH.EnginesList)
-	v1.Get("/series", publicH.SeriesList)
-	v1.Get("/works/:id", publicH.WorkDetail)
-	v1.Get("/works/:id/covers", publicH.WorkCovers)
-	v1.Get("/works/:id/screenshots", publicH.WorkScreenshots)
-	v1.Get("/works/:id/tags", publicH.WorkTags)
-	v1.Get("/works/:id/characters", publicH.WorkCharacters)
-	v1.Get("/works/:id/credits", publicH.WorkCredits)
-	v1.Get("/works/:id/releases", publicH.WorkReleases)
-	v1.Get("/works/:id/intros", publicH.WorkIntros)
-	v1.Get("/works/:id/ratings", publicH.WorkRatings)
-	v1.Get("/works/:id/relations", publicH.WorkRelations)
-	v1.Get("/works/:id/series", publicH.WorkSeries)
-	v1.Get("/works/:id/links", publicH.WorkLinks)
-	v1.Get("/works/:id/engines", publicH.WorkEngines)
-	v1.Get("/names/:id", publicH.Name)
-	v1.Get("/characters/:id", publicH.Character)
-	v1.Get("/labels/:id", publicH.Label)
-	v1.Get("/labels/:id/relation-graph", publicH.LabelRelationGraph)
-	v1.Get("/tags/:id", publicH.Tag)
-	v1.Get("/engines/:id", publicH.EngineDetail)
-	v1.Get("/series/:id", publicH.Series)
-
-	newsH := newsHandler.NewPublicHandler(newsSvc)
-	v1news := application.Fiber.Group("/v1/news",
-		mw.ResolveCredential,
-		// "catalog", not "news": this group has metered under the catalog face
-		// since it launched, and renaming it now would split one application's
-		// history across two face values in developer_api_usage.
-		recordUsage("catalog"),
-		mw.RateLimit,
-		mw.Quota,
-	)
-	v1news.Get("/sources", newsH.Sources)
-	v1news.Get("/", newsH.List)
-	v1news.Get("/:id", newsH.Detail)
-
-	storeH := storeHandler.NewPublicHandler(storeSvc)
-	v1store := application.Fiber.Group("/v1/store",
-		mw.ResolveCredential,
-		recordUsage("store"),
-		mw.RateLimit,
-		mw.Quota,
-		devapi.RequireScope(devapi.ScopeStoreRead),
-	)
-	v1store.Get("/purchase-links/:product_id", storeH.PurchaseLinks)
-	v1store.Get("/me/stats", storeH.MyStats)
 
 	flushDone := make(chan struct{})
 	go func() {

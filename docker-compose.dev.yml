@@ -386,7 +386,7 @@ services:
       meili: { condition: service_healthy } # catalog search
       migrate: { condition: service_completed_successfully }         # reads oauth_clients + users
       migrate-catalog: { condition: service_completed_successfully }  # kun_catalog schema
-      migrate-news: { condition: service_completed_successfully }     # kun_news schema (/v1/news face)
+      migrate-news: { condition: service_completed_successfully }     # kun_news schema (/v2/news face)
     healthcheck:
       test: ["CMD", "/app", "healthcheck"]
       <<: *svc-health

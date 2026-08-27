@@ -22,7 +22,6 @@ var (
 	testDB      *gorm.DB
 	testResolve *ResolveService
 	testMerge   *MergeService
-	testWork    *WorkService
 	testGuard   *GuardService
 	testQueues  *AdminQueueService
 )
@@ -61,7 +60,6 @@ func TestMain(m *testing.M) {
 	redirects := repository.NewRedirectRepository(db)
 	testResolve = NewResolveService(redirects)
 	testMerge = NewMergeService(db, testResolve, repository.NewProposalRepository(db), repository.NewRevisionRepository(db))
-	testWork = NewWorkService(db, testResolve)
 	testGuard = NewGuardService(db)
 	testQueues = NewAdminQueueService(db, testMerge)
 

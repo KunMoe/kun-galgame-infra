@@ -1,6 +1,8 @@
 # 01 — 服务定位与契约
 
-> catalog 是**跨媒介身份/图谱注册层**:把多来源的作品/发行/人物/署名/厂牌收敛成一套带来源锚与分级信任的规范身份。产品站通过 S2S 三端点接入;人审经 admin 三桶治理;写路径按 per-client site 绑定授权。本篇是对外契约,数据结构以生成的 [openapi.yaml](./openapi.yaml) / [admin-openapi.yaml](./admin-openapi.yaml) 为准。
+> catalog 是**跨媒介身份/图谱注册层**:把多来源的作品/发行/人物/署名/厂牌收敛成一套带来源锚与分级信任的规范身份。人审经 admin 队列治理;写路径按 per-client site 绑定授权。本篇是对外契约,数据结构以生成的 [v2-openapi.yaml](./v2-openapi.yaml) / [admin-openapi.yaml](./admin-openapi.yaml) 为准。
+>
+> 🪦 **v1 已于 2026-08-27(wave R3)整面退役。** 本篇的 **§2(S2S `/api/v1/catalog`)、§4(用户令牌面 `/api/v1/user/catalog`)以及凡以 `/v1/catalog`、`/v1/playtime` 描述公开面的段落,均为历史记录**——那些路径现在一律返回 `410 Gone`,`Link` 指向 `/v2`,服务它们的 handler 与 `openapi.yaml` / `public-openapi.yaml` 两份 spec 已删除。在产的继任面是 **`/v2`**([v2-openapi.yaml](./v2-openapi.yaml),札记见 [v2-implementation-notes.md](./v2-implementation-notes.md));**领域语义(实体模型、来源锚、分级信任、展示轴、花名册与归属边)不随路由退役,下文这部分仍然有效**。仍在产的第二个面是 admin 队列 `/api/v1/admin/catalog`。
 
 ## 1. 服务定位:registry 层 vs body 层
 
@@ -503,10 +505,10 @@ wave 176-179 把人类的**写**搬完了;本波搬的是搬完写之后还留�
 
 ## 6. 生成 spec
 
-- S2S:`go run ./cmd/gen-openapi -catalog -o docs/catalog/openapi.yaml`(OpenAPI 3.1)。
+> wave R3(2026-08-27)只剩两个目标:S2S 的 `-catalog` 与公开 v1 的 `-catalog-public` 两个 flag 已随面删除,`docs/catalog/openapi.yaml` 与 `public-openapi.yaml` 两份 spec 亦然。
+
 - admin:`go run ./cmd/gen-openapi -catalog-admin -o docs/catalog/admin-openapi.yaml`。
-- public(`/v1/catalog` + `/v1/playtime`):`go run ./cmd/gen-openapi -catalog-public -o docs/catalog/public-openapi.yaml`——CI 的 freeze 门(test.yml)一直冻着它,此前只是本清单漏列;它另有 oasdiff 破坏门与 developer 门户 docs-model 门两个下游。
-- v2(Huma 真路由:`/v2/problems` `/v2/vocabularies` `/v2/catalog/works` 与绑定的详情/stats/news):`go run ./cmd/gen-openapi -catalog-v2 -o docs/catalog/v2-openapi.yaml`。
+- v2(Huma 真路由,88 op):`go run ./cmd/gen-openapi -catalog-v2 -o docs/catalog/v2-openapi.yaml`——CI 的 freeze 门(test.yml)冻着它,另有 oasdiff 破坏门(spec-breaking.yml)与 developer 门户 docs-model 门(docs-model.yml)两个下游。
 - 契约以生成的 spec 为准(Huma code-first,DTO 即契约);本 markdown 是语义说明。
 
 ## 7. 运维注记

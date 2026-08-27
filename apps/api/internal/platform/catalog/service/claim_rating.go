@@ -32,29 +32,6 @@ func (s *ClaimLifecycleService) DeriveContentRating(ctx context.Context, refs []
 	return model.ContentRatingAllAges
 }
 
-func (s *WorkService) deriveAnchorRating(ctx context.Context, anchors []ExternalAnchor) int16 {
-	var rows []struct {
-		ID  int16  `gorm:"column:id"`
-		Key string `gorm:"column:key"`
-	}
-	if err := s.db.WithContext(ctx).
-		Raw(`SELECT id, key FROM catalog_source WHERE key IN ('vndb', 'bangumi')`).
-		Scan(&rows).Error; err != nil {
-		slog.Warn("derive claim content_rating: resolve sources", "err", err)
-		return model.ContentRatingAllAges
-	}
-	keyByID := make(map[int16]string, len(rows))
-	for _, r := range rows {
-		keyByID[r.ID] = r.Key
-	}
-	for _, a := range anchors {
-		if sourceRefR18(ctx, s.db, keyByID[a.SourceID], a.ExternalID) {
-			return model.ContentRatingR18
-		}
-	}
-	return model.ContentRatingAllAges
-}
-
 func sourceRefR18(ctx context.Context, db *gorm.DB, source, externalID string) bool {
 	id := strings.TrimSpace(externalID)
 	if id == "" {

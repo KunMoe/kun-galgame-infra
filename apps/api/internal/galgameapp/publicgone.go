@@ -8,10 +8,12 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+// The successor named /v1/catalog until wave R3 retired the whole v1 surface on
+// 2026-08-27 — a tombstone that points at another tombstone.
 const (
-	retiredSuccessorLink = `<https://api.nextmoe.dev/v1/catalog>; rel="successor-version"`
+	retiredSuccessorLink = `<https://api.nextmoe.dev/v2>; rel="successor-version"`
 	retiredPublicMessage = "the /v1/galgame face was retired on 2026-07-30; " +
-		"use the canonical /v1/catalog face instead — https://developer.nextmoe.dev/docs/catalog"
+		"use the v2 API instead — https://developer.nextmoe.dev/docs/v2"
 )
 
 func MountRetiredPublic(a *app.App) {
