@@ -3,6 +3,7 @@ package dto
 type PublicSeriesDetail struct {
 	ID          int64                `json:"id"`
 	DisplayName string               `json:"display_name"`
+	WorkCount   int                  `json:"work_count"`
 	Refs        []PublicCatalogRef   `json:"refs"`
 	Intros      []PublicSeriesIntro  `json:"intros"`
 	Works       []PublicWorkBrief    `json:"works,omitempty"`

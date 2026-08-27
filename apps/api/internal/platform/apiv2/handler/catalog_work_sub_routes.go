@@ -57,7 +57,7 @@ type listRatingsOut struct{ Body repr.List[repr.Rating] }
 type listRelationsOut struct{ Body repr.List[repr.Relation] }
 type listWorkSeriesOut struct{ Body repr.List[repr.WorkSeriesRef] }
 type listLinksOut struct{ Body repr.List[repr.WorkLink] }
-type listWorkEnginesOut struct{ Body repr.List[repr.Engine] }
+type listWorkEnginesOut struct{ Body repr.List[repr.WorkEngineRef] }
 
 func parseWorkSub(ctx context.Context, in *workSubInput) (int64, bool, string, int, error) {
 	if in == nil {

@@ -62,7 +62,10 @@ func rememberPOST(store Store, c fiber.Ctx) {
 		return
 	}
 	status := c.Response().StatusCode()
-	if status < 200 || status >= 500 {
+	// 429 became reachable here when the limiter moved inside the chain
+	// (RateLimit runs within c.Next()); remembering one would replay the
+	// rate-limit refusal for 24h after the window reset.
+	if status < 200 || status >= 500 || status == fiber.StatusTooManyRequests {
 		return
 	}
 	rec := idempotencyRecord{

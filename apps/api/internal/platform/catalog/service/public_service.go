@@ -426,6 +426,10 @@ func (s *PublicService) imageURL(hash string) string {
 	return imageclient.MainURL(s.cdnBase, hash, "webp")
 }
 
+func (s *PublicService) ImageURL(hash string) string {
+	return s.imageURL(hash)
+}
+
 func (s *PublicService) sourceKey(id int16) string {
 	return s.sources[id]
 }

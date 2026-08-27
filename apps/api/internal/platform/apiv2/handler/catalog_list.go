@@ -11,7 +11,7 @@ import (
 	catsvc "api/internal/platform/catalog/service"
 )
 
-func (c *Catalog) ListCompanies(ctx context.Context, q collect.Query) (repr.List[repr.Company], error) {
+func (c *Catalog) ListCompanies(ctx context.Context, q collect.Query, hasWorks bool) (repr.List[repr.Company], error) {
 	if c == nil || c.Public == nil {
 		return repr.List[repr.Company]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
@@ -22,7 +22,24 @@ func (c *Catalog) ListCompanies(ctx context.Context, q collect.Query) (repr.List
 	if q.Batch && len(ids) == 0 {
 		return finishList([]repr.Company{}, nil, 0, q, missing), nil
 	}
-	f := catsvc.LabelsListFilter{NSFW: q.NSFW, IDs: ids}
+	if q.Batch && companyWantsDetail(q.Include) {
+		items := make([]repr.Company, 0, len(ids))
+		seen := map[int64]bool{}
+		for _, id := range ids {
+			rec, found, derr := c.Public.Label(ctx, id, false, q.NSFW, 0, 0)
+			if derr != nil {
+				return repr.List[repr.Company]{}, derr
+			}
+			if !found || seen[id] {
+				continue
+			}
+			items = append(items, companyFromDetail(rec, q.Include, c.Public.ImageURL(rec.LogoHash)))
+			seen[id] = true
+		}
+		missing = appendUnseen(missing, ids, seen)
+		return finishList(items, nil, int64(len(items)), q, missing), nil
+	}
+	f := catsvc.LabelsListFilter{NSFW: q.NSFW, IDs: ids, HasWorks: hasWorks}
 	limit := q.Limit
 	if q.Batch {
 		limit = 100
@@ -35,11 +52,20 @@ func (c *Catalog) ListCompanies(ctx context.Context, q collect.Query) (repr.List
 	items := make([]repr.Company, 0, len(data.Items))
 	seen := map[int64]bool{}
 	for _, it := range data.Items {
-		items = append(items, companyFromListItem(it))
+		items = append(items, companyFromListItem(it, q.Include, c.Public.ImageURL(it.LogoHash)))
 		seen[it.ID] = true
 	}
 	missing = appendUnseen(missing, ids, seen)
 	return finishList(items, data.NextCursor, data.Total, q, missing), nil
+}
+
+func companyWantsDetail(include []string) bool {
+	for _, t := range include {
+		if t == "intros" || t == "links" {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Catalog) ListTags(ctx context.Context, q collect.Query) (repr.List[repr.Tag], error) {
@@ -123,7 +149,7 @@ func (c *Catalog) ListSeries(ctx context.Context, q collect.Query) (repr.List[re
 			if !found {
 				continue
 			}
-			items = append(items, seriesFromDetail(rec.ID, rec.DisplayName))
+			items = append(items, seriesFromDetail(rec.ID, rec.DisplayName, rec.WorkCount))
 			seen[id] = true
 		}
 		missing = appendUnseen(missing, ids, seen)
@@ -135,7 +161,7 @@ func (c *Catalog) ListSeries(ctx context.Context, q collect.Query) (repr.List[re
 	}
 	items := make([]repr.Series, 0, len(data.Items))
 	for _, it := range data.Items {
-		items = append(items, seriesFromDetail(it.ID, it.DisplayName))
+		items = append(items, seriesFromDetail(it.ID, it.DisplayName, it.WorkCount))
 	}
 	return finishList(items, data.NextCursor, data.Total, q, missing), nil
 }

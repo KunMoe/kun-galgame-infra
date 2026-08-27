@@ -2741,6 +2741,9 @@ components:
           type:
             - array
             - "null"
+        work_count:
+          format: int64
+          type: integer
         works:
           items:
             $ref: "#/components/schemas/PublicWorkBrief"
@@ -2750,6 +2753,7 @@ components:
       required:
         - id
         - display_name
+        - work_count
         - refs
         - intros
         - has_nsfw

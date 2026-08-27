@@ -81,7 +81,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/companies/{id}",
 		Summary:            "Get one company",
-		Description:        "Company registry row (v1 labels). Merged ids are 404 ENTITY_MERGED. Requires an application key.",
+		Description:        "Company registry row (v1 labels). include=aliases,logo,intros,links adds the corresponding blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
 		Tags:               catalog,
 		Errors:             authErrs,
 		SkipValidateParams: true,
@@ -101,7 +101,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/characters/{id}",
 		Summary:            "Get one character",
-		Description:        "Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
+		Description:        "Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits adds art and trait blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.",
 		Tags:               catalog,
 		Errors:             authErrs,
 		SkipValidateParams: true,
@@ -200,7 +200,7 @@ func getCatalogCompany(cat *Catalog) func(context.Context, *resourceIDInput) (*g
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetCompany(ctx, id, q.NSFW)
+		rec, gerr := cat.GetCompany(ctx, id, q.NSFW, q.Include)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}

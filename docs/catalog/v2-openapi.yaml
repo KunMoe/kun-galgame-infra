@@ -242,6 +242,9 @@ components:
           description: Must not be used as a discriminant.
           maxLength: 512
           type: string
+        figure:
+          $ref: "#/components/schemas/Image"
+          description: Present only when include=figure and this character has a full-body figure cutout; absent otherwise. Detail face only.
         gender:
           description: Present on view=full. null if unrecorded.
           enum:
@@ -261,6 +264,9 @@ components:
           minLength: 1
           pattern: ^[0-9]+$
           type: string
+        image:
+          $ref: "#/components/schemas/Image"
+          description: Present only when include=image and this character has an image; absent otherwise. Detail face only.
         instance_of_id:
           description: Another character this row is an instance of. Present on view=full. null if none.
           maxLength: 20
@@ -286,6 +292,11 @@ components:
             - character
           type: string
           x-vocabulary-closed: true
+        traits:
+          description: Present when include=traits, detail face only. Empty array if none.
+          items:
+            $ref: "#/components/schemas/CharacterTrait"
+          type: array
         weight_kg:
           description: Present on view=full. null if unrecorded.
           format: int64
@@ -297,6 +308,66 @@ components:
         - display_name
         - latin
         - localized
+      type: object
+    CharacterTrait:
+      additionalProperties: true
+      properties:
+        display_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        group:
+          description: Root trait group name. null for a root trait. Must not be used as a discriminant.
+          maxLength: 512
+          type:
+            - string
+            - "null"
+        group_localized:
+          additionalProperties:
+            $ref: "#/components/schemas/LocalizedText"
+          description: Localized names of the root group, BCP-47 keys. Empty object if none. Must not be used as a discriminant.
+          type: object
+        id:
+          description: Catalog trait id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        is_lie:
+          description: Whether this trait is an in-story deception.
+          type: boolean
+        is_sexual:
+          description: Whether this trait is in the sexual family.
+          type: boolean
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/LocalizedText"
+          description: BCP-47 keys. Empty object if none. Must not be used as a discriminant.
+          type: object
+        object:
+          description: Type discriminant. Always character_trait.
+          enum:
+            - character_trait
+          type: string
+          x-vocabulary-closed: true
+        spoiler:
+          description: Spoiler level of this trait on this character.
+          enum:
+            - none
+            - minor
+            - major
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - object
+        - id
+        - display_name
+        - group
+        - localized
+        - group_localized
+        - spoiler
+        - is_sexual
+        - is_lie
       type: object
     Claim:
       additionalProperties: true
@@ -406,6 +477,11 @@ components:
           format: uri
           readOnly: true
           type: string
+        aliases:
+          description: Present when include=aliases. Empty array if none.
+          items:
+            $ref: "#/components/schemas/EntityName"
+          type: array
         company_kind:
           description: Company registry class. No other.
           enum:
@@ -427,17 +503,30 @@ components:
           minLength: 1
           pattern: ^[0-9]+$
           type: string
+        intros:
+          description: Present when include=intros on the detail and batch lanes; the cursor list lane does not carry it. Empty array if none.
+          items:
+            $ref: "#/components/schemas/Intro"
+          type: array
         latin:
           description: null if unrecorded. Must not be used as a discriminant.
           maxLength: 512
           type:
             - string
             - "null"
+        links:
+          description: Present when include=links on the detail and batch lanes; the cursor list lane does not carry it. Empty array if none.
+          items:
+            $ref: "#/components/schemas/WorkLink"
+          type: array
         localized:
           additionalProperties:
             $ref: "#/components/schemas/LocalizedText"
           description: BCP-47 keys. Empty object if none. Must not be used as a discriminant.
           type: object
+        logo:
+          $ref: "#/components/schemas/Image"
+          description: Present only when include=logo and this company has a logo; absent otherwise.
         object:
           description: Type discriminant. Always company.
           enum:
@@ -1128,6 +1217,15 @@ components:
           format: uri
           readOnly: true
           type: string
+        aliases:
+          description: Alternate spellings of the engine name. Empty array if none.
+          items:
+            type: string
+          type: array
+        description:
+          description: Free-text description. Empty if unrecorded. Must not be used as a discriminant.
+          maxLength: 8000
+          type: string
         display_name:
           description: Must not be used as a discriminant.
           maxLength: 512
@@ -1154,6 +1252,8 @@ components:
         - id
         - display_name
         - work_count
+        - description
+        - aliases
       type: object
     EntityName:
       additionalProperties: true
@@ -3013,6 +3113,55 @@ components:
         - object
         - items
       type: object
+    ListWorkEngineRef:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListWorkEngineRef.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/WorkEngineRef"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
     ListWorkLink:
       additionalProperties: true
       properties:
@@ -4623,10 +4772,16 @@ components:
             - series
           type: string
           x-vocabulary-closed: true
+        work_count:
+          description: Member works visible under the same NSFW gate.
+          format: int64
+          minimum: 0
+          type: integer
       required:
         - object
         - id
         - display_name
+        - work_count
       type: object
     SnapshotRecord:
       additionalProperties: true
@@ -4684,6 +4839,9 @@ components:
           minLength: 1
           pattern: ^[0-9]+$
           type: string
+        is_sexual:
+          description: Whether this tag is in the sexual family. Filter on it before rendering a tag list to an SFW reader.
+          type: boolean
         object:
           description: Type discriminant. Always tag.
           enum:
@@ -4717,6 +4875,7 @@ components:
         - tier
         - tag_kind
         - work_count
+        - is_sexual
       type: object
     Trait:
       additionalProperties: true
@@ -4909,7 +5068,7 @@ components:
         engines:
           description: Present when include=engines. Empty array if none.
           items:
-            $ref: "#/components/schemas/Engine"
+            $ref: "#/components/schemas/WorkEngineRef"
           type: array
         id:
           description: Catalog work id. JSON string of a decimal integer.
@@ -5186,6 +5345,36 @@ components:
         - localized
         - company_kind
         - attribution_role
+        - work_count
+      type: object
+    WorkEngineRef:
+      additionalProperties: true
+      properties:
+        display_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        id:
+          description: Catalog engine id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        object:
+          description: Type discriminant. Always engine.
+          enum:
+            - engine
+          type: string
+          x-vocabulary-closed: true
+        work_count:
+          description: Works visible under the same NSFW gate.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - id
+        - display_name
         - work_count
       type: object
     WorkLink:
@@ -5845,7 +6034,7 @@ paths:
         - catalog
   /v2/catalog/characters/{id}:
     get:
-      description: Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. Merged ids are 404 ENTITY_MERGED. Requires an application key.
+      description: Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits adds art and trait blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.
       operationId: getCatalogCharacter
       parameters:
         - description: Decimal catalog id.
@@ -6051,7 +6240,7 @@ paths:
         - catalog
   /v2/catalog/companies:
     get:
-      description: Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate.
+      description: Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate. has_works=true keeps only companies with works visible under the same nsfw gate. include=aliases,logo fills on every lane; include=intros,links fills on the batch lane only (and on the detail face).
       operationId: listCatalogCompanies
       parameters:
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -6142,6 +6331,14 @@ paths:
             description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
+        - description: true keeps only companies whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every company.
+          explode: false
+          in: query
+          name: has_works
+          schema:
+            description: true keeps only companies whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every company.
+            maxLength: 8
+            type: string
       responses:
         "200":
           content:
@@ -6198,7 +6395,7 @@ paths:
         - catalog
   /v2/catalog/companies/{id}:
     get:
-      description: Company registry row (v1 labels). Merged ids are 404 ENTITY_MERGED. Requires an application key.
+      description: Company registry row (v1 labels). include=aliases,logo,intros,links adds the corresponding blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.
       operationId: getCatalogCompany
       parameters:
         - description: Decimal catalog id.
@@ -10077,7 +10274,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ListEngine"
+                $ref: "#/components/schemas/ListWorkEngineRef"
           description: OK
         "304":
           description: Not Modified. The representation is unchanged.

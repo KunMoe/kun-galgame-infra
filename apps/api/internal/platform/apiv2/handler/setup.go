@@ -49,6 +49,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	app.Use(protocol.Middleware(opt.Store))
 	app.Use(catalogAuth(opt.LookupCredential))
 	app.Use(userAuth(opt.LookupUser, opt.LookupSite))
+	app.Use(protocol.RateLimit(opt.Store, credentialLimitIdentity))
 
 	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0")
 	cfg.OpenAPIPath = ""
@@ -129,6 +130,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.CompanyGraph{}, repr.CompanyGraphNode{}, repr.CompanyGraphEdge{},
 			repr.ObjectSchema{}, repr.SchemaField{},
 			repr.Person{}, repr.Trait{}, repr.Measurements{}, repr.NameCredit{}, repr.NameCreditRole{}, repr.Appearance{},
+			repr.CharacterTrait{}, repr.WorkEngineRef{},
 			repr.UserPlaytime{}, repr.CoverVote{}, repr.ClaimRecord{},
 			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.DecisionRecord{}, repr.SnapshotRecord{},
 			repr.Revision{}, repr.FieldDiff{}, repr.Amendment{}, repr.EditImage{},

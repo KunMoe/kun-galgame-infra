@@ -265,10 +265,10 @@ func workCompaniesFrom(in []dto.PublicWorkLabel) []repr.WorkCompany {
 	return out
 }
 
-func workEnginesFrom(in []dto.PublicWorkEngine) []repr.Engine {
-	out := make([]repr.Engine, 0, len(in))
+func workEnginesFrom(in []dto.PublicWorkEngine) []repr.WorkEngineRef {
+	out := make([]repr.WorkEngineRef, 0, len(in))
 	for _, e := range in {
-		out = append(out, repr.Engine{Object: "engine", ID: repr.ID(e.ID), DisplayName: e.Name, WorkCount: e.WorkCount})
+		out = append(out, repr.WorkEngineRef{Object: "engine", ID: repr.ID(e.ID), DisplayName: e.Name, WorkCount: e.WorkCount})
 	}
 	return out
 }

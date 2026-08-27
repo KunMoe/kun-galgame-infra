@@ -201,17 +201,17 @@ func (c *Catalog) WorkLinks(ctx context.Context, id int64, nsfw bool, cursor str
 	return repr.NewList(workLinksFrom(data.Items), collect.EncodeOffset(derefInt(data.NextOffset))), nil
 }
 
-func (c *Catalog) WorkEngines(ctx context.Context, id int64, nsfw bool, cursor string, limit int) (repr.List[repr.Engine], error) {
+func (c *Catalog) WorkEngines(ctx context.Context, id int64, nsfw bool, cursor string, limit int) (repr.List[repr.WorkEngineRef], error) {
 	offset, limit, err := c.subPage(cursor, limit)
 	if err != nil {
-		return repr.List[repr.Engine]{}, err
+		return repr.List[repr.WorkEngineRef]{}, err
 	}
 	data, found, err := c.Public.WorkEngines(ctx, id, nsfw, limit, offset)
 	if err != nil {
-		return repr.List[repr.Engine]{}, err
+		return repr.List[repr.WorkEngineRef]{}, err
 	}
 	if !found {
-		return repr.List[repr.Engine]{}, c.missWork(ctx, id)
+		return repr.List[repr.WorkEngineRef]{}, c.missWork(ctx, id)
 	}
 	return repr.NewList(workEnginesFrom(data.Items), collect.EncodeOffset(derefInt(data.NextOffset))), nil
 }

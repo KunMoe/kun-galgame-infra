@@ -507,7 +507,8 @@ export const mcpTools = [
       "include_total",
       "facets",
       "sort",
-      "nsfw"
+      "nsfw",
+      "has_works"
     ]
   },
   {
