@@ -103,7 +103,7 @@ func TestRetiredV1FacesAreGone(t *testing.T) {
 			for _, auth := range []string{"", "Bearer nmk_live_0000000000000000", "Basic Y2xpZW50OnNlY3JldA=="} {
 				status, link, body := retiredCall(t, f, method, path, auth)
 				require.Equalf(t, fiber.StatusGone, status, "%s %s (auth %q) must be 410 Gone: %s", method, path, auth, body)
-				require.Equalf(t, RetiredSuccessorLink, link, "%s %s must carry the successor Link", method, path)
+				require.Equalf(t, retiredSuccessorLink, link, "%s %s must carry the successor Link", method, path)
 
 				var env map[string]any
 				require.NoErrorf(t, json.Unmarshal([]byte(body), &env), "%s %s did not return JSON: %s", method, path, body)

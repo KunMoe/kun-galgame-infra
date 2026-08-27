@@ -7,19 +7,14 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-const RetiredSuccessorLink = `<https://api.nextmoe.dev/v2>; rel="successor-version"`
+const retiredSuccessorLink = `<https://api.nextmoe.dev/v2>; rel="successor-version"`
 
 const retiredV1Message = "The v1 catalog API was retired on 2026-08-27. " +
 	"Use the v2 API (/v2, spec at https://api.nextmoe.dev/v2/catalog/openapi.json, " +
 	"docs at https://developer.nextmoe.dev). " +
 	"This endpoint returns 410 for every path and method."
 
-// RetiredV1Prefixes is the whole v1 surface the catalog binary used to serve.
-// Every prefix here must be mounted AFTER the admin groups and the v2 setup:
-// fiber matches in registration order, and /api/v1/catalog mounted early would
-// swallow /api/v1/catalog/... paths that no longer exist but also anything a
-// later group registers under the same prefix.
-var RetiredV1Prefixes = []string{
+var retiredV1Prefixes = []string{
 	"/v1/catalog",
 	"/v1/news",
 	"/v1/store",
@@ -30,10 +25,10 @@ var RetiredV1Prefixes = []string{
 
 func MountRetiredV1(app *fiber.App) {
 	gone := func(c fiber.Ctx) error {
-		c.Set("Link", RetiredSuccessorLink)
+		c.Set("Link", retiredSuccessorLink)
 		return response.Error(c, fiber.StatusGone, errors.ErrGone, retiredV1Message)
 	}
-	for _, prefix := range RetiredV1Prefixes {
+	for _, prefix := range retiredV1Prefixes {
 		app.All(prefix, gone)
 		app.All(prefix+"/*", gone)
 	}
