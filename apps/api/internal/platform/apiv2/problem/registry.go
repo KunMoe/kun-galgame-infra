@@ -16,10 +16,11 @@ const (
 	DomainMe         Domain = "me"
 	DomainModeration Domain = "moderation"
 	DomainNews       Domain = "news"
+	DomainStore      Domain = "store"
 )
 
 var DomainOrder = []Domain{
-	DomainPlatform, DomainCatalog, DomainMe, DomainModeration, DomainNews,
+	DomainPlatform, DomainCatalog, DomainMe, DomainModeration, DomainNews, DomainStore,
 }
 
 type Def struct {
@@ -76,6 +77,8 @@ const (
 	CodeDecisionAlreadyMade         = "DECISION_ALREADY_MADE"
 	CodeSourceNotYours              = "SOURCE_NOT_YOURS"
 	CodeSourceInactive              = "SOURCE_INACTIVE"
+	CodeStoreQuotaExceeded          = "STORE_QUOTA_EXCEEDED"
+	CodeStoreLinkUnavailable        = "STORE_LINK_UNAVAILABLE"
 )
 
 const (
@@ -133,6 +136,8 @@ var Codes = []Def{
 	{CodeDecisionAlreadyMade, DomainModeration, http.StatusConflict, "Decision already made", "This item has already been decided. detail names who decided and when."},
 	{CodeSourceNotYours, DomainNews, http.StatusForbidden, "Source not yours", "The named news source is not bound to this user. A source that does not exist is not distinguished, so source names cannot be enumerated."},
 	{CodeSourceInactive, DomainNews, http.StatusUnprocessableEntity, "Source inactive", "The news source is bound correctly but has been deactivated. detail names who to ask to restore it."},
+	{CodeStoreQuotaExceeded, DomainStore, http.StatusForbidden, "Store quota exceeded", "The application has minted the maximum number of purchase links."},
+	{CodeStoreLinkUnavailable, DomainStore, http.StatusBadGateway, "Store link unavailable", "The link shortener is unavailable; no link was issued — there is deliberately no fallback to a bare affiliate URL."},
 }
 
 var Reasons = []ReasonDef{

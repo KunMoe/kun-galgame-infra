@@ -171,6 +171,7 @@ var registry = []Vocabulary{
 		v("me", "Me", "User-facing /v2/me errors."),
 		v("moderation", "Moderation", "Moderation-face errors."),
 		v("news", "News", "News-face errors. Both codes come from the source-row-as-grant model on /v2/me/news."),
+		v("store", "Store", "Store-face errors from the purchase-link minter."),
 	}),
 	open("sources", []Value{
 		v("user", "User", "Manual curation, not an import source."),

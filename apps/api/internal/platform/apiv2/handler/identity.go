@@ -14,11 +14,24 @@ import (
 type ctxKey string
 
 const (
-	ctxUserID   ctxKey = "v2_user_id"
-	ctxClientID ctxKey = "v2_client_id"
-	ctxSite     ctxKey = "v2_catalog_site"
-	ctxRoles    ctxKey = "v2_user_roles"
+	ctxUserID     ctxKey = "v2_user_id"
+	ctxClientID   ctxKey = "v2_client_id"
+	ctxSite       ctxKey = "v2_catalog_site"
+	ctxRoles      ctxKey = "v2_user_roles"
+	ctxCredClient ctxKey = "v2_credential_client_id"
 )
+
+func appClientFrom(ctx context.Context) string {
+	v, _ := ctx.Value(ctxCredClient).(string)
+	return v
+}
+
+func requireAppClient(ctx context.Context) (string, *problem.Problem) {
+	if id := appClientFrom(ctx); id != "" {
+		return id, nil
+	}
+	return "", problem.New(problem.CodeMissingCredential, "", "", "this operation requires an application key.")
+}
 
 func userIDFrom(ctx context.Context) int64 {
 	v, _ := ctx.Value(ctxUserID).(int64)
