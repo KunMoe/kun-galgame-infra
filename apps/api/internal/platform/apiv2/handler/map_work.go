@@ -38,6 +38,12 @@ func workFromListItem(it dto.PublicWorkListItem, include []string, logoURL func(
 	if want["refs"] {
 		w.Refs = ptrSlice(refsFrom(it.Refs))
 	}
+	if it.ViaLabel != nil {
+		w.ViaCompany = &repr.ViaCompany{
+			Object: "company", ID: repr.ID(it.ViaLabel.ID),
+			DisplayName: it.ViaLabel.DisplayName, Localized: localizedFrom(it.ViaLabel.Localized),
+		}
+	}
 	return w
 }
 

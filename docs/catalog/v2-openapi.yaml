@@ -126,6 +126,98 @@ components:
       required:
         - items
       type: object
+    CalendarList:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/CalendarList.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Work"
+          type: array
+        meta:
+          $ref: "#/components/schemas/CalendarMeta"
+          description: Calendar navigation block. Always present on this collection.
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - meta
+        - object
+        - items
+      type: object
+    CalendarMeta:
+      additionalProperties: true
+      properties:
+        has_next:
+          description: Whether a month after the requested one has dated releases. Only the dated month window carries it; null on the year-only and undated windows.
+          type:
+            - boolean
+            - "null"
+        has_prev:
+          description: Whether a month before the requested one has dated releases. Only the dated month window carries it; null on the year-only and undated windows.
+          type:
+            - boolean
+            - "null"
+        max_month:
+          description: Latest month with a dated release under the same filters. Only the dated month window carries it; null when that window's population has no dated release at all.
+          maxLength: 7
+          pattern: ^[0-9]{4}-[0-9]{2}$
+          type:
+            - string
+            - "null"
+        min_month:
+          description: Earliest month with a dated release under the same filters. Only the dated month window carries it; null when that window's population has no dated release at all.
+          maxLength: 7
+          pattern: ^[0-9]{4}-[0-9]{2}$
+          type:
+            - string
+            - "null"
+        today:
+          description: Today in Asia/Tokyo, the calendar's home timezone.
+          format: date
+          maxLength: 10
+          type: string
+      required:
+        - today
+        - min_month
+        - max_month
+        - has_prev
+        - has_next
+      type: object
     CatalogStats:
       additionalProperties: true
       properties:
@@ -680,6 +772,10 @@ components:
     Cover:
       additionalProperties: true
       properties:
+        cover_kind:
+          description: "Upstream cover class from the pinning ladder: main, dig, pkgfront, pkgback and friends. Open vocabulary. Empty if unrecorded. Must not be used as a discriminant."
+          maxLength: 32
+          type: string
         hash:
           description: Image-service content hash.
           maxLength: 64
@@ -758,6 +854,7 @@ components:
         - id
         - vote_count
         - portrait_pinned
+        - cover_kind
         - url
         - hash
         - width
@@ -5158,6 +5255,36 @@ components:
         - display_name
         - description
       type: object
+    ViaCompany:
+      additionalProperties: true
+      properties:
+        display_name:
+          description: Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        id:
+          description: Catalog company id.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        localized:
+          additionalProperties:
+            $ref: "#/components/schemas/LocalizedText"
+          description: BCP-47 keys. Empty object if none. Must not be used as a discriminant.
+          type: object
+        object:
+          description: Type discriminant. Always company.
+          enum:
+            - company
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - object
+        - id
+        - display_name
+        - localized
+      type: object
     Vocabulary:
       additionalProperties: true
       properties:
@@ -5391,6 +5518,9 @@ components:
           format: date-time
           maxLength: 32
           type: string
+        via_company:
+          $ref: "#/components/schemas/ViaCompany"
+          description: "Present only on the company_id=&company_rollup=true lane, on rows attributed through a one-hop imprint or subsidiary: the intermediate company. Absent when the work is attributed to the queried company directly."
       required:
         - object
         - id
@@ -5424,6 +5554,10 @@ components:
           maxLength: 20
           minLength: 1
           pattern: ^[0-9]+$
+          type: string
+        identity:
+          description: Opaque roster row identity for a catalog.work.roster.suppressed proposal; echo it back, never rebuild it. Absent when the character is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant.
+          maxLength: 64
           type: string
         image:
           $ref: "#/components/schemas/Image"
@@ -5462,6 +5596,11 @@ components:
             - major
           type: string
           x-vocabulary-closed: true
+        voices:
+          description: Voice credits on this appearance. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/CreditName"
+          type: array
       required:
         - object
         - id
@@ -5470,6 +5609,7 @@ components:
         - localized
         - roster_role
         - spoiler
+        - voices
         - image
         - figure
       type: object
@@ -5748,7 +5888,7 @@ openapi: 3.1.0
 paths:
   /v2/catalog/calendar:
     get:
-      description: One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. Requires an application key. ids= is not accepted.
+      description: One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. content_limit= gates on the editorial display axis and olang= on the original language (absent = ja plus zh). meta carries today plus, on the dated month window, min_month/max_month/has_prev/has_next for month navigation. Requires an application key. ids= is not accepted.
       operationId: listCatalogCalendar
       parameters:
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -5871,12 +6011,28 @@ paths:
             description: released, dated, announced, cancelled, unknown. announced and unknown select the undated window. cancelled is empty until the catalog records cancellations.
             maxLength: 16
             type: string
+        - description: "Comma-separated closed editorial axis: sfw, nsfw."
+          explode: false
+          in: query
+          name: content_limit
+          schema:
+            description: "Comma-separated closed editorial axis: sfw, nsfw."
+            maxLength: 32
+            type: string
+        - description: Comma-separated BCP-47, or all. Open vocabulary; unknown values match nothing. Absent = the calendar's home population, ja plus zh.
+          explode: false
+          in: query
+          name: olang
+          schema:
+            description: Comma-separated BCP-47, or all. Open vocabulary; unknown values match nothing. Absent = the calendar's home population, ja plus zh.
+            maxLength: 64
+            type: string
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ListWork"
+                $ref: "#/components/schemas/CalendarList"
           description: OK
         "304":
           description: Not Modified. The representation is unchanged.
@@ -9248,7 +9404,7 @@ paths:
         - catalog
   /v2/catalog/tags:
     get:
-      description: Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a batch lane and does not paginate.
+      description: Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a batch lane and does not paginate. has_works=true keeps only tags with works visible under the same nsfw gate.
       operationId: listCatalogTags
       parameters:
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -9337,6 +9493,14 @@ paths:
           name: nsfw
           schema:
             description: true includes r18. false or absent hides r18. Only true or false.
+            maxLength: 8
+            type: string
+        - description: true keeps only tags whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every tag.
+          explode: false
+          in: query
+          name: has_works
+          schema:
+            description: true keeps only tags whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every tag.
             maxLength: 8
             type: string
       responses:

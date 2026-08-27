@@ -20154,7 +20154,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/calendar",
               "summary": "Release calendar",
-              "description": "One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. Requires an application key. ids= is not accepted.",
+              "description": "One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. content_limit= gates on the editorial display axis and olang= on the original language (absent = ja plus zh). meta carries today plus, on the dated month window, min_month/max_month/has_prev/has_next for month navigation. Requires an application key. ids= is not accepted.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -20261,6 +20261,20 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "released, dated, announced, cancelled, unknown. announced and unknown select the undated window. cancelled is empty until the catalog records cancellations."
+                },
+                {
+                  "name": "content_limit",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Comma-separated closed editorial axis: sfw, nsfw."
+                },
+                {
+                  "name": "olang",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Comma-separated BCP-47, or all. Open vocabulary; unknown values match nothing. Absent = the calendar's home population, ja plus zh."
                 }
               ],
               "responses": [
@@ -20477,6 +20491,11 @@ export const docsModel: DocsModel = {
                                     "type": "string"
                                   },
                                   {
+                                    "name": "identity",
+                                    "doc": "Opaque roster row identity for a catalog.work.roster.suppressed proposal; echo it back, never rebuild it. Absent when the character is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
                                     "name": "image",
                                     "required": true,
                                     "type": "object",
@@ -20610,6 +20629,310 @@ export const docsModel: DocsModel = {
                                       "major"
                                     ],
                                     "type": "string"
+                                  },
+                                  {
+                                    "name": "voices",
+                                    "required": true,
+                                    "doc": "Voice credits on this appearance. Empty array, never null.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "aliases",
+                                          "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                                          "type": "array",
+                                          "itemsOf": {
+                                            "type": "object",
+                                            "children": [
+                                              {
+                                                "name": "alias_kind",
+                                                "required": true,
+                                                "doc": "search_hint is internal and never appears on this type.",
+                                                "enum": [
+                                                  "translation",
+                                                  "spelling_variant"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "is_machine",
+                                                "required": true,
+                                                "doc": "Whether this name is machine-translated.",
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "name": "lang",
+                                                "required": true,
+                                                "doc": "BCP-47 language tag.",
+                                                "format": "bcp47",
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "value",
+                                                "required": true,
+                                                "doc": "Must not be used as a discriminant.",
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "name": "birth_day",
+                                          "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "birth_month",
+                                          "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "birth_year",
+                                          "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "display_name",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "gender",
+                                          "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                          "enum": [
+                                            "male",
+                                            "female",
+                                            "other"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "id",
+                                          "required": true,
+                                          "doc": "Catalog credit-name id.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "intros",
+                                          "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                                          "type": "array",
+                                          "itemsOf": {
+                                            "type": "object",
+                                            "children": [
+                                              {
+                                                "name": "is_machine",
+                                                "required": true,
+                                                "doc": "Whether this intro is machine-translated.",
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "name": "lang",
+                                                "required": true,
+                                                "doc": "BCP-47 language tag.",
+                                                "format": "bcp47",
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "source",
+                                                "required": true,
+                                                "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "value",
+                                                "required": true,
+                                                "doc": "Must not be used as a discriminant.",
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "name": "lang",
+                                          "required": true,
+                                          "nullable": true,
+                                          "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                                          "format": "bcp47",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "latin",
+                                          "required": true,
+                                          "nullable": true,
+                                          "doc": "null if unrecorded. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "links",
+                                          "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                                          "type": "array",
+                                          "itemsOf": {
+                                            "type": "object",
+                                            "children": [
+                                              {
+                                                "name": "source",
+                                                "required": true,
+                                                "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "url",
+                                                "required": true,
+                                                "doc": "Absolute URL.",
+                                                "format": "uri",
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "name": "localized",
+                                          "required": true,
+                                          "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                          "type": "map",
+                                          "itemsOf": {
+                                            "type": "object",
+                                            "children": [
+                                              {
+                                                "name": "is_machine",
+                                                "required": true,
+                                                "doc": "Whether this value is machine-translated.",
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "name": "value",
+                                                "required": true,
+                                                "doc": "Must not be used as a discriminant.",
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "name": "object",
+                                          "required": true,
+                                          "doc": "Type discriminant. Always credit_name.",
+                                          "enum": [
+                                            "credit_name"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "person_id",
+                                          "required": true,
+                                          "nullable": true,
+                                          "doc": "null if this name is not linked to a person.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "photo",
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "hash",
+                                              "required": true,
+                                              "doc": "Image-service content hash.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "height",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "Pixel height. null if unknown.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "sexual",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "Sexual depiction. null means not assessed.",
+                                              "enum": [
+                                                "safe",
+                                                "suggestive",
+                                                "explicit"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "source",
+                                              "required": true,
+                                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "thumbhash",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "Thumbhash. null if unknown.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "url",
+                                              "required": true,
+                                              "doc": "Absolute image URL. Never a bare hash.",
+                                              "format": "uri",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "violence",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                              "enum": [
+                                                "tame",
+                                                "violent",
+                                                "brutal"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "width",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "Pixel width. null if unknown.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "name": "refs",
+                                          "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                                          "type": "array",
+                                          "itemsOf": {
+                                            "type": "object",
+                                            "children": [
+                                              {
+                                                "name": "external_id",
+                                                "required": true,
+                                                "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "source",
+                                                "required": true,
+                                                "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "name": "siblings",
+                                          "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                                          "type": "array",
+                                          "itemsOf": {
+                                            "type": "CreditName"
+                                          }
+                                        }
+                                      ]
+                                    }
                                   }
                                 ]
                               }
@@ -20906,6 +21229,12 @@ export const docsModel: DocsModel = {
                               "itemsOf": {
                                 "type": "object",
                                 "children": [
+                                  {
+                                    "name": "cover_kind",
+                                    "required": true,
+                                    "doc": "Upstream cover class from the pinning ladder: main, dig, pkgfront, pkgback and friends. Open vocabulary. Empty if unrecorded. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
                                   {
                                     "name": "hash",
                                     "required": true,
@@ -21885,9 +22214,101 @@ export const docsModel: DocsModel = {
                               "doc": "RFC 3339 UTC.",
                               "format": "date-time",
                               "type": "string"
+                            },
+                            {
+                              "name": "via_company",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "display_name",
+                                  "required": true,
+                                  "doc": "Must not be used as a discriminant.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "id",
+                                  "required": true,
+                                  "doc": "Catalog company id.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "localized",
+                                  "required": true,
+                                  "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                  "type": "map",
+                                  "itemsOf": {
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "is_machine",
+                                        "required": true,
+                                        "doc": "Whether this value is machine-translated.",
+                                        "type": "boolean"
+                                      },
+                                      {
+                                        "name": "value",
+                                        "required": true,
+                                        "doc": "Must not be used as a discriminant.",
+                                        "type": "string"
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "object",
+                                  "required": true,
+                                  "doc": "Type discriminant. Always company.",
+                                  "enum": [
+                                    "company"
+                                  ],
+                                  "type": "string"
+                                }
+                              ]
                             }
                           ]
                         }
+                      },
+                      {
+                        "name": "meta",
+                        "required": true,
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "has_next",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Whether a month after the requested one has dated releases. Only the dated month window carries it; null on the year-only and undated windows.",
+                            "type": "boolean"
+                          },
+                          {
+                            "name": "has_prev",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Whether a month before the requested one has dated releases. Only the dated month window carries it; null on the year-only and undated windows.",
+                            "type": "boolean"
+                          },
+                          {
+                            "name": "max_month",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Latest month with a dated release under the same filters. Only the dated month window carries it; null when that window's population has no dated release at all.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "min_month",
+                            "required": true,
+                            "nullable": true,
+                            "doc": "Earliest month with a dated release under the same filters. Only the dated month window carries it; null when that window's population has no dated release at all.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "today",
+                            "required": true,
+                            "doc": "Today in Asia/Tokyo, the calendar's home timezone.",
+                            "format": "date",
+                            "type": "string"
+                          }
+                        ]
                       },
                       {
                         "name": "missing",
@@ -26876,6 +27297,11 @@ export const docsModel: DocsModel = {
                                         "type": "string"
                                       },
                                       {
+                                        "name": "identity",
+                                        "doc": "Opaque roster row identity for a catalog.work.roster.suppressed proposal; echo it back, never rebuild it. Absent when the character is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
+                                      {
                                         "name": "image",
                                         "required": true,
                                         "type": "object",
@@ -27009,6 +27435,310 @@ export const docsModel: DocsModel = {
                                           "major"
                                         ],
                                         "type": "string"
+                                      },
+                                      {
+                                        "name": "voices",
+                                        "required": true,
+                                        "doc": "Voice credits on this appearance. Empty array, never null.",
+                                        "type": "array",
+                                        "itemsOf": {
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "aliases",
+                                              "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "alias_kind",
+                                                    "required": true,
+                                                    "doc": "search_hint is internal and never appears on this type.",
+                                                    "enum": [
+                                                      "translation",
+                                                      "spelling_variant"
+                                                    ],
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "is_machine",
+                                                    "required": true,
+                                                    "doc": "Whether this name is machine-translated.",
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "name": "lang",
+                                                    "required": true,
+                                                    "doc": "BCP-47 language tag.",
+                                                    "format": "bcp47",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "value",
+                                                    "required": true,
+                                                    "doc": "Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "birth_day",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "birth_month",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "birth_year",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "display_name",
+                                              "required": true,
+                                              "doc": "Must not be used as a discriminant.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "gender",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                              "enum": [
+                                                "male",
+                                                "female",
+                                                "other"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "id",
+                                              "required": true,
+                                              "doc": "Catalog credit-name id.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "intros",
+                                              "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "is_machine",
+                                                    "required": true,
+                                                    "doc": "Whether this intro is machine-translated.",
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "name": "lang",
+                                                    "required": true,
+                                                    "doc": "BCP-47 language tag.",
+                                                    "format": "bcp47",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "source",
+                                                    "required": true,
+                                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "value",
+                                                    "required": true,
+                                                    "doc": "Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "lang",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                                              "format": "bcp47",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "latin",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "null if unrecorded. Must not be used as a discriminant.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "links",
+                                              "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "source",
+                                                    "required": true,
+                                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "url",
+                                                    "required": true,
+                                                    "doc": "Absolute URL.",
+                                                    "format": "uri",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "localized",
+                                              "required": true,
+                                              "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                              "type": "map",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "is_machine",
+                                                    "required": true,
+                                                    "doc": "Whether this value is machine-translated.",
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "name": "value",
+                                                    "required": true,
+                                                    "doc": "Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "object",
+                                              "required": true,
+                                              "doc": "Type discriminant. Always credit_name.",
+                                              "enum": [
+                                                "credit_name"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "person_id",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "null if this name is not linked to a person.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "photo",
+                                              "type": "object",
+                                              "children": [
+                                                {
+                                                  "name": "hash",
+                                                  "required": true,
+                                                  "doc": "Image-service content hash.",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "height",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Pixel height. null if unknown.",
+                                                  "format": "int64",
+                                                  "type": "integer"
+                                                },
+                                                {
+                                                  "name": "sexual",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Sexual depiction. null means not assessed.",
+                                                  "enum": [
+                                                    "safe",
+                                                    "suggestive",
+                                                    "explicit"
+                                                  ],
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "source",
+                                                  "required": true,
+                                                  "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "thumbhash",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Thumbhash. null if unknown.",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "url",
+                                                  "required": true,
+                                                  "doc": "Absolute image URL. Never a bare hash.",
+                                                  "format": "uri",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "violence",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                                  "enum": [
+                                                    "tame",
+                                                    "violent",
+                                                    "brutal"
+                                                  ],
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "width",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Pixel width. null if unknown.",
+                                                  "format": "int64",
+                                                  "type": "integer"
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "name": "refs",
+                                              "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "external_id",
+                                                    "required": true,
+                                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "source",
+                                                    "required": true,
+                                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "siblings",
+                                              "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "CreditName"
+                                              }
+                                            }
+                                          ]
+                                        }
                                       }
                                     ]
                                   }
@@ -27305,6 +28035,12 @@ export const docsModel: DocsModel = {
                                   "itemsOf": {
                                     "type": "object",
                                     "children": [
+                                      {
+                                        "name": "cover_kind",
+                                        "required": true,
+                                        "doc": "Upstream cover class from the pinning ladder: main, dig, pkgfront, pkgback and friends. Open vocabulary. Empty if unrecorded. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
                                       {
                                         "name": "hash",
                                         "required": true,
@@ -28284,6 +29020,56 @@ export const docsModel: DocsModel = {
                                   "doc": "RFC 3339 UTC.",
                                   "format": "date-time",
                                   "type": "string"
+                                },
+                                {
+                                  "name": "via_company",
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "display_name",
+                                      "required": true,
+                                      "doc": "Must not be used as a discriminant.",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "id",
+                                      "required": true,
+                                      "doc": "Catalog company id.",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "localized",
+                                      "required": true,
+                                      "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                      "type": "map",
+                                      "itemsOf": {
+                                        "type": "object",
+                                        "children": [
+                                          {
+                                            "name": "is_machine",
+                                            "required": true,
+                                            "doc": "Whether this value is machine-translated.",
+                                            "type": "boolean"
+                                          },
+                                          {
+                                            "name": "value",
+                                            "required": true,
+                                            "doc": "Must not be used as a discriminant.",
+                                            "type": "string"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "name": "object",
+                                      "required": true,
+                                      "doc": "Type discriminant. Always company.",
+                                      "enum": [
+                                        "company"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  ]
                                 }
                               ]
                             }
@@ -35085,6 +35871,11 @@ export const docsModel: DocsModel = {
                                         "type": "string"
                                       },
                                       {
+                                        "name": "identity",
+                                        "doc": "Opaque roster row identity for a catalog.work.roster.suppressed proposal; echo it back, never rebuild it. Absent when the character is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
+                                      {
                                         "name": "image",
                                         "required": true,
                                         "type": "object",
@@ -35218,6 +36009,310 @@ export const docsModel: DocsModel = {
                                           "major"
                                         ],
                                         "type": "string"
+                                      },
+                                      {
+                                        "name": "voices",
+                                        "required": true,
+                                        "doc": "Voice credits on this appearance. Empty array, never null.",
+                                        "type": "array",
+                                        "itemsOf": {
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "aliases",
+                                              "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "alias_kind",
+                                                    "required": true,
+                                                    "doc": "search_hint is internal and never appears on this type.",
+                                                    "enum": [
+                                                      "translation",
+                                                      "spelling_variant"
+                                                    ],
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "is_machine",
+                                                    "required": true,
+                                                    "doc": "Whether this name is machine-translated.",
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "name": "lang",
+                                                    "required": true,
+                                                    "doc": "BCP-47 language tag.",
+                                                    "format": "bcp47",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "value",
+                                                    "required": true,
+                                                    "doc": "Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "birth_day",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "birth_month",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "birth_year",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "display_name",
+                                              "required": true,
+                                              "doc": "Must not be used as a discriminant.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "gender",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                              "enum": [
+                                                "male",
+                                                "female",
+                                                "other"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "id",
+                                              "required": true,
+                                              "doc": "Catalog credit-name id.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "intros",
+                                              "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "is_machine",
+                                                    "required": true,
+                                                    "doc": "Whether this intro is machine-translated.",
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "name": "lang",
+                                                    "required": true,
+                                                    "doc": "BCP-47 language tag.",
+                                                    "format": "bcp47",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "source",
+                                                    "required": true,
+                                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "value",
+                                                    "required": true,
+                                                    "doc": "Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "lang",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                                              "format": "bcp47",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "latin",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "null if unrecorded. Must not be used as a discriminant.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "links",
+                                              "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "source",
+                                                    "required": true,
+                                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "url",
+                                                    "required": true,
+                                                    "doc": "Absolute URL.",
+                                                    "format": "uri",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "localized",
+                                              "required": true,
+                                              "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                              "type": "map",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "is_machine",
+                                                    "required": true,
+                                                    "doc": "Whether this value is machine-translated.",
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "name": "value",
+                                                    "required": true,
+                                                    "doc": "Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "object",
+                                              "required": true,
+                                              "doc": "Type discriminant. Always credit_name.",
+                                              "enum": [
+                                                "credit_name"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "person_id",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "null if this name is not linked to a person.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "photo",
+                                              "type": "object",
+                                              "children": [
+                                                {
+                                                  "name": "hash",
+                                                  "required": true,
+                                                  "doc": "Image-service content hash.",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "height",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Pixel height. null if unknown.",
+                                                  "format": "int64",
+                                                  "type": "integer"
+                                                },
+                                                {
+                                                  "name": "sexual",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Sexual depiction. null means not assessed.",
+                                                  "enum": [
+                                                    "safe",
+                                                    "suggestive",
+                                                    "explicit"
+                                                  ],
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "source",
+                                                  "required": true,
+                                                  "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "thumbhash",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Thumbhash. null if unknown.",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "url",
+                                                  "required": true,
+                                                  "doc": "Absolute image URL. Never a bare hash.",
+                                                  "format": "uri",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "violence",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                                  "enum": [
+                                                    "tame",
+                                                    "violent",
+                                                    "brutal"
+                                                  ],
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "width",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Pixel width. null if unknown.",
+                                                  "format": "int64",
+                                                  "type": "integer"
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "name": "refs",
+                                              "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "external_id",
+                                                    "required": true,
+                                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "source",
+                                                    "required": true,
+                                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "siblings",
+                                              "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "CreditName"
+                                              }
+                                            }
+                                          ]
+                                        }
                                       }
                                     ]
                                   }
@@ -35514,6 +36609,12 @@ export const docsModel: DocsModel = {
                                   "itemsOf": {
                                     "type": "object",
                                     "children": [
+                                      {
+                                        "name": "cover_kind",
+                                        "required": true,
+                                        "doc": "Upstream cover class from the pinning ladder: main, dig, pkgfront, pkgback and friends. Open vocabulary. Empty if unrecorded. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
                                       {
                                         "name": "hash",
                                         "required": true,
@@ -36493,6 +37594,56 @@ export const docsModel: DocsModel = {
                                   "doc": "RFC 3339 UTC.",
                                   "format": "date-time",
                                   "type": "string"
+                                },
+                                {
+                                  "name": "via_company",
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "display_name",
+                                      "required": true,
+                                      "doc": "Must not be used as a discriminant.",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "id",
+                                      "required": true,
+                                      "doc": "Catalog company id.",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "localized",
+                                      "required": true,
+                                      "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                      "type": "map",
+                                      "itemsOf": {
+                                        "type": "object",
+                                        "children": [
+                                          {
+                                            "name": "is_machine",
+                                            "required": true,
+                                            "doc": "Whether this value is machine-translated.",
+                                            "type": "boolean"
+                                          },
+                                          {
+                                            "name": "value",
+                                            "required": true,
+                                            "doc": "Must not be used as a discriminant.",
+                                            "type": "string"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "name": "object",
+                                      "required": true,
+                                      "doc": "Type discriminant. Always company.",
+                                      "enum": [
+                                        "company"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  ]
                                 }
                               ]
                             }
@@ -53471,7 +54622,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/tags",
               "summary": "List tags",
-              "description": "Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a batch lane and does not paginate.",
+              "description": "Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a batch lane and does not paginate. has_works=true keeps only tags with works visible under the same nsfw gate.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -53550,6 +54701,13 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "true includes r18. false or absent hides r18. Only true or false."
+                },
+                {
+                  "name": "has_works",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "true keeps only tags whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every tag."
                 }
               ],
               "responses": [
@@ -57631,6 +58789,11 @@ export const docsModel: DocsModel = {
                                     "type": "string"
                                   },
                                   {
+                                    "name": "identity",
+                                    "doc": "Opaque roster row identity for a catalog.work.roster.suppressed proposal; echo it back, never rebuild it. Absent when the character is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
                                     "name": "image",
                                     "required": true,
                                     "type": "object",
@@ -57764,6 +58927,310 @@ export const docsModel: DocsModel = {
                                       "major"
                                     ],
                                     "type": "string"
+                                  },
+                                  {
+                                    "name": "voices",
+                                    "required": true,
+                                    "doc": "Voice credits on this appearance. Empty array, never null.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "aliases",
+                                          "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                                          "type": "array",
+                                          "itemsOf": {
+                                            "type": "object",
+                                            "children": [
+                                              {
+                                                "name": "alias_kind",
+                                                "required": true,
+                                                "doc": "search_hint is internal and never appears on this type.",
+                                                "enum": [
+                                                  "translation",
+                                                  "spelling_variant"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "is_machine",
+                                                "required": true,
+                                                "doc": "Whether this name is machine-translated.",
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "name": "lang",
+                                                "required": true,
+                                                "doc": "BCP-47 language tag.",
+                                                "format": "bcp47",
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "value",
+                                                "required": true,
+                                                "doc": "Must not be used as a discriminant.",
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "name": "birth_day",
+                                          "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "birth_month",
+                                          "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "birth_year",
+                                          "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "name": "display_name",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "gender",
+                                          "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                          "enum": [
+                                            "male",
+                                            "female",
+                                            "other"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "id",
+                                          "required": true,
+                                          "doc": "Catalog credit-name id.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "intros",
+                                          "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                                          "type": "array",
+                                          "itemsOf": {
+                                            "type": "object",
+                                            "children": [
+                                              {
+                                                "name": "is_machine",
+                                                "required": true,
+                                                "doc": "Whether this intro is machine-translated.",
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "name": "lang",
+                                                "required": true,
+                                                "doc": "BCP-47 language tag.",
+                                                "format": "bcp47",
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "source",
+                                                "required": true,
+                                                "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "value",
+                                                "required": true,
+                                                "doc": "Must not be used as a discriminant.",
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "name": "lang",
+                                          "required": true,
+                                          "nullable": true,
+                                          "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                                          "format": "bcp47",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "latin",
+                                          "required": true,
+                                          "nullable": true,
+                                          "doc": "null if unrecorded. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "links",
+                                          "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                                          "type": "array",
+                                          "itemsOf": {
+                                            "type": "object",
+                                            "children": [
+                                              {
+                                                "name": "source",
+                                                "required": true,
+                                                "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "url",
+                                                "required": true,
+                                                "doc": "Absolute URL.",
+                                                "format": "uri",
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "name": "localized",
+                                          "required": true,
+                                          "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                          "type": "map",
+                                          "itemsOf": {
+                                            "type": "object",
+                                            "children": [
+                                              {
+                                                "name": "is_machine",
+                                                "required": true,
+                                                "doc": "Whether this value is machine-translated.",
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "name": "value",
+                                                "required": true,
+                                                "doc": "Must not be used as a discriminant.",
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "name": "object",
+                                          "required": true,
+                                          "doc": "Type discriminant. Always credit_name.",
+                                          "enum": [
+                                            "credit_name"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "person_id",
+                                          "required": true,
+                                          "nullable": true,
+                                          "doc": "null if this name is not linked to a person.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "photo",
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "hash",
+                                              "required": true,
+                                              "doc": "Image-service content hash.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "height",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "Pixel height. null if unknown.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "sexual",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "Sexual depiction. null means not assessed.",
+                                              "enum": [
+                                                "safe",
+                                                "suggestive",
+                                                "explicit"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "source",
+                                              "required": true,
+                                              "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "thumbhash",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "Thumbhash. null if unknown.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "url",
+                                              "required": true,
+                                              "doc": "Absolute image URL. Never a bare hash.",
+                                              "format": "uri",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "violence",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                              "enum": [
+                                                "tame",
+                                                "violent",
+                                                "brutal"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "width",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "Pixel width. null if unknown.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "name": "refs",
+                                          "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                                          "type": "array",
+                                          "itemsOf": {
+                                            "type": "object",
+                                            "children": [
+                                              {
+                                                "name": "external_id",
+                                                "required": true,
+                                                "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
+                                                "type": "string"
+                                              },
+                                              {
+                                                "name": "source",
+                                                "required": true,
+                                                "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                "type": "string"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        {
+                                          "name": "siblings",
+                                          "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                                          "type": "array",
+                                          "itemsOf": {
+                                            "type": "CreditName"
+                                          }
+                                        }
+                                      ]
+                                    }
                                   }
                                 ]
                               }
@@ -58060,6 +59527,12 @@ export const docsModel: DocsModel = {
                               "itemsOf": {
                                 "type": "object",
                                 "children": [
+                                  {
+                                    "name": "cover_kind",
+                                    "required": true,
+                                    "doc": "Upstream cover class from the pinning ladder: main, dig, pkgfront, pkgback and friends. Open vocabulary. Empty if unrecorded. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
                                   {
                                     "name": "hash",
                                     "required": true,
@@ -59039,6 +60512,56 @@ export const docsModel: DocsModel = {
                               "doc": "RFC 3339 UTC.",
                               "format": "date-time",
                               "type": "string"
+                            },
+                            {
+                              "name": "via_company",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "display_name",
+                                  "required": true,
+                                  "doc": "Must not be used as a discriminant.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "id",
+                                  "required": true,
+                                  "doc": "Catalog company id.",
+                                  "type": "string"
+                                },
+                                {
+                                  "name": "localized",
+                                  "required": true,
+                                  "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                  "type": "map",
+                                  "itemsOf": {
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "is_machine",
+                                        "required": true,
+                                        "doc": "Whether this value is machine-translated.",
+                                        "type": "boolean"
+                                      },
+                                      {
+                                        "name": "value",
+                                        "required": true,
+                                        "doc": "Must not be used as a discriminant.",
+                                        "type": "string"
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "object",
+                                  "required": true,
+                                  "doc": "Type discriminant. Always company.",
+                                  "enum": [
+                                    "company"
+                                  ],
+                                  "type": "string"
+                                }
+                              ]
                             }
                           ]
                         }
@@ -60012,6 +61535,11 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "identity",
+                              "doc": "Opaque roster row identity for a catalog.work.roster.suppressed proposal; echo it back, never rebuild it. Absent when the character is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
                               "name": "image",
                               "required": true,
                               "type": "object",
@@ -60145,6 +61673,310 @@ export const docsModel: DocsModel = {
                                 "major"
                               ],
                               "type": "string"
+                            },
+                            {
+                              "name": "voices",
+                              "required": true,
+                              "doc": "Voice credits on this appearance. Empty array, never null.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "aliases",
+                                    "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "alias_kind",
+                                          "required": true,
+                                          "doc": "search_hint is internal and never appears on this type.",
+                                          "enum": [
+                                            "translation",
+                                            "spelling_variant"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "is_machine",
+                                          "required": true,
+                                          "doc": "Whether this name is machine-translated.",
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "name": "lang",
+                                          "required": true,
+                                          "doc": "BCP-47 language tag.",
+                                          "format": "bcp47",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "value",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "birth_day",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "birth_month",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "birth_year",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "display_name",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "gender",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                    "enum": [
+                                      "male",
+                                      "female",
+                                      "other"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "id",
+                                    "required": true,
+                                    "doc": "Catalog credit-name id.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "intros",
+                                    "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "is_machine",
+                                          "required": true,
+                                          "doc": "Whether this intro is machine-translated.",
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "name": "lang",
+                                          "required": true,
+                                          "doc": "BCP-47 language tag.",
+                                          "format": "bcp47",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "source",
+                                          "required": true,
+                                          "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "value",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "nullable": true,
+                                    "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "latin",
+                                    "required": true,
+                                    "nullable": true,
+                                    "doc": "null if unrecorded. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "links",
+                                    "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "source",
+                                          "required": true,
+                                          "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "url",
+                                          "required": true,
+                                          "doc": "Absolute URL.",
+                                          "format": "uri",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "localized",
+                                    "required": true,
+                                    "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                    "type": "map",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "is_machine",
+                                          "required": true,
+                                          "doc": "Whether this value is machine-translated.",
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "name": "value",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "object",
+                                    "required": true,
+                                    "doc": "Type discriminant. Always credit_name.",
+                                    "enum": [
+                                      "credit_name"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "person_id",
+                                    "required": true,
+                                    "nullable": true,
+                                    "doc": "null if this name is not linked to a person.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "photo",
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "hash",
+                                        "required": true,
+                                        "doc": "Image-service content hash.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "height",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Pixel height. null if unknown.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "sexual",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Sexual depiction. null means not assessed.",
+                                        "enum": [
+                                          "safe",
+                                          "suggestive",
+                                          "explicit"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "source",
+                                        "required": true,
+                                        "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "thumbhash",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Thumbhash. null if unknown.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "url",
+                                        "required": true,
+                                        "doc": "Absolute image URL. Never a bare hash.",
+                                        "format": "uri",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "violence",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                        "enum": [
+                                          "tame",
+                                          "violent",
+                                          "brutal"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "width",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Pixel width. null if unknown.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "name": "refs",
+                                    "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "external_id",
+                                          "required": true,
+                                          "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "source",
+                                          "required": true,
+                                          "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "siblings",
+                                    "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "CreditName"
+                                    }
+                                  }
+                                ]
+                              }
                             }
                           ]
                         }
@@ -60441,6 +62273,12 @@ export const docsModel: DocsModel = {
                         "itemsOf": {
                           "type": "object",
                           "children": [
+                            {
+                              "name": "cover_kind",
+                              "required": true,
+                              "doc": "Upstream cover class from the pinning ladder: main, dig, pkgfront, pkgback and friends. Open vocabulary. Empty if unrecorded. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
                             {
                               "name": "hash",
                               "required": true,
@@ -61420,6 +63258,56 @@ export const docsModel: DocsModel = {
                         "doc": "RFC 3339 UTC.",
                         "format": "date-time",
                         "type": "string"
+                      },
+                      {
+                        "name": "via_company",
+                        "type": "object",
+                        "children": [
+                          {
+                            "name": "display_name",
+                            "required": true,
+                            "doc": "Must not be used as a discriminant.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "id",
+                            "required": true,
+                            "doc": "Catalog company id.",
+                            "type": "string"
+                          },
+                          {
+                            "name": "localized",
+                            "required": true,
+                            "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                            "type": "map",
+                            "itemsOf": {
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "is_machine",
+                                  "required": true,
+                                  "doc": "Whether this value is machine-translated.",
+                                  "type": "boolean"
+                                },
+                                {
+                                  "name": "value",
+                                  "required": true,
+                                  "doc": "Must not be used as a discriminant.",
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "object",
+                            "required": true,
+                            "doc": "Type discriminant. Always company.",
+                            "enum": [
+                              "company"
+                            ],
+                            "type": "string"
+                          }
+                        ]
                       }
                     ]
                   }
@@ -62410,6 +64298,11 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "identity",
+                              "doc": "Opaque roster row identity for a catalog.work.roster.suppressed proposal; echo it back, never rebuild it. Absent when the character is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
                               "name": "image",
                               "required": true,
                               "type": "object",
@@ -62543,6 +64436,310 @@ export const docsModel: DocsModel = {
                                 "major"
                               ],
                               "type": "string"
+                            },
+                            {
+                              "name": "voices",
+                              "required": true,
+                              "doc": "Voice credits on this appearance. Empty array, never null.",
+                              "type": "array",
+                              "itemsOf": {
+                                "type": "object",
+                                "children": [
+                                  {
+                                    "name": "aliases",
+                                    "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "alias_kind",
+                                          "required": true,
+                                          "doc": "search_hint is internal and never appears on this type.",
+                                          "enum": [
+                                            "translation",
+                                            "spelling_variant"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "is_machine",
+                                          "required": true,
+                                          "doc": "Whether this name is machine-translated.",
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "name": "lang",
+                                          "required": true,
+                                          "doc": "BCP-47 language tag.",
+                                          "format": "bcp47",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "value",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "birth_day",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "birth_month",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "birth_year",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "name": "display_name",
+                                    "required": true,
+                                    "doc": "Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "gender",
+                                    "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                    "enum": [
+                                      "male",
+                                      "female",
+                                      "other"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "id",
+                                    "required": true,
+                                    "doc": "Catalog credit-name id.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "intros",
+                                    "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "is_machine",
+                                          "required": true,
+                                          "doc": "Whether this intro is machine-translated.",
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "name": "lang",
+                                          "required": true,
+                                          "doc": "BCP-47 language tag.",
+                                          "format": "bcp47",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "source",
+                                          "required": true,
+                                          "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "value",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "lang",
+                                    "required": true,
+                                    "nullable": true,
+                                    "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                                    "format": "bcp47",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "latin",
+                                    "required": true,
+                                    "nullable": true,
+                                    "doc": "null if unrecorded. Must not be used as a discriminant.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "links",
+                                    "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "source",
+                                          "required": true,
+                                          "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "url",
+                                          "required": true,
+                                          "doc": "Absolute URL.",
+                                          "format": "uri",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "localized",
+                                    "required": true,
+                                    "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                    "type": "map",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "is_machine",
+                                          "required": true,
+                                          "doc": "Whether this value is machine-translated.",
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "name": "value",
+                                          "required": true,
+                                          "doc": "Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "object",
+                                    "required": true,
+                                    "doc": "Type discriminant. Always credit_name.",
+                                    "enum": [
+                                      "credit_name"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "person_id",
+                                    "required": true,
+                                    "nullable": true,
+                                    "doc": "null if this name is not linked to a person.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "photo",
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "hash",
+                                        "required": true,
+                                        "doc": "Image-service content hash.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "height",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Pixel height. null if unknown.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "sexual",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Sexual depiction. null means not assessed.",
+                                        "enum": [
+                                          "safe",
+                                          "suggestive",
+                                          "explicit"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "source",
+                                        "required": true,
+                                        "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "thumbhash",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Thumbhash. null if unknown.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "url",
+                                        "required": true,
+                                        "doc": "Absolute image URL. Never a bare hash.",
+                                        "format": "uri",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "violence",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                        "enum": [
+                                          "tame",
+                                          "violent",
+                                          "brutal"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "width",
+                                        "required": true,
+                                        "nullable": true,
+                                        "doc": "Pixel width. null if unknown.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "name": "refs",
+                                    "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "object",
+                                      "children": [
+                                        {
+                                          "name": "external_id",
+                                          "required": true,
+                                          "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "name": "source",
+                                          "required": true,
+                                          "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "name": "siblings",
+                                    "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                                    "type": "array",
+                                    "itemsOf": {
+                                      "type": "CreditName"
+                                    }
+                                  }
+                                ]
+                              }
                             }
                           ]
                         }
@@ -63478,6 +65675,12 @@ export const docsModel: DocsModel = {
                         "itemsOf": {
                           "type": "object",
                           "children": [
+                            {
+                              "name": "cover_kind",
+                              "required": true,
+                              "doc": "Upstream cover class from the pinning ladder: main, dig, pkgfront, pkgback and friends. Open vocabulary. Empty if unrecorded. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
                             {
                               "name": "hash",
                               "required": true,
@@ -69587,6 +71790,11 @@ export const docsModel: DocsModel = {
                                         "type": "string"
                                       },
                                       {
+                                        "name": "identity",
+                                        "doc": "Opaque roster row identity for a catalog.work.roster.suppressed proposal; echo it back, never rebuild it. Absent when the character is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
+                                      {
                                         "name": "image",
                                         "required": true,
                                         "type": "object",
@@ -69720,6 +71928,310 @@ export const docsModel: DocsModel = {
                                           "major"
                                         ],
                                         "type": "string"
+                                      },
+                                      {
+                                        "name": "voices",
+                                        "required": true,
+                                        "doc": "Voice credits on this appearance. Empty array, never null.",
+                                        "type": "array",
+                                        "itemsOf": {
+                                          "type": "object",
+                                          "children": [
+                                            {
+                                              "name": "aliases",
+                                              "doc": "Alternate spellings of THIS credited name, not of the person. Present when include=aliases, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "alias_kind",
+                                                    "required": true,
+                                                    "doc": "search_hint is internal and never appears on this type.",
+                                                    "enum": [
+                                                      "translation",
+                                                      "spelling_variant"
+                                                    ],
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "is_machine",
+                                                    "required": true,
+                                                    "doc": "Whether this name is machine-translated.",
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "name": "lang",
+                                                    "required": true,
+                                                    "doc": "BCP-47 language tag.",
+                                                    "format": "bcp47",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "value",
+                                                    "required": true,
+                                                    "doc": "Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "birth_day",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "birth_month",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "birth_year",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link. The three birth parts are independently fuzzy: a year can exist with no month or day.",
+                                              "format": "int64",
+                                              "type": "integer"
+                                            },
+                                            {
+                                              "name": "display_name",
+                                              "required": true,
+                                              "doc": "Must not be used as a discriminant.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "gender",
+                                              "doc": "Person-level fact reached through the person link. Present on the detail face; absent when unrecorded or the name has no public person link.",
+                                              "enum": [
+                                                "male",
+                                                "female",
+                                                "other"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "id",
+                                              "required": true,
+                                              "doc": "Catalog credit-name id.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "intros",
+                                              "doc": "Biography of the linked person, one per language. Present when include=intros, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "is_machine",
+                                                    "required": true,
+                                                    "doc": "Whether this intro is machine-translated.",
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "name": "lang",
+                                                    "required": true,
+                                                    "doc": "BCP-47 language tag.",
+                                                    "format": "bcp47",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "source",
+                                                    "required": true,
+                                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "value",
+                                                    "required": true,
+                                                    "doc": "Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "lang",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "BCP-47 language tag of display_name. null if unrecorded. Must not be used as a discriminant.",
+                                              "format": "bcp47",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "latin",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "null if unrecorded. Must not be used as a discriminant.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "links",
+                                              "doc": "External pages for the linked person. Present when include=links, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "source",
+                                                    "required": true,
+                                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "url",
+                                                    "required": true,
+                                                    "doc": "Absolute URL.",
+                                                    "format": "uri",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "localized",
+                                              "required": true,
+                                              "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                              "type": "map",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "is_machine",
+                                                    "required": true,
+                                                    "doc": "Whether this value is machine-translated.",
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "name": "value",
+                                                    "required": true,
+                                                    "doc": "Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "object",
+                                              "required": true,
+                                              "doc": "Type discriminant. Always credit_name.",
+                                              "enum": [
+                                                "credit_name"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "person_id",
+                                              "required": true,
+                                              "nullable": true,
+                                              "doc": "null if this name is not linked to a person.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "photo",
+                                              "type": "object",
+                                              "children": [
+                                                {
+                                                  "name": "hash",
+                                                  "required": true,
+                                                  "doc": "Image-service content hash.",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "height",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Pixel height. null if unknown.",
+                                                  "format": "int64",
+                                                  "type": "integer"
+                                                },
+                                                {
+                                                  "name": "sexual",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Sexual depiction. null means not assessed.",
+                                                  "enum": [
+                                                    "safe",
+                                                    "suggestive",
+                                                    "explicit"
+                                                  ],
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "source",
+                                                  "required": true,
+                                                  "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "thumbhash",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Thumbhash. null if unknown.",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "url",
+                                                  "required": true,
+                                                  "doc": "Absolute image URL. Never a bare hash.",
+                                                  "format": "uri",
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "violence",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.",
+                                                  "enum": [
+                                                    "tame",
+                                                    "violent",
+                                                    "brutal"
+                                                  ],
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "name": "width",
+                                                  "required": true,
+                                                  "nullable": true,
+                                                  "doc": "Pixel width. null if unknown.",
+                                                  "format": "int64",
+                                                  "type": "integer"
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "name": "refs",
+                                              "doc": "Exact upstream anchors of this credited name. Present when include=refs, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "object",
+                                                "children": [
+                                                  {
+                                                    "name": "external_id",
+                                                    "required": true,
+                                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "name": "source",
+                                                    "required": true,
+                                                    "doc": "Open vocabulary sources. Must not be used as a discriminant.",
+                                                    "type": "string"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            {
+                                              "name": "siblings",
+                                              "doc": "The same person's other publicly linked names, as basic entries. Present when include=siblings, detail face only. Empty array if none.",
+                                              "type": "array",
+                                              "itemsOf": {
+                                                "type": "CreditName"
+                                              }
+                                            }
+                                          ]
+                                        }
                                       }
                                     ]
                                   }
@@ -70016,6 +72528,12 @@ export const docsModel: DocsModel = {
                                   "itemsOf": {
                                     "type": "object",
                                     "children": [
+                                      {
+                                        "name": "cover_kind",
+                                        "required": true,
+                                        "doc": "Upstream cover class from the pinning ladder: main, dig, pkgfront, pkgback and friends. Open vocabulary. Empty if unrecorded. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
                                       {
                                         "name": "hash",
                                         "required": true,
@@ -70976,6 +73494,56 @@ export const docsModel: DocsModel = {
                                   "doc": "RFC 3339 UTC.",
                                   "format": "date-time",
                                   "type": "string"
+                                },
+                                {
+                                  "name": "via_company",
+                                  "type": "object",
+                                  "children": [
+                                    {
+                                      "name": "display_name",
+                                      "required": true,
+                                      "doc": "Must not be used as a discriminant.",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "id",
+                                      "required": true,
+                                      "doc": "Catalog company id.",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "localized",
+                                      "required": true,
+                                      "doc": "BCP-47 keys. Empty object if none. Must not be used as a discriminant.",
+                                      "type": "map",
+                                      "itemsOf": {
+                                        "type": "object",
+                                        "children": [
+                                          {
+                                            "name": "is_machine",
+                                            "required": true,
+                                            "doc": "Whether this value is machine-translated.",
+                                            "type": "boolean"
+                                          },
+                                          {
+                                            "name": "value",
+                                            "required": true,
+                                            "doc": "Must not be used as a discriminant.",
+                                            "type": "string"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "name": "object",
+                                      "required": true,
+                                      "doc": "Type discriminant. Always company.",
+                                      "enum": [
+                                        "company"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  ]
                                 }
                               ]
                             }

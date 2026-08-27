@@ -13,7 +13,7 @@
 
 List tags
 
-Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a batch lane and does not paginate.
+Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a batch lane and does not paginate. has_works=true keeps only tags with works visible under the same nsfw gate.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -32,6 +32,7 @@ Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a ba
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
+| `has_works` | query | 否 | string | true keeps only tags whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every tag. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/tags" \

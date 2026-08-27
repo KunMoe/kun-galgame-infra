@@ -34,6 +34,8 @@ type WorkCharacter struct {
 	Localized   map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
 	RosterRole  string                   `json:"roster_role" enum:"main,secondary,appears,unknown" doc:"Appearance strength on this work."`
 	Spoiler     string                   `json:"spoiler" enum:"none,minor,major" doc:"Spoiler level of this appearance."`
+	Identity    *string                  `json:"identity,omitempty" maxLength:"64" doc:"Opaque roster row identity for a catalog.work.roster.suppressed proposal; echo it back, never rebuild it. Absent when the character is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant."`
+	Voices      []CreditName             `json:"voices" doc:"Voice credits on this appearance. Empty array, never null."`
 	Image       *Image                   `json:"image" doc:"Character image. null if none."`
 	Figure      *Image                   `json:"figure" doc:"Figure image. null if none."`
 }

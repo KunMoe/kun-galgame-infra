@@ -74,6 +74,15 @@ type Work struct {
 	Companies            *[]WorkCompany           `json:"companies,omitempty" doc:"Present when include=companies. Empty array if none."`
 	Engines              *[]WorkEngineRef         `json:"engines,omitempty" doc:"Present when include=engines. Empty array if none."`
 	Links                *[]WorkLink              `json:"links,omitempty" doc:"Present when include=links. Empty array if none."`
+	ViaCompany           *ViaCompany              `json:"via_company,omitempty" doc:"Present only on the company_id=&company_rollup=true lane, on rows attributed through a one-hop imprint or subsidiary: the intermediate company. Absent when the work is attributed to the queried company directly."`
+}
+
+type ViaCompany struct {
+	_           struct{}                 `json:"-" additionalProperties:"true"`
+	Object      string                   `json:"object" enum:"company" doc:"Type discriminant. Always company."`
+	ID          string                   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog company id."`
+	DisplayName string                   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
+	Localized   map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
 }
 
 func NewWork(id int64, medium, display, olang, rating, releaseStatus, created, updated string, latin *string, localized map[string]LocalizedText, releaseDate, releasePrecision *string, cover, banner *Image, claim *Claim) (Work, bool) {

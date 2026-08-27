@@ -24,14 +24,16 @@ type listRedirectsInput struct {
 
 type calendarInput struct {
 	CollectionInput
-	Month     string `query:"month" maxLength:"7" doc:"Dated month window YYYY-MM. Default: current month in Asia/Tokyo."`
-	Year      string `query:"year" maxLength:"4" doc:"Year-only window YYYY (v1 pending). Default with precision=year: current year in Asia/Tokyo."`
-	Precision string `query:"precision" maxLength:"8" doc:"day, month, or year. year selects the year-only window. day and month use the dated month window."`
-	Status    string `query:"status" maxLength:"16" doc:"released, dated, announced, cancelled, unknown. announced and unknown select the undated window. cancelled is empty until the catalog records cancellations."`
+	Month        string `query:"month" maxLength:"7" doc:"Dated month window YYYY-MM. Default: current month in Asia/Tokyo."`
+	Year         string `query:"year" maxLength:"4" doc:"Year-only window YYYY (v1 pending). Default with precision=year: current year in Asia/Tokyo."`
+	Precision    string `query:"precision" maxLength:"8" doc:"day, month, or year. year selects the year-only window. day and month use the dated month window."`
+	Status       string `query:"status" maxLength:"16" doc:"released, dated, announced, cancelled, unknown. announced and unknown select the undated window. cancelled is empty until the catalog records cancellations."`
+	ContentLimit string `query:"content_limit" maxLength:"32" doc:"Comma-separated closed editorial axis: sfw, nsfw."`
+	OLang        string `query:"olang" maxLength:"64" doc:"Comma-separated BCP-47, or all. Open vocabulary; unknown values match nothing. Absent = the calendar's home population, ja plus zh."`
 }
 
 type listCalendarOutput struct {
-	Body repr.List[repr.Work]
+	Body repr.CalendarList
 }
 
 func registerCatalogFeeds(api huma.API, cat *Catalog) {
@@ -62,7 +64,7 @@ func registerCatalogFeeds(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/calendar",
 		Summary:            "Release calendar",
-		Description:        "One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. Requires an application key. ids= is not accepted.",
+		Description:        "One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. content_limit= gates on the editorial display axis and olang= on the original language (absent = ja plus zh). meta carries today plus, on the dated month window, min_month/max_month/has_prev/has_next for month navigation. Requires an application key. ids= is not accepted.",
 		Tags:               catalog,
 		Errors:             errs,
 		SkipValidateParams: true,
@@ -109,7 +111,10 @@ func listCatalogCalendar(cat *Catalog) func(context.Context, *calendarInput) (*l
 		if err != nil {
 			return nil, err
 		}
-		page, lerr := cat.ListCalendar(ctx, q, in.Month, in.Year, in.Precision, in.Status)
+		page, lerr := cat.ListCalendar(ctx, q, calendarParams{
+			Month: in.Month, Year: in.Year, Precision: in.Precision, Status: in.Status,
+			ContentLimit: in.ContentLimit, OLang: in.OLang,
+		})
 		if lerr != nil {
 			return nil, catalogErr(ctx, lerr)
 		}

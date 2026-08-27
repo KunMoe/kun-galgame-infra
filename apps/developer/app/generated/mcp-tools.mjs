@@ -450,7 +450,9 @@ export const mcpTools = [
       "month",
       "year",
       "precision",
-      "status"
+      "status",
+      "content_limit",
+      "olang"
     ]
   },
   {
@@ -696,7 +698,8 @@ export const mcpTools = [
       "include_total",
       "facets",
       "sort",
-      "nsfw"
+      "nsfw",
+      "has_works"
     ]
   },
   {

@@ -62,7 +62,7 @@ func coverFromPublic(c dto.PublicCover) *repr.Cover {
 		return nil
 	}
 	return &repr.Cover{
-		ID: id, VoteCount: 0, PortraitPinned: c.PortraitPinned,
+		ID: id, VoteCount: 0, PortraitPinned: c.PortraitPinned, Kind: c.Kind,
 		URL: img.URL, Hash: img.Hash, Width: img.Width, Height: img.Height,
 		Thumbhash: img.Thumbhash, Sexual: img.Sexual, Violence: img.Violence, Source: img.Source,
 	}
@@ -125,6 +125,7 @@ func workCharactersFrom(in []dto.PublicRosterCharacter) []repr.WorkCharacter {
 			Object: "character", ID: repr.ID(ch.ID), DisplayName: ch.DisplayName,
 			Latin: optString(ch.Latin), Localized: localizedFrom(ch.Localized),
 			RosterRole: role, Spoiler: sp,
+			Identity: optString(ch.Identity), Voices: rosterVoicesFrom(ch.Voices),
 		}
 		if ch.Image != "" {
 			item.Image = imageFromPublicMeta(ch.Image, ch.ImageMeta, "")
@@ -133,6 +134,18 @@ func workCharactersFrom(in []dto.PublicRosterCharacter) []repr.WorkCharacter {
 			item.Figure = imageFromPublicMeta(ch.Figure, ch.FigureMeta, "")
 		}
 		out = append(out, item)
+	}
+	return out
+}
+
+func rosterVoicesFrom(in []dto.PublicRosterVoice) []repr.CreditName {
+	out := make([]repr.CreditName, 0, len(in))
+	for _, v := range in {
+		out = append(out, repr.CreditName{
+			Object: "credit_name", ID: repr.ID(v.ID), DisplayName: v.DisplayName,
+			Latin: optString(v.Latin), Lang: optString(v.Lang),
+			Localized: localizedFrom(v.Localized),
+		})
 	}
 	return out
 }
