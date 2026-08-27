@@ -100,7 +100,12 @@ const adjust = async (sign: 1 | -1) => {
 </script>
 
 <template>
-  <KunModal :model-value="open" size="lg" @update:model-value="close">
+  <KunModal
+    :model-value="open"
+    size="lg"
+    @update:model-value="close"
+    aria-label="萌萌点管理"
+  >
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-foreground text-xl font-bold">萌萌点管理</h2>

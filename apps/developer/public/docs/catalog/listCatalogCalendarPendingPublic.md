@@ -16,7 +16,7 @@ Release calendar, one year's month-still-unknown bucket (id ASC keyset); default
 Works whose earliest release is known only to the YEAR — they appear in no month view of that year, by design. Same population, item shape, olang gate and ETag mechanics as the month bucket.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -31,7 +31,7 @@ Works whose earliest release is known only to the YEAR — they appear in no mon
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/calendar/pending" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

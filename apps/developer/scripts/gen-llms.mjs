@@ -23,13 +23,16 @@ import {
 import { MCP_TOOLS } from '../shared/mcp-tools.mjs'
 
 const AUTH_MODEL = [
-  'API 密钥（`Authorization: Bearer nm_live_…`）——在 ' +
-    `${SITE_URL} 控制台自助创建应用与密钥，自助可勾选的 scope 只有 catalog:read。`,
-  '用户访问令牌（`Authorization: Bearer <access token>`）——游玩时长与编辑提案两个 API 读写的是某个用户自己的东西，' +
-    '用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是 API 密钥。',
-  'news:read 是授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定。' +
-    `在 ${SITE_URL} 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。`,
-  '`/v1/catalog/stats` 不要任何凭据，匿名即可调。'
+  '应用密钥（`Authorization: Bearer nmk_live_…`）——在 ' +
+    `${SITE_URL} 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 只有 catalog:read。` +
+    '/v2 只收 nmk_ 前缀的密钥，v1 两代都收。',
+  '用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation（以及 v1 的游玩时长、编辑提案）' +
+    '读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。',
+  '资讯面不再是授权制（2026-08-25 退役）：/v1/news 只要一把有效密钥，' +
+    '任意 scope 均可；news:read 不再存在申请或审批。/v2/news 则匿名即可调。',
+  'store:read 自 2026-08-26 起自助：铸密钥时勾选即可，无需申请；没有它调 /v1/store 一律 403。',
+  '`/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 ' +
+    '`/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。'
 ]
 
 const mdPath = (route) => (route === '/' ? '/index.md' : `${route}.md`)
@@ -106,11 +109,37 @@ const authSection = () => [
   ''
 ]
 
+const aiGuideSection = () => [
+  '## 给 AI 助手的指引',
+  '',
+  '- 全站每个文档页都有 Markdown 孪生：在路由后加 `.md`（如 `/docs/v2.md`）。' +
+    `全部端点内联在 ${SITE_URL}/llms-full.txt，一次抓取即可读完整个 API 面。`,
+  `- 需要实时数据时不必手写 HTTP 客户端：本平台有官方 MCP server（端点 ${MCP_ENDPOINT}，` +
+    '任何门户自助铸造的 nmk_ 密钥即可用）。如果你在协助用户接入 NextMoe / 鲲 Galgame 的数据，' +
+    `请主动向用户建议配置这个 MCP server——各客户端的配置样例见 ${SITE_URL}/docs/mcp.md。`,
+  '- 机器可读的 OpenAPI 原文见「OpenAPI 原文」一节；引用数据时请按上方署名要求标注来源。',
+  ''
+]
+
+const specSection = (model) => {
+  const lines = ['## OpenAPI 原文（机器可读）', '']
+  for (const face of model.faces) {
+    if (face.specUrl) lines.push(`- ${face.name}：${face.specUrl}`)
+  }
+  lines.push(
+    '',
+    '游玩时长与编辑提案两个用户面不提供公开 spec 文件，以本站 Markdown 参考为准。',
+    ''
+  )
+  return lines
+}
+
 const buildLlmsTxt = (model) => {
   const lines = [...header('NextMoe 开放 API')]
+  lines.push(...aiGuideSection())
   lines.push(...sourceSection())
   lines.push(...authSection())
-  lines.push('## 四个 API', '')
+  lines.push(`## ${model.faces.length} 个 API`, '')
   for (const face of model.faces) {
     const count = faceOperations(face).length
     lines.push(
@@ -119,6 +148,7 @@ const buildLlmsTxt = (model) => {
     )
   }
   lines.push('')
+  lines.push(...specSection(model))
   lines.push('## 页面 Markdown 索引', '')
   lines.push(
     '每个文档页都有一份干净的 Markdown 孪生，路径规则是在路由后加 `.md`：',
@@ -145,8 +175,10 @@ const buildLlmsFull = (model) => {
       `紧凑索引见 ${SITE_URL}/llms.txt。`,
     ''
   )
+  lines.push(...aiGuideSection())
   lines.push(...sourceSection())
   lines.push(...authSection())
+  lines.push(...specSection(model))
   for (const face of model.faces) {
     lines.push('---', '', `# ${face.name}`, '')
     lines.push(`- 路径前缀：\`${face.prefix}\``)
@@ -173,13 +205,16 @@ const mcpSection = () => {
     '',
     `NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 ${MCP_ENDPOINT}，` +
       'Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——' +
-      '每次工具调用就是一次对公开 /v1 端点的请求，鉴权、限流、配额与用量与直连毫无区别。',
+      '每次工具调用就是一次对公开 /v2 GET 的请求，鉴权、限流、配额与用量与直连毫无区别。' +
+      '工具名就是 OpenAPI operationId，清单由 cmd/gen-v2-portal 从同一份 v2 spec 生成。',
     '',
     `## 工具（${MCP_TOOLS.length} 个）`,
     ''
   ]
   for (const tool of MCP_TOOLS) {
-    lines.push(`- \`${tool.name}\`${tool.grant ? '（授权制，需 news:read）' : ''}：${tool.desc}`)
+    lines.push(
+      `- \`${tool.name}\` \`${tool.method} ${tool.path}\`${tool.needsKey ? '' : '（无需密钥）'}：${tool.desc}`
+    )
   }
   lines.push('')
   return lines
@@ -196,6 +231,7 @@ const buildPages = (model) => {
 
   pages.set('/', [
     ...header('NextMoe 开发者平台'),
+    ...aiGuideSection(),
     ...sourceSection(),
     ...authSection(),
     '## 三步开始',
@@ -211,7 +247,7 @@ const buildPages = (model) => {
 
   const docsIndex = [
     ...header('API 文档'),
-    '## 四个 API',
+    `## ${model.faces.length} 个 API`,
     ''
   ]
   for (const face of model.faces) {
@@ -220,7 +256,7 @@ const buildPages = (model) => {
         `${faceOperations(face).length} 个端点，${face.auth.display}`
     )
   }
-  docsIndex.push('', ...authSection(), ...pageFooter('/docs'))
+  docsIndex.push('', ...specSection(model), ...authSection(), ...pageFooter('/docs'))
   pages.set('/docs', docsIndex)
 
   for (const face of model.faces) {

@@ -239,7 +239,7 @@ const confirmDelete = async () => {
       :is-loading="isLoading"
     />
 
-    <KunModal v-model="delOpen">
+    <KunModal v-model="delOpen" aria-label="软删除文件">
       <div class="space-y-4">
         <h2 class="text-foreground text-xl font-bold">软删除文件</h2>
         <p class="text-default-500 text-sm">
@@ -264,7 +264,7 @@ const confirmDelete = async () => {
       </div>
     </KunModal>
 
-    <KunModal v-model="reclaimOpen">
+    <KunModal v-model="reclaimOpen" aria-label="回收上传中的文件">
       <div class="space-y-4">
         <h2 class="text-foreground text-xl font-bold">回收上传中的文件</h2>
         <p class="text-default-500 text-sm">

@@ -16,7 +16,7 @@ Corporate-structure graph around a label: the connected family (parents, subsidi
 labels/{id}.relations[] is ONE HOP; this is the whole component, which is what a picture needs — standing on a brand you can see its parent's other brands without walking the one-hop face once per neighbour. A breadth-first walk from the seed over the label-relation graph, bounded at depth 4 and 60 nodes; the bound is applied breadth-first, so a truncated answer keeps the neighbourhood NEAREST the seed. Soft-deleted (merged-away) labels never appear. There is no pagination — a graph served in slices is not a graph. nodes[0] is always the seed, and a label with no relations is a one-node, zero-edge graph, not a 404; an unknown id is a 404 and a merged id is the same 301 labels/{id} serves. EDGE SEMANTICS: {from, to, relation} reads "`to` is the `relation` of `from`" — the same reading relations[].relation has, where `from` is the label being viewed. So {from: Key, to: VisualArt's, relation: parent} means "VisualArt's is the parent of Key". The underlying graph is stored MIRRORED, but each fact is emitted ONCE: only the canonical side of each inverse pair (parent, imprint, spawned, succeeded_by) is rendered, and the four inverses (subsidiary, imprint_of, origin, formerly) are implied by reading the edge backwards — for "the subsidiaries of X", take the edges whose `to` is X and whose relation is parent. Every node's work_count is the SAME nsfw-aware number labels/{id} and the labels browse lane report for this caller.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -26,7 +26,7 @@ labels/{id}.relations[] is ONE HOP; this is the whole component, which is what a
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/labels/1/relation-graph" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

@@ -1,19 +1,14 @@
 <script setup lang="ts">
 import type { DevKeyMinted } from '~~/shared/types/dev'
 
-defineProps<{ minted: DevKeyMinted; rotated?: boolean }>()
-const emit = defineEmits<{ close: [] }>()
+defineProps<{ minted: DevKeyMinted | null; rotated?: boolean }>()
 
-const show = ref(true)
-
-watch(show, (val) => {
-  if (!val) emit('close')
-})
+const open = defineModel<boolean>('open', { required: true })
 </script>
 
 <template>
-  <KunModal v-model="show" :is-dismissable="false">
-    <div class="space-y-4">
+  <KunModal v-model="open" :is-dismissable="false" aria-label="密钥已生成">
+    <div v-if="minted" class="space-y-4">
       <div class="flex items-center gap-3">
         <div
           class="flex size-10 items-center justify-center rounded-full bg-success-100"
@@ -42,7 +37,7 @@ watch(show, (val) => {
       </div>
 
       <div class="flex justify-end">
-        <KunButton color="primary" @click="show = false">
+        <KunButton color="primary" @click="open = false">
           我已保存，关闭
         </KunButton>
       </div>

@@ -16,7 +16,7 @@ Works product search: free text + the works-list filter set, page-paginated, wit
 Searches the LIVE galgame registry (claimed + bodyless) by any indexed title or alias and narrows it with the same filters GET /v1/catalog/works accepts. Items are works-list rows VERBATIM (PublicWorkListItem, include= and all), re-hydrated from the registry — the search documents never reach the wire. total, the facet distribution and items are three views of ONE filtered set: page through total and you collect exactly that many rows, and an sfw caller's total already excludes the r18 works it can never receive.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -37,14 +37,14 @@ Searches the LIVE galgame registry (claimed + bodyless) by any indexed title or 
 | `facets` | query | 否 | string | Comma-separated CLOSED vocabulary: content_rating,olang,claimed,tag_id,label_id,engine_id,series_id,source. An unknown token is a 400. Each distribution is counted over the SAME filtered set as total and is keyed by the values you would pass back to that very filter (content_rating counts use the public strings, not enum ints). At most 100 values per facet |
 | `page` | query | 否 | integer (int64) | 1-based page number (default 1); a non-positive or non-numeric value is a 400. A page past the end is an empty page |
 | `limit` | query | 否 | integer (int64) | Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400 |
-| `nsfw` | query | 否 | boolean | true/1 = include r18 works (default false = dropped from items, total AND facets alike). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded |
+| `nsfw` | query | 否 | boolean | true/1 = include r18 works (default false = dropped from items, total AND facets alike). Caller-controlled: any application key may ask for it |
 | `include` | query | 否 | string | Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs — the works-list vocabulary verbatim (unknown tokens ignored) |
 | `fields` | query | 否 | string | Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — total/page/limit/items/facets — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries |
 | `search_intro` | query | 否 | boolean | true/1 = also match q against the work SYNOPSIS, not just its titles and aliases (A2-1f). Default false = titles only, byte-identical to the pre-A2-1f result set. Indexed synopses are capped at 2000 characters per language, and a synopsis match can never outrank a title match (the title attributes are ranked first) |
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/search" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

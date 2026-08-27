@@ -34,15 +34,19 @@ export const DOCS_FACE_META: Record<
     icon: 'lucide:newspaper',
     label: '资讯',
     tagline:
-      '合作媒体的 Galgame 资讯索引：标题、摘要、题图与回源链接，正文不下发。密钥须带 news:read，该权限授权制——登录门户后在控制台申请，批准后即可自助勾选。',
-    badge: '授权制'
+      '合作媒体的 Galgame 资讯索引：标题、摘要、题图与回源链接，正文不下发。门户自助铸造的密钥即可调用，任意 scope 均可；免凭据的同一批内容在 /v2/news。'
+  },
+  store: {
+    icon: 'lucide:shopping-bag',
+    label: '分销链接',
+    tagline:
+      'DLsite 商品的分销短链：每个调用站拿到自己那一条，点击按 JST 日去重后归到你站上，活动期还会附带优惠券领取链接。密钥须带 store:read——铸密钥时自助勾选即可。'
   },
   v2: {
     icon: 'lucide:sparkles',
     label: 'API v2',
     tagline:
-      'NextMoe 公开 API v2（preview）。无信封、RFC 9457 错误、字符串 id、keyset 游标。应用密钥是 nmk_live_（CRC32 校验位）；preview 期间只签发给 internal 档应用。第三方继续用 /v1。',
-    badge: 'preview'
+      'NextMoe 公开 API v2，正式公开面。无信封、RFC 9457 错误、字符串 id、keyset 游标。应用密钥是 nmk_live_（CRC32 校验位），任何应用都能在门户自助铸造，无需申请。'
   }
 }
 

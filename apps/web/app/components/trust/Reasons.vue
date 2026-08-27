@@ -181,7 +181,7 @@ const toggleDeprecated = async (r: TrustReason) => {
       </table>
     </div>
 
-    <KunModal v-model="createOpen">
+    <KunModal v-model="createOpen" aria-label="新建举报理由">
       <div class="space-y-4">
         <h2 class="text-foreground text-xl font-bold">新建举报理由</h2>
         <KunInput v-model="form.key" label="key" placeholder="如 abuse / spam" />
@@ -203,7 +203,7 @@ const toggleDeprecated = async (r: TrustReason) => {
       </div>
     </KunModal>
 
-    <KunModal v-model="editOpen">
+    <KunModal v-model="editOpen" aria-label="编辑举报理由">
       <div class="space-y-4">
         <h2 class="text-foreground text-xl font-bold">
           编辑理由 · {{ editTarget?.key }}

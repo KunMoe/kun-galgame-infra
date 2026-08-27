@@ -40,6 +40,8 @@ import (
 	sitePerm "api/internal/platform/site/perm"
 	siteRepo "api/internal/platform/site/repository"
 	siteService "api/internal/platform/site/service"
+	storeHandler "api/internal/platform/store/handler"
+	storeService "api/internal/platform/store/service"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -303,6 +305,21 @@ func setupRoutes(a *app.App, cfg *config.Config, cleanupCtx context.Context) {
 	}
 	devSelfGroup := v1.Group("/dev", middleware.Auth(authSvc), middleware.DevPortalFence(devPortalClients))
 	devSelfH.Register(devSelfGroup)
+
+	storeHandler.NewDevHandler(
+		storeService.New(db, nil, storeService.Options{}),
+		func(ctx context.Context, ownerUserID uint) ([]storeService.OwnerApp, error) {
+			apps, err := devRepo.ListAppsByOwner(ctx, ownerUserID)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]storeService.OwnerApp, len(apps))
+			for i := range apps {
+				out[i] = storeService.OwnerApp{ClientID: apps[i].ID, Name: apps[i].Name}
+			}
+			return out, nil
+		},
+	).Register(devSelfGroup)
 
 	permReg := permissions.Live()
 	permDist := permissions.NewDistributor(db, permReg, a.Cache)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"api/internal/jobs/newsmoderate"
+	"api/internal/jobs/storestats"
 	"api/internal/jobs/ymgalnews"
 	"api/pkg/config"
 )
@@ -115,6 +116,15 @@ func RegisterAll(r *Registry) {
 				Lanes: []string{ymgalnews.LaneNews, ymgalnews.LaneColumn},
 				Pages: 5, Apply: true, Gap: 2 * time.Second,
 			})
+		},
+	})
+
+	r.Register(Job{
+		Name:     "store-stats-sync",
+		Desc:     "DLsite 分销短链点击同步（JST 日桶，最近 3 日窗口；首轮从最早铸链日全量补齐）",
+		Schedule: Schedule{Every: time.Hour},
+		Run: func(ctx context.Context, cfg *config.Config) (Summary, error) {
+			return RunStoreStatsSync(ctx, cfg, storestats.DefaultOpts())
 		},
 	})
 

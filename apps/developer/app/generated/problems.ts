@@ -245,15 +245,6 @@ export const problems = [
     "type": "https://developer.nextmoe.dev/problems/platform/service-unavailable"
   },
   {
-    "code": "NSFW_CAPABILITY_REQUIRED",
-    "domain": "catalog",
-    "kebab": "nsfw-capability-required",
-    "status": 403,
-    "title": "NSFW capability required",
-    "description": "nsfw=true was requested and this credential does not have the capability. The request is refused, not degraded.",
-    "type": "https://developer.nextmoe.dev/problems/catalog/nsfw-capability-required"
-  },
-  {
     "code": "ENTITY_MERGED",
     "domain": "catalog",
     "kebab": "entity-merged",
@@ -308,6 +299,15 @@ export const problems = [
     "type": "https://developer.nextmoe.dev/problems/me/invalid-state-transition"
   },
   {
+    "code": "CLAIM_NOT_OWNED",
+    "domain": "me",
+    "kebab": "claim-not-owned",
+    "status": 403,
+    "title": "Claim not owned",
+    "description": "The claim has an owner and it is another user. Only the owner may publish, submit, or withdraw it; an unowned claim is adopted by its first claimant.",
+    "type": "https://developer.nextmoe.dev/problems/me/claim-not-owned"
+  },
+  {
     "code": "PERMISSION_REQUIRED",
     "domain": "moderation",
     "kebab": "permission-required",
@@ -322,7 +322,7 @@ export const problems = [
     "kebab": "tenant-mismatch",
     "status": 403,
     "title": "Tenant mismatch",
-    "description": "The target does not belong to this moderator's catalog site.",
+    "description": "The target does not belong to the caller's catalog site.",
     "type": "https://developer.nextmoe.dev/problems/moderation/tenant-mismatch"
   },
   {
@@ -333,5 +333,23 @@ export const problems = [
     "title": "Decision already made",
     "description": "This item has already been decided. detail names who decided and when.",
     "type": "https://developer.nextmoe.dev/problems/moderation/decision-already-made"
+  },
+  {
+    "code": "SOURCE_NOT_YOURS",
+    "domain": "news",
+    "kebab": "source-not-yours",
+    "status": 403,
+    "title": "Source not yours",
+    "description": "The named news source is not bound to this user. A source that does not exist is not distinguished, so source names cannot be enumerated.",
+    "type": "https://developer.nextmoe.dev/problems/news/source-not-yours"
+  },
+  {
+    "code": "SOURCE_INACTIVE",
+    "domain": "news",
+    "kebab": "source-inactive",
+    "status": 422,
+    "title": "Source inactive",
+    "description": "The news source is bound correctly but has been deactivated. detail names who to ask to restore it.",
+    "type": "https://developer.nextmoe.dev/problems/news/source-inactive"
   }
 ] as const

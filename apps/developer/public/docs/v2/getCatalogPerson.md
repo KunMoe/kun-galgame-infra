@@ -1,4 +1,4 @@
-# Get one person · Public API v2（preview）
+# Get one person · Public API v2
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -15,14 +15,14 @@ Get one person
 
 A person identity that groups credit names. Merged ids are 404 ENTITY_MERGED. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |

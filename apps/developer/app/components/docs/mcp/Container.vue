@@ -115,7 +115,7 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
         MCP 层自身<strong class="text-foreground">零鉴权、零计量</strong>逻辑——鉴权、tier、
         NSFW 可见性、限流、日配额与用量统计全部复用同一套端点、记在同一把密钥上：一次工具调用在
         <code class="font-mono text-xs text-foreground">/dev/usage</code>
-        里与一次直连 <code class="font-mono text-xs text-foreground">/v2</code> 请求毫无区别。preview 期间只要 internal 档签发的 nmk_ 密钥。
+        里与一次直连 <code class="font-mono text-xs text-foreground">/v2</code> 请求毫无区别。任何应用在门户自助铸造的 nmk_ 密钥都能用，不需要申请。
       </p>
     </section>
 
@@ -125,10 +125,10 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
         每个工具对应一条公开 GET，工具名就是 OpenAPI
         <code class="font-mono text-xs">operationId</code>，参数集合就是 HTTP 的 query 与 path（含
         <code class="font-mono text-xs">view=</code> /
-        <code class="font-mono text-xs">fields=</code>）。完整契约见
+        <code class="font-mono text-xs">fields=</code>）。这份清单由
+        <code class="font-mono text-xs">cmd/gen-v2-portal</code>
+        从同一份 v2 OpenAPI 生成，与 server 注册的工具集逐条一致。完整契约见
         <NuxtLink to="/docs/v2" class="text-primary hover:underline">API v2 文档</NuxtLink>。
-        v2 资讯面无凭证，MCP 上 news 工具也不再要求
-        <code class="font-mono text-xs">news:read</code>。
       </p>
       <ul class="mt-4 space-y-2">
         <li
@@ -142,10 +142,10 @@ const curlHandshake = `curl -sN ${MCP_ENDPOINT} \\
             {{ tool.name }}
           </code>
           <span
-            v-if="tool.grant"
-            class="w-fit shrink-0 rounded-full bg-warning-50 px-2 py-1 text-xs font-medium text-warning-600"
+            v-if="!tool.needsKey"
+            class="w-fit shrink-0 rounded-full bg-success-50 px-2 py-1 text-xs font-medium text-success-600"
           >
-            授权制
+            无需密钥
           </span>
           <span class="text-sm text-default-500">{{ tool.desc }}</span>
         </li>

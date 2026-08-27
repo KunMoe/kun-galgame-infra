@@ -160,6 +160,18 @@ func (c *Catalog) listWorksSQL(ctx context.Context, q collect.Query, f worksFilt
 		missing = miss
 		q.Cursor = ""
 	}
+	// Every entity list guards the all-miss batch; works shipped without it, so
+	// refs= that resolved nothing dropped the IDs filter and answered an
+	// unfiltered page 1 of the whole catalogue (found by the forum's client).
+	if q.Batch && len(lf.IDs) == 0 {
+		sqlQ := q
+		sqlQ.IncludeTotal = false
+		out := finishList([]repr.Work{}, nil, 0, sqlQ, missing)
+		if len(q.Facets) > 0 {
+			out.Facets = emptyFacets(q.Facets)
+		}
+		return out, nil
+	}
 	limit := q.Limit
 	if q.Batch {
 		limit = 100

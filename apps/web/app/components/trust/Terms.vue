@@ -308,7 +308,7 @@ const confirmDeprecate = async () => {
         :is-loading="isLoading"
       />
 
-      <KunModal v-model="createOpen">
+      <KunModal v-model="createOpen" aria-label="新建 Tier0 词条">
         <div class="space-y-4">
           <h2 class="text-foreground text-xl font-bold">新建 Tier0 词条</h2>
           <p class="text-default-500 text-sm">
@@ -355,7 +355,7 @@ const confirmDeprecate = async () => {
         </div>
       </KunModal>
 
-      <KunModal v-model="depOpen">
+      <KunModal v-model="depOpen" aria-label="弃用词条">
         <div class="space-y-4">
           <h2 class="text-foreground text-xl font-bold">弃用词条</h2>
           <p class="text-default-500 text-sm">

@@ -122,7 +122,8 @@ func (s *PublicService) attachWorkListBlocks(
 		}
 		meta := s.coverMetaFor(ctx, all)
 		for i, r := range rows {
-			items[i].Covers = s.pickCoverSlots(covers[r.ID], meta, nsfw && displayNSFW[r.ID])
+			items[i].Covers = s.pickCoverSlots(covers[r.ID], meta,
+				nsfw && effectiveDisplayNSFW(r.Site, r.ProductWorkID, displayNSFW[r.ID], r.ContentRating))
 		}
 	}
 	if inc.Refs {
@@ -325,7 +326,7 @@ func (s *PublicService) scanCovers(rows []WorkCoverRow, meta map[string]ImageMet
 	var out coverCandidates
 	for i := range rows {
 		c := &rows[i]
-		if !allowSexual && c.Sexual != 0 {
+		if !allowSexual && c.Sexual >= model.SexualExplicit {
 			continue
 		}
 		if s.imageURL(c.ImageHash) == "" {

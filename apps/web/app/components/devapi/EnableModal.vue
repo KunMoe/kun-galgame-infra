@@ -50,7 +50,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="open" size="md">
+  <KunModal v-model="open" size="md" aria-label="启用新应用">
     <div class="space-y-4">
       <h2 class="text-xl font-bold text-foreground">启用新应用</h2>
       <p class="text-sm text-default-500">

@@ -14,7 +14,7 @@
 | — | [openapi.yaml](./openapi.yaml) | S2S face **+ 用户写面**的 OpenAPI 3.1(`gen-openapi -catalog` 生成) | 生成物 |
 | — | [admin-openapi.yaml](./admin-openapi.yaml) | admin review 队列的 OpenAPI 3.1(`gen-openapi -catalog-admin` 生成) | 生成物 |
 | — | [public-openapi.yaml](./public-openapi.yaml) | `/v1/catalog` + `/v1/playtime` 公开面的 OpenAPI 3.1(`gen-openapi -catalog-public` 生成;下游=oasdiff 破坏门 + developer 门户 docs-model) | 生成物 |
-| — | [v2-openapi.yaml](./v2-openapi.yaml) | `/v2` 公开面的 OpenAPI 3.1(`gen-openapi -catalog-v2` 生成;preview,Huma 真路由,契约测试打这些路由) | 生成物 |
+| — | [v2-openapi.yaml](./v2-openapi.yaml) | `/v2` 公开面的 OpenAPI 3.1(`gen-openapi -catalog-v2` 生成;Huma 真路由,契约测试打这些路由) | 生成物 |
 
 ## 一句话总结
 

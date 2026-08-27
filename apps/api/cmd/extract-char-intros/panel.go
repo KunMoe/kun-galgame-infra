@@ -13,6 +13,10 @@ import (
 // character whose elected zh-Hans intro is a TRANSLATED machine row. A source
 // row (provenance 0) excludes the character — machine output never competes
 // with source text. An existing derived row means the panel already ran.
+// A recorded kept verdict excludes the pair while BOTH texts still hash the
+// same — adoption writes a derived row, so only kept verdicts need the cache;
+// without it every run re-buys extraction and three votes for pairs that
+// cannot have changed (wave 214: ~40h per full pass).
 var candidatePanelWorksSQL = `
 	WITH zhi AS (
 		SELECT DISTINCT ON (work_id) work_id, intro, updated_at
@@ -45,7 +49,12 @@ var candidatePanelWorksSQL = `
 	    WHERE s.character_id = wc.character_id AND s.lang = 'zh-Hans' AND s.provenance = 0)
 	  AND NOT EXISTS (
 	    SELECT 1 FROM catalog_character_intro d
-	    WHERE d.character_id = wc.character_id AND d.lang = 'zh-Hans' AND d.source_id = 18)`
+	    WHERE d.character_id = wc.character_id AND d.lang = 'zh-Hans' AND d.source_id = 18)
+	  AND NOT EXISTS (
+	    SELECT 1 FROM catalog_character_intro_panel_verdict pv
+	    WHERE pv.work_id = w.id AND pv.character_id = wc.character_id
+	      AND pv.src_hash = encode(sha256(convert_to(zhi.intro, 'UTF8')), 'hex')
+	      AND pv.incumbent_hash = encode(sha256(convert_to(inc.intro, 'UTF8')), 'hex'))`
 
 func loadPanelCandidateWorks(ctx context.Context, db *gorm.DB, o candidateOpts) ([]candidateWork, error) {
 	sql := candidatePanelWorksSQL + sinceClause(o.Since) + `

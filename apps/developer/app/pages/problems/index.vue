@@ -8,8 +8,10 @@ useSeoMeta({
   description: 'RFC 9457 problem type catalog for NextMoe API v2.'
 })
 
+type ProblemRow = (typeof problems)[number]
+
 const grouped = computed(() => {
-  const map = new Map<string, typeof problems>()
+  const map = new Map<string, ProblemRow[]>()
   for (const p of problems) {
     const list = map.get(p.domain) ?? []
     list.push(p)

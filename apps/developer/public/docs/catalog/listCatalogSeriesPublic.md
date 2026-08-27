@@ -16,7 +16,7 @@ Keyset series browse lane (id ASC); each row carries an nsfw-aware work_count
 The grouping entities works?series_id= filters on, id ascending. work_count is the number of works THIS caller would page through via works?series_id=<id>. Series are a curated, source-mirrored facet with no search index of their own, so this lane is how a consumer discovers an id it does not already hold.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -28,7 +28,7 @@ The grouping entities works?series_id= filters on, id ascending. work_count is t
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/series" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

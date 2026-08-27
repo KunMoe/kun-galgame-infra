@@ -3,120 +3,141 @@ useSeoMeta({ title: '作品预览', robots: 'noindex' })
 
 interface Img {
   url: string
-  sexual?: number
-  violence?: number
+  sexual?: string | null
+  violence?: string | null
   source?: string
-  kind?: string
   portrait_pinned?: boolean
 }
-interface Trait {
-  id: number
-  name: string
-  group?: string
-  sexual?: boolean
-  spoiler?: number
-  lie?: boolean
+interface WorkCharacter {
+  id: string
+  display_name: string
+  roster_role?: string
+  spoiler?: string
+  image?: Img | null
 }
-interface Character {
-  id: number
-  name: string
-  kind?: string
-  spoiler?: number
-  image?: string
-  voices?: { id: number; name: string }[]
+interface CreditEntry {
+  id: string
+  display_name: string
+  character_id?: string | null
 }
 interface CreditGroup {
   role_key: string
   role_name: string
-  credits: { id: number; name: string; lang?: string; character?: string | null }[]
+  credits: CreditEntry[]
 }
 interface WorkDetail {
-  id: number
+  id: string
   display_name?: string
   content_rating?: string
-  release_date?: string
+  release_date?: string | null
   olang?: string
   covers?: Img[]
   screenshots?: Img[]
-  tags?: { name: string; source?: string }[]
-  characters?: Character[]
+  tags?: {
+    display_name: string
+    source?: string
+    spoiler?: string
+    is_sexual?: boolean
+  }[]
+  characters?: WorkCharacter[]
   refs?: { source: string; external_id: string }[]
   releases?: {
-    id: number
-    kind?: string
-    date?: string
-    title?: string
+    id: string
+    release_kind?: string
+    date?: string | null
+    title?: string | null
     lang?: string
     platforms?: string[]
   }[]
-  ratings?: { source: string; score: number; vote_count?: number; rank?: number }[]
+  ratings?: {
+    source: string
+    score: number
+    vote_count?: number
+    rank?: number | null
+  }[]
   playtimes?: { source: string; minutes: number; vote_count?: number }[]
   popularity?: { source: string; metric: string; value: number }[]
   credits?: CreditGroup[]
   relations?: {
     relation_type?: string
     phrase?: string
-    work?: { id: number; display_name?: string; content_rating?: string }
+    work?: { id: string; display_name?: string; content_rating?: string }
   }[]
-  labels?: { id: number; display_name: string; kind?: string }[]
-  series?: { id: number; name: string; member_count?: number }[]
-  intros?: { lang: string; intro: string; machine?: boolean; source?: string }[]
-  titles?: { kind?: string; lang?: string; latin?: string; title: string }[]
+  companies?: {
+    id: string
+    display_name: string
+    company_kind?: string
+    attribution_role?: string
+  }[]
+  series?: { id: string; display_name: string; member_count?: number }[]
+  intros?: { lang: string; value: string; is_machine?: boolean; source?: string }[]
+  titles?: {
+    title_kind?: string
+    lang?: string
+    latin?: string | null
+    title: string
+  }[]
 }
+
+// v2 is default-thin: every block below the identity core has to be asked for
+// by name, and an unknown token is a 400 rather than a silently missing block.
+const WORK_INCLUDE = [
+  'titles',
+  'refs',
+  'intros',
+  'covers',
+  'screenshots',
+  'tags',
+  'characters',
+  'companies',
+  'series',
+  'releases',
+  'ratings',
+  'playtimes',
+  'popularity',
+  'relations',
+  'credits'
+].join(',')
+
 const route = useRoute()
-const workId = computed(() => Number(route.params.id))
+const workId = computed(() => String(route.params.id))
 const nsfw = computed(() => route.query.nsfw === '1')
 
 const apiKey = ref('')
 const loading = ref(true)
 const error = ref('')
 const work = ref<WorkDetail | null>(null)
-const charTraits = ref<Record<number, Trait[]>>({})
 const entityTarget = ref<{
-  kind: 'characters' | 'names' | 'labels' | 'works'
-  id: number
+  kind: 'characters' | 'credit-names' | 'companies' | 'works'
+  id: string
 } | null>(null)
 
 const relay = async (path: string, query: Record<string, string>) => {
   const qs = new URLSearchParams(query).toString()
-  return await $fetch<{ code: number; message: string; data: unknown }>(
-    `/relay/${path}?${qs}`,
-    { headers: { Authorization: `Bearer ${apiKey.value.trim()}` } }
-  )
+  return await $fetch<WorkDetail>(`/relay/${path}?${qs}`, {
+    headers: { Authorization: `Bearer ${apiKey.value.trim()}` }
+  })
 }
 
 const load = async () => {
   loading.value = true
   error.value = ''
   work.value = null
-  charTraits.value = {}
   entityTarget.value = null
   try {
-    const resp = await relay(`v1/catalog/works/${workId.value}`, {
-      include: 'relations,credits',
-      ...(nsfw.value && { nsfw: '1' })
+    work.value = await relay(`v2/catalog/works/${workId.value}`, {
+      include: WORK_INCLUDE,
+      ...(nsfw.value && { nsfw: 'true' })
     })
-    work.value = (resp.data as WorkDetail) ?? null
-    const visible = (work.value?.characters ?? [])
-      .filter((c) => (c.spoiler ?? 0) === 0)
-      .slice(0, 12)
-    const traitResults = await Promise.allSettled(
-      visible.map(async (c) => {
-        const r = await relay(`v1/catalog/characters/${c.id}`, {
-          spoilers: '0',
-          ...(nsfw.value && { nsfw: '1' })
-        })
-        return { id: c.id, data: r.data as { traits?: Trait[] } | null }
-      })
-    )
-    const tm: Record<number, Trait[]> = {}
-    for (const r of traitResults)
-      if (r.status === 'fulfilled' && r.value.data?.traits?.length)
-        tm[r.value.id] = r.value.data.traits
-    charTraits.value = tm
   } catch (e) {
-    const err = e as { data?: { message?: string }; statusCode?: number }
-    error.value = err.data?.message ?? `请求失败（${err.statusCode ?? '网络错误'}）`
+    const err = e as {
+      data?: { detail?: string; title?: string }
+      statusCode?: number
+    }
+    error.value =
+      err.data?.detail ??
+      err.data?.title ??
+      `请求失败（${err.statusCode ?? '网络错误'}）`
   } finally {
     loading.value = false
   }
@@ -135,16 +156,13 @@ watch(
   }
 )
 
-const titleMain = computed(
-  () => work.value?.display_name ?? `#${workId.value}`
-)
+const titleMain = computed(() => work.value?.display_name ?? `#${workId.value}`)
 
 const safeImg = (c: Img) =>
-  nsfw.value || ((c.sexual ?? 0) === 0 && (c.violence ?? 0) === 0)
+  nsfw.value ||
+  ((c.sexual ?? 'safe') === 'safe' && (c.violence ?? 'tame') === 'tame')
 
-const banner = computed(
-  () => work.value?.covers?.find(safeImg)?.url ?? null
-)
+const banner = computed(() => work.value?.covers?.find(safeImg)?.url ?? null)
 
 const LOCALE_LABEL: Record<string, string> = {
   zh: '中文',
@@ -163,12 +181,12 @@ const normalizeIntro = (s: string) => s.replace(/\\\n/g, '\n').trim()
 const introVariants = computed<IntroVariant[]>(() => {
   const byText = new Map<string, IntroVariant>()
   for (const i of work.value?.intros ?? []) {
-    const text = normalizeIntro(i.intro)
+    const text = normalizeIntro(i.value)
     if (text && !byText.has(text))
       byText.set(text, {
         label: LOCALE_LABEL[i.lang] ?? i.lang,
         text,
-        machine: i.machine === true,
+        machine: i.is_machine === true,
         source: i.source
       })
   }
@@ -190,10 +208,11 @@ const coverList = computed(() =>
 )
 
 const TAG_CAP = 40
-const tags = computed(() => (work.value?.tags ?? []).slice(0, TAG_CAP))
-const tagRest = computed(
-  () => Math.max(0, (work.value?.tags?.length ?? 0) - TAG_CAP)
+const openTags = computed(() =>
+  (work.value?.tags ?? []).filter((t) => (t.spoiler ?? 'none') === 'none')
 )
+const tags = computed(() => openTags.value.slice(0, TAG_CAP))
+const tagRest = computed(() => Math.max(0, openTags.value.length - TAG_CAP))
 
 const shots = computed(() =>
   (work.value?.screenshots ?? []).filter(safeImg).slice(0, 8)
@@ -201,12 +220,35 @@ const shots = computed(() =>
 
 const chars = computed(() =>
   (work.value?.characters ?? [])
-    .filter((c) => (c.spoiler ?? 0) === 0)
+    .filter((c) => (c.spoiler ?? 'none') === 'none')
     .slice(0, 12)
 )
 const charsHidden = computed(
-  () => (work.value?.characters ?? []).filter((c) => (c.spoiler ?? 0) > 0).length
+  () =>
+    (work.value?.characters ?? []).filter(
+      (c) => (c.spoiler ?? 'none') !== 'none'
+    ).length
 )
+
+// v2 has no per-character voice block. A credit whose `character_id` is set IS
+// the voice credit for that character, so both directions come off the credits
+// block already on the page instead of one request per character.
+const voicesByCharacter = computed(() => {
+  const m = new Map<string, CreditEntry[]>()
+  for (const g of work.value?.credits ?? [])
+    for (const cr of g.credits) {
+      if (!cr.character_id) continue
+      const list = m.get(cr.character_id) ?? []
+      list.push(cr)
+      m.set(cr.character_id, list)
+    }
+  return m
+})
+const characterName = computed(() => {
+  const m = new Map<string, string>()
+  for (const c of work.value?.characters ?? []) m.set(c.id, c.display_name)
+  return m
+})
 
 const releases = computed(() => (work.value?.releases ?? []).slice(0, 10))
 const releaseRest = computed(
@@ -219,14 +261,14 @@ const scorePct = (r: { score: number }) =>
   Math.max(0, Math.min(100, r.score > 10 ? r.score : r.score * 10))
 
 const METRIC_LABEL: Record<string, string> = {
-  wish: '想玩',
-  collect: '玩过',
-  doing: '在玩',
-  hold: '搁置',
-  drop: '抛弃',
-  dl_count: '下载数',
+  downloads: '下载数',
   wishlist: '愿望单',
-  review_count: '评论数'
+  reviews: '评论数',
+  bgm_wish: '想玩',
+  bgm_collect: '玩过',
+  bgm_doing: '在玩',
+  bgm_on_hold: '搁置',
+  bgm_dropped: '抛弃'
 }
 const popGroups = computed(() => {
   const by = new Map<string, { metric: string; value: number }[]>()
@@ -325,10 +367,10 @@ const popGroups = computed(() => {
             原语言 {{ work.olang }}
           </KunChip>
           <button
-            v-for="l in work.labels ?? []"
+            v-for="l in work.companies ?? []"
             :key="`l-${l.id}`"
             type="button"
-            @click="entityTarget = { kind: 'labels', id: l.id }"
+            @click="entityTarget = { kind: 'companies', id: l.id }"
           >
             <KunChip color="primary" variant="flat" size="sm">
               {{ l.display_name }}
@@ -341,7 +383,7 @@ const popGroups = computed(() => {
             variant="flat"
             size="sm"
           >
-            系列 · {{ sr.name }}（{{ sr.member_count }} 部）
+            系列 · {{ sr.display_name }}（{{ sr.member_count }} 部）
           </KunChip>
         </div>
       </header>
@@ -351,7 +393,7 @@ const popGroups = computed(() => {
         <div class="space-y-1 text-sm text-default-500">
           <p v-for="(t, i) in work.titles" :key="`t-${i}`">
             <KunChip color="default" variant="flat" size="xs">
-              {{ t.kind ?? 'title' }}<template v-if="t.lang"> · {{ t.lang }}</template>
+              {{ t.title_kind ?? 'title' }}<template v-if="t.lang"> · {{ t.lang }}</template>
             </KunChip>
             <span class="ml-2 text-foreground">{{ t.title }}</span>
             <span v-if="t.latin" class="ml-2 text-xs text-default-400">
@@ -535,12 +577,12 @@ const popGroups = computed(() => {
                 主图
               </KunChip>
               <KunChip
-                v-if="(cv.sexual ?? 0) > 0"
+                v-if="cv.sexual && cv.sexual !== 'safe'"
                 color="danger"
                 variant="solid"
                 size="xs"
               >
-                s{{ cv.sexual }}
+                {{ cv.sexual }}
               </KunChip>
             </div>
           </div>
@@ -552,12 +594,12 @@ const popGroups = computed(() => {
         <div class="flex flex-wrap gap-1.5">
           <KunChip
             v-for="t in tags"
-            :key="t.name"
-            color="default"
+            :key="`${t.source}-${t.display_name}`"
+            :color="t.is_sexual ? 'danger' : 'default'"
             variant="flat"
             size="xs"
           >
-            {{ t.name }}
+            {{ t.display_name }}
           </KunChip>
           <span v-if="tagRest" class="text-xs text-default-400">
             +{{ tagRest }}
@@ -584,12 +626,15 @@ const popGroups = computed(() => {
                 {{ sh.source }}
               </KunChip>
               <KunChip
-                v-if="(sh.sexual ?? 0) > 0 || (sh.violence ?? 0) > 0"
+                v-if="
+                  (sh.sexual && sh.sexual !== 'safe') ||
+                  (sh.violence && sh.violence !== 'tame')
+                "
                 color="danger"
                 variant="solid"
                 size="xs"
               >
-                s{{ sh.sexual ?? 0 }}/v{{ sh.violence ?? 0 }}
+                {{ sh.sexual ?? 'safe' }} / {{ sh.violence ?? 'tame' }}
               </KunChip>
             </div>
           </div>
@@ -606,8 +651,8 @@ const popGroups = computed(() => {
           >
             <div v-if="c.image" class="aspect-[3/4] overflow-hidden bg-default-100">
               <KunImageNative
-                :src="c.image"
-                :alt="c.name"
+                :src="c.image.url"
+                :alt="c.display_name"
                 loading="lazy"
                 class-name="h-full w-full object-cover"
               />
@@ -619,10 +664,10 @@ const popGroups = computed(() => {
                   class="truncate text-sm font-medium text-foreground hover:text-primary hover:underline"
                   @click="entityTarget = { kind: 'characters', id: c.id }"
                 >
-                  {{ c.name }}
+                  {{ c.display_name }}
                 </button>
                 <KunChip
-                  v-if="c.kind === 'main'"
+                  v-if="c.roster_role === 'main'"
                   color="primary"
                   variant="flat"
                   size="xs"
@@ -631,40 +676,20 @@ const popGroups = computed(() => {
                 </KunChip>
               </div>
               <p
-                v-if="c.voices?.length"
+                v-if="voicesByCharacter.get(c.id)?.length"
                 class="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-default-400"
               >
                 CV
                 <button
-                  v-for="v in c.voices"
+                  v-for="v in voicesByCharacter.get(c.id)"
                   :key="v.id"
                   type="button"
                   class="hover:text-primary hover:underline"
-                  @click="entityTarget = { kind: 'names', id: v.id }"
+                  @click="entityTarget = { kind: 'credit-names', id: v.id }"
                 >
-                  {{ v.name }}
+                  {{ v.display_name }}
                 </button>
               </p>
-              <div
-                v-if="charTraits[c.id]?.length"
-                class="mt-1.5 flex flex-wrap gap-1"
-              >
-                <KunChip
-                  v-for="tr in (charTraits[c.id] ?? []).slice(0, 6)"
-                  :key="tr.id"
-                  :color="tr.sexual ? 'danger' : 'default'"
-                  variant="flat"
-                  size="xs"
-                >
-                  {{ tr.name }}
-                </KunChip>
-                <span
-                  v-if="(charTraits[c.id]?.length ?? 0) > 6"
-                  class="text-xs text-default-400"
-                >
-                  +{{ (charTraits[c.id]?.length ?? 0) - 6 }}
-                </span>
-              </div>
             </div>
           </div>
         </div>
@@ -683,13 +708,15 @@ const popGroups = computed(() => {
             <div class="mt-1 flex flex-wrap gap-1.5">
               <button
                 v-for="cr in g.credits"
-                :key="`${g.role_key}-${cr.id}-${cr.character ?? ''}`"
+                :key="`${g.role_key}-${cr.id}-${cr.character_id ?? ''}`"
                 type="button"
-                @click="entityTarget = { kind: 'names', id: cr.id }"
+                @click="entityTarget = { kind: 'credit-names', id: cr.id }"
               >
                 <KunChip color="default" variant="flat" size="sm">
-                  {{ cr.name
-                  }}<template v-if="cr.character">（{{ cr.character }}）</template>
+                  {{ cr.display_name
+                  }}<template v-if="cr.character_id && characterName.get(cr.character_id)"
+                    >（{{ characterName.get(cr.character_id) }}）</template
+                  >
                 </KunChip>
               </button>
             </div>
@@ -712,12 +739,12 @@ const popGroups = computed(() => {
               rl.title
             }}</span>
             <KunChip
-              v-if="rl.kind && rl.kind !== 'complete'"
+              v-if="rl.release_kind && rl.release_kind !== 'default'"
               color="warning"
               variant="flat"
               size="xs"
             >
-              {{ rl.kind }}
+              {{ rl.release_kind }}
             </KunChip>
             <KunChip v-if="rl.lang" color="default" variant="flat" size="xs">
               {{ rl.lang }}
@@ -766,11 +793,11 @@ const popGroups = computed(() => {
       </section>
 
       <p class="border-t border-default-200 pt-4 text-xs text-default-400">
-        本页由 NextMoe 开放 API 实时渲染：
-        <code class="font-mono">/v1/catalog/works/{id}</code>（一条注册行里的全部聚合
-        facet：封面、标签、评分、时长、热度、角色、制作人员、关联作品，逐字段附来源）+
-        逐角色 <code class="font-mono">/v1/catalog/characters/{id}</code>
-        （traits）。同样的数据，你的应用也拿得到 ——
+        本页由 NextMoe 公开 API v2 实时渲染，只用一次
+        <code class="font-mono">GET /v2/catalog/works/{id}</code>
+        —— 封面、标签、评分、时长、热度、角色、制作人员、关联作品全部经
+        <code class="font-mono">include=</code>
+        一并取回，逐字段附来源。同样的数据，你的应用也拿得到 ——
         <NuxtLink to="/docs" class="text-primary hover:underline">
           API 文档
         </NuxtLink>

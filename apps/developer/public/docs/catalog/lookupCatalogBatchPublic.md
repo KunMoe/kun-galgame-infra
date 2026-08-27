@@ -14,14 +14,14 @@
 Batch external-id reverse-lookup (≤100 pairs, per-pair type); misses return null blocks in order
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 无参数。
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v1/catalog/lookup/batch" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"items":[{"external_id":"string","source":"string"}]}'
 ```

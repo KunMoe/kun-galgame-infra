@@ -74,12 +74,28 @@ func NewsSpec() Spec {
 	}
 }
 
+func NewsSubmissionSpec() Spec {
+	return Spec{
+		Include: []string{},
+		FullSet: []string{},
+		Fields: []string{
+			"object", "id", "source", "lane", "status", "title", "summary",
+			"source_url", "banner_hash", "published_at", "work_ids",
+		},
+	}
+}
+
+var companyInclude = []string{"aliases", "logo", "intros", "links"}
+
 func CompanySpec() Spec {
 	return Spec{
 		Sort:    []string{"id"},
-		Include: []string{},
-		FullSet: []string{},
-		Fields:  []string{"object", "id", "display_name", "latin", "localized", "company_kind", "work_count"},
+		Include: companyInclude,
+		FullSet: companyInclude,
+		Fields: []string{
+			"object", "id", "display_name", "latin", "localized", "company_kind", "work_count",
+			"aliases", "logo", "intros", "links",
+		},
 	}
 }
 
@@ -93,7 +109,10 @@ func CreditNameSpec() Spec {
 }
 
 func CharacterSpec() Spec {
-	full := []string{"gender", "birthday", "height_cm", "weight_kg", "measurements", "blood_type", "instance_of_id"}
+	full := []string{
+		"gender", "birthday", "height_cm", "weight_kg", "measurements", "blood_type", "instance_of_id",
+		"image", "figure", "traits",
+	}
 	fields := []string{"object", "id", "display_name", "latin", "localized"}
 	fields = append(fields, full...)
 	return Spec{
@@ -160,7 +179,7 @@ func TagSpec() Spec {
 		Sort:    []string{"id"},
 		Include: []string{},
 		FullSet: []string{},
-		Fields:  []string{"object", "id", "display_name", "tier", "tag_kind", "work_count"},
+		Fields:  []string{"object", "id", "display_name", "tier", "tag_kind", "work_count", "is_sexual"},
 	}
 }
 
@@ -169,7 +188,7 @@ func SeriesSpec() Spec {
 		Sort:    []string{"id"},
 		Include: []string{},
 		FullSet: []string{},
-		Fields:  []string{"object", "id", "display_name"},
+		Fields:  []string{"object", "id", "display_name", "work_count"},
 	}
 }
 
@@ -178,7 +197,7 @@ func EngineSpec() Spec {
 		Sort:    []string{"id"},
 		Include: []string{},
 		FullSet: []string{},
-		Fields:  []string{"object", "id", "display_name", "work_count"},
+		Fields:  []string{"object", "id", "display_name", "work_count", "description", "aliases"},
 	}
 }
 

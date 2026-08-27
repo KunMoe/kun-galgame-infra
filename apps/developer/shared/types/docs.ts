@@ -1,7 +1,13 @@
 
 export type DocsMethod = 'get' | 'post' | 'put' | 'patch' | 'delete'
 
-export type DocsFaceKey = 'catalog' | 'playtime' | 'edit' | 'news' | 'v2'
+export type DocsFaceKey =
+  | 'catalog'
+  | 'playtime'
+  | 'edit'
+  | 'news'
+  | 'store'
+  | 'v2'
 
 export interface DocsAuth {
   kind: 'api_key' | 'user_token' | 'none'
@@ -24,7 +30,7 @@ export interface DocsSchemaNode {
 
 export interface DocsParam {
   name: string
-  in: 'query' | 'path'
+  in: 'query' | 'path' | 'header'
   required: boolean
   type: string
   format?: string
@@ -68,6 +74,8 @@ export interface DocsFace {
   name: string
   baseUrl: string
   prefix: string
+  /** Live machine-readable OpenAPI URL; absent when the face serves none. */
+  specUrl?: string
   auth: DocsAuth
   notes?: string[]
   groups: DocsGroup[]

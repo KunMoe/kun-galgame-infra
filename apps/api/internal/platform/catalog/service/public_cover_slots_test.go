@@ -129,7 +129,7 @@ func TestSexualCoversNeedTheWorksOwnPermission(t *testing.T) {
 	}
 }
 
-func TestPortraitPrefersDisplaySafeOverAPin(t *testing.T) {
+func TestSuggestiveCoversAreDisplaySafe(t *testing.T) {
 	svc := slotSvc()
 	pinned, safe := slotRow("9d1a", "dig", true), slotRow("5afe", "dig", false)
 	pinned.Sexual = 1
@@ -139,8 +139,32 @@ func TestPortraitPrefersDisplaySafeOverAPin(t *testing.T) {
 	}
 
 	slots := svc.pickCoverSlots([]WorkCoverRow{pinned, safe}, meta, false)
+	if slots.Portrait == nil || slots.Portrait.URL != svc.imageURL(pinned.ImageHash) {
+		t.Fatalf("portrait = %+v, want the suggestive pin honoured for every viewer: "+
+			"the pin job pins sexual=1 covers, so hiding them here blanks the work", slots.Portrait)
+	}
+
+	only := slotRow("0a1b", "dig", false)
+	only.Sexual = 1
+	meta[only.ImageHash] = ImageMeta{Width: 600, Height: 900}
+	slots = svc.pickCoverSlots([]WorkCoverRow{only}, meta, false)
+	if slots == nil || slots.Portrait == nil || slots.Portrait.URL != svc.imageURL(only.ImageHash) {
+		t.Fatalf("slots = %+v, want a work with only suggestive covers to still resolve one", slots)
+	}
+}
+
+func TestPortraitPrefersDisplaySafeOverAnExplicitPin(t *testing.T) {
+	svc := slotSvc()
+	pinned, safe := slotRow("9d1a", "dig", true), slotRow("5afe", "dig", false)
+	pinned.Sexual = 2
+	meta := map[string]ImageMeta{
+		pinned.ImageHash: {Width: 720, Height: 1080},
+		safe.ImageHash:   {Width: 600, Height: 900},
+	}
+
+	slots := svc.pickCoverSlots([]WorkCoverRow{pinned, safe}, meta, false)
 	if slots.Portrait == nil || slots.Portrait.URL != svc.imageURL(safe.ImageHash) {
-		t.Fatalf("portrait = %+v, want the display-safe cover over a sexual pin", slots.Portrait)
+		t.Fatalf("portrait = %+v, want the display-safe cover over an explicit pin", slots.Portrait)
 	}
 	slots = svc.pickCoverSlots([]WorkCoverRow{pinned, safe}, meta, true)
 	if slots.Portrait == nil || slots.Portrait.URL != svc.imageURL(pinned.ImageHash) {

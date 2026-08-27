@@ -1,4 +1,4 @@
-# Withdraw a claim · Public API v2（preview）
+# Move a claim the caller owns · Public API v2
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -11,12 +11,12 @@
 
 ## PATCH /v2/me/claims/{id}
 
-Withdraw a claim
+Move a claim the caller owns
 
-PATCH {state: withdrawn}. If-Match required. Requires a user access token.
+PATCH {state: live|pending|withdrawn}. live publishes a draft without review, pending submits it for review, withdrawn returns it to draft. The owner may act, and an unowned claim is adopted by its first claimant. If-Match required. Requires a user access token bound to a catalog site.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -28,7 +28,7 @@ PATCH {state: withdrawn}. If-Match required. Requires a user access token.
 curl -X PATCH "https://api.nextmoe.dev/v2/me/claims/value" \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"state":"withdrawn"}'
+  -d '{"state":"live"}'
 ```
 
 ---

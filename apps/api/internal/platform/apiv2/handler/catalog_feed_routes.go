@@ -18,12 +18,12 @@ type listRedirectsOutput struct {
 }
 
 type listRedirectsInput struct {
-	collectionInput
+	CollectionInput
 	Object string `query:"object" maxLength:"32" doc:"Restrict to one family. Closed: work, release, character, credit_name, person, company, tag, engine."`
 }
 
 type calendarInput struct {
-	collectionInput
+	CollectionInput
 	Month     string `query:"month" maxLength:"7" doc:"Dated month window YYYY-MM. Default: current month in Asia/Tokyo."`
 	Year      string `query:"year" maxLength:"4" doc:"Year-only window YYYY (v1 pending). Default with precision=year: current year in Asia/Tokyo."`
 	Precision string `query:"precision" maxLength:"8" doc:"day, month, or year. year selects the year-only window. day and month use the dated month window."`
@@ -69,8 +69,8 @@ func registerCatalogFeeds(api huma.API, cat *Catalog) {
 	}, listCatalogCalendar(cat))
 }
 
-func listCatalogChanges(cat *Catalog) func(context.Context, *collectionInput) (*listChangesOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listChangesOutput, error) {
+func listCatalogChanges(cat *Catalog) func(context.Context, *CollectionInput) (*listChangesOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listChangesOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.ChangesSpec())
 		if err != nil {
 			return nil, err
@@ -88,7 +88,7 @@ func listCatalogRedirects(cat *Catalog) func(context.Context, *listRedirectsInpu
 		if in == nil {
 			in = &listRedirectsInput{}
 		}
-		q, err := parseCatalogList(ctx, &in.collectionInput, collect.RedirectsSpec())
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.RedirectsSpec())
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +105,7 @@ func listCatalogCalendar(cat *Catalog) func(context.Context, *calendarInput) (*l
 		if in == nil {
 			in = &calendarInput{}
 		}
-		q, err := parseCatalogList(ctx, &in.collectionInput, collect.CalendarSpec())
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.CalendarSpec())
 		if err != nil {
 			return nil, err
 		}

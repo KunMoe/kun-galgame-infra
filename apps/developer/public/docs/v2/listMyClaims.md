@@ -1,4 +1,4 @@
-# List my claims · Public API v2（preview）
+# List my claims · Public API v2
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -15,8 +15,8 @@ List my claims
 
 Claims the bearer submitted. Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -31,7 +31,7 @@ Claims the bearer submitted. Requires a user access token.
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/me/claims" \

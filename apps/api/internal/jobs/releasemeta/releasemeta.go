@@ -67,9 +67,11 @@ type Stats struct {
 	BgmDateSkippedNonEmpty int
 
 	RatingCandidates      int
+	RatingVndbR18         int
 	RatingDlR18           int
 	RatingDlSensitive     int
 	RatingDlAllAges       int
+	RatingEgR18           int
 	RatingBgmR18          int
 	RatingNoVerdict       int
 	RatingPlanned         int
@@ -129,7 +131,7 @@ func Run(ctx context.Context, opts Opts) (*Stats, error) {
 	if err := runBgmDateLane(ctx, db, w, reg, opts, maxYear, planned); err != nil {
 		return nil, err
 	}
-	if err := runRatingLane(ctx, db, dlDB, w, reg, opts); err != nil {
+	if err := runRatingLane(ctx, db, dlDB, egDB, w, reg, opts); err != nil {
 		return nil, err
 	}
 	if err := w.touch(ctx); err != nil {
@@ -150,8 +152,10 @@ func Run(ctx context.Context, opts Opts) (*Stats, error) {
 		"bgm_date_partial", st.BgmDatePartial, "bgm_date_planned", st.BgmDatePlanned,
 		"bgm_date_filled", st.BgmDateFilled, "bgm_date_skipped_non_empty", st.BgmDateSkippedNonEmpty,
 		"rating_candidates", st.RatingCandidates,
+		"rating_vndb_r18", st.RatingVndbR18,
 		"rating_dl_r18", st.RatingDlR18, "rating_dl_sensitive", st.RatingDlSensitive,
 		"rating_dl_all_ages", st.RatingDlAllAges,
+		"rating_eg_r18", st.RatingEgR18,
 		"rating_bgm_r18", st.RatingBgmR18,
 		"rating_no_verdict", st.RatingNoVerdict, "rating_planned", st.RatingPlanned,
 		"rating_filled", st.RatingFilled, "rating_skipped_non_empty", st.RatingSkippedNonEmpty,

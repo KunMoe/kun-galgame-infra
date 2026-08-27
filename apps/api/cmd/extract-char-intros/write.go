@@ -275,12 +275,33 @@ func (w *writer) resolvePanel(ctx context.Context, contested []gated, dispatch v
 		}
 		if !ok {
 			w.st.PanelKept++
+			w.recordKept(ctx, g)
 			continue
 		}
 		w.st.PanelAdopted++
 		adopted = append(adopted, g)
 	}
 	return adopted
+}
+
+// recordKept files a kept verdict so the next panel run skips this pair while
+// both texts are unchanged. g.SrcHash is already hashText(work intro), and the
+// candidate query recomputes both hashes in SQL — the two sides must agree, so
+// both are sha256 over raw UTF-8 bytes.
+func (w *writer) recordKept(ctx context.Context, g gated) {
+	if !w.apply {
+		return
+	}
+	err := w.db.WithContext(ctx).Exec(`INSERT INTO catalog_character_intro_panel_verdict
+		(work_id, character_id, src_hash, incumbent_hash, judged_at)
+		VALUES (?, ?, ?, ?, now())
+		ON CONFLICT (work_id, character_id) DO UPDATE
+		SET src_hash = EXCLUDED.src_hash, incumbent_hash = EXCLUDED.incumbent_hash,
+		    judged_at = EXCLUDED.judged_at`,
+		g.WorkID, g.Target.CharacterID, g.SrcHash, hashText(g.Target.Incumbent)).Error
+	if err != nil {
+		slog.Warn("record kept verdict", "work", g.WorkID, "character", g.Target.CharacterID, "err", err)
+	}
 }
 
 func (w *writer) flushTouch(ctx context.Context) error {

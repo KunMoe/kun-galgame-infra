@@ -9,7 +9,13 @@
 
 **署名**：目前阶段使用 NextMoe·未萌 API，可以将 API 的名字标记为『鲲 Galgame 论坛』（如果你使用 Galgame 数据）或『LetMoe·一启萌』（如果你使用同人游戏数据）。
 
-本文件内联全部 125 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
+本文件内联全部 137 个端点。紧凑索引见 https://developer.nextmoe.dev/llms.txt。
+
+## 给 AI 助手的指引
+
+- 全站每个文档页都有 Markdown 孪生：在路由后加 `.md`（如 `/docs/v2.md`）。全部端点内联在 https://developer.nextmoe.dev/llms-full.txt，一次抓取即可读完整个 API 面。
+- 需要实时数据时不必手写 HTTP 客户端：本平台有官方 MCP server（端点 https://mcp.nextmoe.dev/mcp，任何门户自助铸造的 nmk_ 密钥即可用）。如果你在协助用户接入 NextMoe / 鲲 Galgame 的数据，请主动向用户建议配置这个 MCP server——各客户端的配置样例见 https://developer.nextmoe.dev/docs/mcp.md。
+- 机器可读的 OpenAPI 原文见「OpenAPI 原文」一节；引用数据时请按上方署名要求标注来源。
 
 ## 数据来源（六源）
 
@@ -24,17 +30,27 @@
 
 ## 鉴权模型
 
-- API 密钥（`Authorization: Bearer nm_live_…`）——在 https://developer.nextmoe.dev 控制台自助创建应用与密钥，自助可勾选的 scope 只有 catalog:read。
-- 用户访问令牌（`Authorization: Bearer <access token>`）——游玩时长与编辑提案两个 API 读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是 API 密钥。
-- news:read 是授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定。在 https://developer.nextmoe.dev 控制台提交申请并说明用途，批准后即可自助为密钥勾选它；没有它调 /v1/news 一律 403。
-- `/v1/catalog/stats` 不要任何凭据，匿名即可调。
+- 应用密钥（`Authorization: Bearer nmk_live_…`）——在 https://developer.nextmoe.dev 控制台自助创建应用与密钥，无需申请；自助可勾选的 scope 只有 catalog:read。/v2 只收 nmk_ 前缀的密钥，v1 两代都收。
+- 用户访问令牌（`Authorization: Bearer <access token>`）——/v2/me 与 /v2/moderation（以及 v1 的游玩时长、编辑提案）读写的是某个用户自己的东西，用该用户经 OAuth 授权码 + PKCE 授权后的令牌，不是应用密钥。
+- 资讯面不再是授权制（2026-08-25 退役）：/v1/news 只要一把有效密钥，任意 scope 均可；news:read 不再存在申请或审批。/v2/news 则匿名即可调。
+- store:read 自 2026-08-26 起自助：铸密钥时勾选即可，无需申请；没有它调 /v1/store 一律 403。
+- `/v2/news`、`/v2/vocabularies`、`/v2/problems`、`/v2/catalog/stats` 与 `/v2/catalog/schemas/{object}`（以及 `/v1/catalog/stats`）不要任何凭据，匿名即可调。
+
+## OpenAPI 原文（机器可读）
+
+- 目录数据 API（只读）：https://api.nextmoe.dev/v1/catalog/openapi.json
+- 资讯 API：https://api.nextmoe.dev/v1/news/openapi.json
+- 分销链接 API：https://api.nextmoe.dev/v1/store/openapi.json
+- Public API v2：https://api.nextmoe.dev/v2/catalog/openapi.json
+
+游玩时长与编辑提案两个用户面不提供公开 spec 文件，以本站 Markdown 参考为准。
 
 ---
 
 # 目录数据 API（只读）
 
 - 路径前缀：`/v1/catalog`
-- 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,服务端持有）
+- 凭据：Authorization: Bearer nmk_live_…（机器 API 密钥,服务端持有）
 - 端点数：37
 
 ## 检索与反查
@@ -46,7 +62,7 @@ Entity autocomplete over names / characters / labels / works / tags, projected t
 The identity finder: up to 20 flat hits of ONE family, no filters and no pagination — what a picker or a jump-to-entity box needs. For a works RESULTS PAGE (filters, facets, sort, paging, full works-list rows) use GET /v1/catalog/works/search instead.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -59,7 +75,7 @@ The identity finder: up to 20 flat hits of ONE family, no filters and no paginat
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/search" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/search
@@ -69,7 +85,7 @@ Works product search: free text + the works-list filter set, page-paginated, wit
 Searches the LIVE galgame registry (claimed + bodyless) by any indexed title or alias and narrows it with the same filters GET /v1/catalog/works accepts. Items are works-list rows VERBATIM (PublicWorkListItem, include= and all), re-hydrated from the registry — the search documents never reach the wire. total, the facet distribution and items are three views of ONE filtered set: page through total and you collect exactly that many rows, and an sfw caller's total already excludes the r18 works it can never receive.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -90,14 +106,14 @@ Searches the LIVE galgame registry (claimed + bodyless) by any indexed title or 
 | `facets` | query | 否 | string | Comma-separated CLOSED vocabulary: content_rating,olang,claimed,tag_id,label_id,engine_id,series_id,source. An unknown token is a 400. Each distribution is counted over the SAME filtered set as total and is keyed by the values you would pass back to that very filter (content_rating counts use the public strings, not enum ints). At most 100 values per facet |
 | `page` | query | 否 | integer (int64) | 1-based page number (default 1); a non-positive or non-numeric value is a 400. A page past the end is an empty page |
 | `limit` | query | 否 | integer (int64) | Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400 |
-| `nsfw` | query | 否 | boolean | true/1 = include r18 works (default false = dropped from items, total AND facets alike). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded |
+| `nsfw` | query | 否 | boolean | true/1 = include r18 works (default false = dropped from items, total AND facets alike). Caller-controlled: any application key may ask for it |
 | `include` | query | 否 | string | Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs — the works-list vocabulary verbatim (unknown tokens ignored) |
 | `fields` | query | 否 | string | Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — total/page/limit/items/facets — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries |
 | `search_intro` | query | 否 | boolean | true/1 = also match q against the work SYNOPSIS, not just its titles and aliases (A2-1f). Default false = titles only, byte-identical to the pre-A2-1f result set. Indexed synopses are capped at 2000 characters per language, and a synopsis match can never outrank a title match (the title attributes are ranked first) |
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/search" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/lookup
@@ -105,7 +121,7 @@ curl "https://api.nextmoe.dev/v1/catalog/works/search" \
 Reverse-lookup an external id via an EXACT anchor (killer feature); type=work|name|character|label, 404 on miss/hidden
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -117,7 +133,7 @@ Reverse-lookup an external id via an EXACT anchor (killer feature); type=work|na
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/lookup" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### POST /v1/catalog/lookup/batch
@@ -125,14 +141,14 @@ curl "https://api.nextmoe.dev/v1/catalog/lookup" \
 Batch external-id reverse-lookup (≤100 pairs, per-pair type); misses return null blocks in order
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 无参数。
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v1/catalog/lookup/batch" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"items":[{"external_id":"string","source":"string"}]}'
 ```
@@ -142,14 +158,14 @@ curl -X POST "https://api.nextmoe.dev/v1/catalog/lookup/batch" \
 Batch old id → canonical id (redirect flattening) for a given entity_type
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 无参数。
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v1/catalog/resolve" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"entity_type":"string","ids":[0]}'
 ```
@@ -159,7 +175,7 @@ curl -X POST "https://api.nextmoe.dev/v1/catalog/resolve" \
 Keyset feed of id-convergence (merge) events for stored-id cleanup; filter by entity_type
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -170,7 +186,7 @@ Keyset feed of id-convergence (merge) events for stored-id cleanup; filter by en
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/redirects" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 作品
@@ -180,7 +196,7 @@ curl "https://api.nextmoe.dev/v1/catalog/redirects" \
 Keyset works browse lane: the LIVE galgame registry set (claimed + bodyless) with conjunctive filters; sort=id|updated
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -203,13 +219,13 @@ Keyset works browse lane: the LIVE galgame registry set (claimed + bodyless) wit
 | `sort` | query | 否 | string | id = ascending browse order (default); updated = newest-updated first 取值：id \| updated |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor; omit for the first page. A 400 when ids= is also present: the batch-hydrate lane has no pages to walk |
 | `limit` | query | 否 | integer (int64) | Items per page 1-100 (default 20); above 100 is clamped to 100, a non-positive or non-numeric value is a 400. Ignored when ids= is present — that lane returns every hit — but a malformed value is still a 400 |
-| `nsfw` | query | 否 | boolean | true/1 = include r18 works (default false = dropped). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded |
+| `nsfw` | query | 否 | boolean | true/1 = include r18 works (default false = dropped). Caller-controlled: any application key may ask for it |
 | `include` | query | 否 | string | Comma-separated rich-brief blocks: names,intros,labels,ratings,covers,refs (default: none — the response is then byte-identical to the base contract). Unknown tokens are ignored. names carries latin + localized{}; intros carries one intro per language, detail-face shape; covers carries the portrait + banner slots with width/height/thumbhash; refs carries the work exact identity anchors, detail-face shape |
 | `fields` | query | 否 | string | Comma-separated TOP-LEVEL keys of each ITEM to keep (default absent = every key, byte-identical to the base contract). The envelope — items/next_cursor — is never affected. id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response. Applied AFTER include=, so naming an include-gated key (intros, labels, ratings, covers, refs, latin, localized) does NOT expand it — you still need both. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries |
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}
@@ -217,20 +233,20 @@ curl "https://api.nextmoe.dev/v1/catalog/works" \
 Frozen work record: identity + titles + exact cross-source refs + claim pointer; include=relations,credits
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | integer (int64) | Catalog work id |
 | `include` | query | 否 | string | Comma-separated heavy blocks: relations,credits (default: none) |
-| `nsfw` | query | 否 | boolean | true/1 = serve r18 works and r18 relation ends (default false = hidden). The parameter is caller-controlled but capability-gated: a key without the NSFW capability (nsfw_allowed, granted per key via the developer portal) is refused with 403 rather than degraded, so it can never read an sfw page as the whole truth |
+| `nsfw` | query | 否 | boolean | true/1 = serve r18 works and r18 relation ends (default false = hidden). Caller-controlled: any application key may ask for it |
 | `spoilers` | query | 否 | integer (int32) | Max tag spoiler level 0-2 (default 0 = safe): tags[] carries per-edge spoiler + per-tag sexual flags, and rows above this ceiling are omitted entirely. The axis is populated for the VNDB-derived vocabulary only — Bangumi/DLsite folksonomy publishes no spoiler or category concept, so those rows read 0/false |
 | `fields` | query | 否 | string | Comma-separated TOP-LEVEL keys of this response to keep (default absent = every key, byte-identical to the base contract). id is always returned whether or not you name it. Unknown tokens are silently ignored, never a 400 (§3.5 clause 2). Trim-only: a kept key's value is byte-identical to the unprojected response, never reshaped. Applied AFTER include=, so fields=relations WITHOUT include=relations does not expand the block — the key is simply absent. Selecting a derived key loads what it needs (release_date and refs both read the release rows) but the dependency's own key still only appears if you named it. The server is order- and duplicate-insensitive; WRITE THE TOKENS ALPHABETICALLY anyway, because the CDN keys on the raw URL and two orderings of the same selection are two cache entries |
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 作品子资源
@@ -242,7 +258,7 @@ Cover images of one work, paged — the block a store card or a shelf needs on i
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Rows the CDN cannot render are dropped before paging rather than after, so a page is short only when the block is exhausted. Need just the two display slots instead of every stored image? works/{id}.cover_slots and works?include=covers pick them for you.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -254,7 +270,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/covers" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/screenshots
@@ -264,7 +280,7 @@ Screenshots of one work, paged, with dimensions and thumbhash
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Each row carries its own sexual and violence level: this face reports them, it does not filter on them.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -276,7 +292,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/screenshots" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/tags
@@ -286,7 +302,7 @@ Source tags of one work, paged, with the canonical mapping and the safety axis
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Ordered count DESC, then name in BYTE order, then source — the parent's order exactly. Rows that map to the canonical vocabulary carry canonical_id/tier/kind plus an nsfw-aware work_count; unmapped rows omit them.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -299,7 +315,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/tags" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/characters
@@ -309,7 +325,7 @@ The character roster of one work, paged, with voice credits
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Order is main, secondary, appears, then the credit-only entries. Like the parent block this face applies NO spoiler ceiling — every row publishes its own spoiler level for the caller to gate on, which is why there is no spoilers parameter here.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -321,7 +337,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/characters" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/credits
@@ -331,7 +347,7 @@ Staff credits of one work grouped by role, paged over credit rows
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. PAGING IS OVER CREDIT ROWS, NOT GROUPS: limit and offset count individual credits, so a role whose credits straddle a page boundary appears in both pages as its own group carrying that page's slice. Concatenating pages means merging the groups that share a role_key. Counting groups instead would leave one page unbounded, which is the thing this face exists to stop.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -343,7 +359,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/credits" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/releases
@@ -353,7 +369,7 @@ Release rows of one work, paged, each with its exact anchors and its own compani
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. Ordered by release id ASC. labels[] is THIS version's companies (who developed it, who published it) — the Switch port's publisher and the English edition's publisher are two releases' facts, and this is where each of them lives. For a cross-work release timeline use GET /v1/catalog/releases instead.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -365,7 +381,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/releases" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/intros
@@ -375,7 +391,7 @@ Synopses of one work, one per language, paged
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. One row per language, elected the parent's way: a source-written synopsis beats a machine-translated one, and machine rows are flagged rather than hidden.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -387,7 +403,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/intros" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/ratings
@@ -397,7 +413,7 @@ Per-source ratings of one work, paged, with the vote histogram and the spread
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. This is the work-DETAIL projection, so distribution and stats are carried in full — unlike the works-list ratings block, which drops them. Scores stay on each source's native scale and are never blended into one number.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -409,7 +425,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/ratings" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/relations
@@ -419,7 +435,7 @@ Related works of one work, paged — the block works/{id} only serves under incl
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. With nsfw absent or 0 an r18 relation end is dropped WHOLE, not emptied, and next_offset counts what survived that drop. Sequels and fandiscs also reach you through works/{id}.series_siblings, which is the transitive series component rather than the one-hop relation set.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -431,7 +447,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/relations" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/series
@@ -441,7 +457,7 @@ The series this work belongs to, paged
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. member_count is the series' whole membership, not this page — follow it with works?series_id=<id> or series/{id}?include=works.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -453,7 +469,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/series" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/links
@@ -463,7 +479,7 @@ Non-identity outbound links of one work (official site, Steam, X, …), paged
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. These are addresses, not anchors: the identity anchors are works/{id}.refs[]. Sources whose storefront URL cannot be reconstructed from the stored code (dlsite, dmm — the section is part of the address and the registry stores only the bare code) are absent here by design and stay reachable through refs[].
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -475,7 +491,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/links" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/works/{id}/engines
@@ -485,7 +501,7 @@ Engines one work is built with, paged, each with an nsfw-aware work_count
 ONE block of works/{id}, addressable on its own so a consumer that wants it does not pay for the other thirty keys — a data-rich work is 50 KB with include=relations,credits, of which the identity core is under a tenth. Items are the SAME objects the parent block carries: same schema, same order, same election, same suppression rules. There is deliberately no second "detail" shape for a sub-resource to drift into. VISIBILITY IS THE PARENT'S, VERBATIM — LIVE galgame works only, and a work works/{id} 404s 404s on every sub-resource too. PAGED with limit/offset (1-100, default 100); next_offset is present only while rows remain, and absent means the block is exhausted. The array embedded in works/{id} stays UNCAPPED: capping a published field is not a backward-compatible change, so the two faces differ in their bounds and in nothing else. work_count is the number of works this caller would page through via works?engine_id=<id>, so it always matches the list it can actually fetch.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -497,7 +513,7 @@ ONE block of works/{id}, addressable on its own so a consumer that wants it does
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/works/1/engines" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 发售与日历
@@ -509,7 +525,7 @@ Release-grain new-releases timeline: every dated release row, ports and re-editi
 The calendar one grain down. /v1/catalog/calendar places a WORK in the month of its EARLIEST release and shows it once, so a Switch port, a Steam re-issue or a Chinese localisation of a title released years ago is invisible there by construction. Here every release row is its own item, on its own date. is_first tells the two apart: true = the work's earliest dated release (a title genuinely coming out), false = a later edition of something already released — computed over the work's whole dated-release set, so it does not change when you narrow the feed. Each item carries the parent work as a works-list row (include= and all). Population: releases of LIVE galgame works whose date is known to at least the MONTH. Year-only and undated releases are deliberately absent — they cannot be ordered against a real date, and they already have homes in /v1/catalog/calendar/pending and /v1/catalog/calendar/tba. Carries a feed-level ETag (count + newest created_at + highest release id over the whole filtered set): an If-None-Match hit 304s before any page is loaded.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -530,7 +546,7 @@ The calendar one grain down. /v1/catalog/calendar places a WORK in the month of 
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/releases" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/calendar
@@ -540,7 +556,7 @@ Release calendar, one ISO month (date ASC keyset); default = the current Asia/To
 Works whose EARLIEST year-carrying, non-deleted release falls inside the month — day precision and month precision alike (a month-precision work sorts at the head of its month, it is never pinned to the 1st). Same classification anchor as the works-list release_date, so a row's bucket and its printed date can never disagree. Year-precision works live in /v1/catalog/calendar/pending, undated ones in /v1/catalog/calendar/tba, and a work with no release row at all is in no bucket. Items are works-list rows verbatim, include= and all. Carries a bucket-level ETag (count + newest updated_at over the whole filtered set): an If-None-Match hit 304s before any page is loaded.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -555,7 +571,7 @@ Works whose EARLIEST year-carrying, non-deleted release falls inside the month �
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/calendar" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/calendar/pending
@@ -565,7 +581,7 @@ Release calendar, one year's month-still-unknown bucket (id ASC keyset); default
 Works whose earliest release is known only to the YEAR — they appear in no month view of that year, by design. Same population, item shape, olang gate and ETag mechanics as the month bucket.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -580,7 +596,7 @@ Works whose earliest release is known only to the YEAR — they appear in no mon
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/calendar/pending" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/calendar/tba
@@ -590,7 +606,7 @@ Release calendar, the global announced-but-undated bucket (id ASC keyset)
 Works that HAVE release rows but none carrying a year. A work with no release row at all is 'unknown' and deliberately enters no bucket — absence of a release is absence of an announcement, not a TBA date.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -604,7 +620,7 @@ Works that HAVE release rows but none carrying a year. A work with no release ro
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/calendar/tba" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 角色与人物
@@ -614,7 +630,7 @@ curl "https://api.nextmoe.dev/v1/catalog/calendar/tba" \
 Character identity; include=works attaches the works it appears in with voice names
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -628,7 +644,7 @@ Character identity; include=works attaches the works it appears in with voice na
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/characters/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/names/{id}
@@ -636,7 +652,7 @@ curl "https://api.nextmoe.dev/v1/catalog/characters/1" \
 Credited identity (same-person grouping via public links); include=credits attaches works + roles
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -649,7 +665,7 @@ Credited identity (same-person grouping via public links); include=credits attac
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/names/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 厂牌与标签
@@ -661,7 +677,7 @@ Keyset label browse lane (id ASC); filter by kind, each row carries an nsfw-awar
 Every label that has not been merged away, id ascending. work_count is the number of works THIS caller would page through via works?label_id=<id> — so an sfw caller's count excludes r18 works and always matches the list it can actually fetch.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -674,7 +690,7 @@ Every label that has not been merged away, id ascending. work_count is the numbe
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/labels" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/labels/{id}
@@ -682,7 +698,7 @@ curl "https://api.nextmoe.dev/v1/catalog/labels" \
 Label (brand / circle / publisher …) identity; include=works attaches attributed works
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -695,7 +711,7 @@ Label (brand / circle / publisher …) identity; include=works attaches attribut
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/labels/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/labels/{id}/relation-graph
@@ -705,7 +721,7 @@ Corporate-structure graph around a label: the connected family (parents, subsidi
 labels/{id}.relations[] is ONE HOP; this is the whole component, which is what a picture needs — standing on a brand you can see its parent's other brands without walking the one-hop face once per neighbour. A breadth-first walk from the seed over the label-relation graph, bounded at depth 4 and 60 nodes; the bound is applied breadth-first, so a truncated answer keeps the neighbourhood NEAREST the seed. Soft-deleted (merged-away) labels never appear. There is no pagination — a graph served in slices is not a graph. nodes[0] is always the seed, and a label with no relations is a one-node, zero-edge graph, not a 404; an unknown id is a 404 and a merged id is the same 301 labels/{id} serves. EDGE SEMANTICS: {from, to, relation} reads "`to` is the `relation` of `from`" — the same reading relations[].relation has, where `from` is the label being viewed. So {from: Key, to: VisualArt's, relation: parent} means "VisualArt's is the parent of Key". The underlying graph is stored MIRRORED, but each fact is emitted ONCE: only the canonical side of each inverse pair (parent, imprint, spawned, succeeded_by) is rendered, and the four inverses (subsidiary, imprint_of, origin, formerly) are implied by reading the edge backwards — for "the subsidiaries of X", take the edges whose `to` is X and whose relation is parent. Every node's work_count is the SAME nsfw-aware number labels/{id} and the labels browse lane report for this caller.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -715,7 +731,7 @@ labels/{id}.relations[] is ONE HOP; this is the whole component, which is what a
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/labels/1/relation-graph" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/tags
@@ -725,7 +741,7 @@ Keyset canonical-tag browse lane (id ASC); filter by tier / kind, each row carri
 The cross-source canonical tag vocabulary, id ascending. work_count is the number of works THIS caller would page through via works?tag_id=<id> (counted over the source-tag map, so a work carrying two mapped source tags counts once).
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -740,7 +756,7 @@ The cross-source canonical tag vocabulary, id ascending. work_count is the numbe
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/tags" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/tags/{id}
@@ -748,7 +764,7 @@ curl "https://api.nextmoe.dev/v1/catalog/tags" \
 Canonical tag (cross-source vocabulary): name / tier / kind / intros; include=works attaches the tagged works
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -761,7 +777,7 @@ Canonical tag (cross-source vocabulary): name / tier / kind / intros; include=wo
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/tags/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 系列与引擎
@@ -773,7 +789,7 @@ Keyset series browse lane (id ASC); each row carries an nsfw-aware work_count
 The grouping entities works?series_id= filters on, id ascending. work_count is the number of works THIS caller would page through via works?series_id=<id>. Series are a curated, source-mirrored facet with no search index of their own, so this lane is how a consumer discovers an id it does not already hold.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -785,7 +801,7 @@ The grouping entities works?series_id= filters on, id ascending. work_count is t
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/series" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/series/{id}
@@ -795,7 +811,7 @@ Series record: identity + source anchor + intros; include=works attaches its mem
 The address of the grouping entity works?series_id= filters on. Members are the LIVE galgame fetchable set, paged by limit/offset exactly like labels/{id} and tags/{id}, ordered by release date (members with no dated release last). members[] runs parallel to works[] — same page, same order — and carries each membership's position (1-based; 0 = not ordered yet) and kind (unknown/main/fandisc/side_story/collection). Series carry no merge or soft-delete machinery, so an unknown id is a plain 404 — never a redirect.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -808,7 +824,7 @@ The address of the grouping entity works?series_id= filters on. Members are the 
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/series/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/engines
@@ -818,7 +834,7 @@ Keyset engine browse lane (id ASC); each row carries an nsfw-aware work_count
 The visual-novel / game engines works are built with, id ascending. work_count is the number of works THIS caller would page through via works?engine_id=<id>.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -829,7 +845,7 @@ The visual-novel / game engines works are built with, id ascending. work_count i
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/engines" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/engines/{id}
@@ -837,7 +853,7 @@ curl "https://api.nextmoe.dev/v1/catalog/engines" \
 Engine record: name + nsfw-aware work_count + exact cross-source refs
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -847,7 +863,7 @@ Engine record: name + nsfw-aware work_count + exact cross-source refs
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/engines/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ## 变更流与统计
@@ -859,7 +875,7 @@ Incremental works changes feed ((updated,id) keyset; next_cursor always present 
 Creations and updates of LIVE galgame works, ordered by (updated_at, id) ASC. The feed deliberately trails real time by ~5 seconds: updated_at is statement time, not commit time, so serving rows younger than that lag would let a slow transaction commit behind an already-advanced consumer cursor and be skipped forever. DELETIONS DO NOT FLOW THROUGH THIS FEED — a row that leaves the LIVE set simply stops appearing; merge-style disappearances are covered by /v1/catalog/redirects, and mirror-style consumers should periodically reconcile the full id set via works?sort=id. WATERMARK GUARANTEE: any write that changes what a work's public face renders — its own columns and every works?include= block (names, intros, labels, ratings, covers, refs) plus release_date — moves that work's updated_at, so a full mirror can be driven from this feed alone. The guarantee covers sub-resource and fan-out writes (a cover detached, a label logo cleared, an anchor confirmed or killed, a release edited, a merge rehanging facets onto the survivor), and it is one-directional: updated_at moving does not promise the rendered bytes differ, so consumers must diff, not trust.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -870,7 +886,7 @@ Creations and updates of LIVE galgame works, ordered by (updated_at, id) ASC. Th
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/changes" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/catalog/stats
@@ -1122,13 +1138,13 @@ curl -X POST "https://api.nextmoe.dev/api/v1/user/catalog/edit/proposals/1/withd
 
 ---
 
-# 资讯 API（授权制）
+# 资讯 API
 
 - 路径前缀：`/v1/news`
-- 凭据：Authorization: Bearer nm_live_…（机器 API 密钥,但须带 news:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选）
+- 凭据：Authorization: Bearer nmk_live_…（机器 API 密钥,门户自助铸造即可,任意 scope 均可）
 - 端点数：3
 
-> 授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，所以 news:read 不是自助勾一下就有的。在开发者门户控制台提交申请并说明用途，批准后这一项就出现在铸密钥的可勾选项里；没有它的密钥调这三条路径一律 403。
+> 授权制已于 2026-08-25 退役：这三条路径只要一把有效密钥，任意 scope 均可，news:read 不再存在申请或审批。免凭据的同一批内容在 /v2/news。
 
 > 这是索引，不是转载：每条只有标题、摘要与题图，正文既不下发也不留存。每一项都恒带来源块与 source_url，读者要看全文只能回到媒体自己的站点——渲染时必须把来源与链接一并展示。
 
@@ -1140,9 +1156,9 @@ Galgame news feed republished from partner sites, newest upstream publication fi
 
 Every item carries its source block and source_url unconditionally: the partners authorised an INDEX, not a mirror. The article body is never served here and is not stored — preview plus banner is the whole authorisation, and readers reach the full text by following source_url to the partner's own site. Items we withdrew, and items whose upstream original has disappeared, are absent from this feed. Two lanes share the feed — 'news' (short bulletins) and 'column' (longer editorial pieces) — and every item states which one it came from.
 
-- 所属 API：资讯 API（授权制）（/v1/news）
-- 鉴权：Authorization: Bearer nm_live_…
-- scope：news:read
+- 所属 API：资讯 API（/v1/news）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -1156,7 +1172,7 @@ Every item carries its source block and source_url unconditionally: the partners
 
 ```bash
 curl "https://api.nextmoe.dev/v1/news" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/news/sources
@@ -1165,15 +1181,15 @@ The source registry: display name, homepage, column entry point, publisher uid, 
 
 For pages that render one standing attribution block. It does NOT replace the per-item source block — an item taken on its own must still carry its own attribution.
 
-- 所属 API：资讯 API（授权制）（/v1/news）
-- 鉴权：Authorization: Bearer nm_live_…
-- scope：news:read
+- 所属 API：资讯 API（/v1/news）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：无需凭据
 
 无参数。
 
 ```bash
 curl "https://api.nextmoe.dev/v1/news/sources" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ### GET /v1/news/{id}
@@ -1182,9 +1198,9 @@ One news item; 404 once it is unpublished, withdrawn, or gone upstream
 
 The 404 is a contract, not a lookup failure: a withdrawn item must stop being addressable.
 
-- 所属 API：资讯 API（授权制）（/v1/news）
-- 鉴权：Authorization: Bearer nm_live_…
-- scope：news:read
+- 所属 API：资讯 API（/v1/news）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -1192,18 +1208,77 @@ The 404 is a contract, not a lookup failure: a withdrawn item must stop being ad
 
 ```bash
 curl "https://api.nextmoe.dev/v1/news/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---
 
-# Public API v2（preview）
+# 分销链接 API
+
+- 路径前缀：`/v1/store`
+- 凭据：Authorization: Bearer nmk_live_…（机器 API 密钥,但须带 store:read —— 铸密钥时自助勾选即可,无需申请）
+- 端点数：2
+
+> 一站一链：同一个商品，每个调用站拿到的短链都不一样，点击才归得到你站上。拿到 purchase_url 就原样用，别自己拼 DLsite 联盟地址——裸联盟链不经过计数器，等于这次点击白送。
+
+> 去重是我们对 DLsite 的承诺，不是开关：同一条短链、同一个 JST 日、同一个指纹（IP 与 User-Agent 的 SHA-256）只算一次。刷次数刷不出量，只会让全生态的点击/销售比失真。
+
+> 券链看活动：没有进行中的活动时 coupon_url 与 campaign 都是 null，前端要能在只有购买链接时正常渲染。
+
+> 铸链是懒的、结果是稳的：第一次请求某个商品时才去铸短链，之后永远是同一条，所以自己缓存一份最省事。每个应用能铸链的不同商品数有上限，超了返回 403。
+
+## 分销链接
+
+### GET /v1/store/purchase-links/{product_id}
+
+Your site's own DLsite purchase link for one product, plus the coupon link when a campaign is running
+
+Returns a short link that belongs to YOUR application, not a shared one: every calling site gets its own alias for the same product so the clicks can be attributed back to it. Send readers to purchase_url as-is — it is the only URL that gets counted, and a bare affiliate URL bypasses the counter entirely. coupon_url and campaign are null whenever no coupon campaign is running. Clicks are de-duplicated: one (link, JST calendar day, fingerprint) counts once, where the fingerprint is SHA-256 of the client IP and User-Agent. That de-duplication is a commitment we made to DLsite, not a knob. Links are minted lazily on first request and then stable forever, so calling this per page render is fine, but caching the result on your side is cheaper. Each application may mint links for a bounded number of distinct products; asking for more returns 403.
+
+- 所属 API：分销链接 API（/v1/store）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：store:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `product_id` | path | 是 | string | DLsite product number: RJ###### (doujin) or VJ###### (commercial), 6-8 digits |
+
+```bash
+curl "https://api.nextmoe.dev/v1/store/purchase-links/value" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+## 点击统计
+
+### GET /v1/store/me/stats
+
+Your application's own click counts, per link per JST day
+
+Per-day totals and de-duplicated uniques for every link this application has minted, purchase and coupon alike — the kind field tells them apart, and product_id / campaign_id say which link a row belongs to. Days are JST calendar days because the settlement month is DLsite's JST calendar month. The range is a closed interval of at most 92 days and defaults to the last 30. Days with no clicks are omitted entirely. uniques is the number settlement uses; total is the raw click count before de-duplication. The counts are synchronised from the redirector hourly, so the current day is always partial.
+
+- 所属 API：分销链接 API（/v1/store）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：store:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `from` | query | 否 | string | First JST day to report, YYYY-MM-DD (inclusive). Defaults to 29 days before 'to' |
+| `to` | query | 否 | string | Last JST day to report, YYYY-MM-DD (inclusive). Defaults to today in JST |
+
+```bash
+curl "https://api.nextmoe.dev/v1/store/me/stats" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+---
+
+# Public API v2
 
 - 路径前缀：`/v2`
-- 凭据：Authorization: Bearer nmk_live_…（v2 应用密钥。preview 期间只签发给 internal 档应用）
-- 端点数：74
+- 凭据：Authorization: Bearer nmk_live_…（v2 应用密钥,门户自助铸造,无需申请）
+- 端点数：84
 
-> preview：形状还可以改，包括删除与改名。第三方拿不到 /v2 凭证，继续用 /v1。
+> 正式公开：形状按 additive-only 演进，删除与改名由 CI 的 oasdiff 门拦下。第三方在门户自助铸 nmk_ 密钥即可调用，不需要申请。
 
 > /v2/me/playtimes 与 /v1/playtime 一样：用户令牌即可，不需要 playtime:read / playtime:write。任何已开通用户登录的应用都可以调用。
 
@@ -1219,8 +1294,8 @@ List every top-level error code
 
 The closed registry of top-level error codes. Keyset-paginated. Unauthenticated.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -1235,7 +1310,7 @@ The closed registry of top-level error codes. Keyset-paginated. Unauthenticated.
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/problems"
@@ -1247,8 +1322,8 @@ List every field-level error reason
 
 The closed registry of field-level reasons. Unauthenticated. Values in this list never appear as top-level codes.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 无参数。
@@ -1263,8 +1338,8 @@ Get one top-level error code
 
 Returns the registry entry for one code. Unknown codes are 404 NOT_FOUND, not 422 — the path parameter is a lookup key, not a closed enum.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -1281,8 +1356,8 @@ List published vocabularies
 
 Closed and seed-open vocabularies. Keyset-paginated. Unauthenticated.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -1297,7 +1372,7 @@ Closed and seed-open vocabularies. Keyset-paginated. Unauthenticated.
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/vocabularies"
@@ -1309,8 +1384,8 @@ Get one vocabulary
 
 Returns every published value of one vocabulary. Unknown names are 404 NOT_FOUND.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -1329,12 +1404,23 @@ Release calendar
 
 One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. Requires an application key. ids= is not accepted.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated ids, max 100. Batch lane: no pagination. |
+| `refs` | query | 否 | string | Comma-separated source:external_id, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
+| `sort` | query | 否 | string | Closed per-collection sort key. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `month` | query | 否 | string | Dated month window YYYY-MM. Default: current month in Asia/Tokyo. |
 | `year` | query | 否 | string | Year-only window YYYY (v1 pending). Default with precision=year: current year in Asia/Tokyo. |
 | `precision` | query | 否 | string | day, month, or year. year selects the year-only window. day and month use the dated month window. |
@@ -1351,7 +1437,7 @@ Catalog changes feed
 
 Works updated recently, oldest first. Keyset-paginated. Requires an application key. ids= is not accepted.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -1367,7 +1453,7 @@ Works updated recently, oldest first. Keyset-paginated. Requires an application 
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/changes" \
@@ -1380,7 +1466,7 @@ List characters
 
 Keyset-paginated characters. Requires an application key. ids=/refs= is a batch lane and does not paginate.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -1396,7 +1482,7 @@ Keyset-paginated characters. Requires an application key. ids=/refs= is a batch 
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/characters" \
@@ -1407,16 +1493,16 @@ curl "https://api.nextmoe.dev/v2/catalog/characters" \
 
 Get one character
 
-Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. Merged ids are 404 ENTITY_MERGED. Requires an application key.
+Character detail. view=full adds gender, birthday, measurements, blood_type, instance_of_id. include=image,figure,traits adds art and trait blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -1432,14 +1518,14 @@ Appearances of one character
 
 Works this character appears in, with roster_role, spoiler, and voice credits. Offset cursor. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -1452,9 +1538,9 @@ curl "https://api.nextmoe.dev/v2/catalog/characters/value/appearances" \
 
 List companies
 
-Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate.
+Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate. has_works=true keeps only companies with works visible under the same nsfw gate. include=aliases,logo fills on every lane; include=intros,links fills on the batch lane only (and on the detail face).
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -1470,7 +1556,8 @@ Keyset-paginated company registry (v1 labels). Requires an application key. ids=
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
+| `has_works` | query | 否 | string | true keeps only companies whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every company. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/companies" \
@@ -1481,16 +1568,16 @@ curl "https://api.nextmoe.dev/v2/catalog/companies" \
 
 Get one company
 
-Company registry row (v1 labels). Merged ids are 404 ENTITY_MERGED. Requires an application key.
+Company registry row (v1 labels). include=aliases,logo,intros,links adds the corresponding blocks. Merged ids are 404 ENTITY_MERGED. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -1506,14 +1593,14 @@ Company family graph
 
 Corporate-family nodes and directed edges around one company. Inverse relations are not emitted. Merged ids are 404 ENTITY_MERGED. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -1529,12 +1616,23 @@ List credit names
 
 Keyset-paginated credited names. q= filters by name. Requires an application key. ids=/refs= is a batch lane and does not paginate.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated ids, max 100. Batch lane: no pagination. |
+| `refs` | query | 否 | string | Comma-separated source:external_id, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
+| `sort` | query | 否 | string | Closed per-collection sort key. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `q` | query | 否 | string | Name search. Empty lists by id. Must not be used as a discriminant. |
 
 ```bash
@@ -1548,14 +1646,14 @@ Get one credit name
 
 A credited name, not a person. person_id is null when unlinked. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -1571,14 +1669,14 @@ Credits of one credit name
 
 Works this name is credited on. Offset cursor. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -1593,7 +1691,7 @@ List engines
 
 Keyset-paginated engines. Requires an application key. ids=/refs= is a batch lane and does not paginate.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -1609,7 +1707,7 @@ Keyset-paginated engines. Requires an application key. ids=/refs= is a batch lan
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/engines" \
@@ -1622,14 +1720,14 @@ Get one engine
 
 Engine detail. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -1645,7 +1743,7 @@ List persons
 
 Keyset-paginated persons. Requires an application key. ids=/refs= is a batch lane and does not paginate.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -1661,7 +1759,7 @@ Keyset-paginated persons. Requires an application key. ids=/refs= is a batch lan
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/persons" \
@@ -1674,14 +1772,14 @@ Get one person
 
 A person identity that groups credit names. Merged ids are 404 ENTITY_MERGED. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -1697,14 +1795,14 @@ Credit names of one person
 
 Every credited name linked to this person. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -1714,32 +1812,66 @@ curl "https://api.nextmoe.dev/v2/catalog/persons/value/credit-names" \
   -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
+### GET /v2/catalog/proposals
+
+Edit proposal history
+
+Filed proposals, newest first. proposer_uid=+state=merged with include_total=true is the per-contributor tally. This face publishes no patch and no decision note. Requires an application key.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：catalog:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. amendments is the only token on this face. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated proposal ids, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `sort` | query | 否 | string | filed_desc is the only key. Closed. |
+| `object` | query | 否 | string | Closed family filter: work, company, character, release, tag, engine, series. |
+| `entity_id` | query | 否 | string | Catalog id of one entity. Requires object=. |
+| `site` | query | 否 | string | Tenant key. Open vocabulary; unknown values match nothing. |
+| `proposer_uid` | query | 否 | string | The claiming site's own user id of the proposer. Not a catalog id. |
+| `state` | query | 否 | string | Closed: open, merged, declined, withdrawn. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/catalog/proposals" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+### GET /v2/catalog/proposals/{id}
+
+One proposal
+
+Public transparency view: proposer, state, target entity and timestamps. include=amendments adds the amendment chain. Requires an application key.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：catalog:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | path | 是 | string | Proposal id. |
+| `include` | query | 否 | string | Comma-separated blocks. amendments is the only token on this face. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `view` | query | 否 | string | basic (default) or full. full adds amendments. |
+| `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/catalog/proposals/value" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
 ### GET /v2/catalog/redirects
 
 Entity merge feed
 
 Redirects from merged-away ids, oldest first. Keyset-paginated. object= restricts to one family. Requires an application key. ids= is not accepted.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
-- scope：catalog:read
-
-| 参数 | 位置 | 必填 | 类型 | 说明 |
-| --- | --- | --- | --- | --- |
-| `object` | query | 否 | string | Restrict to one family. Closed: work, release, character, credit_name, person, company, tag, engine. |
-
-```bash
-curl "https://api.nextmoe.dev/v2/catalog/redirects" \
-  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
-```
-
-### GET /v2/catalog/releases
-
-List releases
-
-Keyset-paginated dated releases, sorted by date_desc by default. Requires an application key. ids= is a batch lane and does not paginate.
-
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -1755,7 +1887,37 @@ Keyset-paginated dated releases, sorted by date_desc by default. Requires an app
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
+| `object` | query | 否 | string | Restrict to one family. Closed: work, release, character, credit_name, person, company, tag, engine. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/catalog/redirects" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+### GET /v2/catalog/releases
+
+List releases
+
+Keyset-paginated dated releases, sorted by date_desc by default. Requires an application key. ids= is a batch lane and does not paginate.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：catalog:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated ids, max 100. Batch lane: no pagination. |
+| `refs` | query | 否 | string | Comma-separated source:external_id, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
+| `sort` | query | 否 | string | Closed per-collection sort key. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/releases" \
@@ -1768,14 +1930,14 @@ Get one release
 
 A catalog release. Merged ids are 404 ENTITY_MERGED. r18 parent works are 404 without nsfw=true. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -1785,14 +1947,67 @@ curl "https://api.nextmoe.dev/v2/catalog/releases/value" \
   -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
+### GET /v2/catalog/revisions
+
+Entity revision history
+
+Every merged edit, newest first by default. sort=recorded_asc walks the same collection oldest-first by id, which is the shape a mirror or a contributor tally reads with a watermark. object=+entity_id= narrows to one entity's history. Requires an application key.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：catalog:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. diff is the only token. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated revision ids, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `sort` | query | 否 | string | recorded_desc (default) or recorded_asc. Closed. |
+| `object` | query | 否 | string | Closed family filter: work, company, character, release, tag, engine, series. |
+| `entity_id` | query | 否 | string | Catalog id of one entity. Requires object=. |
+| `site` | query | 否 | string | Tenant key. Open vocabulary; unknown values match nothing. |
+| `actor_uid` | query | 否 | string | The claiming site's own user id of the actor. Not a catalog id. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/catalog/revisions" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
+### GET /v2/catalog/revisions/{id}
+
+One revision
+
+include=diff adds the field-level change set against diff_base, or against the preceding revision when diff_base is absent. This id is what POST /v2/moderation/reverts takes. Requires an application key.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer nmk_live_…
+- scope：catalog:read
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | path | 是 | string | Revision id. |
+| `include` | query | 否 | string | Comma-separated blocks. diff is the only token. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `view` | query | 否 | string | basic (default) or full. full adds diff. |
+| `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. |
+| `diff_base` | query | 否 | string | Revision id to diff against. Requires include=diff. Absent means the preceding revision of the same entity. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/catalog/revisions/value" \
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
+```
+
 ### GET /v2/catalog/schemas/{object}
 
 Editable-field schema for one family
 
 Unauthenticated metadata: include tokens, FULL_SET, and editing-engine fields. Actor capabilities are not evaluated. Unknown object is 404 NOT_FOUND. schemas/release sets creation_disabled.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -1809,12 +2024,23 @@ Search catalog entities
 
 Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= and ids= are not accepted.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated ids, max 100. Batch lane: no pagination. |
+| `refs` | query | 否 | string | Comma-separated source:external_id, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
+| `sort` | query | 否 | string | Closed per-collection sort key. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `q` | query | 否 | string | Search string. Empty runs a popularity-ordered listing of that family. |
 | `object` | query | 否 | string | Required family: work, character, credit_name, company, tag. |
 | `locale` | query | 否 | string | zh or ja. Ignored for works. Must not be used as a discriminant. |
@@ -1830,7 +2056,7 @@ List series
 
 Keyset-paginated series. Requires an application key. ids= is a batch lane and does not paginate. refs= is not resolved: series has no catalog_external_ref entity_type.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -1846,7 +2072,7 @@ Keyset-paginated series. Requires an application key. ids= is a batch lane and d
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/series" \
@@ -1859,14 +2085,14 @@ Get one series
 
 Series detail. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -1882,8 +2108,8 @@ Catalog totals
 
 Live entity counts. Unauthenticated.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 无参数。
@@ -1898,7 +2124,7 @@ List tags
 
 Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a batch lane and does not paginate.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -1914,7 +2140,7 @@ Keyset-paginated canonical tags. Requires an application key. ids=/refs= is a ba
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/tags" \
@@ -1927,14 +2153,14 @@ Get one tag
 
 Canonical tag. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -1950,7 +2176,7 @@ List traits
 
 Keyset-paginated character traits. Requires an application key. ids= is a batch lane. refs= is not resolved: traits have no catalog_external_ref entity_type.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -1966,7 +2192,7 @@ Keyset-paginated character traits. Requires an application key. ids= is a batch 
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/traits" \
@@ -1979,14 +2205,14 @@ Get one trait
 
 A character-trait vocabulary row. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -2002,7 +2228,7 @@ List catalog works
 
 Keyset-paginated work collection. q= switches to search (sort defaults to relevance). company_id=/tag_id=/series_id= filter the live registry when q= is absent. Requires an application key. view/include/fields/ids/refs/facets follow the v2 collection contract.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -2018,7 +2244,7 @@ Keyset-paginated work collection. q= switches to search (sort defaults to releva
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `q` | query | 否 | string | Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant. |
 | `content_rating` | query | 否 | string | Closed: all_ages, sensitive, r18. r18 requires nsfw=true. |
 | `claimed` | query | 否 | string | true or false. Absent = no gate. |
@@ -2046,14 +2272,14 @@ Get one catalog work
 
 Work detail. Merged ids are 404 ENTITY_MERGED with Link rel=canonical. r18 is 404 without nsfw=true. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
 | `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
 | `fields` | query | 否 | string | Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
@@ -2069,14 +2295,14 @@ List characters of one work
 
 Roster characters. Same items as include=characters. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2091,14 +2317,14 @@ List covers of one work
 
 Work cover rows. Same items as include=covers. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2113,14 +2339,14 @@ List credits of one work
 
 Credits grouped by role. Same items as include=credits. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2135,14 +2361,14 @@ List engines of one work
 
 Engines. Same items as include=engines. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2157,14 +2383,14 @@ List intros of one work
 
 Intros. Same items as include=intros. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2179,14 +2405,14 @@ List links of one work
 
 Outbound links. Same items as include=links. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2201,14 +2427,14 @@ List ratings of one work
 
 Source ratings. Same items as include=ratings. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2223,14 +2449,14 @@ List relations of one work
 
 Related works. Same items as include=relations. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2245,14 +2471,14 @@ List releases of one work
 
 Releases of this work. Same items as include=releases. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2267,14 +2493,14 @@ List screenshots of one work
 
 Work screenshots. Same items as include=screenshots. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2289,14 +2515,14 @@ List series of one work
 
 Series memberships. Same items as include=series. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2311,14 +2537,14 @@ List tags of one work
 
 Tags attached to this work. Same items as include=tags. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 
@@ -2335,8 +2561,8 @@ List news items
 
 Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are required on every item.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2351,7 +2577,7 @@ Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are r
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/news"
@@ -2363,8 +2589,8 @@ List news sources
 
 Every attributed news source. Unauthenticated.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 无参数。
@@ -2379,8 +2605,8 @@ Get one news item
 
 A published news item. Withdrawn items are 404. Unauthenticated. source and source_url are always present.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2399,8 +2625,8 @@ List my claims
 
 Claims the bearer submitted. Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2415,7 +2641,7 @@ Claims the bearer submitted. Requires a user access token.
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/me/claims" \
@@ -2428,8 +2654,8 @@ Submit a claim
 
 Mint or claim a work. Requires a user access token bound to a catalog site.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 无参数。
@@ -2447,8 +2673,8 @@ Get one of my claims
 
 id is the catalog work id. Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2462,12 +2688,12 @@ curl "https://api.nextmoe.dev/v2/me/claims/value" \
 
 ### PATCH /v2/me/claims/{id}
 
-Withdraw a claim
+Move a claim the caller owns
 
-PATCH {state: withdrawn}. If-Match required. Requires a user access token.
+PATCH {state: live|pending|withdrawn}. live publishes a draft without review, pending submits it for review, withdrawn returns it to draft. The owner may act, and an unowned claim is adopted by its first claimant. If-Match required. Requires a user access token bound to a catalog site.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2479,7 +2705,7 @@ PATCH {state: withdrawn}. If-Match required. Requires a user access token.
 curl -X PATCH "https://api.nextmoe.dev/v2/me/claims/value" \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"state":"withdrawn"}'
+  -d '{"state":"live"}'
 ```
 
 ### GET /v2/me/cover-votes
@@ -2488,8 +2714,8 @@ List my cover votes
 
 Every cover the bearer has voted up. Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 无参数。
@@ -2505,8 +2731,8 @@ Cast a cover vote
 
 Only vote=up is stored. One ballot per work. Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2526,8 +2752,8 @@ Withdraw a cover vote
 
 204 with no body. Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2539,18 +2765,135 @@ curl -X DELETE "https://api.nextmoe.dev/v2/me/cover-votes/value" \
   -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
+### POST /v2/me/edit-images
+
+Upload an image for an edit proposal
+
+multipart/form-data with preset and file. Returns the hash an edit proposal carries in a cover or screenshot row. Requires a user access token bound to a catalog site.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
+- scope：无需凭据
+
+无参数。
+
+```bash
+curl -X POST "https://api.nextmoe.dev/v2/me/edit-images" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### GET /v2/me/news
+
+List my news items
+
+Items under the sources bound to the bearer, pending included. Keyset-paginated. Requires a user access token.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
+- scope：无需凭据
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated ids, max 100. Batch lane: no pagination. |
+| `refs` | query | 否 | string | Comma-separated source:external_id, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
+| `sort` | query | 否 | string | Closed per-collection sort key. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/me/news" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### POST /v2/me/news
+
+Submit a news item
+
+Always lands on pending: publishing is a human step. source must be bound to the bearer and active. Requires a user access token.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
+- scope：无需凭据
+
+无参数。
+
+```bash
+curl -X POST "https://api.nextmoe.dev/v2/me/news" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"source":"string","source_url":"string","summary":"string","title":"string"}'
+```
+
+### GET /v2/me/news/{id}
+
+Get one of my news items
+
+Carries an ETag for If-Match. Requires a user access token.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
+- scope：无需凭据
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | path | 是 | string | News item id. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/me/news/value" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### PATCH /v2/me/news/{id}
+
+Edit or withdraw one of my news items
+
+While pending, edits title/summary/source_url/banner_hash/work_ids and sends the item back for machine scoring. Once published the only legal transition is {"status":"withdrawn"} with If-Match. rejected is terminal.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
+- scope：无需凭据
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | path | 是 | string | News item id. |
+| `If-Match` | header | 否 | string | Current ETag. Required to withdraw. |
+
+```bash
+curl -X PATCH "https://api.nextmoe.dev/v2/me/news/value" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
 ### GET /v2/me/playtimes
 
 List my playtimes
 
 The bearer user's playtime rows. work_ids= is a batch read. Requires a user access token. Any app may call this; playtime:read is not required.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated ids, max 100. Batch lane: no pagination. |
+| `refs` | query | 否 | string | Comma-separated source:external_id, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
+| `sort` | query | 否 | string | Closed per-collection sort key. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `work_ids` | query | 否 | string | Comma-separated work ids, max 100. Batch read, no pagination. |
 
 ```bash
@@ -2564,8 +2907,8 @@ Batch write playtimes
 
 207 Multi-Status. Each item is a playtime or a problem. Requires a user access token. Any app may call this; playtime:write is not required.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 无参数。
@@ -2583,8 +2926,8 @@ Get my playtime on one work
 
 404 when the user has never reported. Requires a user access token. Any app may call this; playtime:read is not required.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2602,8 +2945,8 @@ Replace my playtime on one work
 
 Absolute minutes. Naturally idempotent. Requires a user access token. Any app may call this; playtime:write is not required.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2623,8 +2966,8 @@ Delete my playtime on one work
 
 204 with no body. Requires a user access token. Any app may call this; playtime:write is not required.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2642,12 +2985,23 @@ List my proposals
 
 state= filters open/merged/declined/withdrawn. Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
+| `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
+| `limit` | query | 否 | string | Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped. |
+| `view` | query | 否 | string | basic (default) or full. Closed vocabulary. |
+| `include` | query | 否 | string | Comma-separated blocks. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `fields` | query | 否 | string | Comma-separated top-level keys after view/include. Unknown token is 400 UNKNOWN_FIELD. object and id are always kept. |
+| `ids` | query | 否 | string | Comma-separated ids, max 100. Batch lane: no pagination. |
+| `refs` | query | 否 | string | Comma-separated source:external_id, max 100. Batch lane: no pagination. |
+| `include_total` | query | 否 | string | true to include total. Only true or false. |
+| `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
+| `sort` | query | 否 | string | Closed per-collection sort key. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `state` | query | 否 | string | open, pending, merged, declined, withdrawn. |
 
 ```bash
@@ -2661,8 +3015,8 @@ File a proposal
 
 Requires a user access token bound to a catalog site.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 无参数。
@@ -2680,13 +3034,15 @@ Get one of my proposals
 
 Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Proposal id. |
+| `include` | query | 否 | string | Comma-separated blocks: amendments, patch. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `view` | query | 否 | string | basic (default) or full. full adds amendments and patch. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/me/proposals/value" \
@@ -2699,8 +3055,8 @@ Amend or withdraw a proposal
 
 If-Match required. Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2721,8 +3077,8 @@ Append an amendment
 
 If-Match required. Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2745,8 +3101,8 @@ Moderation claim queue
 
 Pending claims. Requires a user access token with review authority.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2761,7 +3117,7 @@ Pending claims. Requires a user access token with review authority.
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/moderation/claims" \
@@ -2774,8 +3130,8 @@ Get one moderation claim
 
 id is the catalog work id. Site-fenced. Requires a user access token bound to a catalog site.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2791,15 +3147,15 @@ curl "https://api.nextmoe.dev/v2/moderation/claims/value" \
 
 Decide a claim
 
-decision=approve|decline. If-Match required.
+decision=approve|decline|ban|unban. unban restores the state the claim was hidden from. If-Match required, and the ETag comes from GET /v2/moderation/claims/{id}. Requires the catalog.claim.review permission.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | path | 是 | string | Subject id. |
+| `id` | path | 是 | string | Catalog work id. |
 | `If-Match` | header | 否 | string | Current ETag. Required. |
 
 ```bash
@@ -2815,8 +3171,8 @@ Moderation proposal queue
 
 Open proposals on the token site.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2831,10 +3187,31 @@ Open proposals on the token site.
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/moderation/proposals" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### GET /v2/moderation/proposals/{id}
+
+Get one moderation proposal
+
+Site-fenced. include=patch adds the proposed and effective patches a decision is taken on. The ETag is the validator POST /v2/moderation/proposals/{id}/decisions takes as If-Match.
+
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
+- scope：无需凭据
+
+| 参数 | 位置 | 必填 | 类型 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | path | 是 | string | Proposal id. |
+| `include` | query | 否 | string | Comma-separated blocks: amendments, patch. Unknown token is 400 UNKNOWN_INCLUDE. |
+| `view` | query | 否 | string | basic (default) or full. full adds amendments and patch. |
+
+```bash
+curl "https://api.nextmoe.dev/v2/moderation/proposals/value" \
   -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
@@ -2844,20 +3221,20 @@ Decide a proposal
 
 decision=merge|decline. If-Match required.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | path | 是 | string | Subject id. |
+| `id` | path | 是 | string | Proposal id. |
 | `If-Match` | header | 否 | string | Current ETag. Required. |
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v2/moderation/proposals/value/decisions" \
   -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"decision":"approve"}'
+  -d '{"decision":"merge"}'
 ```
 
 ### POST /v2/moderation/reverts
@@ -2866,8 +3243,8 @@ Revert to a revision
 
 Body names revision_id. Requires a user access token bound to a catalog site.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 无参数。
@@ -2885,8 +3262,8 @@ Current edit snapshot
 
 Registered field values. Requires a user access token.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -2903,44 +3280,61 @@ curl "https://api.nextmoe.dev/v2/moderation/snapshots/value/value" \
 
 # AI / MCP 接入
 
-NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 https://mcp.nextmoe.dev/mcp，Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——每次工具调用就是一次对公开 /v1 端点的请求，鉴权、限流、配额与用量与直连毫无区别。
+NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 https://mcp.nextmoe.dev/mcp，Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——每次工具调用就是一次对公开 /v2 GET 的请求，鉴权、限流、配额与用量与直连毫无区别。工具名就是 OpenAPI operationId，清单由 cmd/gen-v2-portal 从同一份 v2 spec 生成。
 
-## 工具（37 个）
+## 工具（54 个）
 
-- `catalog_search`：按名字搜身份图谱实体：names（人物名义）/ characters / labels / works（跨媒介作品标题，r18 需 nsfw=true）。
-- `catalog_work_get`：按 catalog work id 取注册行，include=credits,relations 并取子块。
-- `catalog_lookup_external`：外部 id 反查（如 source=vndb, external_id=v19658）——手握外部 id 时首选。
-- `catalog_name_get`：按 id 取名义（credit-name 同人格分组），include=credits 附署名作品与角色。
-- `catalog_label_get`：按 id 取厂牌 / 社团（include=works 附归属作品）。
-- `catalog_character_get`：按 id 取角色（traits 按 spoilers=0-2 分级；nsfw 控 r18 作品与 sexual 系 traits）。
-- `catalog_works_list`：批量浏览 / 过滤作品注册表（评级 / 厂牌 / 标签 / 系列 / 平台 / 发售窗，keyset 分页，ids= 批量水合）。
-- `catalog_changes`：增量同步变更流——存下 next_cursor，下次轮询只拿变化的部分。
-- `catalog_tag_get`：按 id 取正典标签（跨源标签词表），include=works 附携带作品。
-- `catalog_works_search`：作品产品检索：自由文本 + works-list 全过滤集，五档排序、可选 facets 分面计数、page 分页（组合「查询 + 过滤」时优先用它，纯名字检索用 catalog_search）。
-- `catalog_calendar`：发售月历单月（缺省为当前 Asia/Tokyo 月；olang 缺省收敛到 ja + zh* 族，olang=all 放开）。
-- `catalog_calendar_pending`：月历「知年不知月」桶（缺省为当前 Asia/Tokyo 年）。
-- `catalog_calendar_tba`：月历「已公布未定档」全局桶。
-- `catalog_labels_list`：浏览厂牌 / 社团词表本身（kind 过滤，每行带 nsfw 感知 work_count）——用来发现 label id。
-- `catalog_tags_list`：浏览正典标签词表本身（tier / kind 过滤）——用来发现 tag id 再喂给作品过滤。
-- `catalog_engines_list`：浏览引擎词表本身——用来发现 engine id 再喂给 catalog_works_search。
-- `catalog_engine_get`：按 id 取引擎记录（名称 + nsfw 感知 work_count + 跨源 refs）。
-- `catalog_series_list`：浏览系列词表本身（source= 泳道过滤：curated / derived / dlsite，每行带 nsfw 感知 work_count）——系列不进搜索索引，这是发现 series id 的唯一入口。
-- `catalog_series_get`：按 id 取系列（身份 + 源锚 + 简介），include_works 附成员作品并按阅读顺序排列——回答「这个系列按什么顺序玩」。
-- `catalog_stats`：全库计数：各媒介 LIVE 作品数 + 身份家族总量（无参数）。
-- `catalog_label_relation_graph`：一次拿到一个厂牌周围的整个会社家族（母公司 / 子品牌 / 文库 / 继承），nodes[] + edges[]。catalog_label_get 的 relations[] 只有一跳，问「某社旗下有哪些牌子」用这个。服务端封顶 depth 4 / 60 节点，不分页。
-- `catalog_releases`：发售动态的 release 粒度：每一条发售行各自成项，移植版 / 复刻 / 中文化都看得见（calendar 只把作品放在最早发售月且只显示一次）。可按日期区间、平台、发行语言、版本类型、官方性过滤；is_first 分辨首发与再版。
-- `catalog_work_covers`：作品的封面块（单块分页，只要这一块时优先于 catalog_work_get）。CDN 渲染不了的行在分页前就被丢掉，所以短页 = 块取完了，不是被过滤了。只要两个展示位用 catalog_work_get 的 cover_slots。
-- `catalog_work_screenshots`：作品的截图块（单块分页，带尺寸与 thumbhash）。每行各自带 sexual / violence 等级——此面只报告不过滤，渲染门由调用方自己把。
-- `catalog_work_tags`：作品的源标签块（单块分页，count DESC → name → source）。命中正典映射的行带 canonical_id / tier / kind 与 nsfw 感知 work_count，未映射的行不带；`spoilers=0-2` 设标签剧透上限（超限行整行剔除、不占页位）。
-- `catalog_work_characters`：作品的角色花名册块（单块分页，main → secondary → appears → 仅署名项，带配音署名）。此面**不设**剧透上限、也**没有** spoilers 参数——每行自带 spoiler 等级，由调用方分级。
-- `catalog_work_credits`：作品的职员署名块，按 role 分组。**分页按署名行不按组**：跨页的 role 会在两页各出现一次、各带该页的切片，拼页时要按 role_key 合并组。
-- `catalog_work_releases`：作品的发售行块（单块分页，release id 升序，各带源锚与自己的 labels[]——移植版 / 英文版各自的发行商在这里）。跨作品的发售时间线用 catalog_releases。
-- `catalog_work_intros`：作品的简介块（单块分页，一语言一行）。选举同母面：源写的胜过机翻的，机翻行是**打标**不是隐藏——引用成「官方说法」前先看标。
-- `catalog_work_ratings`：作品的分源评分块（单块分页，带完整投票直方图与离散度——works-list 的 ratings 块会把这些丢掉）。分数留在各源原生标尺，永不混算成一个数。
-- `catalog_work_relations`：作品的关联作品块（单块分页）——catalog_work_get 只在 `include=relations` 时才给。不带 nsfw 时 r18 关联端是**整条丢弃**而非置空，next_offset 数的是幸存行。续作 / FD 也能经 catalog_work_get 的 series_siblings（传递闭包）拿到。
-- `catalog_work_series`：作品所属系列块（单块分页）。member_count 是系列的**全部**成员数而非本页——顺着它用 catalog_works_list series_id= 或 catalog_series_get include_works（后者才给阅读顺序）。
-- `catalog_work_links`：作品的非身份外链块（官网 / Steam / X 等，单块分页）。这些是**地址不是锚**，身份锚在 catalog_work_get 的 refs[]；dlsite / dmm 这类无法由裸 code 还原商店 URL 的源按设计不在此面，仍从 refs[] 走。
-- `catalog_work_engines`：作品的引擎块（单块分页，每行带 nsfw 感知 work_count = 该调用方用 catalog_works_search engine_id= 真能翻到的作品数）。
-- `news_list`（授权制，需 news:read）：合作媒体的 Galgame 资讯索引（按来源 / 泳道 / 关联作品 / 发布时间窗过滤，keyset 分页）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。
-- `news_sources`（授权制，需 news:read）：资讯来源注册表：每家媒体的 key、名称、主页、专栏入口，以及该渲染的归属文案。无参数。
-- `news_get`（授权制，需 news:read）：按 id 取单条资讯。已撤回的、上游原文已消失的条目返回 404——这是契约不是查不到，别重试，也别拿缓存副本顶上。
+- `getCatalogCharacter` `GET /v2/catalog/characters/{id}`：按 id 取角色；view=full 追加性别、生日、三围、血型与 instance_of_id。nsfw 同时控 r18 作品与 sexual 系 traits 的可见性。
+- `getCatalogCharacterAppearances` `GET /v2/catalog/characters/{id}/appearances`：一个角色出演的全部作品，各带 roster_role、剧透等级与配音署名，offset 游标分页。
+- `getCatalogCompany` `GET /v2/catalog/companies/{id}`：按 id 取公司 / 厂牌 / 社团注册行（v1 的 labels）。被合并的 id 返回 404 ENTITY_MERGED。
+- `getCatalogCompanyGraph` `GET /v2/catalog/companies/{id}/graph`：一次拿到一家公司周围的整个会社家族（母公司 / 子品牌 / 文库 / 继承），nodes[] + edges[] 有向。getCatalogCompany 的关联只有一跳，问「某社旗下有哪些牌子」用这个；反向边按设计不下发。
+- `getCatalogCreditName` `GET /v2/catalog/credit-names/{id}`：按 id 取一个署名（credit name）——这是名字不是人；尚未挂到人物身份上时 person_id 为 null。
+- `getCatalogCreditNameCredits` `GET /v2/catalog/credit-names/{id}/credits`：一个署名被记在哪些作品上，offset 游标分页——问「这个名字做过什么」用它。
+- `getCatalogEngine` `GET /v2/catalog/engines/{id}`：按 id 取引擎记录（名称与跨源 refs）。
+- `getCatalogPerson` `GET /v2/catalog/persons/{id}`：按 id 取人物身份：它把同一个人用过的多个署名聚成一个人格。被合并的 id 返回 404 ENTITY_MERGED。
+- `getCatalogPersonCreditNames` `GET /v2/catalog/persons/{id}/credit-names`：一个人物身份名下的全部署名。人物与署名是两层：身份在这里，某个署名各自的作品在 getCatalogCreditNameCredits。
+- `getCatalogProposal` `GET /v2/catalog/proposals/{id}`：按 id 取单条提案的公开透明视图：提案人、状态、目标实体与时间戳；include=amendments 追加修订链。
+- `getCatalogRelease` `GET /v2/catalog/releases/{id}`：按 id 取单条发售行。被合并的 id 返回 404 ENTITY_MERGED；母作品是 r18 时，不带 nsfw=true 也是 404。
+- `getCatalogRevision` `GET /v2/catalog/revisions/{id}`：按 id 取单条修订；include=diff 追加相对 diff_base（缺省为前一条）的字段级变更集。
+- `getCatalogSchema` `GET /v2/catalog/schemas/{object}`（无需密钥）：一个实体家族的可编辑字段 schema 与 include 令牌全集（含 FULL_SET）。无需凭据，且不评估调用方权限——它描述的是形状，不是许可。
+- `getCatalogSeries` `GET /v2/catalog/series/{id}`：按 id 取系列（身份、源锚与简介）；成员作品用 listCatalogWorks 的 series_id= 取——回答「这个系列按什么顺序玩」。
+- `getCatalogStats` `GET /v2/catalog/stats`（无需密钥）：全库计数：各家族 LIVE 实体总量。无参数，无需凭据。
+- `getCatalogTag` `GET /v2/catalog/tags/{id}`：按 id 取正典标签——跨源标签词表的一行。
+- `getCatalogTrait` `GET /v2/catalog/traits/{id}`：按 id 取角色特征词表的一行。
+- `getCatalogWork` `GET /v2/catalog/works/{id}`：按 id 取作品注册行，include=credits,relations 并取子块。被合并的 id 返回 404 ENTITY_MERGED 并在 Link rel=canonical 里给继任者；r18 不带 nsfw=true 同样是 404。
+- `getCatalogWorkCharacters` `GET /v2/catalog/works/{id}/characters`：作品的角色花名册块（单块 cursor 分页，带 roster_role 与配音署名）。此面不设剧透上限——每行自带 spoiler 等级，由调用方分级。
+- `getCatalogWorkCovers` `GET /v2/catalog/works/{id}/covers`：作品的封面块（单块 cursor 分页，与 include=covers 同一批行）。只要这一块时优先于 getCatalogWork；CDN 渲染不了的行在分页前就被丢掉，所以短页是「块取完了」而不是「被过滤了」。
+- `getCatalogWorkCredits` `GET /v2/catalog/works/{id}/credits`：作品的职员署名块，按 role 分组。分页按署名行不按组：跨页的 role 会在两页各出现一次、各带该页的切片，拼页时要按 role 合并组。
+- `getCatalogWorkEngines` `GET /v2/catalog/works/{id}/engines`：作品的引擎块（单块 cursor 分页，与 include=engines 同一批行）。
+- `getCatalogWorkIntros` `GET /v2/catalog/works/{id}/intros`：作品的简介块（单块 cursor 分页，一语言一行）。源写的胜过机翻的，机翻行是打标不是隐藏——把它引用成「官方说法」前先看标。
+- `getCatalogWorkLinks` `GET /v2/catalog/works/{id}/links`：作品的非身份外链块（官网 / Steam / X 等，单块 cursor 分页）。这些是地址不是锚，身份锚在 getCatalogWork 的 refs[]；dlsite / dmm 这类无法由裸 code 还原商店 URL 的源按设计不在此面。
+- `getCatalogWorkRatings` `GET /v2/catalog/works/{id}/ratings`：作品的分源评分块（单块 cursor 分页，带完整投票直方图与离散度）。分数留在各源原生标尺，永不混算成一个数。
+- `getCatalogWorkRelations` `GET /v2/catalog/works/{id}/relations`：作品的关联作品块（单块 cursor 分页）。不带 nsfw 时 r18 关联端是整条丢弃而非置空，页里数的是幸存行。
+- `getCatalogWorkReleases` `GET /v2/catalog/works/{id}/releases`：作品的发售行块（单块 cursor 分页，各带源锚与自己的发行公司——移植版 / 英文版各自的发行商在这里）。跨作品的发售时间线用 listCatalogReleases。
+- `getCatalogWorkScreenshots` `GET /v2/catalog/works/{id}/screenshots`：作品的截图块（单块 cursor 分页，带尺寸与 thumbhash）。每行各自带 sexual / violence 等级——此面只报告不过滤，渲染门由调用方自己把。
+- `getCatalogWorkSeries` `GET /v2/catalog/works/{id}/series`：作品所属系列块（单块 cursor 分页）。member_count 是系列的全部成员数而非本页——顺着它用 listCatalogWorks 的 series_id= 或 getCatalogSeries。
+- `getCatalogWorkTags` `GET /v2/catalog/works/{id}/tags`：作品的源标签块（单块 cursor 分页）。命中正典映射的行带 canonical id 与 tier / kind，未映射的行不带。
+- `getNewsItem` `GET /v2/news/{id}`（无需密钥）：按 id 取单条资讯。已撤回的、上游原文已消失的条目返回 404——这是契约不是查不到，别重试，也别拿缓存副本顶上。
+- `getProblemType` `GET /v2/problems/{code}`（无需密钥）：按 code 取单条错误码定义。未知 code 返回 404 而不是 422——路径参数是查找键，不是封闭枚举。
+- `getVocabulary` `GET /v2/vocabularies/{name}`（无需密钥）：按 name 取一个词表的全部已发布取值。未知 name 返回 404。
+- `listCatalogCalendar` `GET /v2/catalog/calendar`：发售月历：month= / year= 选窗口，precision= 与 status= 在「已定档到月」「只知年」「已公布未定档」三个视图间切换——v1 的三条月历路径在 v2 是这一条。不接受 ids=。
+- `listCatalogChanges` `GET /v2/catalog/changes`：增量同步变更流：近期更新过的作品，最旧优先。存下 next_cursor，下次轮询只拿变化的部分。
+- `listCatalogCharacters` `GET /v2/catalog/characters`：keyset 分页浏览角色注册表。ids=/refs= 是批量水合泳道，不分页。
+- `listCatalogCompanies` `GET /v2/catalog/companies`：浏览公司 / 厂牌词表本身（v1 的 labels）——用来发现 company id 再喂给 listCatalogWorks 的 company_id=。
+- `listCatalogCreditNames` `GET /v2/catalog/credit-names`：keyset 分页浏览署名注册表，q= 按名字过滤。ids=/refs= 是批量水合泳道，不分页。
+- `listCatalogEngines` `GET /v2/catalog/engines`：浏览引擎词表本身——用来发现 engine id 再喂给 listCatalogWorks 的 engine_id=。
+- `listCatalogPersons` `GET /v2/catalog/persons`：keyset 分页浏览人物身份注册表。ids=/refs= 是批量水合泳道，不分页。
+- `listCatalogProposals` `GET /v2/catalog/proposals`：已提交的编辑提案流，最新优先。proposer_uid= + state=merged + include_total=true 就是按贡献者的合入计数。此面不下发 patch，也不下发审核意见。
+- `listCatalogRedirects` `GET /v2/catalog/redirects`：合并去向流：被合并掉的 id 指向哪个继任者，最旧优先。存下游标增量消费，就能把本地副本里的死 id 换成活的。object= 收敛到单个家族；不接受 ids=。
+- `listCatalogReleases` `GET /v2/catalog/releases`：发售动态的 release 粒度：每一条发售行各自成项，移植版 / 复刻 / 中文化都看得见（月历只把作品放在最早发售月且只显示一次）。缺省按日期倒序。
+- `listCatalogRevisions` `GET /v2/catalog/revisions`：已合入的编辑修订流，缺省最新优先；sort=recorded_asc 按 id 从旧到新走同一个集合，这是镜像与贡献统计该用的姿态（配一条水位线）。object= + entity_id= 收敛到单个实体的历史。
+- `listCatalogSeries` `GET /v2/catalog/series`：浏览系列词表本身。系列不进搜索索引，这是发现 series id 的唯一入口；refs= 对它不解析：系列没有外部锚类型。
+- `listCatalogTags` `GET /v2/catalog/tags`：浏览正典标签词表本身——用来发现 tag id 再喂给 listCatalogWorks 的 tag_id=。
+- `listCatalogTraits` `GET /v2/catalog/traits`：浏览角色特征词表本身——用来发现 trait id。refs= 对它不解析：特征没有外部锚类型。
+- `listCatalogWorks` `GET /v2/catalog/works`：浏览 / 过滤作品注册表（评级 / 公司 / 标签 / 系列 / 引擎 / 平台 / 发售窗，keyset 分页，ids=/refs= 批量水合）。带 q= 时整条转为检索并按相关度排序——「查询 + 过滤」与「纯过滤」在 v2 是同一条路径。
+- `listNews` `GET /v2/news`（无需密钥）：合作媒体的 Galgame 资讯索引（keyset 分页，无需凭据）。只有标题、摘要与题图，正文永不下发——每条恒带来源与 source_url，读全文要回到媒体自己的站点。
+- `listNewsSources` `GET /v2/news/sources`（无需密钥）：资讯来源注册表：每家媒体的名称、主页、专栏入口，以及该渲染的归属文案。无参数，无需凭据。
+- `listProblemReasons` `GET /v2/problems/reasons`（无需密钥）：字段级 reason 的封闭清单，无需凭据。这里的取值永远不会作为顶层 code 出现。
+- `listProblemTypes` `GET /v2/problems`（无需密钥）：错误码注册表：/v2 全部顶层 code 的封闭清单，keyset 分页，无需凭据。
+- `listVocabularies` `GET /v2/vocabularies`（无需密钥）：已发布词表清单（封闭词表与 seed-open 词表），keyset 分页，无需凭据。
+- `searchCatalog` `GET /v2/catalog/search`：按名字跨家族搜身份图谱：object= 选家族（works / characters / credit-names / companies …），命中行是 search_result，各带 target_object 说明它是什么。r18 需 nsfw=true；不接受 cursor= 与 ids=。

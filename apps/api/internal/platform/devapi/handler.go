@@ -37,9 +37,6 @@ func (h *AdminHandler) Register(r fiber.Router, policyWriteGate fiber.Handler) {
 	r.Post("/apps/:client_id/keys/:id/rotate", h.RotateKey)
 	r.Delete("/apps/:client_id/keys/:id", h.RevokeKey)
 	r.Get("/keys", h.ListAllKeys)
-	r.Get("/scope-applications", h.ListScopeApplications)
-	r.Post("/scope-applications/:id/approve", h.ApproveScopeApplication)
-	r.Post("/scope-applications/:id/decline", h.DeclineScopeApplication)
 	r.Get("/policies", h.ListPolicies)
 	r.Put("/policies/:capability", policyWriteGate, h.SetPolicy)
 	r.Delete("/policies/:capability", policyWriteGate, h.ResetPolicy)
@@ -49,7 +46,6 @@ type patchAppRequest struct {
 	OwnerUserID    *uint   `json:"owner_user_id"`
 	DevEnabled     *bool   `json:"dev_enabled"`
 	DevTier        *string `json:"dev_tier"`
-	DevNSFWAllowed *bool   `json:"dev_nsfw_allowed"`
 	DevRatePerMin  *int    `json:"dev_rate_per_min"`
 	DevQuotaDaily  *int    `json:"dev_quota_daily"`
 }
@@ -66,7 +62,6 @@ type appView struct {
 	OwnerUserID    *uint  `json:"owner_user_id,omitempty"`
 	DevEnabled     bool   `json:"dev_enabled"`
 	DevTier        string `json:"dev_tier"`
-	DevNSFWAllowed bool   `json:"dev_nsfw_allowed"`
 	DevRatePerMin  int    `json:"dev_rate_per_min"`
 	DevQuotaDaily  int    `json:"dev_quota_daily"`
 	KeyCount       int64  `json:"key_count"`
@@ -82,7 +77,6 @@ func toAppView(app *siteModel.OAuthClient, keyCount int64) appView {
 		OwnerUserID:    app.OwnerUserID,
 		DevEnabled:     app.DevEnabled,
 		DevTier:        app.DevTier,
-		DevNSFWAllowed: app.DevNSFWAllowed,
 		DevRatePerMin:  app.DevRatePerMin,
 		DevQuotaDaily:  app.DevQuotaDaily,
 		KeyCount:       keyCount,
@@ -99,7 +93,6 @@ type keyView struct {
 	KeyPrefix   string   `json:"key_prefix"`
 	Last4       string   `json:"last4"`
 	Scopes      []string `json:"scopes"`
-	NSFWAllowed bool     `json:"nsfw_allowed"`
 	ExpiresAt   string   `json:"expires_at,omitempty"`
 	RevokedAt   string   `json:"revoked_at,omitempty"`
 	LastUsedAt  string   `json:"last_used_at,omitempty"`
@@ -136,7 +129,6 @@ func (h *AdminHandler) PatchApp(c fiber.Ctx) error {
 		OwnerUserID:    req.OwnerUserID,
 		DevEnabled:     req.DevEnabled,
 		DevTier:        req.DevTier,
-		DevNSFWAllowed: req.DevNSFWAllowed,
 		DevRatePerMin:  req.DevRatePerMin,
 		DevQuotaDaily:  req.DevQuotaDaily,
 	})
@@ -308,96 +300,6 @@ func (h *AdminHandler) ListAllKeys(c fiber.Ctx) error {
 	})
 }
 
-type declineScopeApplicationRequest struct {
-	Reason string `json:"reason"`
-}
-
-type adminScopeApplicationView struct {
-	ID            uint   `json:"id"`
-	UserID        uint   `json:"user_id"`
-	Scope         string `json:"scope"`
-	Message       string `json:"message"`
-	Status        string `json:"status"`
-	ReviewerID    *uint  `json:"reviewer_id,omitempty"`
-	DeclineReason string `json:"decline_reason"`
-	CreatedAt     string `json:"created_at"`
-	ReviewedAt    string `json:"reviewed_at,omitempty"`
-}
-
-func (h *AdminHandler) ListScopeApplications(c fiber.Ctx) error {
-	status := c.Query("status", ScopeAppPending)
-	if status == "all" {
-		status = ""
-	}
-	apps, err := h.svc.ListScopeApplications(c.Context(), status)
-	if err != nil {
-		return response.InternalError(c, apperr.ErrOperationFailed)
-	}
-	out := make([]adminScopeApplicationView, len(apps))
-	for i := range apps {
-		out[i] = toAdminScopeApplicationView(&apps[i])
-	}
-	return response.Success(c, out)
-}
-
-func (h *AdminHandler) ApproveScopeApplication(c fiber.Ctx) error {
-	id, ok := parseIDParam(c)
-	if !ok {
-		return response.BadRequest(c, apperr.ErrInvalidID)
-	}
-	reviewer, _ := c.Locals("user_id").(uint)
-	app, err := h.svc.ApproveScopeApplication(c.Context(), id, reviewer)
-	return h.respondScopeApplication(c, app, err)
-}
-
-func (h *AdminHandler) DeclineScopeApplication(c fiber.Ctx) error {
-	id, ok := parseIDParam(c)
-	if !ok {
-		return response.BadRequest(c, apperr.ErrInvalidID)
-	}
-	var req declineScopeApplicationRequest
-	if err := c.Bind().JSON(&req); err != nil {
-		return response.BadRequest(c, apperr.ErrBadRequest)
-	}
-	reviewer, _ := c.Locals("user_id").(uint)
-	app, err := h.svc.DeclineScopeApplication(c.Context(), id, reviewer, req.Reason)
-	return h.respondScopeApplication(c, app, err)
-}
-
-func (h *AdminHandler) respondScopeApplication(c fiber.Ctx, app *ScopeApplication, err error) error {
-	switch {
-	case goerrors.Is(err, gorm.ErrRecordNotFound):
-		return response.NotFound(c, apperr.ErrNotFound)
-	case goerrors.Is(err, ErrScopeAppNotPending):
-		return response.Error(c, fiber.StatusConflict, apperr.ErrValidationFailed,
-			"only a pending application can be reviewed")
-	case goerrors.Is(err, ErrScopeAppNeedsReason):
-		return response.BadRequestMsg(c, apperr.ErrValidationFailed, "a decline needs a reason")
-	case goerrors.Is(err, ErrScopeAppMsgTooLong):
-		return response.BadRequestMsg(c, apperr.ErrValidationFailed, "reason too long (max 2000)")
-	case err != nil:
-		return response.InternalError(c, apperr.ErrOperationFailed)
-	}
-	return response.Success(c, toAdminScopeApplicationView(app))
-}
-
-func toAdminScopeApplicationView(app *ScopeApplication) adminScopeApplicationView {
-	v := adminScopeApplicationView{
-		ID:            app.ID,
-		UserID:        app.UserID,
-		Scope:         app.Scope,
-		Message:       app.Message,
-		Status:        app.Status,
-		ReviewerID:    app.ReviewerID,
-		DeclineReason: app.DeclineReason,
-		CreatedAt:     app.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
-	}
-	if app.ReviewedAt != nil {
-		v.ReviewedAt = app.ReviewedAt.UTC().Format("2006-01-02T15:04:05Z")
-	}
-	return v
-}
-
 func (h *AdminHandler) requireKeyOfClient(c fiber.Ctx, clientID string, keyID uint) (*DeveloperAPIKey, error) {
 	key, err := h.svc.GetKeyForClient(c.Context(), clientID, keyID)
 	if goerrors.Is(err, gorm.ErrRecordNotFound) || key == nil {
@@ -429,7 +331,6 @@ func toKeyView(k *DeveloperAPIKey) keyView {
 		KeyPrefix:   k.KeyPrefix,
 		Last4:       k.Last4,
 		Scopes:      scopes,
-		NSFWAllowed: k.NSFWAllowed,
 		CreatedAt:   k.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
 	if k.ExpiresAt != nil {

@@ -41,6 +41,13 @@ func displayLimitWhere(limits []string) (string, []any) {
 	return "((" + strings.Join(ors, ") OR (") + "))", args
 }
 
+// The cover gates must classify a work exactly as claimed_by.content_limit
+// does: gating on the raw column left unclaimed r18 works (display_nsfw is
+// never edited for them) hiding their covers even from nsfw viewers.
+func effectiveDisplayNSFW(site *string, productWorkID *int64, displayNSFW bool, contentRating int16) bool {
+	return model.DisplayLimitKey(site, productWorkID, displayNSFW, contentRating) == model.DisplayLimitKeyNSFW
+}
+
 func (s *ReadService) loadDisplayNSFW(ctx context.Context, subjects []claimSubject) (map[int64]bool, error) {
 	out := make(map[int64]bool, len(subjects))
 	if len(subjects) == 0 {

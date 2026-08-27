@@ -16,6 +16,7 @@ export const API_HOST = 'https://api.nextmoe.dev'
 export const PUBLIC_SPEC = join(REPO_ROOT, 'docs/catalog/public-openapi.yaml')
 export const CATALOG_SPEC = join(REPO_ROOT, 'docs/catalog/openapi.yaml')
 export const NEWS_SPEC = join(REPO_ROOT, 'docs/news/public-openapi.yaml')
+export const STORE_SPEC = join(REPO_ROOT, 'docs/store/public-openapi.yaml')
 export const V2_SPEC = join(REPO_ROOT, 'docs/catalog/v2-openapi.yaml')
 
 // A face is a path prefix plus the credential that prefix accepts. The spec
@@ -23,6 +24,11 @@ export const V2_SPEC = join(REPO_ROOT, 'docs/catalog/v2-openapi.yaml')
 // public gen target, and scope lives in prose. Both are derived here, from the
 // prefix and the method, and they are the only place the reference pages learn
 // which credential to print.
+//
+// specUrl is the face's live machine-readable contract, listed in llms.txt and
+// on the docs pages. playtime and edit deliberately have none — playtime's
+// spec route sits behind user auth (401) and edit exposes none (404) — so do
+// not "complete" the pattern for them.
 export const FACES = [
   {
     key: 'catalog',
@@ -30,11 +36,12 @@ export const FACES = [
     name: '目录数据 API（只读）',
     file: PUBLIC_SPEC,
     prefix: '/v1/catalog',
+    specUrl: `${API_HOST}/v1/catalog/openapi.json`,
     scope: () => 'catalog:read',
     auth: {
       kind: 'api_key',
-      curl: 'Authorization: Bearer nm_live_<YOUR_KEY>',
-      display: 'Authorization: Bearer nm_live_…',
+      curl: 'Authorization: Bearer nmk_live_<YOUR_KEY>',
+      display: 'Authorization: Bearer nmk_live_…',
       note: '机器 API 密钥,服务端持有'
     }
   },
@@ -83,28 +90,51 @@ export const FACES = [
   {
     key: 'news',
     label: '资讯',
-    name: '资讯 API（授权制）',
+    name: '资讯 API',
     file: NEWS_SPEC,
     prefix: '/v1/news',
-    scope: () => 'news:read',
+    specUrl: `${API_HOST}/v1/news/openapi.json`,
+    scope: () => '',
     auth: {
       kind: 'api_key',
-      curl: 'Authorization: Bearer nm_live_<YOUR_KEY>',
-      display: 'Authorization: Bearer nm_live_…',
-      note: '机器 API 密钥,但须带 news:read —— 授权制 scope,登录门户后在控制台申请,批准后即可自助勾选'
+      curl: 'Authorization: Bearer nmk_live_<YOUR_KEY>',
+      display: 'Authorization: Bearer nmk_live_…',
+      note: '机器 API 密钥,门户自助铸造即可,任意 scope 均可'
     },
     notes: [
-      '授权制：合作媒体授权给 NextMoe 的是一份索引，转授给谁由平台逐个决定，所以 news:read 不是自助勾一下就有的。在开发者门户控制台提交申请并说明用途，批准后这一项就出现在铸密钥的可勾选项里；没有它的密钥调这三条路径一律 403。',
+      '授权制已于 2026-08-25 退役：这三条路径只要一把有效密钥，任意 scope 均可，news:read 不再存在申请或审批。免凭据的同一批内容在 /v2/news。',
       '这是索引，不是转载：每条只有标题、摘要与题图，正文既不下发也不留存。每一项都恒带来源块与 source_url，读者要看全文只能回到媒体自己的站点——渲染时必须把来源与链接一并展示。',
       '撤回即不可寻址：我们撤下的、以及上游原文已消失的条目会从列表中消失，按 id 直取则 404。这个 404 是契约而不是查询失败，不要重试，也不要拿缓存副本顶上。'
     ]
   },
   {
+    key: 'store',
+    label: '分销链接',
+    name: '分销链接 API',
+    file: STORE_SPEC,
+    prefix: '/v1/store',
+    specUrl: `${API_HOST}/v1/store/openapi.json`,
+    scope: () => 'store:read',
+    auth: {
+      kind: 'api_key',
+      curl: 'Authorization: Bearer nmk_live_<YOUR_KEY>',
+      display: 'Authorization: Bearer nmk_live_…',
+      note: '机器 API 密钥,但须带 store:read —— 铸密钥时自助勾选即可,无需申请'
+    },
+    notes: [
+      '一站一链：同一个商品，每个调用站拿到的短链都不一样，点击才归得到你站上。拿到 purchase_url 就原样用，别自己拼 DLsite 联盟地址——裸联盟链不经过计数器，等于这次点击白送。',
+      '去重是我们对 DLsite 的承诺，不是开关：同一条短链、同一个 JST 日、同一个指纹（IP 与 User-Agent 的 SHA-256）只算一次。刷次数刷不出量，只会让全生态的点击/销售比失真。',
+      '券链看活动：没有进行中的活动时 coupon_url 与 campaign 都是 null，前端要能在只有购买链接时正常渲染。',
+      '铸链是懒的、结果是稳的：第一次请求某个商品时才去铸短链，之后永远是同一条，所以自己缓存一份最省事。每个应用能铸链的不同商品数有上限，超了返回 403。'
+    ]
+  },
+  {
     key: 'v2',
     label: 'API v2',
-    name: 'Public API v2（preview）',
+    name: 'Public API v2',
     file: V2_SPEC,
     prefix: '/v2',
+    specUrl: `${API_HOST}/v2/catalog/openapi.json`,
     scope: (_method, path) => {
       if (!path) return 'catalog:read'
       if (path.startsWith('/v2/me/') || path.startsWith('/v2/moderation/')) return ''
@@ -123,7 +153,7 @@ export const FACES = [
       kind: 'api_key',
       curl: 'Authorization: Bearer nmk_live_<YOUR_KEY>',
       display: 'Authorization: Bearer nmk_live_…',
-      note: 'v2 应用密钥。preview 期间只签发给 internal 档应用'
+      note: 'v2 应用密钥,门户自助铸造,无需申请'
     },
     autoGroups: [
       { key: 'meta', label: '注册表', match: /^\/v2\/(problems|vocabularies)/ },
@@ -133,7 +163,7 @@ export const FACES = [
       { key: 'moderation', label: '审核', match: /^\/v2\/moderation/ }
     ],
     notes: [
-      'preview：形状还可以改，包括删除与改名。第三方拿不到 /v2 凭证，继续用 /v1。',
+      '正式公开：形状按 additive-only 演进，删除与改名由 CI 的 oasdiff 门拦下。第三方在门户自助铸 nmk_ 密钥即可调用，不需要申请。',
       '/v2/me/playtimes 与 /v1/playtime 一样：用户令牌即可，不需要 playtime:read / playtime:write。任何已开通用户登录的应用都可以调用。',
       '错误体是 RFC 9457 application/problem+json。type URI 解析到本站 /problems/{domain}/{kebab-code}。',
       '客户端必须忽略未知字段、容忍开放词表中未见过的取值，并为未知错误 code 准备一个按 HTTP status 的兜底分支。'
@@ -278,6 +308,18 @@ export const FACE_GROUPS = {
       label: '资讯读面',
       ops: ['GET /v1/news', 'GET /v1/news/sources', 'GET /v1/news/{id}']
     }
+  ],
+  store: [
+    {
+      key: 'links',
+      label: '分销链接',
+      ops: ['GET /v1/store/purchase-links/{product_id}']
+    },
+    {
+      key: 'stats',
+      label: '点击统计',
+      ops: ['GET /v1/store/me/stats']
+    }
   ]
 }
 
@@ -299,4 +341,11 @@ export const USER_TOKEN_AUTH = {
   note: '用户授权后的访问令牌,不是 API 密钥'
 }
 
-export const EXPECTED_OPERATION_COUNTS = { catalog: 37, playtime: 5, edit: 6, news: 3, v2: 74 }
+export const EXPECTED_OPERATION_COUNTS = {
+  catalog: 37,
+  playtime: 5,
+  edit: 6,
+  news: 3,
+  store: 2,
+  v2: 84
+}

@@ -315,7 +315,9 @@ func (s *PublicService) enrichWorkListItems(ctx context.Context, rows []workList
 			ContentRating: contentRatingKey(r.ContentRating), OLang: r.OLang,
 			ReleaseDate: dates[r.ID],
 			ClaimedBy:   claimedBy(r.Site, r.ProductWorkID, r.ClaimState, limits[r.ID], r.ContentRating),
-			Cover:       s.pickListCover(covers[r.ID], nsfw && limits[r.ID]), Updated: r.UpdatedAt,
+			Cover: s.pickListCover(covers[r.ID],
+				nsfw && effectiveDisplayNSFW(r.Site, r.ProductWorkID, limits[r.ID], r.ContentRating)),
+			Updated: r.UpdatedAt,
 		}
 	}
 	if err := s.attachWorkListBlocks(ctx, out, rows, subjects, covers, inc, nsfw, limits); err != nil {
@@ -363,7 +365,7 @@ func partialISOFromOrdinal(ord int64) string {
 func (s *PublicService) pickListCover(rows []WorkCoverRow, allowSexual bool) string {
 	var fallback string
 	for _, c := range rows {
-		if !allowSexual && c.Sexual != 0 {
+		if !allowSexual && c.Sexual >= model.SexualExplicit {
 			continue
 		}
 		url := s.imageURL(c.ImageHash)

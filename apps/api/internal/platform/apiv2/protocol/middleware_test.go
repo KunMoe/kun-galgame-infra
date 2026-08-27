@@ -19,6 +19,7 @@ func protoApp(t *testing.T) *fiber.App {
 	store := NewMemory()
 	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
 	app.Use(Middleware(store))
+	app.Use(RateLimit(store, nil))
 	app.Get("/v2/problems", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"object": "list", "items": []any{}})
 	})
@@ -135,6 +136,7 @@ func TestRateLimit429(t *testing.T) {
 	store := NewMemory()
 	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
 	app.Use(Middleware(store))
+	app.Use(RateLimit(store, nil))
 	app.Get("/v2/problems", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"object": "list"})
 	})
@@ -149,4 +151,53 @@ func TestRateLimit429(t *testing.T) {
 	var p problem.Problem
 	require.NoError(t, json.Unmarshal(body, &p))
 	require.Equal(t, problem.CodeRateLimited, p.Code)
+}
+
+func keyedApp(t *testing.T, id LimitIdentity, ok bool) *fiber.App {
+	t.Helper()
+	store := NewMemory()
+	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
+	app.Use(Middleware(store))
+	app.Use(RateLimit(store, func(fiber.Ctx) (LimitIdentity, bool) { return id, ok }))
+	app.Get("/v2/catalog/works", func(c fiber.Ctx) error {
+		return c.JSON(fiber.Map{"object": "list"})
+	})
+	return app
+}
+
+func TestRateLimitUsesKeyIdentity(t *testing.T) {
+	app := keyedApp(t, LimitIdentity{Key: "k7", Rate: 2, Quota: 100}, true)
+	for i := 0; i < 2; i++ {
+		status, h, _ := do(t, app, http.MethodGet, "/v2/catalog/works", nil, "")
+		require.Equal(t, 200, status)
+		require.Equal(t, "2", h.Get("X-RateLimit-Limit"))
+		require.Contains(t, h.Get("RateLimit-Policy"), "2;w=60, 100;w=86400")
+	}
+	status, _, body := do(t, app, http.MethodGet, "/v2/catalog/works", nil, "")
+	require.Equal(t, 429, status)
+	var p problem.Problem
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeRateLimited, p.Code)
+}
+
+func TestRateLimitKeyQuota(t *testing.T) {
+	app := keyedApp(t, LimitIdentity{Key: "k8", Rate: 100, Quota: 3}, true)
+	for i := 0; i < 3; i++ {
+		status, _, _ := do(t, app, http.MethodGet, "/v2/catalog/works", nil, "")
+		require.Equal(t, 200, status)
+	}
+	status, _, body := do(t, app, http.MethodGet, "/v2/catalog/works", nil, "")
+	require.Equal(t, 429, status)
+	var p problem.Problem
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeQuotaExceeded, p.Code)
+}
+
+func TestRateLimitUnlimitedTier(t *testing.T) {
+	app := keyedApp(t, LimitIdentity{Key: "k9", Unlimited: true}, true)
+	for i := 0; i < RatePerMinute+5; i++ {
+		status, h, _ := do(t, app, http.MethodGet, "/v2/catalog/works", nil, "")
+		require.Equal(t, 200, status)
+		require.Empty(t, h.Get("X-RateLimit-Limit"))
+	}
 }

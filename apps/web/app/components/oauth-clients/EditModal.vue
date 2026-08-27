@@ -137,7 +137,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="open" size="lg">
+  <KunModal v-model="open" size="lg" aria-label="编辑客户端">
     <div class="space-y-4">
       <h2 class="text-xl font-bold text-foreground">编辑客户端</h2>
 

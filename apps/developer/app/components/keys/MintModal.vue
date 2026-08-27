@@ -1,51 +1,25 @@
 <script setup lang="ts">
-import {
-  DEV_DISABLED_HINT,
-  DEV_GRANTABLE_SCOPES,
-  DEV_MINTABLE_SCOPES,
-  DEV_SCOPE_APP_STATUS_COLORS,
-  DEV_SCOPE_APP_STATUS_LABELS
-} from '~/constants/dev'
-import type { DevKeyMinted, DevScopeApplication } from '~~/shared/types/dev'
+import { DEV_DEFAULT_SCOPES, DEV_MINTABLE_SCOPES } from '~/constants/dev'
+import type { DevKeyMinted } from '~~/shared/types/dev'
 
-const props = defineProps<{ clientId: string; scopeApplyDisabled?: boolean }>()
-const emit = defineEmits<{ close: []; minted: [DevKeyMinted] }>()
+const props = defineProps<{ clientId: string }>()
+const emit = defineEmits<{ minted: [DevKeyMinted] }>()
 
+const open = defineModel<boolean>('open', { required: true })
 const api = useApi()
-const show = ref(true)
 
 const name = ref('')
 const test = ref(false)
-const scopes = ref<string[]>([...DEV_MINTABLE_SCOPES])
+const scopes = ref<string[]>([...DEV_DEFAULT_SCOPES])
 const error = ref('')
 const isLoading = ref(false)
 
-const applications = ref<DevScopeApplication[]>([])
-const applyingFor = ref<string | null>(null)
-
-const loadApplications = async () => {
-  const res = await api.get<DevScopeApplication[]>('/dev/scope-applications')
-  applications.value = res.code === 0 && res.data ? res.data : []
-}
-
-onMounted(loadApplications)
-
-const applicationFor = (scope: string) =>
-  applications.value.find((a) => a.scope === scope) ?? null
-
-const isGranted = (scope: string) => applicationFor(scope)?.status === 'approved'
-
-const handleFiled = (filed: DevScopeApplication) => {
-  applyingFor.value = null
-  applications.value = [
-    ...applications.value.filter((a) => a.scope !== filed.scope),
-    filed
-  ]
-  useKunMessage('申请已提交，等待平台审核', 'success')
-}
-
-watch(show, (val) => {
-  if (!val) emit('close')
+watch(open, (val) => {
+  if (!val) return
+  name.value = ''
+  test.value = false
+  scopes.value = [...DEV_DEFAULT_SCOPES]
+  error.value = ''
 })
 
 const toggleScope = (s: string) => {
@@ -76,6 +50,7 @@ const handleSubmit = async () => {
       body
     )
     if (res.code === 0 && res.data) {
+      open.value = false
       emit('minted', res.data)
     } else {
       error.value = res.message || '生成失败'
@@ -87,7 +62,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <KunModal v-model="show" size="md">
+  <KunModal v-model="open" size="md" aria-label="生成新密钥">
     <div class="space-y-4">
       <h2 class="text-xl font-bold text-foreground">生成新密钥</h2>
 
@@ -101,7 +76,7 @@ const handleSubmit = async () => {
       <div>
         <span class="mb-1 block text-sm font-medium text-default-500">
           Scope（权限范围）
-          <span class="text-xs text-default-400">— 默认全选公开只读 scope</span>
+          <span class="text-xs text-default-400">— 默认勾选公开只读 scope</span>
         </span>
         <div class="flex flex-wrap gap-2">
           <KunCheckBox
@@ -114,60 +89,12 @@ const handleSubmit = async () => {
             @update:model-value="toggleScope(s)"
           />
         </div>
-
-        <div
-          v-for="s in DEV_GRANTABLE_SCOPES"
-          :key="`grant-${s}`"
-          class="mt-2 rounded-lg border border-default-200 bg-content1 px-3 py-2"
-        >
-          <div class="flex flex-wrap items-center gap-2">
-            <KunCheckBox
-              :model-value="scopes.includes(s)"
-              :label="s"
-              color="primary"
-              :disabled="!isGranted(s)"
-              @update:model-value="toggleScope(s)"
-            />
-            <KunChip color="warning" variant="flat" size="xs">授权制</KunChip>
-            <KunChip
-              v-if="applicationFor(s)"
-              :color="DEV_SCOPE_APP_STATUS_COLORS[applicationFor(s)!.status]"
-              variant="flat"
-              size="xs"
-            >
-              {{ DEV_SCOPE_APP_STATUS_LABELS[applicationFor(s)!.status] }}
-            </KunChip>
-            <KunButton
-              v-if="!isGranted(s) && applicationFor(s)?.status !== 'pending'"
-              size="xs"
-              variant="flat"
-              color="primary"
-              class="ml-auto"
-              :disabled="scopeApplyDisabled"
-              @click="applyingFor = s"
-            >
-              {{ applicationFor(s) ? '重新申请' : '申请授权' }}
-            </KunButton>
-          </div>
-          <p v-if="scopeApplyDisabled" class="mt-1 text-xs text-default-400">
-            {{ DEV_DISABLED_HINT }}：暂不接受新的 scope 授权申请。
-          </p>
-          <p
-            v-if="applicationFor(s)?.status === 'declined'"
-            class="mt-1 text-xs text-danger"
-          >
-            未获批准：{{ applicationFor(s)!.decline_reason }}
-          </p>
-          <p v-else-if="!isGranted(s)" class="mt-1 text-xs text-default-400">
-            资讯 API 的权限由平台授予：提交申请说明用途，批准后即可在这里自助勾选。
-          </p>
-        </div>
       </div>
 
       <div class="rounded-lg border border-default-200 p-3">
-        <KunSwitch v-model="test" label="测试密钥（nm_test_ 前缀）" />
+        <KunSwitch v-model="test" label="测试密钥（nmk_test_ 前缀）" />
         <p class="mt-1 text-xs text-default-400">
-          — 测试密钥用于开发/联调；正式接入请使用生产密钥（nm_live_）。
+          — 测试密钥用于开发/联调；正式接入请使用生产密钥（nmk_live_）。
         </p>
       </div>
 
@@ -176,7 +103,7 @@ const handleSubmit = async () => {
       </div>
 
       <div class="flex justify-end gap-3">
-        <KunButton color="default" variant="flat" @click="show = false">
+        <KunButton color="default" variant="flat" @click="open = false">
           取消
         </KunButton>
         <KunButton color="primary" :disabled="isLoading" @click="handleSubmit">
@@ -189,12 +116,5 @@ const handleSubmit = async () => {
         </KunButton>
       </div>
     </div>
-
-    <KeysScopeApplyModal
-      v-if="applyingFor"
-      :scope="applyingFor"
-      @close="applyingFor = null"
-      @filed="handleFiled"
-    />
   </KunModal>
 </template>

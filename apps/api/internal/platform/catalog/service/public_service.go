@@ -274,7 +274,8 @@ func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicIncl
 		Created:       w.CreatedAt.UTC().Format(time.RFC3339),
 		Updated:       w.UpdatedAt.UTC().Format(time.RFC3339),
 	}
-	s.attachWorkFacets(ctx, &rec, detail, nsfw, limits[w.ID], spoilers)
+	s.attachWorkFacets(ctx, &rec, detail, nsfw,
+		effectiveDisplayNSFW(w.Site, w.ProductWorkID, limits[w.ID], w.ContentRating), spoilers)
 	if sel.Wants("releases") {
 		if err = s.attachReleaseLabels(ctx, rec.Releases); err != nil {
 			return dto.PublicCatalogWork{}, false, err
@@ -423,6 +424,10 @@ func (s *PublicService) imageURL(hash string) string {
 		return ""
 	}
 	return imageclient.MainURL(s.cdnBase, hash, "webp")
+}
+
+func (s *PublicService) ImageURL(hash string) string {
+	return s.imageURL(hash)
 }
 
 func (s *PublicService) sourceKey(id int16) string {

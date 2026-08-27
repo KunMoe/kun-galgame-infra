@@ -1,4 +1,4 @@
-# Decide a claim · Public API v2（preview）
+# Decide a claim · Public API v2
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -13,15 +13,15 @@
 
 Decide a claim
 
-decision=approve|decline. If-Match required.
+decision=approve|decline|ban|unban. unban restores the state the claim was hidden from. If-Match required, and the ETag comes from GET /v2/moderation/claims/{id}. Requires the catalog.claim.review permission.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：Authorization: Bearer <用户访问令牌>
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | path | 是 | string | Subject id. |
+| `id` | path | 是 | string | Catalog work id. |
 | `If-Match` | header | 否 | string | Current ETag. Required. |
 
 ```bash

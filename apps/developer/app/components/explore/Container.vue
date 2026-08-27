@@ -267,7 +267,7 @@ const facetSummary = computed(() => {
         v-model="apiKey"
         label="API Key"
         type="password"
-        placeholder="nm_live_…"
+        placeholder="nmk_live_…"
       />
       <div class="flex flex-wrap items-end gap-3">
         <div class="min-w-0 flex-1">

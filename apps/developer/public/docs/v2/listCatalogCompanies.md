@@ -1,4 +1,4 @@
-# List companies · Public API v2（preview）
+# List companies · Public API v2
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -13,9 +13,9 @@
 
 List companies
 
-Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate.
+Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate. has_works=true keeps only companies with works visible under the same nsfw gate. include=aliases,logo fills on every lane; include=intros,links fills on the batch lane only (and on the detail face).
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
@@ -31,7 +31,8 @@ Keyset-paginated company registry (v1 labels). Requires an application key. ids=
 | `include_total` | query | 否 | string | true to include total. Only true or false. |
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
+| `has_works` | query | 否 | string | true keeps only companies whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every company. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/catalog/companies" \

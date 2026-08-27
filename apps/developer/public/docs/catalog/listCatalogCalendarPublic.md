@@ -16,7 +16,7 @@ Release calendar, one ISO month (date ASC keyset); default = the current Asia/To
 Works whose EARLIEST year-carrying, non-deleted release falls inside the month — day precision and month precision alike (a month-precision work sorts at the head of its month, it is never pinned to the 1st). Same classification anchor as the works-list release_date, so a row's bucket and its printed date can never disagree. Year-precision works live in /v1/catalog/calendar/pending, undated ones in /v1/catalog/calendar/tba, and a work with no release row at all is in no bucket. Items are works-list rows verbatim, include= and all. Carries a bucket-level ETag (count + newest updated_at over the whole filtered set): an If-None-Match hit 304s before any page is loaded.
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -31,7 +31,7 @@ Works whose EARLIEST year-carrying, non-deleted release falls inside the month �
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/calendar" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

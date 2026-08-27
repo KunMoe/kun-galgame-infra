@@ -1,4 +1,4 @@
-# Get one top-level error code · Public API v2（preview）
+# Get one top-level error code · Public API v2
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -15,8 +15,8 @@ Get one top-level error code
 
 Returns the registry entry for one code. Unknown codes are 404 NOT_FOUND, not 422 — the path parameter is a lookup key, not a closed enum.
 
-- 所属 API：Public API v2（preview）（/v2）
-- 鉴权：Authorization: Bearer nmk_live_…
+- 所属 API：Public API v2（/v2）
+- 鉴权：无需凭据
 - scope：无需凭据
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |

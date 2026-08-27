@@ -28,6 +28,9 @@ import (
 	newsService "api/internal/platform/news/service"
 	"api/internal/platform/permissions"
 	siteRepo "api/internal/platform/site/repository"
+	storeHandler "api/internal/platform/store/handler"
+	storeService "api/internal/platform/store/service"
+	"api/internal/platform/store/shortener"
 	"api/pkg/config"
 	"api/pkg/health"
 	"api/pkg/imageclient"
@@ -163,6 +166,17 @@ func main() {
 		return c.Send(newsSpec)
 	})
 
+	storeSpec, err := json.Marshal(storeHandler.SetupStorePublicSpec(fiber.New()).OpenAPI())
+	if err != nil {
+		slog.Error("marshal store public spec", "error", err)
+		os.Exit(1)
+	}
+	application.Fiber.Get("/v1/store/openapi.json", func(c fiber.Ctx) error {
+		c.Set("Content-Type", "application/json")
+		c.Set("Cache-Control", "public, max-age=3600")
+		return c.Send(storeSpec)
+	})
+
 	// kun_news is a SECOND database on a process whose primary job is catalog.
 	// An unreachable news database degrades the news face to 503 instead of
 	// exiting: the first production deploy necessarily precedes
@@ -170,6 +184,7 @@ func main() {
 	// catalog container over a face nobody is calling yet.
 	var newsSvc *newsService.PublicService
 	var newsAdminSvc *newsService.AdminService
+	var newsWriteSvc *newsService.SubmissionService
 	if newsDB, err := database.NewPostgresDB(cfg.NewsDatabase); err != nil {
 		slog.Warn("news db connect failed — /v1/news degraded to 503", "dbname", cfg.NewsDatabase.DBName, "error", err)
 	} else {
@@ -180,6 +195,7 @@ func main() {
 		}()
 		newsSvc = newsService.NewPublicService(newsDB.DB(), cfg.ImageService.CDNBase)
 		newsAdminSvc = newsService.NewAdminService(newsDB.DB(), cfg.ImageService.CDNBase)
+		newsWriteSvc = newsService.NewSubmissionService(newsDB.DB())
 	}
 
 	// The moderation face is the human half of the gate 月幕 asked for. It is a
@@ -196,7 +212,7 @@ func main() {
 	adminNews.Post("/items/:id/decision", newsAdminH.Decide)
 
 	setupPublicCatalog(application, cfg, catalogDB, readSvc, resolveSvc, searcher, statsSvc,
-		clientRepo, tokenVerifier, devStore, devCache, newsSvc, editRegistry, playtimeSvc, coverVoteSvc, claimSvc, editEngine)
+		clientRepo, tokenVerifier, devStore, devCache, newsSvc, newsWriteSvc, editRegistry, playtimeSvc, coverVoteSvc, claimSvc, editEngine)
 
 	galgameapp.MountRetiredPublic(application)
 
@@ -243,6 +259,7 @@ func setupPublicCatalog(
 	store devapi.Store,
 	devCache *cache.RedisCache,
 	newsSvc *newsService.PublicService,
+	newsWriteSvc *newsService.SubmissionService,
 	editRegistry *editing.Registry,
 	playtimeSvc *service.UserPlaytimeService,
 	coverVoteSvc *service.CoverVoteService,
@@ -321,16 +338,19 @@ func setupPublicCatalog(
 			return cl.CatalogSite, nil
 		},
 		Catalog: &v2handler.Catalog{
-			Public:     publicSvc,
-			Resolve:    resolveSvc,
-			StatsSvc:   statsSvc,
-			News:       newsSvc,
-			Searcher:   searcher,
-			EditTypes:  editRegistry,
-			Playtime:   playtimeSvc,
-			CoverVotes: coverVoteSvc,
-			Claims:     claimSvc,
-			Engine:     editEngine,
+			Public:      publicSvc,
+			Resolve:     resolveSvc,
+			StatsSvc:    statsSvc,
+			News:        newsSvc,
+			NewsWrite:   newsWriteSvc,
+			Searcher:    searcher,
+			EditTypes:   editRegistry,
+			Playtime:    playtimeSvc,
+			CoverVotes:  coverVoteSvc,
+			Claims:      claimSvc,
+			Engine:      editEngine,
+			EditHistory: service.NewEditHistoryService(catalogDB.DB()),
+			Uploads:     v2handler.EditImageUpload(editUpload),
 		},
 	})
 	v2spec, err := json.Marshal(v2API.OpenAPI())
@@ -344,13 +364,15 @@ func setupPublicCatalog(
 		return c.Send(v2spec)
 	})
 
-	recordUsage := func(c fiber.Ctx) error {
-		err := c.Next()
-		if cred := devapi.CredentialFrom(c); cred != nil {
-			usageRec.Record(cred, "catalog", c.Route().Path, c.Response().StatusCode())
-			go usageRec.TouchLastUsed(context.Background(), cred)
+	recordUsage := func(face string) fiber.Handler {
+		return func(c fiber.Ctx) error {
+			err := c.Next()
+			if cred := devapi.CredentialFrom(c); cred != nil {
+				usageRec.Record(cred, face, c.Route().Path, c.Response().StatusCode())
+				go usageRec.TouchLastUsed(context.Background(), cred)
+			}
+			return err
 		}
-		return err
 	}
 
 	// Credential-free: the catalogue-size counters the public site and the
@@ -362,11 +384,10 @@ func setupPublicCatalog(
 
 	v1 := application.Fiber.Group("/v1/catalog",
 		mw.ResolveCredential,
-		recordUsage,
+		recordUsage("catalog"),
 		mw.RateLimit,
 		mw.Quota,
 		devapi.RequireScope(devapi.ScopeCatalogRead),
-		catHandler.RequireNSFWCapability,
 		middleware.ETag(),
 	)
 
@@ -410,14 +431,37 @@ func setupPublicCatalog(
 	newsH := newsHandler.NewPublicHandler(newsSvc)
 	v1news := application.Fiber.Group("/v1/news",
 		mw.ResolveCredential,
-		recordUsage,
+		// "catalog", not "news": this group has metered under the catalog face
+		// since it launched, and renaming it now would split one application's
+		// history across two face values in developer_api_usage.
+		recordUsage("catalog"),
 		mw.RateLimit,
 		mw.Quota,
-		devapi.RequireScope(devapi.ScopeNewsRead),
 	)
 	v1news.Get("/sources", newsH.Sources)
 	v1news.Get("/", newsH.List)
 	v1news.Get("/:id", newsH.Detail)
+
+	var storeMinter storeService.Minter
+	if cfg.Store.ShortlinkBaseURL != "" && cfg.Store.ShortlinkAPIKey != "" {
+		storeMinter = shortener.New(cfg.Store.ShortlinkBaseURL, cfg.Store.ShortlinkAPIKey)
+	} else {
+		slog.Warn("store face: link shortener not configured — /v1/store answers 503 (set KUN_STORE_SHORTLINK_BASE_URL and KUN_STORE_SHORTLINK_API_KEY)")
+	}
+	storeH := storeHandler.NewPublicHandler(storeService.New(oauthDB, storeMinter, storeService.Options{
+		AffTemplateManiax:  cfg.Store.AffTemplateManiax,
+		AffTemplatePro:     cfg.Store.AffTemplatePro,
+		LinkQuotaPerClient: cfg.Store.LinkQuotaPerClient,
+	}))
+	v1store := application.Fiber.Group("/v1/store",
+		mw.ResolveCredential,
+		recordUsage("store"),
+		mw.RateLimit,
+		mw.Quota,
+		devapi.RequireScope(devapi.ScopeStoreRead),
+	)
+	v1store.Get("/purchase-links/:product_id", storeH.PurchaseLinks)
+	v1store.Get("/me/stats", storeH.MyStats)
 
 	flushDone := make(chan struct{})
 	go func() {

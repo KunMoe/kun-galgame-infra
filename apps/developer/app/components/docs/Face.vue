@@ -68,15 +68,6 @@ useSeoMeta({
           {{ note }}
         </li>
       </ul>
-      <p
-        v-if="current.key === 'news'"
-        class="mt-3 text-sm text-default-500"
-      >
-        <NuxtLink to="/dashboard" class="text-primary hover:underline">
-          去控制台申请 news:read
-        </NuxtLink>
-        —— 铸密钥的对话框里就能提交，也能看到自己这份申请是待审、已批准还是被拒（含理由）。
-      </p>
     </header>
 
     <section v-for="group in current.groups" :key="group.key" class="space-y-3">

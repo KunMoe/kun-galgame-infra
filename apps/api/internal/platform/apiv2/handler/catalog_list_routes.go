@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"api/internal/platform/apiv2/collect"
+	"api/internal/platform/apiv2/parse"
 	"api/internal/platform/apiv2/repr"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -39,8 +40,13 @@ type listTraitsOutput struct {
 }
 
 type listCreditNamesInput struct {
-	collectionInput
+	CollectionInput
 	Q string `query:"q" maxLength:"512" doc:"Name search. Empty lists by id. Must not be used as a discriminant."`
+}
+
+type listCompaniesInput struct {
+	CollectionInput
+	HasWorks string `query:"has_works" maxLength:"8" doc:"true keeps only companies whose work_count is > 0 under the same nsfw gate. Only true or false. Absent = every company."`
 }
 
 func registerCatalogLists(api huma.API, cat *Catalog) {
@@ -51,7 +57,7 @@ func registerCatalogLists(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/companies",
 		Summary:            "List companies",
-		Description:        "Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate.",
+		Description:        "Keyset-paginated company registry (v1 labels). Requires an application key. ids=/refs= is a batch lane and does not paginate. has_works=true keeps only companies with works visible under the same nsfw gate. include=aliases,logo fills on every lane; include=intros,links fills on the batch lane only (and on the detail face).",
 		Tags:               catalog,
 		Errors:             errs,
 		SkipValidateParams: true,
@@ -138,13 +144,24 @@ func registerCatalogLists(api huma.API, cat *Catalog) {
 	}, listCatalogTraits(cat))
 }
 
-func listCatalogCompanies(cat *Catalog) func(context.Context, *collectionInput) (*listCompaniesOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listCompaniesOutput, error) {
-		q, err := parseCatalogList(ctx, in, collect.CompanySpec())
+func listCatalogCompanies(cat *Catalog) func(context.Context, *listCompaniesInput) (*listCompaniesOutput, error) {
+	return func(ctx context.Context, in *listCompaniesInput) (*listCompaniesOutput, error) {
+		if in == nil {
+			in = &listCompaniesInput{}
+		}
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.CompanySpec())
 		if err != nil {
 			return nil, err
 		}
-		page, lerr := cat.ListCompanies(ctx, q)
+		hasWorks := false
+		if in.HasWorks != "" {
+			v, berr := parse.Bool(in.HasWorks, "has_works")
+			if berr != nil {
+				return nil, withIdent(ctx, berr)
+			}
+			hasWorks = v
+		}
+		page, lerr := cat.ListCompanies(ctx, q, hasWorks)
 		if lerr != nil {
 			return nil, catalogErr(ctx, lerr)
 		}
@@ -152,8 +169,8 @@ func listCatalogCompanies(cat *Catalog) func(context.Context, *collectionInput) 
 	}
 }
 
-func listCatalogTags(cat *Catalog) func(context.Context, *collectionInput) (*listTagsOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listTagsOutput, error) {
+func listCatalogTags(cat *Catalog) func(context.Context, *CollectionInput) (*listTagsOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listTagsOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.TagSpec())
 		if err != nil {
 			return nil, err
@@ -166,8 +183,8 @@ func listCatalogTags(cat *Catalog) func(context.Context, *collectionInput) (*lis
 	}
 }
 
-func listCatalogSeries(cat *Catalog) func(context.Context, *collectionInput) (*listSeriesOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listSeriesOutput, error) {
+func listCatalogSeries(cat *Catalog) func(context.Context, *CollectionInput) (*listSeriesOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listSeriesOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.SeriesSpec())
 		if err != nil {
 			return nil, err
@@ -180,8 +197,8 @@ func listCatalogSeries(cat *Catalog) func(context.Context, *collectionInput) (*l
 	}
 }
 
-func listCatalogEngines(cat *Catalog) func(context.Context, *collectionInput) (*listEnginesOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listEnginesOutput, error) {
+func listCatalogEngines(cat *Catalog) func(context.Context, *CollectionInput) (*listEnginesOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listEnginesOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.EngineSpec())
 		if err != nil {
 			return nil, err
@@ -194,8 +211,8 @@ func listCatalogEngines(cat *Catalog) func(context.Context, *collectionInput) (*
 	}
 }
 
-func listCatalogReleases(cat *Catalog) func(context.Context, *collectionInput) (*listReleasesOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listReleasesOutput, error) {
+func listCatalogReleases(cat *Catalog) func(context.Context, *CollectionInput) (*listReleasesOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listReleasesOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.ReleaseSpec())
 		if err != nil {
 			return nil, err
@@ -208,8 +225,8 @@ func listCatalogReleases(cat *Catalog) func(context.Context, *collectionInput) (
 	}
 }
 
-func listCatalogCharacters(cat *Catalog) func(context.Context, *collectionInput) (*listCharactersOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listCharactersOutput, error) {
+func listCatalogCharacters(cat *Catalog) func(context.Context, *CollectionInput) (*listCharactersOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listCharactersOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.CharacterSpec())
 		if err != nil {
 			return nil, err
@@ -227,7 +244,7 @@ func listCatalogCreditNames(cat *Catalog) func(context.Context, *listCreditNames
 		if in == nil {
 			in = &listCreditNamesInput{}
 		}
-		q, err := parseCatalogList(ctx, &in.collectionInput, collect.CreditNameSpec())
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.CreditNameSpec())
 		if err != nil {
 			return nil, err
 		}
@@ -239,8 +256,8 @@ func listCatalogCreditNames(cat *Catalog) func(context.Context, *listCreditNames
 	}
 }
 
-func listCatalogPersons(cat *Catalog) func(context.Context, *collectionInput) (*listPersonsOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listPersonsOutput, error) {
+func listCatalogPersons(cat *Catalog) func(context.Context, *CollectionInput) (*listPersonsOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listPersonsOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.PersonSpec())
 		if err != nil {
 			return nil, err
@@ -253,8 +270,8 @@ func listCatalogPersons(cat *Catalog) func(context.Context, *collectionInput) (*
 	}
 }
 
-func listCatalogTraits(cat *Catalog) func(context.Context, *collectionInput) (*listTraitsOutput, error) {
-	return func(ctx context.Context, in *collectionInput) (*listTraitsOutput, error) {
+func listCatalogTraits(cat *Catalog) func(context.Context, *CollectionInput) (*listTraitsOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listTraitsOutput, error) {
 		q, err := parseCatalogList(ctx, in, collect.TraitSpec())
 		if err != nil {
 			return nil, err
@@ -267,15 +284,10 @@ func listCatalogTraits(cat *Catalog) func(context.Context, *collectionInput) (*l
 	}
 }
 
-func parseCatalogList(ctx context.Context, in *collectionInput, spec collect.Spec) (collect.Query, error) {
+func parseCatalogList(ctx context.Context, in *CollectionInput, spec collect.Spec) (collect.Query, error) {
 	q, err := collect.Parse(rawFrom(in), spec)
 	if err != nil {
 		return collect.Query{}, withIdent(ctx, err)
-	}
-	if q.NSFW {
-		if p := refuseNSFW(ctx); p != nil {
-			return collect.Query{}, p
-		}
 	}
 	return q, nil
 }

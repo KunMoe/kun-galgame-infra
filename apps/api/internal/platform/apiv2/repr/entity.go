@@ -8,6 +8,7 @@ type Tag struct {
 	Tier        string   `json:"tier" enum:"core,longtail,hidden" doc:"Tag inventory tier."`
 	TagKind     string   `json:"tag_kind" enum:"content,meta" doc:"Tag vocabulary class."`
 	WorkCount   int      `json:"work_count" minimum:"0" doc:"Works visible under the same NSFW gate."`
+	IsSexual    bool     `json:"is_sexual" doc:"Whether this tag is in the sexual family. Filter on it before rendering a tag list to an SFW reader."`
 }
 
 type Company struct {
@@ -19,6 +20,10 @@ type Company struct {
 	Localized   map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
 	CompanyKind string                   `json:"company_kind" enum:"game_brand,bunko,publisher,anime_studio,doujin_circle,group" doc:"Company registry class. No other."`
 	WorkCount   int                      `json:"work_count" minimum:"0" doc:"Works visible under the same NSFW gate."`
+	Aliases     *[]EntityName            `json:"aliases,omitempty" doc:"Present when include=aliases. Empty array if none."`
+	Logo        *Image                   `json:"logo,omitempty" doc:"Present only when include=logo and this company has a logo; absent otherwise."`
+	Intros      *[]Intro                 `json:"intros,omitempty" doc:"Present when include=intros on the detail and batch lanes; the cursor list lane does not carry it. Empty array if none."`
+	Links       *[]WorkLink              `json:"links,omitempty" doc:"Present when include=links on the detail and batch lanes; the cursor list lane does not carry it. Empty array if none."`
 }
 
 type CreditName struct {
@@ -45,6 +50,22 @@ type Character struct {
 	Measurements *Measurements            `json:"measurements,omitempty" doc:"Present on view=full. null if unrecorded."`
 	BloodType    *string                  `json:"blood_type,omitempty" enum:"a,b,ab,o" doc:"Present on view=full. null if unrecorded."`
 	InstanceOfID *string                  `json:"instance_of_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"Another character this row is an instance of. Present on view=full. null if none."`
+	Image        *Image                   `json:"image,omitempty" doc:"Present only when include=image and this character has an image; absent otherwise. Detail face only."`
+	Figure       *Image                   `json:"figure,omitempty" doc:"Present only when include=figure and this character has a full-body figure cutout; absent otherwise. Detail face only."`
+	Traits       *[]CharacterTrait        `json:"traits,omitempty" doc:"Present when include=traits, detail face only. Empty array if none."`
+}
+
+type CharacterTrait struct {
+	_              struct{}                 `json:"-" additionalProperties:"true"`
+	Object         string                   `json:"object" enum:"character_trait" doc:"Type discriminant. Always character_trait."`
+	ID             string                   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog trait id."`
+	DisplayName    string                   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
+	Group          *string                  `json:"group" maxLength:"512" doc:"Root trait group name. null for a root trait. Must not be used as a discriminant."`
+	Localized      map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
+	GroupLocalized map[string]LocalizedText `json:"group_localized" doc:"Localized names of the root group, BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
+	Spoiler        string                   `json:"spoiler" enum:"none,minor,major" doc:"Spoiler level of this trait on this character."`
+	IsSexual       bool                     `json:"is_sexual" doc:"Whether this trait is in the sexual family."`
+	IsLie          bool                     `json:"is_lie" doc:"Whether this trait is an in-story deception."`
 }
 
 type Measurements struct {
@@ -102,6 +123,7 @@ type Series struct {
 	Object      string   `json:"object" enum:"series" doc:"Type discriminant. Always series."`
 	ID          string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog series id."`
 	DisplayName string   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
+	WorkCount   int      `json:"work_count" minimum:"0" doc:"Member works visible under the same NSFW gate."`
 }
 
 type Engine struct {
@@ -110,6 +132,8 @@ type Engine struct {
 	ID          string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog engine id."`
 	DisplayName string   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
 	WorkCount   int      `json:"work_count" minimum:"0" doc:"Works visible under the same NSFW gate."`
+	Description string   `json:"description" maxLength:"8000" doc:"Free-text description. Empty if unrecorded. Must not be used as a discriminant."`
+	Aliases     []string `json:"aliases" doc:"Alternate spellings of the engine name. Empty array if none."`
 }
 
 type NewsSource struct {

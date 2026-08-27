@@ -49,13 +49,14 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	app.Use(protocol.Middleware(opt.Store))
 	app.Use(catalogAuth(opt.LookupCredential))
 	app.Use(userAuth(opt.LookupUser, opt.LookupSite))
+	app.Use(protocol.RateLimit(opt.Store, credentialLimitIdentity))
 
-	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0-preview")
+	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.0.0")
 	cfg.OpenAPIPath = ""
 	cfg.DocsPath = ""
 	cfg.SchemasPath = ""
-	cfg.Info.Description = "NextMoe public API v2. Preview: any change is allowed, including deletions and renames. Third parties are not issued /v2 credentials."
-	cfg.Info.Extensions = map[string]any{"x-stability": "preview"}
+	cfg.Info.Description = "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no approval required. The shape evolves additively; a breaking change to this document fails CI."
+	cfg.Info.Extensions = map[string]any{"x-stability": "stable"}
 
 	api := humafiber.New(app, cfg)
 	api.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
@@ -63,9 +64,6 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 		id := problem.RequestID(fc)
 		ctx = huma.WithValue(ctx, "request_id", id)
 		ctx = huma.WithValue(ctx, "instance", problem.Instance(fc))
-		if cred := devapi.CredentialFrom(fc); cred != nil && cred.NSFWAllowed {
-			ctx = huma.WithValue(ctx, "nsfw_allowed", true)
-		}
 		switch id := fc.Locals("user_id").(type) {
 		case uint:
 			ctx = huma.WithValue(ctx, ctxUserID, int64(id))
@@ -96,6 +94,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	registerCatalog(api, opt.Catalog)
 	registerMe(api, opt.Catalog)
 	registerMeWrite(api, opt.Catalog)
+	registerMeNews(api, opt.Catalog)
 	huma.NewError = prevErr
 	annotateSpec(api.OpenAPI())
 	return api
@@ -106,7 +105,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 		if doc.Info.Extensions == nil {
 			doc.Info.Extensions = map[string]any{}
 		}
-		doc.Info.Extensions["x-stability"] = "preview"
+		doc.Info.Extensions["x-stability"] = "stable"
 	}
 	if len(doc.Servers) == 0 {
 		doc.Servers = []*huma.Server{{
@@ -131,11 +130,20 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.CompanyGraph{}, repr.CompanyGraphNode{}, repr.CompanyGraphEdge{},
 			repr.ObjectSchema{}, repr.SchemaField{},
 			repr.Person{}, repr.Trait{}, repr.Measurements{}, repr.NameCredit{}, repr.NameCreditRole{}, repr.Appearance{},
+			repr.CharacterTrait{}, repr.WorkEngineRef{},
 			repr.UserPlaytime{}, repr.CoverVote{}, repr.ClaimRecord{},
 			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.DecisionRecord{}, repr.SnapshotRecord{},
+			repr.Revision{}, repr.FieldDiff{}, repr.Amendment{}, repr.EditImage{},
+			repr.NewsSubmission{},
 		} {
 			doc.Components.Schemas.Schema(reflect.TypeOf(v), true, "")
 		}
+		// Registering a multipart operation makes huma register its own FormFile
+		// struct as a named component that nothing $refs — the multipart body
+		// gets an inline {type: string, format: binary} instead. Left in place
+		// its four undocumented Go fields fail G2 and G14, which is how it was
+		// found.
+		delete(doc.Components.Schemas.Map(), "FormFile")
 		for _, schema := range doc.Components.Schemas.Map() {
 			markClosedEnums(schema)
 			forceObjectOpen(schema)

@@ -184,7 +184,7 @@ const confirmReject = () => {
   </div>
   </KunLightboxGallery>
 
-  <KunModal v-model="rejectOpen">
+  <KunModal v-model="rejectOpen" aria-label="拒绝图片">
     <div class="space-y-4">
       <h2 class="text-xl font-bold text-foreground">拒绝图片</h2>
       <p class="text-sm text-default-500">

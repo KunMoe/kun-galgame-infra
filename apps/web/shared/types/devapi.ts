@@ -7,7 +7,6 @@ export interface DevApp {
   owner_user_id?: number
   dev_enabled: boolean
   dev_tier: string
-  dev_nsfw_allowed: boolean
   dev_rate_per_min: number
   dev_quota_daily: number
   key_count: number
@@ -59,7 +58,6 @@ export interface DevKey {
   key_prefix: string
   last4: string
   scopes: string[]
-  nsfw_allowed: boolean
   expires_at?: string
   revoked_at?: string
   last_used_at?: string
@@ -68,17 +66,5 @@ export interface DevKey {
 
 export interface DevKeyMinted extends DevKey {
   key: string
-}
-
-export interface DevScopeApplication {
-  id: number
-  user_id: number
-  scope: string
-  message: string
-  status: 'pending' | 'approved' | 'declined'
-  reviewer_id?: number
-  decline_reason: string
-  created_at: string
-  reviewed_at?: string
 }
 

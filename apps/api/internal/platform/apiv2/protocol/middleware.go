@@ -31,10 +31,6 @@ func Middleware(store Store) fiber.Handler {
 			}
 		}
 
-		if err := lim.before(c); err != nil {
-			return writeErr(c, err)
-		}
-
 		err := c.Next()
 		applyETag(c)
 		lim.after(c)

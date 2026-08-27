@@ -88,7 +88,7 @@ const confirmDelete = async () => {
 </script>
 
 <template>
-  <KunModal v-model="open">
+  <KunModal v-model="open" :aria-label="force ? '硬删除图片' : '软删除图片'">
     <div class="space-y-4">
       <h2 class="text-xl font-bold text-foreground">
         {{ force ? '硬删除图片' : '软删除图片' }}

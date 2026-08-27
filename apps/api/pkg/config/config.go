@@ -69,6 +69,20 @@ type Config struct {
 	AIOmni     AIOmniConfig
 
 	AIClient AIClientConfig
+
+	Store StoreConfig
+}
+
+// StoreConfig is the DLsite distribution face: how the platform reaches the
+// link shortener, and the affiliate URL templates the short links point at.
+// The aff id lives inside the templates because it is a commercial value the
+// deployment supplies, never a constant in the source.
+type StoreConfig struct {
+	ShortlinkBaseURL   string
+	ShortlinkAPIKey    string
+	AffTemplateManiax  string
+	AffTemplatePro     string
+	LinkQuotaPerClient int
 }
 
 type AIClientConfig struct {
@@ -581,6 +595,14 @@ func Load() (*Config, error) {
 		BaseURL:      getEnv("KUN_AI_CLIENT_BASE_URL", "http://127.0.0.1:9284"),
 		ClientID:     getEnv("KUN_AI_CLIENT_ID", ""),
 		ClientSecret: getEnv("KUN_AI_CLIENT_SECRET", ""),
+	}
+
+	cfg.Store = StoreConfig{
+		ShortlinkBaseURL:   getEnv("KUN_STORE_SHORTLINK_BASE_URL", ""),
+		ShortlinkAPIKey:    getEnv("KUN_STORE_SHORTLINK_API_KEY", ""),
+		AffTemplateManiax:  getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX", "https://www.dlsite.com/maniax/dlaf/=/link/work/aid/nextmoe/id/{product_id}.html"),
+		AffTemplatePro:     getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_PRO", "https://www.dlsite.com/pro/dlaf/=/link/work/aid/nextmoe/id/{product_id}.html"),
+		LinkQuotaPerClient: int(getEnvInt64("KUN_STORE_LINK_QUOTA_PER_CLIENT", 5000)),
 	}
 
 	cfg.NewsModeration = NewsModerationConfig{

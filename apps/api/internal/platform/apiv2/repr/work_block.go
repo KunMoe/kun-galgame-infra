@@ -121,6 +121,14 @@ type WorkPlatform struct {
 	Source   string   `json:"source" maxLength:"64" doc:"Open vocabulary sources. Must not be used as a discriminant."`
 }
 
+type WorkEngineRef struct {
+	_           struct{} `json:"-" additionalProperties:"true"`
+	Object      string   `json:"object" enum:"engine" doc:"Type discriminant. Always engine."`
+	ID          string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog engine id."`
+	DisplayName string   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
+	WorkCount   int      `json:"work_count" minimum:"0" doc:"Works visible under the same NSFW gate."`
+}
+
 type WorkSeriesRef struct {
 	_           struct{} `json:"-" additionalProperties:"true"`
 	Object      string   `json:"object" enum:"series" doc:"Type discriminant. Always series."`

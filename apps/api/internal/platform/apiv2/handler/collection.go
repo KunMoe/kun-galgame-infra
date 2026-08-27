@@ -3,10 +3,12 @@ package handler
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"api/internal/platform/apiv2/collect"
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/apiv2/repr"
 	"api/internal/platform/apiv2/vocab"
 	"api/internal/platform/devapi"
@@ -15,7 +17,13 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type collectionInput struct {
+// Exported on purpose: an anonymous embed of an unexported type is an
+// unexported field, which huma skips when it collects query parameters. While
+// this was collectionInput, six embedding routes (search, redirects, calendar,
+// credit-names, me/playtimes, me/proposals) shipped with cursor/limit/view
+// undocumented and unbound, and the credit-names ids= batch lane silently
+// answered page 1 instead.
+type CollectionInput struct {
 	Cursor       string `query:"cursor" maxLength:"512" doc:"Opaque keyset cursor from a prior next_cursor. Must start with cur_."`
 	Limit        string `query:"limit" maxLength:"8" doc:"Page size 1-100, default 20. Values above 100 are 400 LIMIT_TOO_LARGE, not clamped."`
 	View         string `query:"view" maxLength:"16" doc:"basic (default) or full. Closed vocabulary."`
@@ -26,7 +34,7 @@ type collectionInput struct {
 	IncludeTotal string `query:"include_total" maxLength:"8" doc:"true to include total. Only true or false."`
 	Facets       string `query:"facets" maxLength:"512" doc:"Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET."`
 	Sort         string `query:"sort" maxLength:"32" doc:"Closed per-collection sort key."`
-	NSFW         string `query:"nsfw" maxLength:"8" doc:"true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."`
+	NSFW         string `query:"nsfw" maxLength:"8" doc:"true includes r18. false or absent hides r18. Only true or false."`
 }
 
 type listVocabOutput struct {
@@ -55,7 +63,7 @@ type listWorksInput struct {
 	IncludeTotal   string `query:"include_total" maxLength:"8" doc:"true to include total. Only true or false."`
 	Facets         string `query:"facets" maxLength:"512" doc:"Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET."`
 	Sort           string `query:"sort" maxLength:"32" doc:"Closed per-collection sort key."`
-	NSFW           string `query:"nsfw" maxLength:"8" doc:"true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false."`
+	NSFW           string `query:"nsfw" maxLength:"8" doc:"true includes r18. false or absent hides r18. Only true or false."`
 	Q              string `query:"q" maxLength:"512" doc:"Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant."`
 	ContentRating  string `query:"content_rating" maxLength:"16" doc:"Closed: all_ages, sensitive, r18. r18 requires nsfw=true."`
 	Claimed        string `query:"claimed" maxLength:"8" doc:"true or false. Absent = no gate."`
@@ -109,7 +117,7 @@ func registerCollections(api huma.API, works WorksFunc, cat *Catalog) {
 
 type WorksFunc func(ctx context.Context, q collect.Query) (repr.List[repr.Work], error)
 
-func listVocabularies(ctx context.Context, in *collectionInput) (*listVocabOutput, error) {
+func listVocabularies(ctx context.Context, in *CollectionInput) (*listVocabOutput, error) {
 	q, err := collect.Parse(rawFrom(in), collect.VocabSpec())
 	if err != nil {
 		return nil, withIdent(ctx, err)
@@ -121,7 +129,7 @@ func listVocabularies(ctx context.Context, in *collectionInput) (*listVocabOutpu
 	return &listVocabOutput{Body: page}, nil
 }
 
-func listProblemTypes(ctx context.Context, in *collectionInput) (*listProblemsOutput, error) {
+func listProblemTypes(ctx context.Context, in *CollectionInput) (*listProblemsOutput, error) {
 	q, err := collect.Parse(rawFrom(in), collect.ProblemSpec())
 	if err != nil {
 		return nil, withIdent(ctx, err)
@@ -142,18 +150,13 @@ func listWorks(src WorksFunc, cat *Catalog) func(context.Context, *listWorksInpu
 		if in == nil {
 			in = &listWorksInput{}
 		}
-		q, err := collect.Parse(rawFrom(&collectionInput{
+		q, err := collect.Parse(rawFrom(&CollectionInput{
 			Cursor: in.Cursor, Limit: in.Limit, View: in.View, Include: in.Include,
 			Fields: in.Fields, IDs: in.IDs, Refs: in.Refs, IncludeTotal: in.IncludeTotal,
 			Facets: in.Facets, Sort: in.Sort, NSFW: in.NSFW,
 		}), collect.WorkSpec())
 		if err != nil {
 			return nil, withIdent(ctx, err)
-		}
-		if q.NSFW {
-			if p := refuseNSFW(ctx); p != nil {
-				return nil, p
-			}
 		}
 		filt, ferr := parseWorksFilter(in)
 		if ferr != nil {
@@ -178,7 +181,7 @@ func listWorks(src WorksFunc, cat *Catalog) func(context.Context, *listWorksInpu
 	}
 }
 
-func rawFrom(in *collectionInput) collect.Raw {
+func rawFrom(in *CollectionInput) collect.Raw {
 	if in == nil {
 		return collect.Raw{}
 	}
@@ -201,6 +204,19 @@ func withIdent(ctx context.Context, p *problem.Problem) *problem.Problem {
 		p.Instance = inst
 	}
 	return p
+}
+
+func credentialLimitIdentity(c fiber.Ctx) (protocol.LimitIdentity, bool) {
+	cred := devapi.CredentialFrom(c)
+	if cred == nil {
+		return protocol.LimitIdentity{}, false
+	}
+	rate, unlimited := cred.EffectiveRate()
+	quota, _ := cred.EffectiveQuota()
+	return protocol.LimitIdentity{
+		Key:  "k" + strconv.FormatUint(uint64(cred.KeyID), 10),
+		Rate: rate, Quota: quota, Unlimited: unlimited,
+	}, true
 }
 
 func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error)) fiber.Handler {
@@ -229,7 +245,7 @@ func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error
 		}
 		if devapi.HasV1KeyPrefix(token) {
 			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
-				"v1 application keys are not accepted on /v2 during preview."))
+				"v1 application keys are not accepted on /v2; mint a v2 key (nmk_) in the developer portal."))
 		}
 		if !devapi.IsV2KeyPrefix(token) || !devapi.ValidV2Key(token) {
 			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),

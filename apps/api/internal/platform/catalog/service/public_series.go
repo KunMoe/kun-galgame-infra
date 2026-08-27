@@ -29,10 +29,11 @@ func (s *PublicService) SeriesDetail(ctx context.Context, id int64, withWorks, n
 		return dto.PublicSeriesDetail{}, false, err
 	}
 	rec.Intros = intros
-	_, nsfwWorks, err := s.workCountsWithNSFW(ctx, seriesWorkEdge, []int64{id}, nsfw)
+	counts, nsfwWorks, err := s.workCountsWithNSFW(ctx, seriesWorkEdge, []int64{id}, nsfw)
 	if err != nil {
 		return dto.PublicSeriesDetail{}, false, err
 	}
+	rec.WorkCount = counts[id]
 	rec.HasNSFW = nsfwWorks[id] > 0
 	if withWorks {
 		var wrows []struct {

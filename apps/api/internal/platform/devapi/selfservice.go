@@ -24,20 +24,18 @@ const (
 
 // Scopes a key owner may tick unilaterally. galgame:read left this list when the
 // /v1/galgame face retired to a 410 tombstone (wave 146): no live route consumes
-// it, so offering it minted a permission over nothing.
-var selfServiceScopes = []string{ScopeCatalogRead}
-
-// Scopes a key owner may hold only after we approve an application. The news
-// partners authorised NextMoe's index, not whoever asks us for it, so who
-// carries news:read stays our decision — the application only mechanises the
-// paperwork, it does not make the scope self-service.
-var grantableScopes = []string{ScopeNewsRead}
+// it, so offering it minted a permission over nothing. news:read left it the
+// other way round on 2026-08-25 — the grant machinery retired and /v1/news now
+// takes any valid key, so there is nothing left to tick. store:read joined on
+// 2026-08-26 as part of the same retirement: /v1/store still checks the scope
+// on every request, and with the application queue gone, ticking it here is the
+// only way anyone can hold it.
+var selfServiceScopes = []string{ScopeCatalogRead, ScopeStoreRead}
 
 var (
 	ErrAppLimitReached = errors.New("devapi: application limit reached")
 	ErrKeyLimitReached = errors.New("devapi: active key limit reached")
-	ErrScopeNotAllowed = errors.New("devapi: scope not permitted (want catalog:read)")
-	ErrScopeNeedsGrant = errors.New("devapi: scope requires an approved application")
+	ErrScopeNotAllowed = errors.New("devapi: scope not permitted (want catalog:read or store:read)")
 	ErrNameRequired    = errors.New("devapi: name is required")
 	ErrNameTooLong     = errors.New("devapi: name too long (max 100)")
 	ErrDescTooLong     = errors.New("devapi: description too long (max 100)")
@@ -117,7 +115,6 @@ func (s *SelfServiceService) CreateApp(ctx context.Context, ownerUserID uint, na
 		OwnerUserID:     &owner,
 		DevEnabled:      enabled,
 		DevTier:         TierFree,
-		DevNSFWAllowed:  false,
 		DevRatePerMin:   0,
 		DevQuotaDaily:   0,
 		DevReviewStatus: reviewStatus,
@@ -245,7 +242,7 @@ func (s *SelfServiceService) MintKey(ctx context.Context, ownerUserID uint, clie
 	if len(in.Name) > maxAppNameLen {
 		return nil, "", ErrNameTooLong
 	}
-	if err := s.checkMintScopes(ctx, ownerUserID, in.Scopes); err != nil {
+	if err := checkMintScopes(in.Scopes); err != nil {
 		return nil, "", err
 	}
 	active, err := s.repo.CountActiveKeysByClient(ctx, clientID, time.Now())
@@ -296,38 +293,9 @@ func (s *SelfServiceService) RevokeKey(ctx context.Context, ownerUserID uint, cl
 	return true, s.admin.RevokeKey(ctx, keyID)
 }
 
-type scopeGate int
-
-const (
-	scopeGateDenied scopeGate = iota
-	scopeGateSelfService
-	scopeGateGrant
-)
-
-func gateForScope(sc string) scopeGate {
-	switch {
-	case slices.Contains(selfServiceScopes, sc):
-		return scopeGateSelfService
-	case slices.Contains(grantableScopes, sc):
-		return scopeGateGrant
-	default:
-		return scopeGateDenied
-	}
-}
-
-func (s *SelfServiceService) checkMintScopes(ctx context.Context, ownerUserID uint, scopes []string) error {
+func checkMintScopes(scopes []string) error {
 	for _, sc := range scopes {
-		switch gateForScope(sc) {
-		case scopeGateSelfService:
-		case scopeGateGrant:
-			approved, err := s.repo.HasApprovedScopeApplication(ctx, ownerUserID, sc)
-			if err != nil {
-				return err
-			}
-			if !approved {
-				return ErrScopeNeedsGrant
-			}
-		default:
+		if !slices.Contains(selfServiceScopes, sc) {
 			return ErrScopeNotAllowed
 		}
 	}

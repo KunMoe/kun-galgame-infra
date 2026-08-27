@@ -1,4 +1,4 @@
-# List characters of one work · Public API v2（preview）
+# List characters of one work · Public API v2
 
 > NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
 
@@ -15,14 +15,14 @@ List characters of one work
 
 Roster characters. Same items as include=characters. Requires an application key.
 
-- 所属 API：Public API v2（preview）（/v2）
+- 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Decimal catalog work id. |
-| `nsfw` | query | 否 | string | true includes r18. Requires the NSFW capability. false or absent hides r18. Only true or false. |
+| `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `cursor` | query | 否 | string | Opaque keyset cursor from a prior next_cursor. Must start with cur_. |
 | `limit` | query | 否 | string | Page size 1-100, default 20. |
 

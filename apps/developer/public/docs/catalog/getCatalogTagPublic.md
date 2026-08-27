@@ -14,7 +14,7 @@
 Canonical tag (cross-source vocabulary): name / tier / kind / intros; include=works attaches the tagged works
 
 - 所属 API：目录数据 API（只读）（/v1/catalog）
-- 鉴权：Authorization: Bearer nm_live_…
+- 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read
 
 | 参数 | 位置 | 必填 | 类型 | 说明 |
@@ -27,7 +27,7 @@ Canonical tag (cross-source vocabulary): name / tier / kind / intros; include=wo
 
 ```bash
 curl "https://api.nextmoe.dev/v1/catalog/tags/1" \
-  -H "Authorization: Bearer nm_live_<YOUR_KEY>"
+  -H "Authorization: Bearer nmk_live_<YOUR_KEY>"
 ```
 
 ---

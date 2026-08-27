@@ -21,6 +21,10 @@ import (
 	srcb "api/internal/platform/catalog/srcbangumi"
 	"api/internal/platform/devapi"
 	"api/internal/platform/editing"
+	newsmigrate "api/internal/platform/news/migrate"
+	newsmodel "api/internal/platform/news/model"
+	"api/internal/platform/news/newstest"
+	newssvc "api/internal/platform/news/service"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
@@ -39,16 +43,30 @@ var (
 	liveSite      = "kungal"
 )
 
-type liveUnlimitedStore struct{}
+// liveUnlimitedStore never rate-limits, but it does remember: without a real
+// Get/Set the Idempotency-Key replay path is dead code in every live test, and
+// a POST that mints a second row on retry would pass unnoticed.
+type liveUnlimitedStore struct {
+	mu   sync.Mutex
+	kept map[string][]byte
+}
 
-func (liveUnlimitedStore) Incr(context.Context, string, time.Duration) (int64, error) {
+func (*liveUnlimitedStore) Incr(context.Context, string, time.Duration) (int64, error) {
 	return 1, nil
 }
-func (liveUnlimitedStore) Decr(context.Context, string) error { return nil }
-func (liveUnlimitedStore) Get(context.Context, string) ([]byte, error) {
-	return nil, nil
+func (*liveUnlimitedStore) Decr(context.Context, string) error { return nil }
+func (s *liveUnlimitedStore) Get(_ context.Context, key string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.kept[key], nil
 }
-func (liveUnlimitedStore) Set(context.Context, string, []byte, time.Duration) error {
+func (s *liveUnlimitedStore) Set(_ context.Context, key string, value []byte, _ time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.kept == nil {
+		s.kept = map[string][]byte{}
+	}
+	s.kept[key] = value
 	return nil
 }
 
@@ -61,12 +79,16 @@ func mustLiveV2Key() string {
 }
 
 type liveFix struct {
-	Work, Pending, Claimable, Anchored int64
-	Company, Tag, Series, Engine       int64
-	Release, Character, Person, Credit int64
-	Trait, Cover                       int64
-	AnchorExt                          string
+	Work, Pending, Claimable, Anchored  int64
+	Company, Tag, Series, Engine        int64
+	Release, Character, Person, Credit  int64
+	Trait, Cover                        int64
+	NewsItem                            int64
+	CompanyEmpty, TagSexual, Attributed int64
+	AnchorExt                           string
 }
+
+const liveNewsSource = "moyu"
 
 type liveEnv struct {
 	app *fiber.App
@@ -105,6 +127,10 @@ func liveCatalog(t *testing.T) *liveEnv {
 			liveErr = err
 			return
 		}
+		if err := newsmigrate.Run(db); err != nil {
+			liveErr = err
+			return
+		}
 		read := catsvc.NewReadService(db)
 		resolve := catsvc.NewResolveService(repository.NewRedirectRepository(db))
 		pub := catsvc.NewPublicService(db, read, resolve, "")
@@ -122,20 +148,23 @@ func liveCatalog(t *testing.T) *liveEnv {
 			CoverVotes: catsvc.NewCoverVoteService(db),
 			Claims:     catsvc.NewClaimLifecycleService(db),
 			Engine:     editing.NewEngine(db, reg),
+			News:       newssvc.NewPublicService(db, "https://image.example.test/image"),
+			NewsWrite:  newssvc.NewSubmissionService(db),
 		}
+		cat.EditHistory = catsvc.NewEditHistoryService(db)
 		app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
 		SetupWith(app, Options{
-			Store:   liveUnlimitedStore{},
+			Store:   &liveUnlimitedStore{},
 			Catalog: cat,
 			LookupCredential: func(_ context.Context, raw string) (*devapi.Credential, error) {
 				switch raw {
 				case liveAppKey:
 					return &devapi.Credential{
-						KeyID: 1, NSFWAllowed: true, Scopes: []string{devapi.ScopeCatalogRead},
+						KeyID: 1, Scopes: []string{devapi.ScopeCatalogRead},
 					}, nil
 				case liveAppKeyB:
 					return &devapi.Credential{
-						KeyID: 2, NSFWAllowed: true, Scopes: []string{devapi.ScopeCatalogRead},
+						KeyID: 2, Scopes: []string{devapi.ScopeCatalogRead},
 					}, nil
 				default:
 					return nil, nil
@@ -168,10 +197,16 @@ func liveCatalog(t *testing.T) *liveEnv {
 }
 
 func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFix, error) {
+	// The edit_* tables belong in this list: catalog_work restarts its identity
+	// on every run while edit_revision did not, so run N+1's fresh work id
+	// inherited run N's revision chain and the entity's history read back with
+	// another run's snapshots.
 	if err := db.Exec(`TRUNCATE
 		catalog_claim_event, catalog_external_ref, catalog_work_cover, catalog_release,
 		catalog_work, catalog_label, catalog_tag, catalog_series, catalog_engine,
-		catalog_character, catalog_credit_name, catalog_person, catalog_character_trait
+		catalog_character, catalog_credit_name, catalog_person, catalog_character_trait,
+		catalog_work_label, catalog_label_alias, catalog_series_member, catalog_character_trait_link,
+		edit_revision, edit_proposal, edit_proposal_amendment
 		RESTART IDENTITY CASCADE`).Error; err != nil {
 		return liveFix{}, err
 	}
@@ -236,11 +271,48 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 
+	// The taxonomy work counts (has_works=, series/company work_count) only
+	// count works with a LIVE claim — claimStateWhere(taxonomyLiveClaim) — so an
+	// unclaimed fixture work attributes to a label yet counts as zero.
+	attributed := &model.CatalogWork{
+		MediumID: 1, OLang: "ja", DisplayName: "Attributed Work",
+		ContentRating: model.ContentRatingAllAges, Status: model.WorkStatusLive,
+		Extra: empty, FieldProvenance: empty,
+	}
+	if err := db.Create(attributed).Error; err != nil {
+		return fx, err
+	}
+	fx.Attributed = attributed.ID
+	attrProduct := int64(10002)
+	for _, action := range []catsvc.ClaimAction{catsvc.ClaimActionClaim, catsvc.ClaimActionSubmit, catsvc.ClaimActionApprove} {
+		if _, err := claims.Act(context.Background(), catsvc.ClaimActionParams{
+			WorkID: attributed.ID, Action: action, Site: liveSite,
+			ProductWorkID: &attrProduct, ActorUID: liveUID,
+		}); err != nil {
+			return fx, err
+		}
+	}
+
 	co := &model.CatalogLabel{DisplayName: "Live Brand", Lang: "ja", Kind: model.LabelKindGameBrand, FieldProvenance: empty}
 	if err := db.Create(co).Error; err != nil {
 		return fx, err
 	}
 	fx.Company = co.ID
+	if err := db.Create(&model.CatalogWorkLabel{WorkID: attributed.ID, LabelID: co.ID, Kind: model.WorkLabelKindBrand}).Error; err != nil {
+		return fx, err
+	}
+	if err := db.Create(&model.CatalogLabelAlias{
+		LabelID: co.ID, Name: "ライブブランド", Lang: "ja",
+		Kind: model.AliasKindSpellingVariant, Provenance: model.AliasProvenanceSource,
+	}).Error; err != nil {
+		return fx, err
+	}
+
+	empt := &model.CatalogLabel{DisplayName: "Empty Brand", Lang: "ja", Kind: model.LabelKindGameBrand, FieldProvenance: empty}
+	if err := db.Create(empt).Error; err != nil {
+		return fx, err
+	}
+	fx.CompanyEmpty = empt.ID
 
 	tg := &model.CatalogTag{Name: "live-tag", Tier: model.TagTierCore, Kind: model.TagKindContent}
 	if err := db.Create(tg).Error; err != nil {
@@ -248,11 +320,20 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.Tag = tg.ID
 
+	ero := &model.CatalogTag{Name: "live-ero-tag", Tier: model.TagTierCore, Kind: model.TagKindContent, Sexual: true}
+	if err := db.Create(ero).Error; err != nil {
+		return fx, err
+	}
+	fx.TagSexual = ero.ID
+
 	se := &model.CatalogSeries{DisplayName: "Live Series", SourceID: 2, ExternalID: "s-live-1"}
 	if err := db.Create(se).Error; err != nil {
 		return fx, err
 	}
 	fx.Series = se.ID
+	if err := db.Create(&model.CatalogSeriesMember{SeriesID: se.ID, WorkID: attributed.ID, Position: 1, Kind: model.SeriesMemberKindMain}).Error; err != nil {
+		return fx, err
+	}
 
 	en := &model.CatalogEngine{Name: "LiveEngine", Description: "test", Aliases: datatypes.JSON([]byte("[]"))}
 	if err := db.Create(en).Error; err != nil {
@@ -292,13 +373,47 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 	fx.Trait = tr.ID
+	if err := db.Create(&model.CatalogCharacterTraitLink{CharacterID: ch.ID, TraitID: tr.ID, SpoilerLevel: 0}).Error; err != nil {
+		return fx, err
+	}
 
 	cv := &model.CatalogWorkCover{WorkID: w.ID, ImageHash: "livecoverhash1", Kind: "main", SourceID: 2}
 	if err := db.Create(cv).Error; err != nil {
 		return fx, err
 	}
 	fx.Cover = cv.ID
+
+	newsID, nerr := seedLiveNews(db)
+	if nerr != nil {
+		return fx, nerr
+	}
+	fx.NewsItem = newsID
 	return fx, nil
+}
+
+// seedLiveNews leaves ONE published item behind for the spec walk to address.
+// Nothing may mutate it: the walk sends PATCH {} at it, which must stay a
+// validation refusal rather than a state change.
+func seedLiveNews(db *gorm.DB) (int64, error) {
+	if err := newstest.Truncate(db); err != nil {
+		return 0, err
+	}
+	if err := db.Exec(`
+		INSERT INTO news_source (key, display_name, homepage_url, attribution, publisher_uid, column_url, active)
+		VALUES (?, 'Moyu', 'https://example.test', 'attribution text', ?, '', true)
+		ON CONFLICT (key) DO UPDATE SET publisher_uid = EXCLUDED.publisher_uid, active = true`,
+		liveNewsSource, liveUID).Error; err != nil {
+		return 0, err
+	}
+	item := newsmodel.NewsItem{
+		SourceKey: liveNewsSource, Lane: newsmodel.LaneNews, ExternalID: "seed-published",
+		Title: "Seeded", Preview: "Seeded lede", SourceURL: "https://example.test/seed",
+		PublishedAt: time.Now().UTC(), Status: newsmodel.StatusPublished,
+	}
+	if err := db.Create(&item).Error; err != nil {
+		return 0, err
+	}
+	return item.ID, nil
 }
 
 func liveDo(t *testing.T, env *liveEnv, method, path, token, body string) (int, string, []byte) {
@@ -319,6 +434,20 @@ func liveDo(t *testing.T, env *liveEnv, method, path, token, body string) (int, 
 	raw, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	return resp.StatusCode, resp.Header.Get("Content-Type"), raw
+}
+
+func liveETag(t *testing.T, env *liveEnv, path, token string) string {
+	t.Helper()
+	req := httptest.NewRequest("GET", path, nil)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := env.app.Test(req)
+	require.NoError(t, err)
+	require.Equal(t, 200, resp.StatusCode, path)
+	tag := resp.Header.Get("ETag")
+	require.NotEmpty(t, tag, "no ETag on "+path)
+	return tag
 }
 
 func liveDoHeader(t *testing.T, env *liveEnv, method, path, token, body string, extra map[string]string) (int, string, []byte) {
@@ -385,6 +514,8 @@ func liveSubstitute(path string, fx liveFix) string {
 		id = fx.Work
 	case strings.Contains(path, "/snapshots/"):
 		id = fx.Work
+	case strings.Contains(path, "/news"):
+		id = fx.NewsItem
 	}
 	path = strings.ReplaceAll(path, "{code}", problem.CodeRateLimited)
 	path = strings.ReplaceAll(path, "{name}", "medium")

@@ -3,7 +3,7 @@ definePageMeta({ layout: 'docs' })
 
 useSeoMeta({
   title: 'API 设计原则',
-  description: 'NextMoe Public API v2 的设计原则、客户端契约与 preview 稳定性。'
+  description: 'NextMoe Public API v2 的设计原则、客户端契约与稳定性承诺。'
 })
 </script>
 
@@ -19,9 +19,13 @@ useSeoMeta({
       </p>
     </header>
 
-    <section class="rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-700">
-      <strong>preview。</strong>
-      /v2 现在允许破坏性变更，包括删除与改名。第三方不会被签发 /v2 凭证；一方消费者（kungal / 摸鱼 / letmoe）按 changelog 迁移。GA 由平台宣布，不是由日期决定。
+    <section class="rounded-xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-600">
+      <strong>正式公开（2026-08-25）。</strong>
+      /v2 对所有开发者开放：在门户自助铸造
+      <code class="font-mono text-xs">nmk_</code>
+      密钥即可调用，不需要申请。形状按 additive-only 演进——已发布的
+      <code class="font-mono text-xs">v2-openapi.yaml</code>
+      受 CI 的 oasdiff 破坏性变更门看守，删除与改名过不去；真要破坏只能升主版本。
     </section>
 
     <section class="space-y-3">

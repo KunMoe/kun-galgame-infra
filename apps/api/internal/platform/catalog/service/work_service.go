@@ -114,13 +114,17 @@ func (s *WorkService) ClaimWork(ctx context.Context, params ClaimWorkParams) (in
 			return nil
 		}
 
+		rating := params.ContentRating
+		if rating == 0 && len(params.Anchors) > 0 {
+			rating = s.deriveAnchorRating(ctx, params.Anchors)
+		}
 		w := model.CatalogWork{
 			MediumID:        params.MediumID,
 			Site:            &params.Site,
 			ProductWorkID:   &params.ProductWorkID,
 			OLang:           params.OLang,
 			DisplayName:     params.DisplayName,
-			ContentRating:   params.ContentRating,
+			ContentRating:   rating,
 			Status:          model.WorkStatusLive,
 			Extra:           []byte(`{}`),
 			FieldProvenance: []byte(`{}`),

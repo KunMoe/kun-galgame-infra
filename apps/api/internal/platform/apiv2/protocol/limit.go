@@ -3,6 +3,7 @@ package protocol
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"api/internal/platform/apiv2/problem"
@@ -21,6 +22,48 @@ const (
 	localsCounted  = "v2_counted"
 )
 
+type LimitIdentity struct {
+	Key       string
+	Rate      int
+	Quota     int
+	Unlimited bool
+}
+
+type IdentityFunc func(c fiber.Ctx) (LimitIdentity, bool)
+
+// RateLimit must be registered AFTER the auth middlewares and INSIDE
+// Middleware: the counting decision needs the resolved credential, which does
+// not exist yet when Middleware runs, while the 304-decrement must happen
+// after applyETag rewrites the status, which only Middleware sees. The two
+// halves meet through the locals keys.
+func RateLimit(store Store, ident IdentityFunc) fiber.Handler {
+	lim := newLimiter(store)
+	return func(c fiber.Ctx) error {
+		if !strings.HasPrefix(c.Path(), "/v2") {
+			return c.Next()
+		}
+		id := LimitIdentity{Rate: RatePerMinute, Quota: QuotaPerDay}
+		if ident != nil {
+			if ki, ok := ident(c); ok {
+				id = ki
+			}
+		}
+		if id.Unlimited {
+			return c.Next()
+		}
+		if id.Key == "" {
+			id.Key = c.IP()
+			if id.Key == "" {
+				id.Key = "unknown"
+			}
+		}
+		if err := lim.before(c, id); err != nil {
+			return writeErr(c, err)
+		}
+		return c.Next()
+	}
+}
+
 type limiter struct {
 	store Store
 }
@@ -32,15 +75,11 @@ func newLimiter(store Store) *limiter {
 	return &limiter{store: store}
 }
 
-func (l *limiter) before(c fiber.Ctx) error {
-	id := c.IP()
-	if id == "" {
-		id = "unknown"
-	}
+func (l *limiter) before(c fiber.Ctx, id LimitIdentity) error {
 	now := time.Now().UTC()
 	minute := now.Unix() / 60
-	rateKey := "v2:rate:" + id + ":" + strconv.FormatInt(minute, 10)
-	quotaKey := "v2:quota:" + id + ":" + now.Format("2006-01-02")
+	rateKey := "v2:rate:" + id.Key + ":" + strconv.FormatInt(minute, 10)
+	quotaKey := "v2:quota:" + id.Key + ":" + now.Format("2006-01-02")
 	ctx := c.Context()
 
 	n, err := l.store.Incr(ctx, rateKey, 70*time.Second)
@@ -56,11 +95,11 @@ func (l *limiter) before(c fiber.Ctx) error {
 	c.Locals(localsQuotaKey, quotaKey)
 	c.Locals(localsCounted, true)
 
-	rateRemaining := RatePerMinute - int(n)
+	rateRemaining := id.Rate - int(n)
 	if rateRemaining < 0 {
 		rateRemaining = 0
 	}
-	quotaRemaining := QuotaPerDay - int(qn)
+	quotaRemaining := id.Quota - int(qn)
 	if quotaRemaining < 0 {
 		quotaRemaining = 0
 	}
@@ -73,13 +112,13 @@ func (l *limiter) before(c fiber.Ctx) error {
 		quotaReset = 1
 	}
 
-	writeLimitHeaders(c, rateRemaining, rateReset, quotaRemaining, quotaReset)
+	writeLimitHeaders(c, id, rateRemaining, rateReset)
 
-	if int(n) > RatePerMinute {
+	if int(n) > id.Rate {
 		c.Set("Retry-After", strconv.Itoa(rateReset))
 		return tooMany(c, problem.CodeRateLimited, rateReset)
 	}
-	if int(qn) > QuotaPerDay {
+	if int(qn) > id.Quota {
 		c.Set("Retry-After", strconv.Itoa(quotaReset))
 		return tooMany(c, problem.CodeQuotaExceeded, quotaReset)
 	}
@@ -103,14 +142,12 @@ func (l *limiter) after(c fiber.Ctx) {
 	}
 }
 
-func writeLimitHeaders(c fiber.Ctx, rateRemaining, rateReset, quotaRemaining, quotaReset int) {
-	c.Set("RateLimit", "limit="+strconv.Itoa(RatePerMinute)+", remaining="+strconv.Itoa(rateRemaining)+", reset="+strconv.Itoa(rateReset))
-	c.Set("RateLimit-Policy", "100;w=60, 10000;w=86400")
-	c.Set("X-RateLimit-Limit", strconv.Itoa(RatePerMinute))
+func writeLimitHeaders(c fiber.Ctx, id LimitIdentity, rateRemaining, rateReset int) {
+	c.Set("RateLimit", "limit="+strconv.Itoa(id.Rate)+", remaining="+strconv.Itoa(rateRemaining)+", reset="+strconv.Itoa(rateReset))
+	c.Set("RateLimit-Policy", strconv.Itoa(id.Rate)+";w=60, "+strconv.Itoa(id.Quota)+";w=86400")
+	c.Set("X-RateLimit-Limit", strconv.Itoa(id.Rate))
 	c.Set("X-RateLimit-Remaining", strconv.Itoa(rateRemaining))
 	c.Set("X-RateLimit-Reset", strconv.Itoa(rateReset))
-	_ = quotaRemaining
-	_ = quotaReset
 }
 
 func untilTomorrow(now time.Time) time.Duration {
