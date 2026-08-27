@@ -85,10 +85,16 @@ type liveFix struct {
 	Trait, Cover                        int64
 	NewsItem                            int64
 	CompanyEmpty, TagSexual, Attributed int64
+	CompanyLogo, NSFWMember, Sibling    int64
 	AnchorExt                           string
 }
 
-const liveNewsSource = "moyu"
+const (
+	liveNewsSource = "moyu"
+	liveCDNBase    = "https://img.example.test/image"
+	liveLogoHash   = "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809"
+	livePhotoHash  = "9f8e7d6c5b4a39281706f5e4d3c2b1a09f8e7d6c5b4a39281706f5e4d3c2b1a0"
+)
 
 type liveEnv struct {
 	app *fiber.App
@@ -133,7 +139,7 @@ func liveCatalog(t *testing.T) *liveEnv {
 		}
 		read := catsvc.NewReadService(db)
 		resolve := catsvc.NewResolveService(repository.NewRedirectRepository(db))
-		pub := catsvc.NewPublicService(db, read, resolve, "")
+		pub := catsvc.NewPublicService(db, read, resolve, liveCDNBase)
 		reg := editing.NewRegistry()
 		if err := editspec.RegisterAll(reg, db); err != nil {
 			liveErr = err
@@ -206,6 +212,8 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		catalog_work, catalog_label, catalog_tag, catalog_series, catalog_engine,
 		catalog_character, catalog_credit_name, catalog_person, catalog_character_trait,
 		catalog_work_label, catalog_label_alias, catalog_series_member, catalog_character_trait_link,
+		catalog_work_rating, catalog_tag_intro, catalog_series_intro, catalog_person_intro,
+		catalog_name_alias, catalog_credit,
 		edit_revision, edit_proposal, edit_proposal_amendment
 		RESTART IDENTITY CASCADE`).Error; err != nil {
 		return liveFix{}, err
@@ -314,6 +322,27 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.CompanyEmpty = empt.ID
 
+	// Both hang off the unclaimed "Live Work": the taxonomy work counts only see
+	// LIVE-claimed works, so attributing here leaves has_works= and work_count
+	// untouched while still giving the work-detail companies block one row with a
+	// logo and one without.
+	logo := &model.CatalogLabel{
+		DisplayName: "Logo Brand", Lang: "ja", Kind: model.LabelKindGameBrand,
+		LogoHash: liveLogoHash, FieldProvenance: empty,
+	}
+	if err := db.Create(logo).Error; err != nil {
+		return fx, err
+	}
+	fx.CompanyLogo = logo.ID
+	for _, wl := range []*model.CatalogWorkLabel{
+		{WorkID: w.ID, LabelID: logo.ID, Kind: model.WorkLabelKindBrand},
+		{WorkID: w.ID, LabelID: co.ID, Kind: model.WorkLabelKindDeveloper},
+	} {
+		if err := db.Create(wl).Error; err != nil {
+			return fx, err
+		}
+	}
+
 	tg := &model.CatalogTag{Name: "live-tag", Tier: model.TagTierCore, Kind: model.TagKindContent}
 	if err := db.Create(tg).Error; err != nil {
 		return fx, err
@@ -326,12 +355,44 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.TagSexual = ero.ID
 
+	if err := db.Create(&model.CatalogTagIntro{TagID: tg.ID, Lang: "zh-Hans", Intro: "标签说明", SourceID: 1}).Error; err != nil {
+		return fx, err
+	}
+
 	se := &model.CatalogSeries{DisplayName: "Live Series", SourceID: 2, ExternalID: "s-live-1"}
 	if err := db.Create(se).Error; err != nil {
 		return fx, err
 	}
 	fx.Series = se.ID
 	if err := db.Create(&model.CatalogSeriesMember{SeriesID: se.ID, WorkID: attributed.ID, Position: 1, Kind: model.SeriesMemberKindMain}).Error; err != nil {
+		return fx, err
+	}
+	if err := db.Create(&model.CatalogSeriesIntro{SeriesID: se.ID, Lang: "ja", Intro: "シリーズ説明", SourceID: 2}).Error; err != nil {
+		return fx, err
+	}
+
+	// has_nsfw is the display gate, not content_rating: a CLAIMED member only
+	// counts as nsfw through display_nsfw. r18 keeps it out of the sfw work_count
+	// at the same time, so the series reads work_count 1 / has_nsfw true.
+	nsfwMember := &model.CatalogWork{
+		MediumID: 1, OLang: "ja", DisplayName: "NSFW Member Work",
+		ContentRating: model.ContentRatingR18, Status: model.WorkStatusLive, DisplayNSFW: true,
+		Extra: empty, FieldProvenance: empty,
+	}
+	if err := db.Create(nsfwMember).Error; err != nil {
+		return fx, err
+	}
+	fx.NSFWMember = nsfwMember.ID
+	nsfwProduct := int64(10003)
+	for _, action := range []catsvc.ClaimAction{catsvc.ClaimActionClaim, catsvc.ClaimActionSubmit, catsvc.ClaimActionApprove} {
+		if _, err := claims.Act(context.Background(), catsvc.ClaimActionParams{
+			WorkID: nsfwMember.ID, Action: action, Site: liveSite,
+			ProductWorkID: &nsfwProduct, ActorUID: liveUID,
+		}); err != nil {
+			return fx, err
+		}
+	}
+	if err := db.Create(&model.CatalogSeriesMember{SeriesID: se.ID, WorkID: nsfwMember.ID, Position: 2, Kind: model.SeriesMemberKindMain}).Error; err != nil {
 		return fx, err
 	}
 
@@ -354,17 +415,73 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.Character = ch.ID
 
-	pe := &model.CatalogPerson{DisplayName: "Live Person", FieldProvenance: empty}
+	birthY, birthM, gender := int16(1979), int16(4), model.GenderFemale
+	pe := &model.CatalogPerson{
+		DisplayName: "Live Person", PhotoHash: livePhotoHash,
+		Gender: &gender, BirthY: &birthY, BirthM: &birthM, FieldProvenance: empty,
+	}
 	if err := db.Create(pe).Error; err != nil {
 		return fx, err
 	}
 	fx.Person = pe.ID
+	if err := db.Create(&model.CatalogPersonIntro{
+		PersonID: pe.ID, Lang: "zh-Hans", Intro: "人物简介", SourceID: 3,
+	}).Error; err != nil {
+		return fx, err
+	}
+	if err := db.Create(&model.CatalogExternalRef{
+		EntityType: model.EntityTypePerson, EntityID: pe.ID, SourceID: 10,
+		ExternalID: "live_person", LinkKind: model.LinkKindRelated, MatchedBy: "test",
+	}).Error; err != nil {
+		return fx, err
+	}
 
 	cn := &model.CatalogCreditName{PersonID: &pe.ID, Name: "Live Credit", Lang: "ja", Kind: model.CreditNameKindMain, FieldProvenance: empty}
 	if err := db.Create(cn).Error; err != nil {
 		return fx, err
 	}
 	fx.Credit = cn.ID
+	if err := db.Create(&model.CatalogExternalRef{
+		EntityType: model.EntityTypeCreditName, EntityID: cn.ID, SourceID: 2,
+		ExternalID: "s-live-va", LinkKind: model.LinkKindExact, MatchedBy: "test",
+	}).Error; err != nil {
+		return fx, err
+	}
+	if err := db.Create(&model.CatalogNameAlias{
+		CreditNameID: cn.ID, Name: "Live Credit Alias", Lang: "en",
+		Kind: model.AliasKindTranslation, Provenance: model.AliasProvenanceSource,
+	}).Error; err != nil {
+		return fx, err
+	}
+
+	sib := &model.CatalogCreditName{PersonID: &pe.ID, Name: "Live Credit Sibling", Lang: "ja", Kind: model.CreditNameKindPenName, FieldProvenance: empty}
+	if err := db.Create(sib).Error; err != nil {
+		return fx, err
+	}
+	fx.Sibling = sib.ID
+
+	for _, credit := range []*model.CatalogCredit{
+		{WorkID: w.ID, CreditNameID: cn.ID, RoleID: 1, CharacterID: &ch.ID},
+		{WorkID: w.ID, CreditNameID: cn.ID, RoleID: 2},
+	} {
+		if err := db.Create(credit).Error; err != nil {
+			return fx, err
+		}
+	}
+
+	rank := 12
+	if err := db.Create(&model.CatalogWorkRating{
+		WorkID: w.ID, SourceID: 3, Score: 7.9, VoteCount: 12, Rank: &rank,
+		Distribution: datatypes.JSON([]byte(`{"10":2,"9":7,"7":3}`)),
+		Stats:        datatypes.JSON([]byte(`{"average":8.1,"stdev":1.2}`)),
+	}).Error; err != nil {
+		return fx, err
+	}
+	if err := db.Create(&model.CatalogWorkRating{
+		WorkID: w.ID, SourceID: 4, Score: 4.5, VoteCount: 4,
+	}).Error; err != nil {
+		return fx, err
+	}
 
 	tr := &model.CatalogCharacterTrait{
 		VndbTID: "i99999", Name: "Live Trait", GroupTID: "i1", Alias: "", Description: "",

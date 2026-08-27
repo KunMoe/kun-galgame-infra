@@ -246,7 +246,7 @@ func workFromBrief(b dto.PublicWorkBrief) repr.Work {
 	return w
 }
 
-func workCompaniesFrom(in []dto.PublicWorkLabel) []repr.WorkCompany {
+func workCompaniesFrom(in []dto.PublicWorkLabel, logoURL func(string) string) []repr.WorkCompany {
 	out := make([]repr.WorkCompany, 0, len(in))
 	for _, l := range in {
 		ck, ok := repr.CompanyKindFromKey(l.LabelKind)
@@ -257,10 +257,14 @@ func workCompaniesFrom(in []dto.PublicWorkLabel) []repr.WorkCompany {
 		if !ok {
 			role = "brand"
 		}
-		out = append(out, repr.WorkCompany{
+		item := repr.WorkCompany{
 			Object: "company", ID: repr.ID(l.ID), DisplayName: l.DisplayName,
 			Localized: localizedFrom(l.Localized), CompanyKind: ck, AttributionRole: role, WorkCount: l.WorkCount,
-		})
+		}
+		if l.LogoHash != "" && logoURL != nil {
+			item.Logo = imageFromURL(logoURL(l.LogoHash), "")
+		}
+		out = append(out, item)
 	}
 	return out
 }
@@ -284,7 +288,20 @@ func workLinksFrom(in []dto.PublicWorkLink) []repr.WorkLink {
 func ratingsFrom(in []dto.PublicRating) []repr.Rating {
 	out := make([]repr.Rating, 0, len(in))
 	for _, r := range in {
-		out = append(out, repr.Rating{Source: r.Source, Score: r.Score, VoteCount: r.VoteCount, Rank: r.Rank})
+		item := repr.Rating{Source: r.Source, Score: r.Score, VoteCount: r.VoteCount, Rank: r.Rank}
+		if len(r.Distribution) > 0 {
+			buckets := make([]repr.RatingBucket, 0, len(r.Distribution))
+			for _, b := range r.Distribution {
+				buckets = append(buckets, repr.RatingBucket{Score: float64(b.Score), Count: b.Count})
+			}
+			item.Distribution = &buckets
+		}
+		if r.Stats != nil {
+			item.Stats = &repr.RatingStats{
+				Average: r.Stats.Average, Stdev: r.Stats.Stdev, Min: r.Stats.Min, Max: r.Stats.Max,
+			}
+		}
+		out = append(out, item)
 	}
 	return out
 }

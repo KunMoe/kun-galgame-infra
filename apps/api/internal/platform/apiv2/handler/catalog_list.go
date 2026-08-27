@@ -149,7 +149,7 @@ func (c *Catalog) ListSeries(ctx context.Context, q collect.Query) (repr.List[re
 			if !found {
 				continue
 			}
-			items = append(items, seriesFromDetail(rec.ID, rec.DisplayName, rec.WorkCount))
+			items = append(items, seriesFromDetail(rec, nil))
 			seen[id] = true
 		}
 		missing = appendUnseen(missing, ids, seen)
@@ -161,7 +161,7 @@ func (c *Catalog) ListSeries(ctx context.Context, q collect.Query) (repr.List[re
 	}
 	items := make([]repr.Series, 0, len(data.Items))
 	for _, it := range data.Items {
-		items = append(items, seriesFromDetail(it.ID, it.DisplayName, it.WorkCount))
+		items = append(items, seriesFromListItem(it))
 	}
 	return finishList(items, data.NextCursor, data.Total, q, missing), nil
 }

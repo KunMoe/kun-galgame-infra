@@ -85,6 +85,7 @@ type WorkCompany struct {
 	CompanyKind     string                   `json:"company_kind" enum:"game_brand,bunko,publisher,anime_studio,doujin_circle,group" doc:"Company registry class."`
 	AttributionRole string                   `json:"attribution_role" enum:"circle,publisher,developer,brand" doc:"Primary capacity on this work."`
 	WorkCount       int                      `json:"work_count" minimum:"0" doc:"Works visible under the same NSFW gate."`
+	Logo            *Image                   `json:"logo,omitempty" doc:"Present when this company has a logo; absent otherwise."`
 }
 
 type WorkLink struct {
@@ -94,11 +95,27 @@ type WorkLink struct {
 }
 
 type Rating struct {
-	_         struct{} `json:"-" additionalProperties:"true"`
-	Source    string   `json:"source" maxLength:"64" doc:"Open vocabulary sources. Must not be used as a discriminant."`
-	Score     float64  `json:"score" minimum:"0" doc:"Source-native aggregate score."`
-	VoteCount int      `json:"vote_count" minimum:"0" doc:"Votes backing score."`
-	Rank      *int     `json:"rank" minimum:"0" doc:"Source rank. null if unrecorded."`
+	_            struct{}        `json:"-" additionalProperties:"true"`
+	Source       string          `json:"source" maxLength:"64" doc:"Open vocabulary sources. Must not be used as a discriminant."`
+	Score        float64         `json:"score" minimum:"0" doc:"Source-native aggregate score."`
+	VoteCount    int             `json:"vote_count" minimum:"0" doc:"Votes backing score."`
+	Rank         *int            `json:"rank" minimum:"0" doc:"Source rank. null if unrecorded."`
+	Distribution *[]RatingBucket `json:"distribution,omitempty" doc:"Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count."`
+	Stats        *RatingStats    `json:"stats,omitempty" doc:"Spread of the same vote population score summarizes. Carried by erogamescape (average, stdev, min and max on its 0-100 scale) and by vndb (average only); bangumi and dlsite publish none. Present on the work detail face and on works/{id}/ratings only, never on a list face."`
+}
+
+type RatingBucket struct {
+	_     struct{} `json:"-" additionalProperties:"true"`
+	Score float64  `json:"score" minimum:"0" doc:"Bucket value on the source-native scale: bangumi 1-10, dlsite 1-5, vndb 1-10, erogamescape 0-100 in decile steps."`
+	Count int      `json:"count" minimum:"0" doc:"Votes cast at this value."`
+}
+
+type RatingStats struct {
+	_       struct{} `json:"-" additionalProperties:"true"`
+	Average *float64 `json:"average" minimum:"0" doc:"Plain mean on the source-native scale. Not score: erogamescape's score is the median and vndb's is bayesian-smoothed. null if this source publishes none."`
+	Stdev   *float64 `json:"stdev" minimum:"0" doc:"Standard deviation of the vote population. null if this source publishes none."`
+	Min     *float64 `json:"min" minimum:"0" doc:"Lowest vote cast. null if this source publishes none."`
+	Max     *float64 `json:"max" minimum:"0" doc:"Highest vote cast. null if this source publishes none."`
 }
 
 type Popularity struct {

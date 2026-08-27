@@ -91,7 +91,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/credit-names/{id}",
 		Summary:            "Get one credit name",
-		Description:        "A credited name, not a person. person_id is null when unlinked. Requires an application key.",
+		Description:        "A credited name, not a person — this is the staff and voice-actor read surface. person_id is null when unlinked; gender and the fuzzy birth parts are person-level facts reached through that link. include=aliases,photo,siblings,intros,links,refs adds the corresponding blocks. Works this name is credited on live at /v2/catalog/credit-names/{id}/credits. Requires an application key.",
 		Tags:               catalog,
 		Errors:             authErrs,
 		SkipValidateParams: true,
@@ -111,7 +111,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/tags/{id}",
 		Summary:            "Get one tag",
-		Description:        "Canonical tag. Requires an application key.",
+		Description:        "Canonical tag. include=intros adds the per-language tag descriptions. Requires an application key.",
 		Tags:               catalog,
 		Errors:             authErrs,
 		SkipValidateParams: true,
@@ -121,7 +121,7 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/series/{id}",
 		Summary:            "Get one series",
-		Description:        "Series detail. Requires an application key.",
+		Description:        "Series detail. has_nsfw reports whether any member work sits behind the r18 display gate. include=intros,refs adds the corresponding blocks. Requires an application key.",
 		Tags:               catalog,
 		Errors:             authErrs,
 		SkipValidateParams: true,
@@ -214,7 +214,7 @@ func getCatalogCreditName(cat *Catalog) func(context.Context, *resourceIDInput) 
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetCreditName(ctx, id, q.NSFW)
+		rec, gerr := cat.GetCreditName(ctx, id, q.NSFW, q.Include)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -242,7 +242,7 @@ func getCatalogTag(cat *Catalog) func(context.Context, *resourceIDInput) (*getTa
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetTag(ctx, id, q.NSFW)
+		rec, gerr := cat.GetTag(ctx, id, q.NSFW, q.Include)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}
@@ -256,7 +256,7 @@ func getCatalogSeries(cat *Catalog) func(context.Context, *resourceIDInput) (*ge
 		if err != nil {
 			return nil, err
 		}
-		rec, gerr := cat.GetSeries(ctx, id, q.NSFW)
+		rec, gerr := cat.GetSeries(ctx, id, q.NSFW, q.Include)
 		if gerr != nil {
 			return nil, catalogErr(ctx, gerr)
 		}

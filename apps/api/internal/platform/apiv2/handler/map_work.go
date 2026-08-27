@@ -8,7 +8,7 @@ import (
 	"api/internal/platform/catalog/dto"
 )
 
-func workFromListItem(it dto.PublicWorkListItem, include []string) repr.Work {
+func workFromListItem(it dto.PublicWorkListItem, include []string, logoURL func(string) string) repr.Work {
 	var cover, banner *repr.Image
 	if it.Covers != nil {
 		cover = imageFromSlot(it.Covers.Portrait)
@@ -30,7 +30,7 @@ func workFromListItem(it dto.PublicWorkListItem, include []string) repr.Work {
 		w.Intros = ptrSlice(cap100(introsFrom(it.Intros)))
 	}
 	if want["companies"] {
-		w.Companies = ptrSlice(cap100(workCompaniesFrom(it.Labels)))
+		w.Companies = ptrSlice(cap100(workCompaniesFrom(it.Labels, logoURL)))
 	}
 	if want["ratings"] {
 		w.Ratings = ptrSlice(cap100(ratingsFrom(it.Ratings)))
@@ -41,7 +41,7 @@ func workFromListItem(it dto.PublicWorkListItem, include []string) repr.Work {
 	return w
 }
 
-func workFromDetail(rec dto.PublicCatalogWork, include []string) repr.Work {
+func workFromDetail(rec dto.PublicCatalogWork, include []string, logoURL func(string) string) repr.Work {
 	var cover, banner *repr.Image
 	if rec.CoverSlots != nil {
 		cover = imageFromSlot(rec.CoverSlots.Portrait)
@@ -56,11 +56,11 @@ func workFromDetail(rec dto.PublicCatalogWork, include []string) repr.Work {
 		created, rec.Updated, optString(rec.Latin), localizedFrom(rec.Localized),
 		rec.ReleaseDate, releasePrecision(rec.ReleaseDate), cover, banner, claimFrom(rec.ClaimedBy),
 	)
-	attachWorkIncludes(&w, rec, include)
+	attachWorkIncludes(&w, rec, include, logoURL)
 	return w
 }
 
-func attachWorkIncludes(w *repr.Work, rec dto.PublicCatalogWork, include []string) {
+func attachWorkIncludes(w *repr.Work, rec dto.PublicCatalogWork, include []string, logoURL func(string) string) {
 	want := map[string]bool{}
 	for _, t := range include {
 		want[t] = true
@@ -111,7 +111,7 @@ func attachWorkIncludes(w *repr.Work, rec dto.PublicCatalogWork, include []strin
 		w.Characters = ptrSlice(cap100(workCharactersFrom(rec.Characters)))
 	}
 	if want["companies"] {
-		w.Companies = ptrSlice(cap100(workCompaniesFrom(rec.Labels)))
+		w.Companies = ptrSlice(cap100(workCompaniesFrom(rec.Labels, logoURL)))
 	}
 	if want["engines"] {
 		w.Engines = ptrSlice(cap100(workEnginesFrom(rec.Engines)))

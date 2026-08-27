@@ -1,0 +1,58 @@
+package handler
+
+import (
+	"api/internal/platform/apiv2/repr"
+	"api/internal/platform/catalog/dto"
+)
+
+func creditNameFromDetail(rec dto.PublicName, include []string, photoURL string) repr.CreditName {
+	var personID *string
+	if rec.PersonID > 0 {
+		s := repr.ID(rec.PersonID)
+		personID = &s
+	}
+	out := repr.CreditName{
+		Object: "credit_name", ID: repr.ID(rec.ID), DisplayName: rec.DisplayName,
+		Latin: optString(rec.Latin), Localized: localizedFrom(rec.Localized), PersonID: personID,
+		BirthYear: intFromI16(rec.BirthY), BirthMonth: intFromI16(rec.BirthM), BirthDay: intFromI16(rec.BirthD),
+	}
+	out.Gender, _ = repr.Gender(rec.Gender)
+	for _, t := range include {
+		switch t {
+		case "aliases":
+			out.Aliases = ptrSlice(cap100(entityNamesFrom(rec.Aliases)))
+		case "photo":
+			if rec.PhotoHash != "" {
+				out.Photo = imageFromPublicMeta(photoURL, rec.PhotoMeta, "")
+			}
+		case "siblings":
+			out.Siblings = ptrSlice(cap100(siblingNamesFrom(rec.Siblings, personID)))
+		case "intros":
+			out.Intros = ptrSlice(cap100(introsFrom(rec.Intros)))
+		case "links":
+			out.Links = ptrSlice(cap100(personLinksFrom(rec.Links)))
+		case "refs":
+			out.Refs = ptrSlice(cap100(refsFrom(rec.Refs)))
+		}
+	}
+	return out
+}
+
+func siblingNamesFrom(in []dto.PublicSiblingName, personID *string) []repr.CreditName {
+	out := make([]repr.CreditName, 0, len(in))
+	for _, s := range in {
+		out = append(out, repr.CreditName{
+			Object: "credit_name", ID: repr.ID(s.ID), DisplayName: s.DisplayName,
+			Latin: optString(s.Latin), Localized: localizedFrom(s.Localized), PersonID: personID,
+		})
+	}
+	return out
+}
+
+func personLinksFrom(in []dto.PublicPersonLink) []repr.WorkLink {
+	out := make([]repr.WorkLink, 0, len(in))
+	for _, l := range in {
+		out = append(out, repr.WorkLink{Source: l.Source, URL: l.URL})
+	}
+	return out
+}

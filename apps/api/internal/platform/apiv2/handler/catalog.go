@@ -36,6 +36,13 @@ func (c *Catalog) ListWorks(ctx context.Context, q collect.Query) (repr.List[rep
 	return c.ListWorksFiltered(ctx, q, worksFilter{OLang: catsvc.PublicOLang{All: true}})
 }
 
+func (c *Catalog) imageURL(hash string) string {
+	if c == nil || c.Public == nil {
+		return ""
+	}
+	return c.Public.ImageURL(hash)
+}
+
 func (c *Catalog) batchWorkIDs(ctx context.Context, q collect.Query) ([]int64, []string, error) {
 	var ids []int64
 	var missing []string
@@ -80,7 +87,7 @@ func (c *Catalog) GetWork(ctx context.Context, id int64, nsfw bool, include []st
 		return repr.Work{}, err
 	}
 	if found {
-		return workFromDetail(rec, include), nil
+		return workFromDetail(rec, include, c.imageURL), nil
 	}
 	return repr.Work{}, c.mergedOrNotFound(ctx, catmodel.EntityTypeWork, "work", id)
 }
