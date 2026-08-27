@@ -262,7 +262,7 @@ func (s *PlaytimeServer) listMine(ctx context.Context, in *playtimeMineInput) (*
 	if limit <= 0 || limit > playtimeMinePageSize {
 		limit = playtimeMinePageSize
 	}
-	rows, err := s.svc.ListMine(ctx, uid, since, limit)
+	rows, err := s.svc.ListMine(ctx, uid, since, 0, limit)
 	if err != nil {
 		return nil, playtimeErr(err)
 	}

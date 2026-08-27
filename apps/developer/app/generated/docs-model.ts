@@ -1599,6 +1599,10 @@ export const docsModel: DocsModel = {
                                 "type": "string"
                               },
                               {
+                                "name": "latin",
+                                "type": "string"
+                              },
+                              {
                                 "name": "links",
                                 "required": true,
                                 "nullable": true,
@@ -3077,6 +3081,10 @@ export const docsModel: DocsModel = {
                                     },
                                     {
                                       "name": "lang",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "name": "latin",
                                       "type": "string"
                                     },
                                     {
@@ -12465,6 +12473,10 @@ export const docsModel: DocsModel = {
                                   "type": "string"
                                 },
                                 {
+                                  "name": "latin",
+                                  "type": "string"
+                                },
+                                {
                                   "name": "localized",
                                   "required": true,
                                   "doc": "preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name",
@@ -12730,6 +12742,10 @@ export const docsModel: DocsModel = {
                           },
                           {
                             "name": "lang",
+                            "type": "string"
+                          },
+                          {
+                            "name": "latin",
                             "type": "string"
                           },
                           {

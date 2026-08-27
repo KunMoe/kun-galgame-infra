@@ -44,11 +44,24 @@ func (c *Catalog) ListPlaytimes(ctx context.Context, q collect.Query, workIDs []
 			}
 			items = append(items, repr.UserPlaytime{Object: "playtime", WorkID: repr.ID(row.WorkID), Minutes: row.Minutes})
 		}
-		return finishList(items, nil, 0, collect.Query{Batch: true, IncludeTotal: false}, missing), nil
+		return finishList(items, nil, int64(len(items)), collect.Query{Batch: true, IncludeTotal: q.IncludeTotal}, missing), nil
 	}
-	since := time.Time{}
+	// The cursor was a bare time.RFC3339, which truncates to whole seconds:
+	// two rows updated within the same second made `updated_at > cursor`
+	// re-return the boundary row forever, and a limit=1 page crawl hung the
+	// live suite at the 600s package timeout. Nano precision plus a work_id
+	// tiebreak; a bare-time cursor from before this change still parses.
+	since, sinceWorkID := time.Time{}, int64(0)
 	if q.Cursor != "" {
-		t, perr := time.Parse(time.RFC3339, q.Cursor)
+		ts := q.Cursor
+		if i := strings.LastIndexByte(ts, '|'); i >= 0 {
+			id, ok := repr.ParseID(ts[i+1:])
+			if !ok {
+				return repr.List[repr.UserPlaytime]{}, collectInvalidCursor()
+			}
+			ts, sinceWorkID = ts[:i], id
+		}
+		t, perr := time.Parse(time.RFC3339, ts)
 		if perr != nil {
 			return repr.List[repr.UserPlaytime]{}, collectInvalidCursor()
 		}
@@ -58,21 +71,28 @@ func (c *Catalog) ListPlaytimes(ctx context.Context, q collect.Query, workIDs []
 	if limit <= 0 {
 		limit = collect.DefaultLimit
 	}
-	rows, lerr := c.Playtime.ListMine(ctx, uid, since, limit+1)
+	rows, lerr := c.Playtime.ListMine(ctx, uid, since, sinceWorkID, limit+1)
 	if lerr != nil {
 		return repr.List[repr.UserPlaytime]{}, lerr
 	}
 	var next *string
 	if len(rows) > limit {
 		rows = rows[:limit]
-		s := rows[len(rows)-1].UpdatedAt.UTC().Format(time.RFC3339)
+		last := rows[len(rows)-1]
+		s := last.UpdatedAt.UTC().Format(time.RFC3339Nano) + "|" + repr.ID(last.WorkID)
 		next = &s
 	}
 	items := make([]repr.UserPlaytime, 0, len(rows))
 	for _, r := range rows {
 		items = append(items, repr.UserPlaytime{Object: "playtime", WorkID: repr.ID(r.WorkID), Minutes: r.Minutes})
 	}
-	return finishList(items, next, 0, q, nil), nil
+	var total int64
+	if q.IncludeTotal {
+		if total, lerr = c.Playtime.CountMine(ctx, uid); lerr != nil {
+			return repr.List[repr.UserPlaytime]{}, lerr
+		}
+	}
+	return finishList(items, next, total, q, nil), nil
 }
 
 func (c *Catalog) GetPlaytime(ctx context.Context, workID int64) (repr.UserPlaytime, error) {

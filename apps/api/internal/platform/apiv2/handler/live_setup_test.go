@@ -310,7 +310,7 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		}
 	}
 
-	co := &model.CatalogLabel{DisplayName: "Live Brand", Lang: "ja", Kind: model.LabelKindGameBrand, FieldProvenance: empty}
+	co := &model.CatalogLabel{DisplayName: "Live Brand", Latin: optString("Raibu Burando"), Lang: "ja", Kind: model.LabelKindGameBrand, FieldProvenance: empty}
 	if err := db.Create(co).Error; err != nil {
 		return fx, err
 	}
