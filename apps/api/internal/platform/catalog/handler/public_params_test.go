@@ -128,6 +128,31 @@ func TestPublicWorksListIDsFilter(t *testing.T) {
 	assert.Equal(t, 200, code, "100 ids is the ceiling, not one past it")
 }
 
+// Pins the incident recorded on WorksList's OLang: for three days the zero
+// PublicOLang gated the whole v1 works lane to ja+zh, so a ko/en work was
+// findable via works/search yet absent from browse and works?ids=.
+func TestPublicWorksListSpansEveryOLang(t *testing.T) {
+	db := openCatalogTestDB(t)
+	seedPublicWorks(t, db, 2)
+	ko := model.CatalogWork{
+		MediumID: 1, OLang: "ko", DisplayName: "Korean Fan Game",
+		ContentRating: model.ContentRatingAllAges, Status: model.WorkStatusLive,
+	}
+	require.NoError(t, db.Create(&ko).Error)
+	app := publicApp(db)
+
+	code, body := getJSON(t, app, "/v1/catalog/works")
+	require.Equal(t, 200, code)
+	assert.Len(t, body["data"].(map[string]any)["items"], 3,
+		"the v1 browse lane is the whole population, every olang")
+
+	code, body = getJSON(t, app, "/v1/catalog/works?ids="+itoa(ko.ID))
+	require.Equal(t, 200, code)
+	items := body["data"].(map[string]any)["items"].([]any)
+	require.Len(t, items, 1)
+	assert.Equal(t, float64(ko.ID), items[0].(map[string]any)["id"])
+}
+
 func seedPublicTags(t *testing.T, db *gorm.DB, n int) []int64 {
 	t.Helper()
 	for _, tbl := range []string{"catalog_tag_intro", "catalog_work_tag", "catalog_tag_source_map", "catalog_tag"} {
