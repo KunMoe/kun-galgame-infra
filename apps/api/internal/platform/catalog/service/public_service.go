@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -902,22 +903,60 @@ func (s *PublicService) personLinks(ctx context.Context, personID int64) ([]dto.
 	var rows []struct {
 		Source     string `gorm:"column:source"`
 		ExternalID string `gorm:"column:external_id"`
+		LinkKind   int16  `gorm:"column:link_kind"`
 	}
 	if err := s.db.WithContext(ctx).Raw(`
-		SELECT src.key AS source, r.external_id
+		SELECT src.key AS source, r.external_id, r.link_kind
 		FROM catalog_external_ref r JOIN catalog_source src ON src.id = r.source_id
-		WHERE r.entity_type = ? AND r.entity_id = ? AND r.link_kind = ? AND r.dead_at IS NULL
+		WHERE r.entity_type = ? AND r.entity_id = ? AND r.dead_at IS NULL
+		  AND (r.link_kind = ? OR (r.link_kind = ? AND src.key IN ?))
 		ORDER BY r.source_id, r.external_id`,
-		model.EntityTypePerson, personID, model.LinkKindRelated).Scan(&rows).Error; err != nil {
+		model.EntityTypePerson, personID, model.LinkKindRelated, model.LinkKindExact,
+		personAnchorSources).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make([]dto.PublicPersonLink, 0, len(rows))
 	for _, r := range rows {
-		if url, ok := relatedLinkURL(r.Source, r.ExternalID); ok {
+		render := relatedLinkURL
+		if r.LinkKind == model.LinkKindExact {
+			render = personAnchorURL
+		}
+		if url, ok := render(r.Source, r.ExternalID); ok {
 			out = append(out, dto.PublicPersonLink{Source: r.Source, URL: url})
 		}
 	}
 	return out, nil
+}
+
+var personAnchorSources = []string{"vndb", "bangumi"}
+
+var (
+	vndbStaffID     = regexp.MustCompile(`^s[0-9]+$`)
+	bangumiPersonID = regexp.MustCompile(`^[0-9]+$`)
+)
+
+// personAnchorURL renders the two identity anchors that are also addressable
+// pages. It is PERSON-only on purpose, and it is not the same lane as
+// relatedLinkURL: the forum minted vndb URLs out of the refs on a CREDIT NAME
+// and shipped a wrong-person page, because a credit-name vndb ref is a staff
+// ALIAS id (vndb has no page for one) while the person-level exact anchor is
+// the staff id that does. The regexps are the guard that keeps that confusion
+// from recurring silently — an id of the wrong shape is skipped, never guessed.
+//
+// dlsite (creater ids have no public page) and erogamescape (creater.php is
+// unverified) hold person exact anchors too and are deliberately absent.
+func personAnchorURL(source, externalID string) (string, bool) {
+	switch source {
+	case "vndb":
+		if vndbStaffID.MatchString(externalID) {
+			return "https://vndb.org/" + externalID, true
+		}
+	case "bangumi":
+		if bangumiPersonID.MatchString(externalID) {
+			return "https://bgm.tv/person/" + externalID, true
+		}
+	}
+	return "", false
 }
 
 func (s *PublicService) workEngines(ctx context.Context, workID int64) ([]dto.PublicWorkEngine, error) {

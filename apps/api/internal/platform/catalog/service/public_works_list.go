@@ -31,6 +31,7 @@ type WorksListFilter struct {
 	OLang          PublicOLang
 	Include        WorksListInclude
 	Fields         PublicFields
+	IncludeTotal   bool
 }
 
 func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor string, limit int) (dto.PublicWorksListData, error) {
@@ -45,6 +46,99 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 		limit = 100
 	}
 
+	where, args := worksListWhere(f)
+
+	var total int64
+	if f.IncludeTotal {
+		if total, err = s.taxonomyTotal(ctx, "catalog_work w", where, args); err != nil {
+			return dto.PublicWorksListData{}, err
+		}
+	}
+
+	var order string
+	if lane == "updated" {
+		if cur.Updated != "" {
+			ts, perr := time.Parse(time.RFC3339Nano, cur.Updated)
+			if perr != nil {
+				return dto.PublicWorksListData{}, ErrBadCursor
+			}
+			where = append(where, "(w.updated_at, w.id) < (?, ?)")
+			args = append(args, ts, cur.ID)
+		}
+		order = "ORDER BY w.updated_at DESC, w.id DESC"
+	} else {
+		if cur.ID > 0 {
+			where = append(where, "w.id > ?")
+			args = append(args, cur.ID)
+		}
+		order = "ORDER BY w.id ASC"
+	}
+
+	q := `SELECT w.id, w.medium_id, w.display_name, w.olang, w.content_rating, w.site, w.product_work_id, w.claim_state, w.updated_at
+		FROM catalog_work w WHERE ` + strings.Join(where, " AND ") + " " + order
+	q, args, paginated := applyBrowseLimit(q, args, limit, f.IDs)
+
+	var rows []struct {
+		ID          int64
+		MediumID    int16
+		DisplayName string
+		// The explicit column tag is load-bearing: GORM snake-cases the field
+		// to o_lang, which matches no result column, so the value silently
+		// scanned as "" from W1 until A2-1a caught it.
+		OLang         string `gorm:"column:olang"`
+		ContentRating int16
+		Site          *string
+		ProductWorkID *int64
+		ClaimState    *int16 `gorm:"column:claim_state"`
+		UpdatedAt     time.Time
+	}
+	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
+		return dto.PublicWorksListData{}, err
+	}
+
+	src := make([]workListSourceRow, len(rows))
+	for i, r := range rows {
+		src[i] = workListSourceRow{
+			ID: r.ID, MediumID: r.MediumID, DisplayName: r.DisplayName, OLang: r.OLang,
+			ContentRating: r.ContentRating, Site: r.Site, ProductWorkID: r.ProductWorkID,
+			ClaimState: r.ClaimState, UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
+		}
+	}
+	items, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include, f.Fields)
+	if err != nil {
+		return dto.PublicWorksListData{}, err
+	}
+	if f.LabelID > 0 && f.LabelRollup && f.Fields.Wants("via_label") {
+		ids := make([]int64, len(items))
+		for i, it := range items {
+			ids[i] = it.ID
+		}
+		via, verr := s.labelRollupVia(ctx, f.LabelID, ids)
+		if verr != nil {
+			return dto.PublicWorksListData{}, verr
+		}
+		for i := range items {
+			if v, ok := via[items[i].ID]; ok {
+				items[i].ViaLabel = &v
+			}
+		}
+	}
+	out := dto.PublicWorksListData{Items: items, Total: total}
+	if paginated && len(rows) == limit {
+		last := rows[len(rows)-1]
+		c := publicCursor{Sort: lane, ID: last.ID}
+		if lane == "updated" {
+			c.Updated = last.UpdatedAt.UTC().Format(time.RFC3339Nano)
+		}
+		nc := encodePublicCursor(c)
+		out.NextCursor = &nc
+	}
+	return out, nil
+}
+
+// The COUNT runs off this slice BEFORE the cursor predicate is appended: a
+// total that shrank as the caller paged would be worse than no total at all.
+func worksListWhere(f WorksListFilter) ([]string, []any) {
 	statuses := f.Statuses
 	if len(statuses) == 0 {
 		statuses = []int16{model.WorkStatusLive}
@@ -128,86 +222,7 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 		where = append(where, "w.id IN ?")
 		args = append(args, f.IDs)
 	}
-
-	var order string
-	if lane == "updated" {
-		if cur.Updated != "" {
-			ts, perr := time.Parse(time.RFC3339Nano, cur.Updated)
-			if perr != nil {
-				return dto.PublicWorksListData{}, ErrBadCursor
-			}
-			where = append(where, "(w.updated_at, w.id) < (?, ?)")
-			args = append(args, ts, cur.ID)
-		}
-		order = "ORDER BY w.updated_at DESC, w.id DESC"
-	} else {
-		if cur.ID > 0 {
-			where = append(where, "w.id > ?")
-			args = append(args, cur.ID)
-		}
-		order = "ORDER BY w.id ASC"
-	}
-
-	q := `SELECT w.id, w.medium_id, w.display_name, w.olang, w.content_rating, w.site, w.product_work_id, w.claim_state, w.updated_at
-		FROM catalog_work w WHERE ` + strings.Join(where, " AND ") + " " + order
-	q, args, paginated := applyBrowseLimit(q, args, limit, f.IDs)
-
-	var rows []struct {
-		ID          int64
-		MediumID    int16
-		DisplayName string
-		// The explicit column tag is load-bearing: GORM snake-cases the field
-		// to o_lang, which matches no result column, so the value silently
-		// scanned as "" from W1 until A2-1a caught it.
-		OLang         string `gorm:"column:olang"`
-		ContentRating int16
-		Site          *string
-		ProductWorkID *int64
-		ClaimState    *int16 `gorm:"column:claim_state"`
-		UpdatedAt     time.Time
-	}
-	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
-		return dto.PublicWorksListData{}, err
-	}
-
-	src := make([]workListSourceRow, len(rows))
-	for i, r := range rows {
-		src[i] = workListSourceRow{
-			ID: r.ID, MediumID: r.MediumID, DisplayName: r.DisplayName, OLang: r.OLang,
-			ContentRating: r.ContentRating, Site: r.Site, ProductWorkID: r.ProductWorkID,
-			ClaimState: r.ClaimState, UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
-		}
-	}
-	items, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include, f.Fields)
-	if err != nil {
-		return dto.PublicWorksListData{}, err
-	}
-	if f.LabelID > 0 && f.LabelRollup && f.Fields.Wants("via_label") {
-		ids := make([]int64, len(items))
-		for i, it := range items {
-			ids[i] = it.ID
-		}
-		via, verr := s.labelRollupVia(ctx, f.LabelID, ids)
-		if verr != nil {
-			return dto.PublicWorksListData{}, verr
-		}
-		for i := range items {
-			if v, ok := via[items[i].ID]; ok {
-				items[i].ViaLabel = &v
-			}
-		}
-	}
-	out := dto.PublicWorksListData{Items: items}
-	if paginated && len(rows) == limit {
-		last := rows[len(rows)-1]
-		c := publicCursor{Sort: lane, ID: last.ID}
-		if lane == "updated" {
-			c.Updated = last.UpdatedAt.UTC().Format(time.RFC3339Nano)
-		}
-		nc := encodePublicCursor(c)
-		out.NextCursor = &nc
-	}
-	return out, nil
+	return where, args
 }
 
 func (s *PublicService) Changes(ctx context.Context, cursor string, limit int) (dto.PublicChangesData, error) {

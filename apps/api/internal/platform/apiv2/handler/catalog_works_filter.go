@@ -145,7 +145,7 @@ func (c *Catalog) listWorksSQL(ctx context.Context, q collect.Query, f worksFilt
 		DisplayLimits: f.DisplayLimits, Site: f.Site, LabelID: f.CompanyID, LabelRollup: f.CompanyRollup,
 		TagIDs: f.TagIDs, SeriesID: f.SeriesID, EngineID: f.EngineID, Platform: f.Platform,
 		ReleasedAfter: f.ReleasedAfter, ReleasedBefore: f.ReleasedBefore, NSFW: q.NSFW,
-		Sort: q.Sort, OLang: f.OLang, Include: inc,
+		Sort: q.Sort, OLang: f.OLang, Include: inc, IncludeTotal: q.IncludeTotal,
 	}
 	if lf.Sort == "" || collect.SearchSort(lf.Sort) {
 		lf.Sort = "id"
@@ -164,9 +164,7 @@ func (c *Catalog) listWorksSQL(ctx context.Context, q collect.Query, f worksFilt
 	// refs= that resolved nothing dropped the IDs filter and answered an
 	// unfiltered page 1 of the whole catalogue (found by the forum's client).
 	if q.Batch && len(lf.IDs) == 0 {
-		sqlQ := q
-		sqlQ.IncludeTotal = false
-		out := finishList([]repr.Work{}, nil, 0, sqlQ, missing)
+		out := finishList([]repr.Work{}, nil, 0, q, missing)
 		if len(q.Facets) > 0 {
 			out.Facets = emptyFacets(q.Facets)
 		}
@@ -196,9 +194,7 @@ func (c *Catalog) listWorksSQL(ctx context.Context, q collect.Query, f worksFilt
 			}
 		}
 	}
-	sqlQ := q
-	sqlQ.IncludeTotal = false
-	out := finishList(items, data.NextCursor, 0, sqlQ, missing)
+	out := finishList(items, data.NextCursor, data.Total, q, missing)
 	if len(q.Facets) > 0 {
 		out.Facets = emptyFacets(q.Facets)
 	}

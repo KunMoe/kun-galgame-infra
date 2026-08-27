@@ -4438,7 +4438,7 @@ components:
       additionalProperties: true
       properties:
         external_id:
-          description: Verbatim upstream id. Must not be used as a discriminant beyond exact match.
+          description: "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links."
           maxLength: 256
           type: string
         source:

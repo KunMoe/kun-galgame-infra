@@ -21436,7 +21436,7 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "external_id",
                                     "required": true,
-                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                     "type": "string"
                                   },
                                   {
@@ -21571,7 +21571,7 @@ export const docsModel: DocsModel = {
                                         {
                                           "name": "external_id",
                                           "required": true,
-                                          "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                          "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                           "type": "string"
                                         },
                                         {
@@ -24033,7 +24033,7 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "external_id",
                                     "required": true,
-                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                     "type": "string"
                                   },
                                   {
@@ -25325,7 +25325,7 @@ export const docsModel: DocsModel = {
                             {
                               "name": "external_id",
                               "required": true,
-                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                               "type": "string"
                             },
                             {
@@ -26666,7 +26666,7 @@ export const docsModel: DocsModel = {
                                         {
                                           "name": "external_id",
                                           "required": true,
-                                          "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                          "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                           "type": "string"
                                         },
                                         {
@@ -27835,7 +27835,7 @@ export const docsModel: DocsModel = {
                                       {
                                         "name": "external_id",
                                         "required": true,
-                                        "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                        "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                         "type": "string"
                                       },
                                       {
@@ -27970,7 +27970,7 @@ export const docsModel: DocsModel = {
                                             {
                                               "name": "external_id",
                                               "required": true,
-                                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                               "type": "string"
                                             },
                                             {
@@ -32837,7 +32837,7 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "external_id",
                                     "required": true,
-                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                     "type": "string"
                                   },
                                   {
@@ -33929,7 +33929,7 @@ export const docsModel: DocsModel = {
                             {
                               "name": "external_id",
                               "required": true,
-                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                               "type": "string"
                             },
                             {
@@ -36044,7 +36044,7 @@ export const docsModel: DocsModel = {
                                       {
                                         "name": "external_id",
                                         "required": true,
-                                        "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                        "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                         "type": "string"
                                       },
                                       {
@@ -36179,7 +36179,7 @@ export const docsModel: DocsModel = {
                                             {
                                               "name": "external_id",
                                               "required": true,
-                                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                               "type": "string"
                                             },
                                             {
@@ -41362,7 +41362,7 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "external_id",
                                     "required": true,
-                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                     "type": "string"
                                   },
                                   {
@@ -45462,7 +45462,7 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "external_id",
                                     "required": true,
-                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                     "type": "string"
                                   },
                                   {
@@ -46356,7 +46356,7 @@ export const docsModel: DocsModel = {
                             {
                               "name": "external_id",
                               "required": true,
-                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                               "type": "string"
                             },
                             {
@@ -51244,7 +51244,7 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "external_id",
                                     "required": true,
-                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                     "type": "string"
                                   },
                                   {
@@ -52134,7 +52134,7 @@ export const docsModel: DocsModel = {
                             {
                               "name": "external_id",
                               "required": true,
-                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                               "type": "string"
                             },
                             {
@@ -58590,7 +58590,7 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "external_id",
                                     "required": true,
-                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                     "type": "string"
                                   },
                                   {
@@ -58725,7 +58725,7 @@ export const docsModel: DocsModel = {
                                         {
                                           "name": "external_id",
                                           "required": true,
-                                          "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                          "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                           "type": "string"
                                         },
                                         {
@@ -60971,7 +60971,7 @@ export const docsModel: DocsModel = {
                             {
                               "name": "external_id",
                               "required": true,
-                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                               "type": "string"
                             },
                             {
@@ -61106,7 +61106,7 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "external_id",
                                     "required": true,
-                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                     "type": "string"
                                   },
                                   {
@@ -70546,7 +70546,7 @@ export const docsModel: DocsModel = {
                                       {
                                         "name": "external_id",
                                         "required": true,
-                                        "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                        "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                         "type": "string"
                                       },
                                       {
@@ -70662,7 +70662,7 @@ export const docsModel: DocsModel = {
                                             {
                                               "name": "external_id",
                                               "required": true,
-                                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                              "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                               "type": "string"
                                             },
                                             {
@@ -71953,7 +71953,7 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "external_id",
                                     "required": true,
-                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match.",
+                                    "doc": "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links.",
                                     "type": "string"
                                   },
                                   {

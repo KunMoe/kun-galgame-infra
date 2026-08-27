@@ -501,6 +501,7 @@ type PublicWorkCoverSlots struct {
 type PublicWorksListData struct {
 	Items      []PublicWorkListItem `json:"items"`
 	NextCursor *string              `json:"next_cursor"`
+	Total      int64                `json:"-"`
 }
 
 type PublicChangeItem struct {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http/httptest"
 	"os"
@@ -87,8 +88,14 @@ type liveFix struct {
 	CompanyEmpty, TagSexual, Attributed int64
 	CompanyLogo, NSFWMember, Sibling    int64
 	TraitMinor, CharacterNoLang         int64
+	BulkWork, BulkCharacter             int64
+	AnchoredPerson, AnchoredCredit      int64
 	AnchorExt                           string
 }
+
+// One embedded block used to truncate at 100 rows; both fixtures sit just past
+// that edge so the removal stays proven rather than assumed.
+const liveBulkRows = 105
 
 const (
 	liveNewsSource = "moyu"
@@ -557,12 +564,105 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.Cover = cv.ID
 
+	if err := seedLiveBulkBlocks(db, &fx, empty); err != nil {
+		return fx, err
+	}
+	if err := seedLiveAnchoredPerson(db, &fx, empty); err != nil {
+		return fx, err
+	}
+
 	newsID, nerr := seedLiveNews(db)
 	if nerr != nil {
 		return fx, nerr
 	}
 	fx.NewsItem = newsID
 	return fx, nil
+}
+
+// The bulk rows hang off their OWN work and character: the spoiler-ceiling and
+// include-block tests assert exact row sets on fx.Work / fx.Character, and
+// 105 extra rows there would have rewritten those expectations instead of
+// testing the cap. Every row is spoiler none so the default ceiling admits all
+// of them and the expected count is exactly liveBulkRows.
+func seedLiveBulkBlocks(db *gorm.DB, fx *liveFix, empty datatypes.JSON) error {
+	bulk := &model.CatalogWork{
+		MediumID: 1, OLang: "ja", DisplayName: "Bulk Block Work",
+		ContentRating: model.ContentRatingAllAges, Status: model.WorkStatusLive,
+		Extra: empty, FieldProvenance: empty,
+	}
+	if err := db.Create(bulk).Error; err != nil {
+		return err
+	}
+	fx.BulkWork = bulk.ID
+	tags := make([]*model.CatalogWorkTag, 0, liveBulkRows)
+	for i := range liveBulkRows {
+		tags = append(tags, &model.CatalogWorkTag{
+			WorkID: bulk.ID, Name: fmt.Sprintf("bulk-tag-%03d", i),
+			Count: 1, SourceID: 2, Spoiler: 0,
+		})
+	}
+	if err := db.Create(&tags).Error; err != nil {
+		return err
+	}
+
+	bulkChar := &model.CatalogCharacter{DisplayName: "Bulk Block Char", Lang: "ja", Extra: empty, FieldProvenance: empty}
+	if err := db.Create(bulkChar).Error; err != nil {
+		return err
+	}
+	fx.BulkCharacter = bulkChar.ID
+	for i := range liveBulkRows {
+		tr := &model.CatalogCharacterTrait{
+			VndbTID: fmt.Sprintf("i8%04d", i), Name: fmt.Sprintf("Bulk Trait %03d", i),
+			GroupTID: "i1", Alias: "", Description: "",
+		}
+		if err := db.Create(tr).Error; err != nil {
+			return err
+		}
+		if err := db.Create(&model.CatalogCharacterTraitLink{
+			CharacterID: bulkChar.ID, TraitID: tr.ID, SpoilerLevel: 0,
+		}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// A second person, because fx.Person is the fixture that proves a person with
+// ONLY a related link answers exactly one link.
+func seedLiveAnchoredPerson(db *gorm.DB, fx *liveFix, empty datatypes.JSON) error {
+	pe := &model.CatalogPerson{DisplayName: "Anchored Person", FieldProvenance: empty}
+	if err := db.Create(pe).Error; err != nil {
+		return err
+	}
+	fx.AnchoredPerson = pe.ID
+	for _, ref := range []*model.CatalogExternalRef{
+		{SourceID: 2, ExternalID: "s131", LinkKind: model.LinkKindExact},
+		{SourceID: 3, ExternalID: "4423", LinkKind: model.LinkKindExact},
+		{SourceID: 4, ExternalID: "creater-99", LinkKind: model.LinkKindExact},
+		{SourceID: 5, ExternalID: "8080", LinkKind: model.LinkKindExact},
+		{SourceID: 2, ExternalID: "v777", LinkKind: model.LinkKindProbable},
+	} {
+		ref.EntityType, ref.EntityID, ref.MatchedBy = model.EntityTypePerson, pe.ID, "test"
+		if err := db.Create(ref).Error; err != nil {
+			return err
+		}
+	}
+
+	cn := &model.CatalogCreditName{
+		PersonID: &pe.ID, Name: "Anchored Credit", Lang: "ja",
+		Kind: model.CreditNameKindMain, FieldProvenance: empty,
+	}
+	if err := db.Create(cn).Error; err != nil {
+		return err
+	}
+	fx.AnchoredCredit = cn.ID
+	// A bare numeric alias id, the shape production actually stores on a credit
+	// name — "1", "10", "100". Rendering it as a vndb URL reaches /1, an
+	// unrelated VN. The links block must not grow one from this row.
+	return db.Create(&model.CatalogExternalRef{
+		EntityType: model.EntityTypeCreditName, EntityID: cn.ID, SourceID: 2,
+		ExternalID: "1234", LinkKind: model.LinkKindExact, MatchedBy: "test",
+	}).Error
 }
 
 // seedLiveNews leaves ONE published item behind for the spec walk to address.

@@ -3,7 +3,7 @@ package repr
 type Ref struct {
 	_          struct{} `json:"-" additionalProperties:"true"`
 	Source     string   `json:"source" maxLength:"64" doc:"Open vocabulary sources. Must not be used as a discriminant."`
-	ExternalID string   `json:"external_id" maxLength:"256" doc:"Verbatim upstream id. Must not be used as a discriminant beyond exact match."`
+	ExternalID string   `json:"external_id" maxLength:"256" doc:"Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links."`
 }
 
 type Claim struct {

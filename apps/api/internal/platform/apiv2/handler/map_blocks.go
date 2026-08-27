@@ -5,13 +5,6 @@ import (
 	"api/internal/platform/catalog/dto"
 )
 
-func cap100[T any](in []T) []T {
-	if len(in) > 100 {
-		return in[:100]
-	}
-	return in
-}
-
 func ptrSlice[T any](in []T) *[]T {
 	if in == nil {
 		in = []T{}
