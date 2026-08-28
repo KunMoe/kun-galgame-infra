@@ -4622,7 +4622,7 @@ components:
       additionalProperties: true
       properties:
         distribution:
-          description: "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count."
+          description: "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi, dlsite and howlongtobeat publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count."
           items:
             $ref: "#/components/schemas/RatingBucket"
           type: array
@@ -4646,7 +4646,7 @@ components:
           x-vocabulary-closed: false
         stats:
           $ref: "#/components/schemas/RatingStats"
-          description: Spread of the same vote population score summarizes. Carried by erogamescape (average, stdev, min and max on its 0-100 scale) and by vndb (average only); bangumi and dlsite publish none. Present on the work detail face and on works/{id}/ratings only, never on a list face.
+          description: Spread of the same vote population score summarizes. Carried by erogamescape (average, stdev, min and max on its 0-100 scale) and by vndb (average only); bangumi, dlsite and howlongtobeat publish none. Present on the work detail face and on works/{id}/ratings only, never on a list face.
         vote_count:
           description: Votes backing score.
           format: int64

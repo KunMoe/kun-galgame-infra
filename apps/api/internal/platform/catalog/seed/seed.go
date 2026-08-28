@@ -141,6 +141,7 @@ func sources() []model.CatalogSource {
 		{ID: 17, Key: "getchu", TrustTier: 1, Note: "Getchu.com retailer pages (character rosters, story text, sample CG; anchored via VNDB extlinks)"},
 		{ID: 18, Key: "derived", TrustTier: 1, Note: "first-party machine inference over catalog facts (wave 184 series builder)"},
 		{ID: 19, Key: "nextmoe", TrustTier: 0, Note: "first-party measurements aggregated from our own users (playtime medians from catalog_user_playtime)"},
+		{ID: 20, Key: "howlongtobeat", TrustTier: 1, Note: "HowLongToBeat playtime + rating aggregates (anchored via Steam appid, kun-howlongtobeat-api mirror)"},
 	}
 }
 

@@ -4116,7 +4116,7 @@ export const docsModel: DocsModel = {
                                 "children": [
                                   {
                                     "name": "distribution",
-                                    "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                                    "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi, dlsite and howlongtobeat publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
                                     "type": "array",
                                     "itemsOf": {
                                       "type": "object",
@@ -10922,7 +10922,7 @@ export const docsModel: DocsModel = {
                                     "children": [
                                       {
                                         "name": "distribution",
-                                        "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                                        "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi, dlsite and howlongtobeat publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
                                         "type": "array",
                                         "itemsOf": {
                                           "type": "object",
@@ -20454,7 +20454,7 @@ export const docsModel: DocsModel = {
                                     "children": [
                                       {
                                         "name": "distribution",
-                                        "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                                        "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi, dlsite and howlongtobeat publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
                                         "type": "array",
                                         "itemsOf": {
                                           "type": "object",
@@ -43379,7 +43379,7 @@ export const docsModel: DocsModel = {
                                 "children": [
                                   {
                                     "name": "distribution",
-                                    "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                                    "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi, dlsite and howlongtobeat publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
                                     "type": "array",
                                     "itemsOf": {
                                       "type": "object",
@@ -46125,7 +46125,7 @@ export const docsModel: DocsModel = {
                           "children": [
                             {
                               "name": "distribution",
-                              "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                              "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi, dlsite and howlongtobeat publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
                               "type": "array",
                               "itemsOf": {
                                 "type": "object",
@@ -53986,7 +53986,7 @@ export const docsModel: DocsModel = {
                           "children": [
                             {
                               "name": "distribution",
-                              "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                              "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi, dlsite and howlongtobeat publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
                               "type": "array",
                               "itemsOf": {
                                 "type": "object",
@@ -56380,7 +56380,7 @@ export const docsModel: DocsModel = {
                                     "children": [
                                       {
                                         "name": "distribution",
-                                        "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi and dlsite publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
+                                        "doc": "Vote histogram on the source-native scale, ascending and sparse: a value with no votes has no bucket. Present on the work detail face and on works/{id}/ratings only, never on a list face. The bars do not share one denominator: bangumi, dlsite and howlongtobeat publish the histogram beside the aggregate, so their bars sum to vote_count; erogamescape bars come from an independently synced reviews mirror, so their sum is its own denominator and need not equal vote_count; vndb bars omit votes held on private lists, so they sum to at most vote_count.",
                                         "type": "array",
                                         "itemsOf": {
                                           "type": "object",

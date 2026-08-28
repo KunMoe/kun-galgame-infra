@@ -193,6 +193,7 @@ var registry = []Vocabulary{
 		v("getchu", "Getchu", "Getchu.com retailer pages."),
 		v("derived", "Derived", "First-party machine inference over catalog facts."),
 		v("nextmoe", "NextMoe", "First-party measurements aggregated from our users."),
+		v("howlongtobeat", "HowLongToBeat", "HowLongToBeat playtime and rating aggregates."),
 	}),
 	open("relation_types", []Value{
 		v("adaptation_of", "Adaptation of", "This work is an adaptation of the other."),

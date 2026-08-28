@@ -94,7 +94,7 @@ run() {
 # tables exhaust it (SQLSTATE 53100, seen 2026-07-22 in backfill-entity-intros).
 # Serial plans spill to disk instead — slower but bounded. Remove once the
 # compose sets shm_size on the postgres service.
-DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$KUN_PG_PASSWORD}"; B="host=127.0.0.1 port=5432 user=$U password=$P sslmode=disable options='"'"'-c max_parallel_workers_per_gather=0'"'"'"; CAT="$B dbname=kun_catalog"; EG="$B dbname=erogamescape"; DL="$B dbname=dlsite"'
+DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$KUN_PG_PASSWORD}"; B="host=127.0.0.1 port=5432 user=$U password=$P sslmode=disable options='"'"'-c max_parallel_workers_per_gather=0'"'"'"; CAT="$B dbname=kun_catalog"; EG="$B dbname=erogamescape"; DL="$B dbname=dlsite"; HL="$B dbname=howlongtobeat"'
 
 # 4. Ingest (env-config tool).
 run ingest-bangumi --dump-dir /w/dump
@@ -104,7 +104,7 @@ run ingest-bangumi --dump-dir /w/dump
 run sh -c "$DSNSH"'; reconcile-doujin-bangumi --dsn "$CAT" --apply'
 run sh -c "$DSNSH"'; enrich-bgm-summaries --dsn "$CAT" --apply'
 run sh -c "$DSNSH"'; backfill-work-tags --dsn "$CAT" --apply'
-run sh -c "$DSNSH"'; backfill-work-ratings --dsn "$CAT" --eg-dsn "$EG" --dlsite-dsn "$DL" --apply'
+run sh -c "$DSNSH"'; backfill-work-ratings --dsn "$CAT" --eg-dsn "$EG" --dlsite-dsn "$DL" --hltb-dsn "$HL" --apply'
 run sh -c "$DSNSH"'; backfill-entity-intros --dsn "$CAT" --eg-dsn "$EG" --apply'
 # --wiki-dsn was dropped from the tool with the galgame-wiki retirement. Go's
 # flag package treats an undefined flag as a usage error and exits 2, so this

@@ -609,6 +609,11 @@ export const vocabularies = [
         "value": "nextmoe",
         "display_name": "NextMoe",
         "description": "First-party measurements aggregated from our users."
+      },
+      {
+        "value": "howlongtobeat",
+        "display_name": "HowLongToBeat",
+        "description": "HowLongToBeat playtime and rating aggregates."
       }
     ]
   },

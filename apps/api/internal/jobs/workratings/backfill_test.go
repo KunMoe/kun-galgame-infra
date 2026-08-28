@@ -21,10 +21,11 @@ import (
 )
 
 var (
-	testDB    *gorm.DB
-	testDSN   string
-	egTestDSN string
-	dlTestDSN string
+	testDB      *gorm.DB
+	testDSN     string
+	egTestDSN   string
+	dlTestDSN   string
+	hltbTestDSN string
 )
 
 func TestMain(m *testing.M) {
@@ -67,6 +68,8 @@ func TestMain(m *testing.M) {
 		`CREATE TABLE IF NOT EXISTS workratings_eg.reviews (game int, tokuten int)`,
 		`CREATE SCHEMA IF NOT EXISTS workratings_dl`,
 		`CREATE TABLE IF NOT EXISTS workratings_dl.works (workno text PRIMARY KEY, info_json jsonb)`,
+		`CREATE SCHEMA IF NOT EXISTS workratings_hltb`,
+		`CREATE TABLE IF NOT EXISTS workratings_hltb.games (hltb_id bigint PRIMARY KEY, raw jsonb)`,
 	} {
 		if err := db.Exec(ddl).Error; err != nil {
 			fmt.Fprintf(os.Stderr, "SKIP: mirror fixture failed: %v\n", err)
@@ -75,6 +78,7 @@ func TestMain(m *testing.M) {
 	}
 	egTestDSN = testDSN + " options='-csearch_path=workratings_eg'"
 	dlTestDSN = testDSN + " options='-csearch_path=workratings_dl'"
+	hltbTestDSN = testDSN + " options='-csearch_path=workratings_hltb'"
 	testDB = db
 	os.Exit(m.Run())
 }
@@ -84,7 +88,7 @@ func clean(t *testing.T) {
 	for _, table := range []string{
 		"catalog_work_rating", "catalog_work_popularity", "catalog_external_ref", "catalog_release",
 		"catalog_work", "src_bangumi.subject", "workratings_eg.games", "workratings_eg.reviews",
-		"workratings_dl.works", "src_vndb.vn", "src_vndb.vn_vote_stats",
+		"workratings_dl.works", "workratings_hltb.games", "src_vndb.vn", "src_vndb.vn_vote_stats",
 	} {
 		require.NoError(t, testDB.Exec("TRUNCATE "+table+" RESTART IDENTITY CASCADE").Error)
 	}
@@ -174,7 +178,7 @@ func pf(v float64) *float64 { return &v }
 func pl(v int64) *int64     { return &v }
 
 func runOpts(apply bool) Opts {
-	return Opts{DSN: testDSN, EGDSN: egTestDSN, DlsiteDSN: dlTestDSN, Apply: apply}
+	return Opts{DSN: testDSN, EGDSN: egTestDSN, DlsiteDSN: dlTestDSN, HltbDSN: hltbTestDSN, Apply: apply}
 }
 
 func TestBackfillWorkRatings(t *testing.T) {

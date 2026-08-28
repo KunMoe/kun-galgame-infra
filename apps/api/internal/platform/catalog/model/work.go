@@ -125,7 +125,9 @@ type CatalogWorkRating struct {
 	// a separate votes dump (staged as src_vndb.vn_vote_stats); it omits votes
 	// from private lists, so those bars sum to at most c_votecount. VNDB's Stats
 	// carries only `average` — c_average, the plain mean beside the smoothed
-	// c_rating that Score holds.
+	// c_rating that Score holds. HowLongToBeat publishes the histogram with the
+	// aggregate (userReviews, 5-point buckets on the 0-100 scale), so like
+	// Bangumi and DLsite its bars agree with vote_count by construction.
 	Distribution datatypes.JSON `gorm:"type:jsonb" json:"distribution,omitempty"`
 	Stats        datatypes.JSON `gorm:"type:jsonb" json:"stats,omitempty"`
 

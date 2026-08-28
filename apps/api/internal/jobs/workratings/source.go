@@ -17,6 +17,7 @@ type registry struct {
 	egSource      int16
 	dlsiteSource  int16
 	vndbSource    int16
+	hltbSource    int16
 }
 
 func resolveRegistry(ctx context.Context, db *gorm.DB) (registry, error) {
@@ -36,9 +37,12 @@ func resolveRegistry(ctx context.Context, db *gorm.DB) (registry, error) {
 	if err := db.WithContext(ctx).Raw(`SELECT id FROM catalog_source WHERE key = 'vndb'`).Scan(&r.vndbSource).Error; err != nil {
 		return r, fmt.Errorf("resolve vndb source: %w", err)
 	}
-	if r.galgameMedium == 0 || r.bangumiSource == 0 || r.egSource == 0 || r.dlsiteSource == 0 || r.vndbSource == 0 {
-		return r, fmt.Errorf("registry not seeded (galgame medium=%d, bangumi source=%d, erogamescape source=%d, dlsite source=%d, vndb source=%d)",
-			r.galgameMedium, r.bangumiSource, r.egSource, r.dlsiteSource, r.vndbSource)
+	if err := db.WithContext(ctx).Raw(`SELECT id FROM catalog_source WHERE key = 'howlongtobeat'`).Scan(&r.hltbSource).Error; err != nil {
+		return r, fmt.Errorf("resolve howlongtobeat source: %w", err)
+	}
+	if r.galgameMedium == 0 || r.bangumiSource == 0 || r.egSource == 0 || r.dlsiteSource == 0 || r.vndbSource == 0 || r.hltbSource == 0 {
+		return r, fmt.Errorf("registry not seeded (galgame medium=%d, bangumi source=%d, erogamescape source=%d, dlsite source=%d, vndb source=%d, howlongtobeat source=%d)",
+			r.galgameMedium, r.bangumiSource, r.egSource, r.dlsiteSource, r.vndbSource, r.hltbSource)
 	}
 	return r, nil
 }
