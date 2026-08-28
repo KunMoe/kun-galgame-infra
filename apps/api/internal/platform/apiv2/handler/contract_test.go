@@ -3,15 +3,19 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"sort"
 	"strings"
 	"testing"
 
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/devapi"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +50,15 @@ func testApp(t *testing.T) *fiber.App {
 
 func do(t *testing.T, app *fiber.App, method, path string) (int, string, []byte) {
 	t.Helper()
+	return doAs(t, app, method, path, "")
+}
+
+func doAs(t *testing.T, app *fiber.App, method, path, token string) (int, string, []byte) {
+	t.Helper()
 	req := httptest.NewRequest(method, path, nil)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	body, err := io.ReadAll(resp.Body)
@@ -54,29 +66,35 @@ func do(t *testing.T, app *fiber.App, method, path string) (int, string, []byte)
 	return resp.StatusCode, resp.Header.Get("Content-Type"), body
 }
 
-func TestContractHitsEverySpecOperation(t *testing.T) {
-	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
-	doc := Setup(app).OpenAPI()
-	require.NotEmpty(t, doc.Paths)
+func contractURL(t *testing.T, path string) string {
+	t.Helper()
+	url := path
+	url = strings.ReplaceAll(url, "{code}", problem.CodeRateLimited)
+	url = strings.ReplaceAll(url, "{name}", "medium")
+	url = strings.ReplaceAll(url, "{id}", "1")
+	url = strings.ReplaceAll(url, "{object}", "work")
+	url = strings.ReplaceAll(url, "{work_id}", "1")
+	url = strings.ReplaceAll(url, "{cover_id}", "1")
+	url = strings.ReplaceAll(url, "{product_id}", "RJ01000000")
+	if strings.Contains(url, "{") {
+		t.Fatalf("unsubstituted path param in %s", url)
+	}
+	return url
+}
 
+// contractWalk drives every operation the document declares and returns the
+// status each one answered, keyed "METHOD path".
+func contractWalk(t *testing.T, app *fiber.App, doc *huma.OpenAPI, token string) map[string]int {
+	t.Helper()
+	got := map[string]int{}
 	for path, item := range doc.Paths {
 		for _, op := range pathOps(item) {
 			method := op.Method
 			if method == "" && item.Get == op {
 				method = http.MethodGet
 			}
-			url := path
-			url = strings.ReplaceAll(url, "{code}", problem.CodeRateLimited)
-			url = strings.ReplaceAll(url, "{name}", "medium")
-			url = strings.ReplaceAll(url, "{id}", "1")
-			url = strings.ReplaceAll(url, "{object}", "work")
-			url = strings.ReplaceAll(url, "{work_id}", "1")
-			url = strings.ReplaceAll(url, "{cover_id}", "1")
-			url = strings.ReplaceAll(url, "{product_id}", "RJ01000000")
-			if strings.Contains(url, "{") {
-				t.Fatalf("unsubstituted path param in %s", url)
-			}
-			status, ct, body := do(t, app, method, url)
+			status, ct, body := doAs(t, app, method, contractURL(t, path), token)
+			got[method+" "+path] = status
 			declared := make([]string, 0, len(op.Responses))
 			for code := range op.Responses {
 				declared = append(declared, code)
@@ -98,6 +116,71 @@ func TestContractHitsEverySpecOperation(t *testing.T) {
 			}
 		}
 	}
+	require.NotEmpty(t, got)
+	return got
+}
+
+func TestContractHitsEverySpecOperation(t *testing.T) {
+	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
+	doc := Setup(app).OpenAPI()
+	require.NotEmpty(t, doc.Paths)
+	contractWalk(t, app, doc, "")
+}
+
+const contractUserToken = "contract-user-token"
+
+// The walk above sends no credential, so everything it asserts is an assertion
+// about the anonymous projection — the credentialed contract had no test at
+// all, and a gate that refused a valid credential would have looked exactly
+// like the surface working. All three arms run against the SAME app, so the
+// only variable is the header. There are two credential kinds and an operation
+// takes one of them, never both: an application key on /v2/me is a 401 by
+// design, which is why the assertion is "some credential opens it" rather than
+// "the key opens it".
+func TestContractCredentialedArm(t *testing.T) {
+	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
+	doc := SetupWith(app, Options{
+		// Three walks of 88 operations from one httptest address, most of them
+		// a 401: the default store's auth-failure budget is 120 a minute, so
+		// arms two and three came back 429 across the board and the comparison
+		// was between two blocked runs.
+		Store:            &liveUnlimitedStore{},
+		LookupCredential: testCredentialLookup,
+		LookupUser: func(_ context.Context, raw string) (UserIdentity, error) {
+			if raw == contractUserToken {
+				return UserIdentity{UID: 7, ClientID: "test-app", Roles: []string{"admin"}}, nil
+			}
+			return UserIdentity{}, os.ErrPermission
+		},
+		LookupSite: func(context.Context, string) (SiteBinding, error) {
+			return SiteBinding{Site: "kungal"}, nil
+		},
+	}).OpenAPI()
+
+	anon := contractWalk(t, app, doc, "")
+	keyed := contractWalk(t, app, doc, testAPIKey)
+	user := contractWalk(t, app, doc, contractUserToken)
+	require.Equal(t, len(anon), len(keyed))
+	require.Equal(t, len(anon), len(user))
+
+	var gated, moved []string
+	for op, status := range anon {
+		if keyed[op] != status || user[op] != status {
+			moved = append(moved, fmt.Sprintf("%s anon=%d key=%d user=%d", op, status, keyed[op], user[op]))
+		}
+		if status != http.StatusUnauthorized {
+			continue
+		}
+		gated = append(gated, op)
+		require.Falsef(t,
+			keyed[op] == http.StatusUnauthorized && user[op] == http.StatusUnauthorized,
+			"%s answers MISSING_CREDENTIAL to every credential this API issues", op)
+	}
+	sort.Strings(gated)
+	sort.Strings(moved)
+	require.NotEmpty(t, gated, "control: the walk must reach at least one credential-gated operation")
+	t.Logf("credential-gated operations: %d of %d", len(gated), len(anon))
+	t.Logf("status differs between arms on %d operations:\n%s", len(moved), strings.Join(moved, "\n"))
 }
 
 func TestProblemsAndVocabularies(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"api/internal/platform/apiv2/collect"
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
 	newsmodel "api/internal/platform/news/model"
@@ -274,6 +275,73 @@ func TestLiveNewsRejectedIsTerminal(t *testing.T) {
 		require.Equal(t, 409, status, body+": "+string(raw))
 		require.Equal(t, problem.CodeInvalidStateTransition, liveProblem(t, raw).Code, body)
 	}
+}
+
+// Neither news face had a single assertion about ids=, refs= or facets=, and
+// both declare all three. The public face was the worse of the two: it parsed
+// ids=, had no hydration lane, and collect.Parse's batch branch zeroed the
+// limit, so GET /v2/news?ids=<a published id> answered 200 with an empty
+// items[], no missing[] and no next_cursor. The two faces refuse for different
+// reasons — NewsSpec and NewsSubmissionSpec are separate specs — so each gets
+// its own arm.
+func TestLiveNewsCollectionParams(t *testing.T) {
+	env := liveCatalog(t)
+	published := idstr(env.fx.NewsItem)
+
+	for _, face := range []struct{ path, token string }{
+		{"/v2/news", ""},
+		{"/v2/me/news", liveUserToken},
+	} {
+		for _, tc := range []struct{ query, param string }{
+			{"ids=" + published, "ids"},
+			{"ids=1,2,3", "ids"},
+			{"refs=vndb:v1", "refs"},
+		} {
+			status, ct, raw := liveDo(t, env, http.MethodGet, face.path+"?"+tc.query, face.token, "")
+			require.Equalf(t, 400, status, "%s?%s: %s", face.path, tc.query, raw)
+			require.Contains(t, ct, "application/problem+json")
+			p := liveProblem(t, raw)
+			require.Equal(t, problem.CodeInvalidParameter, p.Code, face.path)
+			require.NotEmpty(t, p.Errors, face.path)
+			require.Equal(t, tc.param, p.Errors[0].Parameter, face.path)
+			require.Equal(t, problem.ReasonNotAllowedValue, p.Errors[0].Reason, face.path)
+		}
+
+		status, _, raw := liveDo(t, env, http.MethodGet, face.path+"?facets=source", face.token, "")
+		require.Equalf(t, 400, status, "%s: %s", face.path, raw)
+		require.Equal(t, problem.CodeUnknownFacet, liveProblem(t, raw).Code, face.path)
+
+		// The documented batch bound is checked before the lane refusal, so it
+		// is observable on a NoBatch face and must stay the same 400 the
+		// hydrating lanes answer.
+		over := make([]string, collect.MaxBatchItems+1)
+		for i := range over {
+			over[i] = published
+		}
+		status, _, raw = liveDo(t, env, http.MethodGet, face.path+"?ids="+strings.Join(over, ","), face.token, "")
+		require.Equalf(t, 400, status, "%s: %s", face.path, raw)
+		require.Equal(t, problem.CodeTooManyIDs, liveProblem(t, raw).Code, face.path)
+
+		status, _, raw = liveDo(t, env, http.MethodGet,
+			face.path+"?ids="+strings.Join(over[:collect.MaxBatchItems], ","), face.token, "")
+		require.Equalf(t, 400, status, "%s: %s", face.path, raw)
+		require.Equal(t, problem.CodeInvalidParameter, liveProblem(t, raw).Code,
+			face.path+": exactly 100 is under the bound, so it reaches the lane refusal instead")
+	}
+
+	// Control: the parameters that ARE implemented on the public face still work,
+	// so the refusals above are about the batch lane and not about the face
+	// having stopped parsing its query string.
+	status, _, raw := liveDo(t, env, http.MethodGet, "/v2/news?include_total=true&limit=1", "", "")
+	require.Equal(t, 200, status, string(raw))
+	var page struct {
+		Items []json.RawMessage `json:"items"`
+		Total *int64            `json:"total"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &page))
+	require.NotNil(t, page.Total, "include_total= is declared on /v2/news and must be answered")
+	require.GreaterOrEqual(t, *page.Total, int64(1))
+	require.Len(t, page.Items, 1)
 }
 
 func TestLiveNewsIsFencedToTheCaller(t *testing.T) {
