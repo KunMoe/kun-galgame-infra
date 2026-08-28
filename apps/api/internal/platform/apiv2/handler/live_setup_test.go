@@ -99,8 +99,17 @@ type liveFix struct {
 	RollupCo, RollupImprint             int64
 	RollupDirect, RollupVia             int64
 	VAOnlyCharacter                     int64
+	ENWork, ENRelease                   int64
+	RedirectOld, RedirectDatedOld       int64
 	AnchorExt                           string
 }
+
+// The instants the created_at/updated_at pair is pinned to: equal timestamps
+// cannot tell a lane that publishes updated twice from one that publishes both.
+const (
+	liveENCreated = "2025-03-04T05:06:07Z"
+	liveENUpdated = "2026-02-01T02:03:04Z"
+)
 
 // One embedded block used to truncate at 100 rows; both fixtures sit just past
 // that edge so the removal stays proven rather than assumed.
@@ -242,7 +251,7 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		catalog_work_rating, catalog_tag_intro, catalog_series_intro, catalog_person_intro,
 		catalog_name_alias, catalog_credit, catalog_work_tag, catalog_label_relation,
 		catalog_character_alias, catalog_character_intro,
-		catalog_work_character, catalog_tag_source_map,
+		catalog_work_character, catalog_tag_source_map, catalog_redirect,
 		edit_revision, edit_proposal, edit_proposal_amendment
 		RESTART IDENTITY CASCADE`).Error; err != nil {
 		return liveFix{}, err
@@ -669,6 +678,12 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.Cover = cv.ID
 
+	if err := seedLiveOLangEN(db, &fx, empty); err != nil {
+		return fx, err
+	}
+	if err := seedLiveRedirects(db, &fx); err != nil {
+		return fx, err
+	}
 	if err := seedLiveBulkBlocks(db, &fx, empty); err != nil {
 		return fx, err
 	}
@@ -682,6 +697,55 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.NewsItem = newsID
 	return fx, nil
+}
+
+// An olang the home population does not contain, plus a release on it. The
+// releases lane left ReleaseFeedFilter.OLang at its zero value, which is not
+// "no language gate" but ja+zh, so this release was reachable from
+// works/{id}/releases and 404'd on /v2/catalog/releases/{id}. created_at is
+// stamped away from updated_at because the list lane published Updated in both
+// positions and equal timestamps hide that.
+func seedLiveOLangEN(db *gorm.DB, fx *liveFix, empty datatypes.JSON) error {
+	w := &model.CatalogWork{
+		MediumID: 1, OLang: "en", DisplayName: "English Original Work",
+		ContentRating: model.ContentRatingAllAges, Status: model.WorkStatusLive,
+		Extra: empty, FieldProvenance: empty,
+	}
+	if err := db.Create(w).Error; err != nil {
+		return err
+	}
+	fx.ENWork = w.ID
+	if err := db.Exec(`UPDATE catalog_work SET created_at = ?, updated_at = ? WHERE id = ?`,
+		liveENCreated, liveENUpdated, w.ID).Error; err != nil {
+		return err
+	}
+	y, m, d := int16(2023), int16(9), int16(15)
+	rel := &model.CatalogRelease{
+		WorkID: w.ID, Kind: model.ReleaseKindDefault,
+		ReleasedY: &y, ReleasedM: &m, ReleasedD: &d, Extra: empty, FieldProvenance: empty,
+	}
+	if err := db.Create(rel).Error; err != nil {
+		return err
+	}
+	fx.ENRelease = rel.ID
+	return nil
+}
+
+// One redirect with a merge time and one without. The row-value cursor
+// comparison is NULL against a NULL merged_at, so the second row was invisible
+// on every page of the mirror feed.
+func seedLiveRedirects(db *gorm.DB, fx *liveFix) error {
+	merged := time.Date(2026, 1, 5, 6, 7, 8, 0, time.UTC)
+	fx.RedirectDatedOld, fx.RedirectOld = 90001, 90002
+	for _, r := range []*model.CatalogRedirect{
+		{EntityType: model.EntityTypeWork, OldID: fx.RedirectDatedOld, CurrentID: fx.Work, MergedAt: &merged},
+		{EntityType: model.EntityTypeWork, OldID: fx.RedirectOld, CurrentID: fx.Work},
+	} {
+		if err := db.Create(r).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // The bulk rows hang off their OWN work and character: the spoiler-ceiling and
