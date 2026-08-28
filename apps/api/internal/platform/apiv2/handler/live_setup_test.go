@@ -521,7 +521,14 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.Release = rel.ID
 
-	ch := &model.CatalogCharacter{DisplayName: "Live Char", Lang: "ja", Extra: empty, FieldProvenance: empty}
+	// The D30 attribute block is filled here so view=full has something to
+	// carry: with every attribute null the character list answered the same key
+	// set on basic and on full whether or not the lane read them.
+	chGender, chHeight, chBlood := model.GenderFemale, int16(158), model.BloodTypeA
+	ch := &model.CatalogCharacter{
+		DisplayName: "Live Char", Lang: "ja", Gender: &chGender,
+		HeightCm: &chHeight, BloodType: &chBlood, Extra: empty, FieldProvenance: empty,
+	}
 	if err := db.Create(ch).Error; err != nil {
 		return fx, err
 	}

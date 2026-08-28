@@ -313,6 +313,12 @@ func TestLiveCharacterListHonorsIncludeAndView(t *testing.T) {
 		return charRow{}, nil
 	}
 
+	// The detail face is the reference: whatever it answers on view=full is
+	// what the list lane must answer too.
+	var detail map[string]json.RawMessage
+	w4Get(t, env, "/v2/catalog/characters/"+id+"?view=full", &detail)
+	require.Contains(t, detail, "gender", "the fixture must record attributes or view=full proves nothing")
+
 	basic, basicKeys := pick("/v2/catalog/characters?ids=" + id)
 	require.Nil(t, basic.Traits, "view=basic must not carry a traits block")
 	require.NotContains(t, basicKeys, "gender")
@@ -323,16 +329,21 @@ func TestLiveCharacterListHonorsIncludeAndView(t *testing.T) {
 		"the fixture's second trait is spoiler=minor and stays behind the default ceiling")
 
 	_, fullKeys := pick("/v2/catalog/characters?ids=" + id + "&view=full")
-	for _, key := range []string{"traits", "aliases", "intros", "refs"} {
+	for _, key := range []string{"traits", "aliases", "intros", "refs", "gender", "height_cm", "blood_type"} {
 		require.Contains(t, fullKeys, key, "view=full must carry %s", key)
+	}
+	for _, key := range []string{"gender", "height_cm", "blood_type"} {
+		require.JSONEq(t, string(detail[key]), string(fullKeys[key]),
+			"%s must hold the same value the detail face publishes", key)
 	}
 	require.NotEqual(t, len(basicKeys), len(fullKeys),
 		"view=full returned the same key set as basic, which is the defect")
 
 	// The cursor lane, not only the ids= batch lane.
-	cursor, _ := pick("/v2/catalog/characters?limit=100&include=traits")
+	cursor, cursorKeys := pick("/v2/catalog/characters?limit=100&include=traits,gender")
 	require.NotNil(t, cursor.Traits)
 	require.Len(t, *cursor.Traits, 1)
+	require.JSONEq(t, string(detail["gender"]), string(cursorKeys["gender"]))
 }
 
 // D21: voices[].person_id was declared on the shared CreditName schema and
