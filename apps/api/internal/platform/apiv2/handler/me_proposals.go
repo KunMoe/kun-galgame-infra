@@ -126,8 +126,10 @@ func (c *Catalog) proposalDetail(ctx context.Context, id int64, include []string
 	return rec, proposalETag(prop), nil
 }
 
+// Microseconds, like the news validator: at whole-second granularity two
+// amendments inside the same second left a stale validator matching.
 func proposalETag(p *editing.Proposal) string {
-	return `"p` + repr.ID(p.ID) + "." + strconv.FormatInt(p.UpdatedAt.Unix(), 10) + `"`
+	return `"p` + repr.ID(p.ID) + "." + strconv.FormatInt(p.UpdatedAt.UnixMicro(), 10) + `"`
 }
 
 func (c *Catalog) ListMyProposals(ctx context.Context, q collect.Query, state string) (repr.List[repr.ProposalRecord], error) {
