@@ -275,8 +275,10 @@ func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicIncl
 		Created:       w.CreatedAt.UTC().Format(time.RFC3339),
 		Updated:       w.UpdatedAt.UTC().Format(time.RFC3339),
 	}
-	s.attachWorkFacets(ctx, &rec, detail, nsfw,
-		effectiveDisplayNSFW(w.Site, w.ProductWorkID, limits[w.ID], w.ContentRating), spoilers)
+	if err = s.attachWorkFacets(ctx, &rec, detail, nsfw,
+		effectiveDisplayNSFW(w.Site, w.ProductWorkID, limits[w.ID], w.ContentRating), spoilers); err != nil {
+		return dto.PublicCatalogWork{}, false, err
+	}
 	if sel.Wants("releases") {
 		if err = s.attachReleaseLabels(ctx, rec.Releases); err != nil {
 			return dto.PublicCatalogWork{}, false, err
@@ -387,7 +389,7 @@ func (s *PublicService) publicRelations(rels []WorkRelationRow, nsfw bool, limit
 	return out
 }
 
-func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCatalogWork, detail *WorkDetail, nsfw, displayNSFW bool, spoilers int16) {
+func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCatalogWork, detail *WorkDetail, nsfw, displayNSFW bool, spoilers int16) error {
 	rec.Releases = s.publicWorkReleases(detail.Releases)
 	rec.Popularity = make([]dto.PublicPopularity, 0, len(detail.Popularity))
 	for _, p := range detail.Popularity {
@@ -403,14 +405,22 @@ func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCat
 			Source: s.sourceKey(p.SourceID), Minutes: p.Minutes, VoteCount: p.VoteCount,
 		})
 	}
-	rec.Series = s.publicWorkSeries(detail.Series)
+	series, err := s.publicWorkSeries(ctx, detail.Series, nsfw)
+	if err != nil {
+		return err
+	}
+	rec.Series = series
 	rec.Platforms = make([]dto.PublicPlatform, 0, len(detail.Platforms))
 	for _, p := range detail.Platforms {
 		rec.Platforms = append(rec.Platforms, dto.PublicPlatform{Platform: p.Platform, Source: s.sourceKey(p.SourceID)})
 	}
 	rec.Intros = s.workIntros(detail.Intros)
 	imgMeta := s.workMediaMetaFor(ctx, detail.Covers, detail.Screenshots, rosterImageHashes(detail.Characters)...)
-	rec.Covers = s.publicCovers(detail.Covers, imgMeta)
+	covers, err := s.publicCovers(ctx, detail.Covers, imgMeta)
+	if err != nil {
+		return err
+	}
+	rec.Covers = covers
 	rec.CoverSlots = s.pickCoverSlots(detail.Covers, imgMeta, nsfw && displayNSFW)
 	rec.Screenshots = s.publicScreenshots(detail.Screenshots, imgMeta)
 	rec.Characters = s.publicRoster(detail.Characters, imgMeta)
@@ -418,6 +428,7 @@ func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCat
 	if rec.Labels == nil {
 		rec.Labels = []dto.PublicWorkLabel{}
 	}
+	return nil
 }
 
 func (s *PublicService) imageURL(hash string) string {
@@ -700,6 +711,7 @@ func (s *PublicService) Character(ctx context.Context, id int64, withWorks, nsfw
 			for _, v := range w.Voices {
 				row.Voices = append(row.Voices, dto.PublicVoiceName{
 					ID: v.CreditNameID, DisplayName: v.Name, Lang: v.Lang, Latin: derefStrPub(v.Latin),
+					PersonID: derefI64Pub(v.PersonID),
 				})
 			}
 			ch.Works = append(ch.Works, row)
@@ -1313,6 +1325,13 @@ func derefStrPub(p *string) string {
 }
 
 func derefI16Pub(p *int16) int16 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+func derefI64Pub(p *int64) int64 {
 	if p == nil {
 		return 0
 	}

@@ -1,8 +1,9 @@
 package dto
 
 type PublicLabelGraph struct {
-	Nodes []PublicLabelGraphNode `json:"nodes"`
-	Edges []PublicLabelGraphEdge `json:"edges"`
+	Nodes     []PublicLabelGraphNode `json:"nodes"`
+	Edges     []PublicLabelGraphEdge `json:"edges"`
+	Truncated bool                   `json:"truncated" doc:"true when the walk stopped at the 60-node/depth-4 ceiling and the family continues beyond what nodes[] carries"`
 }
 
 type PublicLabelGraphNode struct {

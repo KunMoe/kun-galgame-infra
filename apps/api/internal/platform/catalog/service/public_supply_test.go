@@ -48,10 +48,19 @@ func TestClaimStateProjectedEverywhere(t *testing.T) {
 		live.ID: "live", draft.ID: "draft", hidden.ID: "hidden", unstamped.ID: "live",
 	}
 
+	// The banned row is deliberately absent from the default browse lane (see
+	// TestWorksListClaimStateGate); its projection is proven on the detail and
+	// lookup faces below, which carry no claim-state predicate.
 	page, err := svc.WorksList(ctx, WorksListFilter{Sort: "id"}, "", 50)
 	if err != nil {
 		t.Fatalf("WorksList: %v", err)
 	}
+	for _, it := range page.Items {
+		if it.ID == hidden.ID {
+			t.Fatalf("the default browse lane served banned work %d", it.ID)
+		}
+	}
+	listWant := len(want) - 1
 	seen := 0
 	for _, it := range page.Items {
 		if it.ID == bodyless.ID {
@@ -68,8 +77,8 @@ func TestClaimStateProjectedEverywhere(t *testing.T) {
 		}
 		seen++
 	}
-	if seen != len(want) {
-		t.Fatalf("list covered %d claimed works, want %d", seen, len(want))
+	if seen != listWant {
+		t.Fatalf("list covered %d claimed works, want %d", seen, listWant)
 	}
 
 	for id, state := range want {

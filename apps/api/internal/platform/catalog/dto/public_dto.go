@@ -14,6 +14,9 @@ type PublicWorkBrief struct {
 	Medium        string                         `json:"medium"`
 	DisplayName   string                         `json:"display_name"`
 	ContentRating string                         `json:"content_rating"`
+	OLang         string                         `json:"olang"`
+	Created       string                         `json:"created"`
+	Updated       string                         `json:"updated"`
 	ClaimedBy     *PublicClaimedBy               `json:"claimed_by"`
 	Latin         string                         `json:"latin,omitempty" doc:"romanisation of display_name, from the title row display_name was taken from; absent when that row records none"`
 	Localized     map[string]PublicLocalizedName `json:"localized" doc:"preferred title per locale, keyed by canonically-cased BCP-47 tag; {} when none. SPARSE by design — render localized[yourLocale] ?? display_name ?? latin, never a blank"`
@@ -229,6 +232,7 @@ type PublicVoiceName struct {
 	DisplayName string                         `json:"display_name"`
 	Lang        string                         `json:"lang"`
 	Latin       string                         `json:"latin,omitempty"`
+	PersonID    int64                          `json:"person_id,omitempty" doc:"catalog person this credited name resolves to; absent when unlinked or the link is hidden"`
 	Localized   map[string]PublicLocalizedName `json:"localized" doc:"preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name ?? latin"`
 }
 
@@ -370,6 +374,7 @@ type PublicPlatform struct {
 
 type PublicCover struct {
 	ID             int64  `json:"id,omitempty"`
+	VoteCount      int    `json:"vote_count"`
 	URL            string `json:"url"`
 	Kind           string `json:"kind,omitempty"`
 	PortraitPinned bool   `json:"portrait_pinned"`
@@ -398,6 +403,7 @@ type PublicRosterVoice struct {
 	DisplayName string                         `json:"display_name"`
 	Lang        string                         `json:"lang,omitempty"`
 	Latin       string                         `json:"latin,omitempty"`
+	PersonID    int64                          `json:"person_id,omitempty" doc:"catalog person this credited name resolves to; absent when unlinked or the link is hidden"`
 	Localized   map[string]PublicLocalizedName `json:"localized" doc:"preferred name per locale, keyed by canonically-cased BCP-47 tag; {} when none — render localized[yourLocale] ?? display_name ?? latin"`
 }
 
@@ -471,6 +477,7 @@ type PublicWorkListItem struct {
 	ReleaseDate   *string          `json:"release_date"`
 	ClaimedBy     *PublicClaimedBy `json:"claimed_by"`
 	Cover         string           `json:"cover,omitempty"`
+	Created       string           `json:"created"`
 	Updated       string           `json:"updated"`
 	ViaLabel      *PublicLabelVia  `json:"via_label,omitempty"`
 

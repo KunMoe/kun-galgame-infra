@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"api/internal/platform/catalog/model"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -58,6 +60,10 @@ func TestBuildWorkDoc(t *testing.T) {
 	assert.Contains(t, mustJSON(t, d), `"claim_state":"live"`)
 	none := BuildWorkDoc(WorkDocInput{ID: 2, DisplayName: "Bodyless", ClaimState: "none"})
 	assert.Contains(t, mustJSON(t, none), `"claim_state":"none"`)
+	// A document with no claim_state attribute at all is invisible to
+	// `claim_state != 'hidden'`, so the read face returned nothing.
+	assert.Equal(t, model.ClaimStateKeyNone, undated.ClaimState)
+	assert.Contains(t, mustJSON(t, undated), `"claim_state":"none"`)
 	assert.Contains(t, WorksFilterableAttributes, "claim_state",
 		"a claim_state the index cannot filter on is a gate that silently does nothing")
 }

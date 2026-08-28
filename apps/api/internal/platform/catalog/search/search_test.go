@@ -1,12 +1,12 @@
 package search
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"api/internal/infrastructure/search"
+	"api/internal/testsupport/dbtest"
 	"api/pkg/config"
 
 	"github.com/stretchr/testify/assert"
@@ -18,20 +18,18 @@ var testClient *search.Client
 const testPrefix = "test_"
 
 func TestMain(m *testing.M) {
-	host := os.Getenv("MEILISEARCH_TEST_HOST")
+	host, apiKey := dbtest.SearchHost()
 	if host == "" {
-		host = "http://127.0.0.1:7700"
+		dbtest.SkipSearchMain("catalog/search", "MEILISEARCH_TEST_HOST unset")
 	}
 	client, err := search.NewClient(config.MeilisearchConfig{
-		Host: host, APIKey: os.Getenv("MEILISEARCH_TEST_API_KEY"), IndexPrefix: testPrefix,
+		Host: host, APIKey: apiKey, IndexPrefix: testPrefix,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: meilisearch client: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipSearchMain("catalog/search", "meilisearch client: %v", err)
 	}
 	if err := client.Health(); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: meilisearch unreachable: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipSearchMain("catalog/search", "meilisearch unreachable: %v", err)
 	}
 	testClient = client
 	os.Exit(m.Run())

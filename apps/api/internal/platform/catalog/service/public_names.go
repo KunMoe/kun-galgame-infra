@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"api/internal/platform/catalog/dto"
 	"api/internal/platform/catalog/editspec"
@@ -165,6 +166,15 @@ func (s *PublicService) fillWorkBriefNames(ctx context.Context, briefs ...*dto.P
 	if err != nil {
 		return err
 	}
+	// Every brief construction site funnels through here, so the three head
+	// columns are filled here too rather than in each of the six callers. The
+	// v2 brief is a full basic Work: leaving them unset shipped olang:"" and
+	// created_at:""/updated_at:"" under `format: date-time` on relations,
+	// appearances and credit-name credits, which a generated client rejects.
+	heads, err := s.workBriefHeads(ctx, ids)
+	if err != nil {
+		return err
+	}
 	for _, b := range briefs {
 		if b == nil {
 			continue
@@ -172,8 +182,42 @@ func (s *PublicService) fillWorkBriefNames(ctx context.Context, briefs ...*dto.P
 		rows := titles[b.ID]
 		b.Latin = workLatin(rows, b.DisplayName)
 		b.Localized = workLocalized(rows)
+		if h, ok := heads[b.ID]; ok {
+			b.OLang, b.Created, b.Updated = h.OLang, h.Created, h.Updated
+		}
 	}
 	return nil
+}
+
+type workBriefHead struct {
+	OLang, Created, Updated string
+}
+
+func (s *PublicService) workBriefHeads(ctx context.Context, ids []int64) (map[int64]workBriefHead, error) {
+	if len(ids) == 0 {
+		return map[int64]workBriefHead{}, nil
+	}
+	var rows []struct {
+		ID int64 `gorm:"column:id"`
+		// Without the tag GORM looks for o_lang and every brief scans "".
+		OLang     string    `gorm:"column:olang"`
+		CreatedAt time.Time `gorm:"column:created_at"`
+		UpdatedAt time.Time `gorm:"column:updated_at"`
+	}
+	if err := s.db.WithContext(ctx).Raw(
+		`SELECT id, olang, created_at, updated_at FROM catalog_work WHERE id IN ?`, ids).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make(map[int64]workBriefHead, len(rows))
+	for _, r := range rows {
+		out[r.ID] = workBriefHead{
+			OLang:   r.OLang,
+			Created: r.CreatedAt.UTC().Format(time.RFC3339),
+			Updated: r.UpdatedAt.UTC().Format(time.RFC3339),
+		}
+	}
+	return out, nil
 }
 
 // workLocalized is localizedNames for work titles: same first-row-wins scan over

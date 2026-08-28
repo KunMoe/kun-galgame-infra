@@ -78,17 +78,26 @@ func (s *ResolveService) RedirectsSince(ctx context.Context, entityType *int16, 
 	items := make([]RedirectFeedItem, len(rows))
 	next := cursor
 	for i, row := range rows {
+		// The cursor advances on every row, including one with no merge time:
+		// skipping those left the cursor where it was and the crawl never
+		// terminated once the NULL rows became visible.
+		merged := time.Unix(0, 0).UTC()
+		if row.MergedAt != nil {
+			merged = *row.MergedAt
+		}
 		items[i] = RedirectFeedItem{
 			EntityType: row.EntityType,
 			OldID:      row.OldID,
 			CurrentID:  row.CurrentID,
+			MergedAt:   merged,
 		}
-		if row.MergedAt != nil {
-			items[i].MergedAt = *row.MergedAt
-			next = repository.RedirectCursor{MergedAt: *row.MergedAt, EntityType: row.EntityType, OldID: row.OldID}
-		}
+		next = repository.RedirectCursor{MergedAt: merged, EntityType: row.EntityType, OldID: row.OldID}
 	}
 	return items, next, nil
+}
+
+func (s *ResolveService) RedirectsTotal(ctx context.Context, entityType *int16) (int64, error) {
+	return s.redirects.Count(ctx, entityType)
 }
 
 type RedirectFeedItem struct {

@@ -49,8 +49,19 @@ func TestClaimStateProjectionIsOneDefinition(t *testing.T) {
 }
 
 func TestClaimStateFilterCompilation(t *testing.T) {
-	if got := (WorksSearchFilter{}).meiliFilter(""); strings.Contains(got, "claim_state") {
-		t.Fatalf("no claim_state param must emit no clause: %q", got)
+	// Was "no claim_state param must emit no clause". A ban writes only
+	// claim_state, so an unconditional exclusion is the only thing that keeps a
+	// banned work out of q= as well; the clause is now always present.
+	bare := (WorksSearchFilter{}).meiliFilter("")
+	if !strings.Contains(bare, "claim_state != 'hidden'") {
+		t.Fatalf("no claim_state param must still exclude banned works: %q", bare)
+	}
+	if strings.Contains(bare, "claim_state = ") {
+		t.Fatalf("no claim_state param must select no state positively: %q", bare)
+	}
+	asked := WorksSearchFilter{ClaimStates: []string{model.ClaimStateKeyHidden}}.meiliFilter("")
+	if strings.Contains(asked, "claim_state != 'hidden'") {
+		t.Fatalf("an explicit claim_state=hidden must not be excluded by the ban gate: %q", asked)
 	}
 
 	one := WorksSearchFilter{ClaimStates: []string{model.ClaimStateKeyLive}}.meiliFilter("")
@@ -78,6 +89,36 @@ func TestClaimStateVocabularyIsClosed(t *testing.T) {
 	for _, bad := range []string{"", "liev", "LIVE", "published", "true", "claimed"} {
 		if IsWorksSearchClaimState(bad) {
 			t.Fatalf("%q must NOT be a legal claim_state token", bad)
+		}
+	}
+}
+
+// The ban gate is a negated filter, and Meilisearch answers a negated filter
+// with zero hits — no error — when no document in the index carries the
+// attribute at all. Any caller that builds a work document without a claim state
+// therefore removes itself from every search, and an index of them empties the
+// whole works face.
+func TestWorksSearchServesDocumentsBuiltWithoutAClaimState(t *testing.T) {
+	cleanTables(t)
+	cleanTagTables(t)
+	cleanTaxonomyTables(t)
+	idx := worksSearchIndexer(t)
+	svc := newPublicSvc().WithWorksSearch(idx)
+
+	w := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "状態無し作品")
+	indexWorks(t, idx, []catsearch.WorkDocInput{{
+		ID: w.ID, DisplayName: "状態無し作品", OLang: "ja",
+		ContentRating: model.ContentRatingAllAges, UpdatedTS: 1700000000,
+	}})
+
+	for _, q := range []string{"", "状態無し作品"} {
+		data, err := svc.WorksSearch(t.Context(), WorksSearchFilter{Q: q, Sort: "id", Limit: 50})
+		if err != nil {
+			t.Fatalf("q=%q: WorksSearch: %v", q, err)
+		}
+		if len(data.Items) != 1 || data.Items[0].ID != w.ID {
+			t.Fatalf("q=%q: a document built without a claim_state must still be served, got %d items",
+				q, len(data.Items))
 		}
 	}
 }
@@ -131,7 +172,10 @@ func TestWorksSearchClaimStateGate(t *testing.T) {
 		states []string
 		want   []int64
 	}{
-		{nil, []int64{bodyless.ID, live.ID, draft.ID, hidden.ID}},
+		// No claim_state= must serve every state but the banned one, matching
+		// the browse lane; this row still asserted the pre-ban-gate contract
+		// after the gate landed.
+		{nil, []int64{bodyless.ID, live.ID, draft.ID}},
 		{[]string{model.ClaimStateKeyLive}, []int64{live.ID}},
 		{[]string{model.ClaimStateKeyLive, model.ClaimStateKeyDraft}, []int64{live.ID, draft.ID}},
 		{[]string{model.ClaimStateKeyNone}, []int64{bodyless.ID}},

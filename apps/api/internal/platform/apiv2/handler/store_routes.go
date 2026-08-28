@@ -35,8 +35,12 @@ type getStoreStatsOutput struct {
 
 func registerStore(api huma.API, cat *Catalog) {
 	tags := []string{"store"}
-	errs := collectionErrors(http.StatusUnauthorized, http.StatusForbidden,
-		http.StatusUnprocessableEntity, http.StatusBadGateway, http.StatusServiceUnavailable)
+	// 502 is minted only by storeErr's ErrShortenerDown arm, which only the
+	// link-minting path can reach; getStoreStats reused this list and published
+	// an error it can never answer.
+	statsErrs := collectionErrors(http.StatusUnauthorized, http.StatusForbidden,
+		http.StatusUnprocessableEntity, http.StatusServiceUnavailable)
+	errs := append(append([]int{}, statsErrs...), http.StatusBadGateway)
 	huma.Register(api, huma.Operation{
 		OperationID: "getStorePurchaseLinks", Method: http.MethodGet, Path: "/v2/store/purchase-links/{product_id}",
 		// G4 wants a 404 on any path-parameter operation. Nothing here mints one:
@@ -50,7 +54,7 @@ func registerStore(api huma.API, cat *Catalog) {
 		OperationID: "getStoreStats", Method: http.MethodGet, Path: "/v2/store/stats",
 		Summary:     "Click statistics for my links",
 		Description: "Daily clicks on the links this application minted, over a JST-day range of at most 92 days. The bearer application is the subject — this replaces v1's /v1/store/me/stats. Requires an application key with the store:read scope.",
-		Tags:        tags, Errors: errs, SkipValidateParams: true,
+		Tags:        tags, Errors: statsErrs, SkipValidateParams: true,
 	}, getStoreStats(cat))
 }
 

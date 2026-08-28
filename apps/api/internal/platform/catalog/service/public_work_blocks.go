@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"api/internal/platform/catalog/dto"
 	"api/internal/platform/catalog/model"
 )
@@ -68,18 +70,39 @@ func (s *PublicService) publicWorkTags(rows []WorkTagRow, spoilers int16) []dto.
 	return out
 }
 
-func (s *PublicService) publicWorkSeries(rows []WorkSeriesRow) []dto.PublicSeries {
+func (s *PublicService) publicWorkSeries(ctx context.Context, rows []WorkSeriesRow, nsfw bool) ([]dto.PublicSeries, error) {
+	ids := make([]int64, 0, len(rows))
+	for _, se := range rows {
+		ids = append(ids, se.ID)
+	}
+	counts, err := s.workCountsFor(ctx, seriesWorkEdge, ids, nsfw)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]dto.PublicSeries, 0, len(rows))
 	for _, se := range rows {
 		out = append(out, dto.PublicSeries{
-			ID: se.ID, Name: se.Name, Source: s.sourceKey(se.SourceID), MemberCount: se.MemberCount,
+			ID: se.ID, Name: se.Name, Source: s.sourceKey(se.SourceID), MemberCount: counts[se.ID],
 		})
 	}
-	return out
+	return out, nil
 }
 
-func (s *PublicService) publicCovers(rows []WorkCoverRow, meta map[string]ImageMeta) []dto.PublicCover {
+// vote_count has been in the Cover schema since wave 3 and no lane ever read
+// catalog_cover_vote for it: ReadService.CoverVotes existed with no caller and
+// every cover published 0, so the vote a reader had just cast never came back.
+func (s *PublicService) publicCovers(ctx context.Context, rows []WorkCoverRow, meta map[string]ImageMeta) ([]dto.PublicCover, error) {
 	out := make([]dto.PublicCover, 0, len(rows))
+	ids := make([]int64, 0, len(rows))
+	for _, c := range rows {
+		if c.ID > 0 {
+			ids = append(ids, c.ID)
+		}
+	}
+	votes, err := s.read.CoverVotes(ctx, ids, 0)
+	if err != nil {
+		return nil, err
+	}
 	for _, c := range rows {
 		url := s.imageURL(c.ImageHash)
 		if url == "" {
@@ -88,13 +111,14 @@ func (s *PublicService) publicCovers(rows []WorkCoverRow, meta map[string]ImageM
 		pc := dto.PublicCover{
 			ID: c.ID, URL: url, Kind: c.Kind, PortraitPinned: c.PortraitPinned,
 			Sexual: c.Sexual, Violence: c.Violence, Source: s.sourceKey(c.SourceID),
+			VoteCount: votes[c.ID].Count,
 		}
 		if m, ok := meta[c.ImageHash]; ok {
 			pc.Width, pc.Height, pc.Thumbhash = m.Width, m.Height, m.Thumbhash
 		}
 		out = append(out, pc)
 	}
-	return out
+	return out, nil
 }
 
 func (s *PublicService) publicScreenshots(rows []WorkScreenshotRow, meta map[string]ImageMeta) []dto.PublicScreenshot {
@@ -137,6 +161,7 @@ func (s *PublicService) publicRoster(rows []WorkCharacterRow, meta map[string]Im
 		for _, v := range ch.Va {
 			pc.Voices = append(pc.Voices, dto.PublicRosterVoice{
 				ID: v.CreditNameID, DisplayName: v.Name, Lang: v.Lang, Latin: derefStrPub(v.Latin),
+				PersonID: derefI64Pub(v.PersonID),
 			})
 		}
 		out = append(out, pc)

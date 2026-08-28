@@ -3801,6 +3801,12 @@ export const docsModel: DocsModel = {
                                           "type": "string"
                                         },
                                         {
+                                          "name": "identity",
+                                          "required": true,
+                                          "doc": "Opaque credit row identity for a catalog.work.credits.suppressed proposal; echo it back, never rebuild it. It cannot be reconstructed from this object: role_id is not published. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
                                           "name": "latin",
                                           "required": true,
                                           "nullable": true,
@@ -6421,7 +6427,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/characters",
               "summary": "List characters",
-              "description": "Keyset-paginated characters. Requires an application key. ids=/refs= is a batch lane and does not paginate.",
+              "description": "Keyset-paginated characters. Requires an application key. ids=/refs= is a batch lane and does not paginate. include=gender,birthday,height_cm,weight_kg,measurements,blood_type,instance_of_id,image,figure,traits,aliases,intros,refs fills on every lane, and view=full is all of them; traits are cut at the default spoiler ceiling and follow the nsfw gate, exactly as on the detail face.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -9232,6 +9238,11 @@ export const docsModel: DocsModel = {
                           "type": "object",
                           "children": [
                             {
+                              "name": "identity",
+                              "doc": "Opaque roster row identity for a catalog.work.roster.suppressed proposal on THIS work; echo it back, never rebuild it. The same key the mirror-image works/{id}.characters[] row publishes. Absent when the work is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant.",
+                              "type": "string"
+                            },
+                            {
                               "name": "object",
                               "required": true,
                               "doc": "Type discriminant. Always appearance.",
@@ -10609,6 +10620,12 @@ export const docsModel: DocsModel = {
                                               "name": "id",
                                               "required": true,
                                               "doc": "Catalog credit-name id.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "identity",
+                                              "required": true,
+                                              "doc": "Opaque credit row identity for a catalog.work.credits.suppressed proposal; echo it back, never rebuild it. It cannot be reconstructed from this object: role_id is not published. Must not be used as a discriminant.",
                                               "type": "string"
                                             },
                                             {
@@ -15805,6 +15822,12 @@ export const docsModel: DocsModel = {
                           "company_graph"
                         ],
                         "type": "string"
+                      },
+                      {
+                        "name": "truncated",
+                        "required": true,
+                        "doc": "The walk is bounded at 60 nodes and 4 hops from the requested company. true means the family continues past what nodes[] carries and this is a partial graph; false means nodes[] is the complete connected family.",
+                        "type": "boolean"
                       }
                     ]
                   }
@@ -20141,6 +20164,12 @@ export const docsModel: DocsModel = {
                                               "name": "id",
                                               "required": true,
                                               "doc": "Catalog credit-name id.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "identity",
+                                              "required": true,
+                                              "doc": "Opaque credit row identity for a catalog.work.credits.suppressed proposal; echo it back, never rebuild it. It cannot be reconstructed from this object: role_id is not published. Must not be used as a discriminant.",
                                               "type": "string"
                                             },
                                             {
@@ -43069,6 +43098,12 @@ export const docsModel: DocsModel = {
                                           "type": "string"
                                         },
                                         {
+                                          "name": "identity",
+                                          "required": true,
+                                          "doc": "Opaque credit row identity for a catalog.work.credits.suppressed proposal; echo it back, never rebuild it. It cannot be reconstructed from this object: role_id is not published. Must not be used as a discriminant.",
+                                          "type": "string"
+                                        },
+                                        {
                                           "name": "latin",
                                           "required": true,
                                           "nullable": true,
@@ -45812,6 +45847,12 @@ export const docsModel: DocsModel = {
                                     "name": "id",
                                     "required": true,
                                     "doc": "Catalog credit-name id.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "identity",
+                                    "required": true,
+                                    "doc": "Opaque credit row identity for a catalog.work.credits.suppressed proposal; echo it back, never rebuild it. It cannot be reconstructed from this object: role_id is not published. Must not be used as a discriminant.",
                                     "type": "string"
                                   },
                                   {
@@ -50131,6 +50172,12 @@ export const docsModel: DocsModel = {
                                     "name": "id",
                                     "required": true,
                                     "doc": "Catalog credit-name id.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "name": "identity",
+                                    "required": true,
+                                    "doc": "Opaque credit row identity for a catalog.work.credits.suppressed proposal; echo it back, never rebuild it. It cannot be reconstructed from this object: role_id is not published. Must not be used as a discriminant.",
                                     "type": "string"
                                   },
                                   {
@@ -56067,6 +56114,12 @@ export const docsModel: DocsModel = {
                                               "name": "id",
                                               "required": true,
                                               "doc": "Catalog credit-name id.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "name": "identity",
+                                              "required": true,
+                                              "doc": "Opaque credit row identity for a catalog.work.credits.suppressed proposal; echo it back, never rebuild it. It cannot be reconstructed from this object: role_id is not published. Must not be used as a discriminant.",
                                               "type": "string"
                                             },
                                             {
@@ -100001,107 +100054,6 @@ export const docsModel: DocsModel = {
                 {
                   "status": "500",
                   "description": "Internal Server Error",
-                  "schema": {
-                    "type": "object",
-                    "children": [
-                      {
-                        "name": "code",
-                        "required": true,
-                        "doc": "Top-level error code from the closed registry. UPPER_SNAKE.",
-                        "type": "string"
-                      },
-                      {
-                        "name": "current_id",
-                        "doc": "Canonical id when code is ENTITY_MERGED.",
-                        "type": "string"
-                      },
-                      {
-                        "name": "detail",
-                        "required": true,
-                        "doc": "English, request-specific. Must not be used as a discriminant. Empty when there is nothing to add.",
-                        "type": "string"
-                      },
-                      {
-                        "name": "errors",
-                        "required": true,
-                        "doc": "Field-level failures. Empty array when this is not a field-level error.",
-                        "type": "array",
-                        "itemsOf": {
-                          "type": "object",
-                          "children": [
-                            {
-                              "name": "detail",
-                              "required": true,
-                              "doc": "English, request-specific. Must not be used as a discriminant.",
-                              "type": "string"
-                            },
-                            {
-                              "name": "header",
-                              "doc": "Request header name. Exactly one of pointer, parameter, or header is set.",
-                              "type": "string"
-                            },
-                            {
-                              "name": "parameter",
-                              "doc": "Query or path parameter name. Exactly one of pointer, parameter, or header is set.",
-                              "type": "string"
-                            },
-                            {
-                              "name": "pointer",
-                              "doc": "JSON Pointer (RFC 6901) into the request body. Exactly one of pointer, parameter, or header is set.",
-                              "type": "string"
-                            },
-                            {
-                              "name": "reason",
-                              "required": true,
-                              "doc": "Field-level reason from the closed reason registry.",
-                              "type": "string"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "name": "instance",
-                        "required": true,
-                        "doc": "Request path and query string that failed. Empty only if the path is unknown.",
-                        "type": "string"
-                      },
-                      {
-                        "name": "object",
-                        "doc": "Entity family when code is ENTITY_MERGED.",
-                        "type": "string"
-                      },
-                      {
-                        "name": "request_id",
-                        "required": true,
-                        "doc": "Same value as X-Request-ID. Prefix req_ plus a 26-character ULID.",
-                        "type": "string"
-                      },
-                      {
-                        "name": "status",
-                        "required": true,
-                        "doc": "HTTP status. Matches the response status line.",
-                        "format": "int64",
-                        "type": "integer"
-                      },
-                      {
-                        "name": "title",
-                        "required": true,
-                        "doc": "Stable English phrase for this type. Does not vary per request.",
-                        "type": "string"
-                      },
-                      {
-                        "name": "type",
-                        "required": true,
-                        "doc": "Stable problem type URI of the form https://developer.nextmoe.dev/problems/{domain}/{kebab-code}.",
-                        "format": "uri",
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "status": "502",
-                  "description": "Bad Gateway",
                   "schema": {
                     "type": "object",
                     "children": [

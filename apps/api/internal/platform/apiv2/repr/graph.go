@@ -5,6 +5,9 @@ type CompanyGraph struct {
 	Object string             `json:"object" enum:"company_graph" doc:"Type discriminant. Always company_graph."`
 	Nodes  []CompanyGraphNode `json:"nodes" doc:"Companies in this family. Empty array, never null."`
 	Edges  []CompanyGraphEdge `json:"edges" doc:"Directed relations among nodes. Empty array, never null. Inverse relations are not emitted."`
+	// The walk was capped from wave 3 and said so nowhere, so a partial family
+	// read as the whole one.
+	Truncated bool `json:"truncated" doc:"The walk is bounded at 60 nodes and 4 hops from the requested company. true means the family continues past what nodes[] carries and this is a partial graph; false means nodes[] is the complete connected family."`
 }
 
 type CompanyGraphNode struct {

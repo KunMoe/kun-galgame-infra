@@ -3,6 +3,7 @@ package handler
 import (
 	"path"
 	"strings"
+	"time"
 
 	"api/internal/platform/apiv2/repr"
 	"api/internal/platform/catalog/dto"
@@ -17,10 +18,14 @@ func workFromListItem(it dto.PublicWorkListItem, include []string, logoURL func(
 	if cover == nil {
 		cover = imageFromURL(it.Cover, "")
 	}
+	created := it.Created
+	if created == "" {
+		created = it.Updated
+	}
 	w, _ := repr.NewWork(
 		it.ID, it.Medium, it.DisplayName, it.OLang, it.ContentRating, releaseStatus(it.ReleaseDate),
-		it.Updated, it.Updated, optString(it.Latin), localizedFrom(it.Localized),
-		it.ReleaseDate, releasePrecision(it.ReleaseDate), cover, banner, claimFrom(it.ClaimedBy),
+		created, it.Updated, optString(it.Latin), localizedFrom(it.Localized),
+		releaseDateValue(it.ReleaseDate), releasePrecision(it.ReleaseDate), cover, banner, claimFrom(it.ClaimedBy),
 	)
 	want := map[string]bool{}
 	for _, t := range include {
@@ -60,7 +65,7 @@ func workFromDetail(rec dto.PublicCatalogWork, include []string, logoURL func(st
 	w, _ := repr.NewWork(
 		rec.ID, rec.Medium, rec.DisplayName, rec.OLang, rec.ContentRating, releaseStatus(rec.ReleaseDate),
 		created, rec.Updated, optString(rec.Latin), localizedFrom(rec.Localized),
-		rec.ReleaseDate, releasePrecision(rec.ReleaseDate), cover, banner, claimFrom(rec.ClaimedBy),
+		releaseDateValue(rec.ReleaseDate), releasePrecision(rec.ReleaseDate), cover, banner, claimFrom(rec.ClaimedBy),
 	)
 	attachWorkIncludes(&w, rec, include, logoURL)
 	return w
@@ -151,19 +156,70 @@ func optString(s string) *string {
 	return &s
 }
 
+func optID(id int64) *string {
+	if id <= 0 {
+		return nil
+	}
+	s := repr.ID(id)
+	return &s
+}
+
+// The catalog stores a fuzzy release date: partialISOFromOrdinal yields "2024",
+// "2024-06" or "2024-06-15". v2 published that verbatim under `format: date`
+// with `release_date_precision` hard-coded to "day", so a year-only row shipped
+// "2024" — which no date parser accepts — while claiming day precision, and a
+// work released next year read `released`. The schema already says what to do:
+// month dates sit on the 1st, year dates on January 1.
+func releasePrecision(date *string) *string {
+	p := ""
+	switch partialDateLen(date) {
+	case 4:
+		p = "year"
+	case 7:
+		p = "month"
+	case 10:
+		p = "day"
+	default:
+		return nil
+	}
+	return &p
+}
+
+func releaseDateValue(date *string) *string {
+	switch partialDateLen(date) {
+	case 4:
+		s := *date + "-01-01"
+		return &s
+	case 7:
+		s := *date + "-01"
+		return &s
+	case 10:
+		return date
+	default:
+		return nil
+	}
+}
+
 func releaseStatus(date *string) string {
-	if date == nil || *date == "" {
+	full := releaseDateValue(date)
+	if full == nil {
 		return "unknown"
+	}
+	if *full > time.Now().UTC().Format("2006-01-02") {
+		return "dated"
 	}
 	return "released"
 }
 
-func releasePrecision(date *string) *string {
-	if date == nil || *date == "" {
-		return nil
+func partialDateLen(date *string) int {
+	if date == nil {
+		return 0
 	}
-	p := "day"
-	return &p
+	switch len(*date) {
+	case 4, 7, 10:
+		return len(*date)
+	}
+	return 0
 }
 
 func imageFromSlot(slot *dto.PublicCoverSlot) *repr.Image {

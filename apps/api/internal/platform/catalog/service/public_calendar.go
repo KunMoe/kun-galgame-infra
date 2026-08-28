@@ -138,7 +138,7 @@ func (s *PublicService) CalendarPage(ctx context.Context, b CalendarBucket, f Ca
 	limit = clampBrowseLimit(limit)
 
 	from, where, args := calendarSource(b, f)
-	sel := `SELECT w.id, w.medium_id, w.display_name, w.olang, w.content_rating, w.site, w.product_work_id, w.claim_state, w.updated_at`
+	sel := `SELECT w.id, w.medium_id, w.display_name, w.olang, w.content_rating, w.site, w.product_work_id, w.claim_state, w.created_at, w.updated_at`
 	order := ` ORDER BY w.id ASC`
 	if b.Kind == CalendarMonthBucket {
 		sel += `, e.ord`
@@ -164,6 +164,7 @@ func (s *PublicService) CalendarPage(ctx context.Context, b CalendarBucket, f Ca
 		Site          *string
 		ProductWorkID *int64
 		ClaimState    *int16 `gorm:"column:claim_state"`
+		CreatedAt     time.Time
 		UpdatedAt     time.Time
 		Ord           int64 `gorm:"column:ord"`
 	}
@@ -177,7 +178,8 @@ func (s *PublicService) CalendarPage(ctx context.Context, b CalendarBucket, f Ca
 		src[i] = workListSourceRow{
 			ID: r.ID, MediumID: r.MediumID, DisplayName: r.DisplayName, OLang: r.OLang,
 			ContentRating: r.ContentRating, Site: r.Site, ProductWorkID: r.ProductWorkID,
-			ClaimState: r.ClaimState, UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
+			ClaimState: r.ClaimState, CreatedAt: r.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 	}
 	items, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include, PublicFields{})

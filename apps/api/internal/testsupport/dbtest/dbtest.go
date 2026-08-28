@@ -1,5 +1,5 @@
-// Package dbtest decides, in one place, what a DB-backed suite does when it has
-// no database to run against.
+// Package dbtest decides, in one place, what a service-backed suite does when it
+// has no service to run against — Postgres below, Meilisearch in search.go.
 //
 // The two failure modes it sits between are both real and both have bitten this
 // repo:

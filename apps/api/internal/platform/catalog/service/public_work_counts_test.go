@@ -249,8 +249,10 @@ func TestWorkCountCountsOnlyLiveClaims(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WorksList include=labels: %v", err)
 	}
-	if len(page.Items) != len(all) {
-		t.Fatalf("the ungated list must still serve all %d rows, got %d", len(all), len(page.Items))
+	// len(all)-1: the banned row leaves the browse lane unconditionally, and its
+	// chip counts are proven on the detail face above.
+	if len(page.Items) != len(all)-1 {
+		t.Fatalf("the ungated list must serve every row but the banned one (%d), got %d", len(all)-1, len(page.Items))
 	}
 	for _, it := range page.Items {
 		if len(it.Labels) != 1 || it.Labels[0].WorkCount != 1 {

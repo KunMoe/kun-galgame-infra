@@ -146,7 +146,7 @@ func (c *Catalog) ListSeries(ctx context.Context, q collect.Query) (repr.List[re
 			if derr != nil {
 				return repr.List[repr.Series]{}, derr
 			}
-			if !found {
+			if !found || seen[id] {
 				continue
 			}
 			items = append(items, seriesFromDetail(rec, nil))
@@ -188,7 +188,14 @@ func (c *Catalog) ListReleases(ctx context.Context, q collect.Query) (repr.List[
 	if sort == "" {
 		sort = catsvc.ReleaseFeedSortDateDesc
 	}
-	f := catsvc.ReleaseFeedFilter{NSFW: q.NSFW, Sort: sort, Kinds: releaseFeedKinds(), IDs: ids}
+	// OLang must be spelled out: the zero PublicOLang is not "no language gate",
+	// it is ja+zh. Leaving it zero here narrowed the whole releases lane to the
+	// home population, so an en work's release was reachable from the work
+	// sub-face and 404'd on /v2/catalog/releases/{id} (PR #87's defect again).
+	f := catsvc.ReleaseFeedFilter{
+		NSFW: q.NSFW, Sort: sort, Kinds: releaseFeedKinds(), IDs: ids,
+		OLang: catsvc.PublicOLang{All: true},
+	}
 	limit := q.Limit
 	if q.Batch {
 		limit = 100

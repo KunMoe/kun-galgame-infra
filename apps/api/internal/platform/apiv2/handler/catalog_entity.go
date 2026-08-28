@@ -158,7 +158,10 @@ func (c *Catalog) GetRelease(ctx context.Context, id int64, nsfw bool) (repr.Rel
 	if c == nil || c.Public == nil {
 		return repr.Release{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
 	}
-	f := catsvc.ReleaseFeedFilter{NSFW: nsfw, IDs: []int64{id}, Kinds: releaseFeedKinds()}
+	f := catsvc.ReleaseFeedFilter{
+		NSFW: nsfw, IDs: []int64{id}, Kinds: releaseFeedKinds(),
+		OLang: catsvc.PublicOLang{All: true},
+	}
 	data, err := c.Public.ReleaseFeed(ctx, f, "", 1)
 	if err != nil {
 		return repr.Release{}, err

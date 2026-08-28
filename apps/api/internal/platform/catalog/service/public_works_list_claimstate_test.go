@@ -133,9 +133,26 @@ func TestWorksListClaimStateGate(t *testing.T) {
 	cleanTagTables(t)
 	byState, all := claimStateFixture(t)
 
+	// Was "no claim_state = no gate". A ban writes only claim_state and never
+	// status, so an unfiltered GET /v2/catalog/works kept serving banned works;
+	// the decision face promises ban hides the work "from any state", so the
+	// exclusion does not wait for the caller to pass claim_state=.
+	banned := idSet(byState[model.ClaimStateKeyHidden])
+	if len(banned) == 0 {
+		t.Fatalf("fixture covers no banned row, so this assertion proves nothing")
+	}
 	ungated := listIDs(t, WorksListFilter{Sort: "id"})
-	if len(ungated) != len(all) {
-		t.Fatalf("no claim_state = no gate: got %d rows, want all %d", len(ungated), len(all))
+	if len(ungated) != len(all)-len(banned) {
+		t.Fatalf("no claim_state must serve every row but the banned ones: got %d, want %d",
+			len(ungated), len(all)-len(banned))
+	}
+	for _, id := range ungated {
+		if banned[id] {
+			t.Fatalf("the default page leaked banned work %d", id)
+		}
+	}
+	if got := idSet(listIDs(t, WorksListFilter{Sort: "id", ClaimStates: []string{model.ClaimStateKeyHidden}})); len(got) != len(banned) {
+		t.Fatalf("an explicit claim_state=hidden must still reach all %d banned rows, got %d", len(banned), len(got))
 	}
 
 	live := idSet(listIDs(t, WorksListFilter{Sort: "id", ClaimStates: []string{model.ClaimStateKeyLive}}))

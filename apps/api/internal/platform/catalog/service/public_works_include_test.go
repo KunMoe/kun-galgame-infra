@@ -114,8 +114,9 @@ func TestWorksListDefaultResponseIsByteIdentical(t *testing.T) {
 	}))
 
 	id := seedRichWork(t)
-	if err := testDB.Exec(`UPDATE catalog_work SET updated_at = ? WHERE id = ?`, "2026-01-02T03:04:05Z", id).Error; err != nil {
-		t.Fatalf("stamp updated_at: %v", err)
+	if err := testDB.Exec(`UPDATE catalog_work SET created_at = ?, updated_at = ? WHERE id = ?`,
+		"2025-11-30T09:08:07Z", "2026-01-02T03:04:05Z", id).Error; err != nil {
+		t.Fatalf("stamp created_at/updated_at: %v", err)
 	}
 
 	page, err := svc.WorksList(t.Context(), WorksListFilter{Sort: "id"}, "", 50)
@@ -129,7 +130,7 @@ func TestWorksListDefaultResponseIsByteIdentical(t *testing.T) {
 	want := `{"items":[{"id":` + itoa(id) + `,"medium":"galgame","display_name":"Rich Brief",` +
 		`"content_rating":"all_ages","olang":"ja","release_date":"2021-06-04","claimed_by":null,` +
 		`"cover":"` + testCDNBase + `/aa/11/` + hash64("aa11") + `.webp",` +
-		`"updated":"2026-01-02T03:04:05Z"}],"next_cursor":null}`
+		`"created":"2025-11-30T09:08:07Z","updated":"2026-01-02T03:04:05Z"}],"next_cursor":null}`
 	if string(got) != want {
 		t.Fatalf("default works-list response drifted from the frozen contract\n got: %s\nwant: %s", got, want)
 	}
