@@ -207,7 +207,7 @@ func (c *Catalog) GetMyClaim(ctx context.Context, workID int64) (repr.ClaimRecor
 	return claimRecordFrom(rows[0]), nil
 }
 
-func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayName string, refs []repr.Ref) (repr.ClaimRecord, error) {
+func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayName string, refs []repr.Ref, fields map[string]any) (repr.ClaimRecord, error) {
 	if c == nil || c.Claims == nil {
 		return repr.ClaimRecord{}, problem.New(problem.CodeServiceUnavailable, "", "", "claims are not bound.")
 	}
@@ -224,6 +224,13 @@ func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayNa
 		if !ok {
 			p := problem.New(problem.CodeValidationFailed, "", "", "work_id must be a decimal catalog id.")
 			p.Errors = []problem.FieldError{{Pointer: "/work_id", Reason: problem.ReasonInvalidFormat, Detail: workID}}
+			return repr.ClaimRecord{}, p
+		}
+		if len(fields) > 0 {
+			p := problem.New(problem.CodeValidationFailed, "", "",
+				"field_values apply to a mint; changing an existing work is a proposal (POST /v2/me/proposals).")
+			p.Errors = []problem.FieldError{{Pointer: "/field_values", Reason: problem.ReasonNotAllowedValue,
+				Detail: "work_id and field_values cannot be sent together"}}
 			return repr.ClaimRecord{}, p
 		}
 		return c.actClaim(ctx, uid, site, wid, siteWorkID)
@@ -243,13 +250,20 @@ func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayNa
 				return repr.ClaimRecord{}, lerr
 			}
 			if id != 0 {
+				// Claiming the match is the behaviour without field_values. With
+				// them the caller asserted content for a work they believe is
+				// new, and claiming would drop the whole map with a 201.
+				if len(fields) > 0 {
+					return repr.ClaimRecord{}, problem.New(problem.CodeAlreadyExists, "", "",
+						r.Source+":"+r.ExternalID+" already belongs to work "+repr.ID(id)+
+							"; claim it without field_values, or propose an edit against it.")
+				}
 				return c.actClaim(ctx, uid, site, id, siteWorkID)
 			}
 		}
-		if displayName == "" {
-			p := problem.New(problem.CodeValidationFailed, "", "", "display_name is required to mint a work when refs do not match.")
-			p.Errors = []problem.FieldError{{Pointer: "/display_name", Reason: problem.ReasonRequired, Detail: "SubmitWork requires catalog.work.display_name"}}
-			return repr.ClaimRecord{}, p
+		mint, perr := claimMintFields(displayName, fields, "display_name is required to mint a work when refs do not match.")
+		if perr != nil {
+			return repr.ClaimRecord{}, perr
 		}
 		links := make([]any, 0, len(refs))
 		for i, r := range refs {
@@ -261,10 +275,7 @@ func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayNa
 			}
 			links = append(links, u)
 		}
-		fields := map[string]any{
-			editspec.FieldWorkDisplayName: displayName,
-			editspec.FieldWorkLinks:       links,
-		}
+		unionWorkLinks(mint, links)
 		crefs := make([]catsvc.ClaimRef, 0, len(refs))
 		for _, r := range refs {
 			crefs = append(crefs, catsvc.ClaimRef{Source: r.Source, ExternalID: r.ExternalID})
@@ -275,39 +286,29 @@ func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayNa
 				product = n
 			}
 		}
-		res, serr := c.Claims.SubmitWork(ctx, catsvc.SubmitWorkParams{
-			Site: site, ProductWorkID: product, ActorUID: uid,
-			ContentRating: c.Claims.DeriveContentRating(ctx, crefs), Fields: fields,
-		})
-		if serr != nil {
-			return repr.ClaimRecord{}, claimWriteErr(serr)
-		}
-		return repr.ClaimRecord{Object: "claim", ID: repr.ID(res.WorkID), State: res.ClaimState}, nil
+		return c.mintClaim(ctx, site, uid, product, crefs, mint)
 	}
-	if siteWorkID != "" {
-		if displayName == "" {
-			p := problem.New(problem.CodeValidationFailed, "", "", "display_name is required to mint a work from site_work_id alone.")
-			p.Errors = []problem.FieldError{{Pointer: "/display_name", Reason: problem.ReasonRequired, Detail: "SubmitWork requires catalog.work.display_name"}}
-			return repr.ClaimRecord{}, p
+	if siteWorkID != "" || len(fields) > 0 {
+		detail := "display_name is required to mint a work from field_values alone."
+		product := int64(0)
+		if siteWorkID != "" {
+			detail = "display_name is required to mint a work from site_work_id alone."
+			n, ok := repr.ParseID(siteWorkID)
+			if !ok {
+				p := problem.New(problem.CodeValidationFailed, "", "", "site_work_id must be a decimal id.")
+				p.Errors = []problem.FieldError{{Pointer: "/site_work_id", Reason: problem.ReasonInvalidFormat, Detail: siteWorkID}}
+				return repr.ClaimRecord{}, p
+			}
+			product = n
 		}
-		n, ok := repr.ParseID(siteWorkID)
-		if !ok {
-			p := problem.New(problem.CodeValidationFailed, "", "", "site_work_id must be a decimal id.")
-			p.Errors = []problem.FieldError{{Pointer: "/site_work_id", Reason: problem.ReasonInvalidFormat, Detail: siteWorkID}}
-			return repr.ClaimRecord{}, p
+		mint, perr := claimMintFields(displayName, fields, detail)
+		if perr != nil {
+			return repr.ClaimRecord{}, perr
 		}
-		res, serr := c.Claims.SubmitWork(ctx, catsvc.SubmitWorkParams{
-			Site: site, ProductWorkID: n, ActorUID: uid,
-			ContentRating: c.Claims.DeriveContentRating(ctx, nil),
-			Fields:        map[string]any{editspec.FieldWorkDisplayName: displayName},
-		})
-		if serr != nil {
-			return repr.ClaimRecord{}, claimWriteErr(serr)
-		}
-		return repr.ClaimRecord{Object: "claim", ID: repr.ID(res.WorkID), State: res.ClaimState}, nil
+		return c.mintClaim(ctx, site, uid, product, nil, mint)
 	}
-	p := problem.New(problem.CodeValidationFailed, "", "", "work_id, refs, or site_work_id is required.")
-	p.Errors = []problem.FieldError{{Pointer: "/work_id", Reason: problem.ReasonRequired, Detail: "provide work_id, refs, or site_work_id with display_name"}}
+	p := problem.New(problem.CodeValidationFailed, "", "", "work_id, refs, site_work_id, or field_values is required.")
+	p.Errors = []problem.FieldError{{Pointer: "/work_id", Reason: problem.ReasonRequired, Detail: "provide work_id, refs, site_work_id, or field_values"}}
 	return repr.ClaimRecord{}, p
 }
 
@@ -542,6 +543,16 @@ func claimWriteErr(err error) error {
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return problem.New(problem.CodeNotFound, "", "", "No claim with this id.")
+	}
+	var field *editspec.SubmissionFieldError
+	if errors.As(err, &field) {
+		reason := problem.ReasonUnknownValue
+		if field.Err != nil {
+			reason = problem.ReasonInvalidFormat
+		}
+		p := problem.New(problem.CodeValidationFailed, "", "", field.Error())
+		p.Errors = []problem.FieldError{{Pointer: "/field_values/" + field.Field, Reason: reason, Detail: field.Error()}}
+		return p
 	}
 	switch {
 	case errors.Is(err, catsvc.ErrClaimReasonRequired), errors.Is(err, catsvc.ErrSubmitDisplayNameRequired),
