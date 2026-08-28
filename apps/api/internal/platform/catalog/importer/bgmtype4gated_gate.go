@@ -3,6 +3,7 @@ package importer
 import (
 	"math/bits"
 	"math/rand"
+	"strings"
 	"unicode"
 )
 
@@ -42,10 +43,11 @@ func tallySignals(st *BgmGatedStats, p, t, x bool) {
 
 func collide(r poolRow, wt map[string]wtNorm) (BgmGatedCollision, bool) {
 	for _, n := range []string{r.NameNorm, r.NameCNNorm} {
-		if runeLen(n) < bgmGatedMinLen {
+		folded, ok := foldedGateKey(n)
+		if !ok {
 			continue
 		}
-		if w, ok := wt[n]; ok {
+		if w, hit := wt[folded]; hit {
 			return BgmGatedCollision{
 				SubjectID: r.ID, Name: r.Name, NameCN: r.NameCN,
 				CollidedNorm: n, WorkID: w.workID, WorkTitle: w.title,
@@ -55,23 +57,54 @@ func collide(r poolRow, wt map[string]wtNorm) (BgmGatedCollision, bool) {
 	return BgmGatedCollision{}, false
 }
 
+// foldedGateKey reports the space-folded comparison key for a source norm, and
+// whether it is long enough to compare on at all. Both length gates matter: the
+// raw one keeps the pre-fold behaviour, the folded one stops "A B C" from
+// becoming a 3-rune key that collides by genre rather than identity.
+func foldedGateKey(norm string) (string, bool) {
+	if runeLen(norm) < bgmGatedMinLen {
+		return "", false
+	}
+	folded := foldSpace(norm)
+	if runeLen(folded) < bgmGatedMinLen {
+		return "", false
+	}
+	return folded, true
+}
+
+// foldSpace mirrors service.WorkTitleFoldSQL in Go; the two must strip the same
+// runes or the mint guard and the import gate disagree about what a duplicate is.
+func foldSpace(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if unicode.IsSpace(r) {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
 func dropIntraCollisions(cands []candidate, st *BgmGatedStats) []candidate {
 	subjectsPerNorm := make(map[string]map[int64]struct{})
 	note := func(norm string, id int64) {
-		if runeLen(norm) < bgmGatedMinLen {
+		folded, ok := foldedGateKey(norm)
+		if !ok {
 			return
 		}
-		if subjectsPerNorm[norm] == nil {
-			subjectsPerNorm[norm] = make(map[int64]struct{})
+		if subjectsPerNorm[folded] == nil {
+			subjectsPerNorm[folded] = make(map[int64]struct{})
 		}
-		subjectsPerNorm[norm][id] = struct{}{}
+		subjectsPerNorm[folded][id] = struct{}{}
 	}
 	for _, c := range cands {
 		note(c.row.NameNorm, c.row.ID)
 		note(c.row.NameCNNorm, c.row.ID)
 	}
 	dupNorm := func(norm string) bool {
-		return runeLen(norm) >= bgmGatedMinLen && len(subjectsPerNorm[norm]) > 1
+		folded, ok := foldedGateKey(norm)
+		return ok && len(subjectsPerNorm[folded]) > 1
 	}
 	out := cands[:0]
 	for _, c := range cands {

@@ -35,24 +35,48 @@ func (im *Importer) loadGatedPool() ([]poolRow, error) {
 	return rows, err
 }
 
+// loadExistingWorkTitleNorms keys the collision corpus on SPACE-FOLDED norms
+// and carries display_name as well as the title rows. The 2026-07 gated wave
+// minted ~4.9k duplicates through exactly those two holes: wiki-claimed works
+// were born with no catalog_work_title rows at all, and a title differing only
+// by an internal space compared unequal.
 func (im *Importer) loadExistingWorkTitleNorms() (map[string]wtNorm, error) {
-	var rows []struct {
+	type normRow struct {
 		Norm   string `gorm:"column:title_norm"`
 		WorkID int64  `gorm:"column:work_id"`
 		Title  string `gorm:"column:title"`
 	}
-	if err := im.catalog.Raw(
+	out := make(map[string]wtNorm)
+	collect := func(query string, args ...any) error {
+		var rows []normRow
+		if err := im.catalog.Raw(query, args...).Scan(&rows).Error; err != nil {
+			return err
+		}
+		for _, r := range rows {
+			folded := foldSpace(r.Norm)
+			if runeLen(folded) < bgmGatedMinLen {
+				continue
+			}
+			if _, ok := out[folded]; !ok {
+				out[folded] = wtNorm{workID: r.WorkID, title: r.Title}
+			}
+		}
+		return nil
+	}
+	if err := collect(
 		`SELECT title_norm, work_id, title FROM catalog_work_title t
 		 WHERE length(title_norm) >= ? AND `+editspec.NotSuppressedWorkTitleSQL("t"),
 		bgmGatedMinLen,
-	).Scan(&rows).Error; err != nil {
+	); err != nil {
 		return nil, err
 	}
-	out := make(map[string]wtNorm, len(rows))
-	for _, r := range rows {
-		if _, ok := out[r.Norm]; !ok {
-			out[r.Norm] = wtNorm{workID: r.WorkID, title: r.Title}
-		}
+	if err := collect(
+		`SELECT lower(normalize(w.display_name, NFKC)) AS title_norm, w.id AS work_id, w.display_name AS title
+		 FROM catalog_work w
+		 WHERE w.deleted_at IS NULL AND length(w.display_name) >= ?`,
+		bgmGatedMinLen,
+	); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
