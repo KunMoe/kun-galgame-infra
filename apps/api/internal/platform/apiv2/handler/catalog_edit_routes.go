@@ -58,7 +58,6 @@ type getRevisionInput struct {
 	View     string `query:"view" maxLength:"16" doc:"basic (default) or full. full adds diff."`
 	Fields   string `query:"fields" maxLength:"1024" doc:"Comma-separated top-level keys. Unknown token is 400 UNKNOWN_FIELD."`
 	DiffBase string `query:"diff_base" maxLength:"20" doc:"Revision id to diff against. Requires include=diff. Absent means the preceding revision of the same entity."`
-	NSFW     string `query:"nsfw" maxLength:"8" doc:"true admits the diff of an r18 work or of a release on one. false or absent is 400 on those; the revision row itself is unaffected. Only true or false."`
 }
 
 type getPublicProposalInput struct {
@@ -92,7 +91,7 @@ func registerCatalogEditHistory(api huma.API, cat *Catalog) {
 	huma.Register(api, huma.Operation{
 		OperationID: "getCatalogRevision", Method: http.MethodGet, Path: "/v2/catalog/revisions/{id}",
 		Summary:     "One revision",
-		Description: "include=diff adds the field-level change set against diff_base, or against the preceding revision when diff_base is absent. The diff carries the entity's own field values, so on an r18 work — or a release on one — it needs nsfw=true and is 400 without; the revision row itself carries no display axis. This id is what POST /v2/moderation/reverts takes. Requires an application key.",
+		Description: "include=diff adds the field-level change set against diff_base, or against the preceding revision when diff_base is absent. This id is what POST /v2/moderation/reverts takes. Requires an application key.",
 		Tags:        catalog, Errors: detailErrs, SkipValidateParams: true,
 	}, getCatalogRevision(cat))
 	huma.Register(api, huma.Operation{
@@ -137,7 +136,7 @@ func getCatalogRevision(cat *Catalog) func(context.Context, *getRevisionInput) (
 			in = &getRevisionInput{}
 		}
 		q, perr := collect.Parse(collect.Raw{
-			View: in.View, Include: in.Include, Fields: in.Fields, NSFW: in.NSFW,
+			View: in.View, Include: in.Include, Fields: in.Fields,
 		}, collect.RevisionSpec())
 		if perr != nil {
 			return nil, withIdent(ctx, perr)
