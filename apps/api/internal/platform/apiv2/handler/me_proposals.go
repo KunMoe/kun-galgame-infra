@@ -51,7 +51,7 @@ func requireModeration(ctx context.Context) (string, error) {
 // compared neither Site nor ProposerUID, so review authority on one tenant
 // decided, amended and withdrew another tenant's proposals. If-Match did not
 // stand in the way either: `If-Match: *` matches any non-empty validator.
-func fenceProposal(ctx context.Context, prop *editing.Proposal, actor editing.PolicyContext, proposerOrReviewer bool) error {
+func (c *Catalog) fenceProposal(ctx context.Context, prop *editing.Proposal, actor editing.PolicyContext, proposerOrReviewer bool) error {
 	if prop.Site != actor.Site {
 		return problem.New(problem.CodeTenantMismatch, "", "",
 			"this proposal was filed on another catalog site.")
@@ -244,7 +244,7 @@ func (c *Catalog) PatchProposal(ctx context.Context, id int64, state string, pat
 	if gerr != nil {
 		return repr.ProposalRecord{}, proposalErr(gerr)
 	}
-	if ferr := fenceProposal(ctx, prop, actor, true); ferr != nil {
+	if ferr := c.fenceProposal(ctx, prop, actor, true); ferr != nil {
 		return repr.ProposalRecord{}, ferr
 	}
 	if err := requireIfMatch(ifMatch, proposalETag(prop)); err != nil {
@@ -280,7 +280,7 @@ func (c *Catalog) AmendProposal(ctx context.Context, id int64, set map[string]an
 	if gerr != nil {
 		return repr.ProposalRecord{}, proposalErr(gerr)
 	}
-	if ferr := fenceProposal(ctx, prop, actor, true); ferr != nil {
+	if ferr := c.fenceProposal(ctx, prop, actor, true); ferr != nil {
 		return repr.ProposalRecord{}, ferr
 	}
 	if err := requireIfMatch(ifMatch, proposalETag(prop)); err != nil {
@@ -342,7 +342,7 @@ func (c *Catalog) DecideProposal(ctx context.Context, id int64, decision, note, 
 	if gerr != nil {
 		return repr.DecisionRecord{}, proposalErr(gerr)
 	}
-	if ferr := fenceProposal(ctx, prop, actor, false); ferr != nil {
+	if ferr := c.fenceProposal(ctx, prop, actor, false); ferr != nil {
 		return repr.DecisionRecord{}, ferr
 	}
 	if err := requireIfMatch(ifMatch, proposalETag(prop)); err != nil {
@@ -399,9 +399,8 @@ func (c *Catalog) GetSnapshot(ctx context.Context, object, id string) (repr.Snap
 	if c == nil || c.Engine == nil {
 		return repr.SnapshotRecord{}, problem.New(problem.CodeServiceUnavailable, "", "", "snapshots are not bound.")
 	}
-	site, serr := requireModeration(ctx)
-	if serr != nil {
-		return repr.SnapshotRecord{}, serr
+	if _, _, err := requireUser(ctx); err != nil {
+		return repr.SnapshotRecord{}, err
 	}
 	entityType := schemaEntityType(object)
 	if entityType == "" {
@@ -410,9 +409,6 @@ func (c *Catalog) GetSnapshot(ctx context.Context, object, id string) (repr.Snap
 	eid, ok := repr.ParseID(id)
 	if !ok {
 		return repr.SnapshotRecord{}, problemInvalidID(id)
-	}
-	if ferr := c.fenceEntitySite(ctx, entityType, eid, site); ferr != nil {
-		return repr.SnapshotRecord{}, ferr
 	}
 	vals, err := c.Engine.CurrentSnapshot(ctx, entityType, eid)
 	if err != nil {
