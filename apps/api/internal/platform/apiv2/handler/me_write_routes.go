@@ -89,8 +89,9 @@ func registerMeWrite(api huma.API, cat *Catalog) {
 	}, decideModerationClaim(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "listModerationProposals", Method: http.MethodGet, Path: "/v2/moderation/proposals",
-		Summary: "Moderation proposal queue", Description: "Open proposals on the token site.",
-		Tags: mod, Errors: errs, SkipValidateParams: true,
+		Summary:     "Moderation proposal queue",
+		Description: "Open proposals on the token site. The whole queue requires a catalog review permission. object=+entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without object= is 422.",
+		Tags:        mod, Errors: errs, SkipValidateParams: true,
 	}, listModerationProposals(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "getModerationProposal", Method: http.MethodGet, Path: "/v2/moderation/proposals/{id}",
@@ -158,6 +159,11 @@ type getClaimOutput struct {
 type listProposalsInput struct {
 	CollectionInput
 	State string `query:"state" maxLength:"16" doc:"open, pending, merged, declined, withdrawn."`
+}
+type listModerationProposalsInput struct {
+	CollectionInput
+	Object   string `query:"object" maxLength:"32" doc:"Closed family filter: work, company, character, release, tag, engine, series."`
+	EntityID string `query:"entity_id" maxLength:"20" doc:"Catalog id of one entity. Requires object=. Narrows the queue to that entity, which its owner may read without a review permission."`
 }
 type listProposalsOutput struct {
 	Body repr.List[repr.ProposalRecord]
@@ -463,13 +469,16 @@ func decideModerationClaim(cat *Catalog) func(context.Context, *decideClaimInput
 	}
 }
 
-func listModerationProposals(cat *Catalog) func(context.Context, *CollectionInput) (*listProposalsOutput, error) {
-	return func(ctx context.Context, in *CollectionInput) (*listProposalsOutput, error) {
-		q, err := parseCatalogList(ctx, in, collect.ClaimSpec())
+func listModerationProposals(cat *Catalog) func(context.Context, *listModerationProposalsInput) (*listProposalsOutput, error) {
+	return func(ctx context.Context, in *listModerationProposalsInput) (*listProposalsOutput, error) {
+		if in == nil {
+			in = &listModerationProposalsInput{}
+		}
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.ClaimSpec())
 		if err != nil {
 			return nil, err
 		}
-		page, lerr := cat.ListModerationProposals(ctx, q)
+		page, lerr := cat.ListModerationProposals(ctx, q, in.Object, in.EntityID)
 		if lerr != nil {
 			return nil, catalogErr(ctx, lerr)
 		}

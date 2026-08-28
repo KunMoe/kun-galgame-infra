@@ -13,7 +13,7 @@
 
 Moderation proposal queue
 
-Open proposals on the token site.
+Open proposals on the token site. The whole queue requires a catalog review permission. object=+entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without object= is 422.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer <用户访问令牌>
@@ -32,6 +32,8 @@ Open proposals on the token site.
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
+| `object` | query | 否 | string | Closed family filter: work, company, character, release, tag, engine, series. |
+| `entity_id` | query | 否 | string | Catalog id of one entity. Requires object=. Narrows the queue to that entity, which its owner may read without a review permission. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/moderation/proposals" \

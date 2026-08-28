@@ -84,31 +84,129 @@ func TestLiveModerationProposalsNeedReviewAuthority(t *testing.T) {
 	require.NotNil(t, detail.Patch, "positive control: the reviewer still gets the patch")
 }
 
-// The moderation detail is a review permission, not ownership and not
-// authorship: kungal's OwnerReview overlay is a WRITE standing the engine
-// resolves per field, and /v2/me/proposals/{id} is the proposer's own face.
-func TestLiveProposalDetailIsNotTheProposersFace(t *testing.T) {
-	env := liveCatalog(t)
-	work := liveClaimedBy(t, env, "W2 Owner Standing", 30111, livePlainUID)
-	status, _, body := liveDo(t, env, http.MethodPost, "/v2/me/proposals", liveSecondPlainToken, fmt.Sprintf(
-		`{"entity_type":%q,"entity_id":%q,"patch":{%q:"W2 Owner Standing Renamed"},"note":"w2"}`,
-		editspec.TypeWork, idstr(work), editspec.FieldWorkDisplayName))
+func liveProposalOn(t *testing.T, env *liveEnv, work int64, token, name string) liveProposalBody {
+	t.Helper()
+	status, _, body := liveDo(t, env, http.MethodPost, "/v2/me/proposals", token, fmt.Sprintf(
+		`{"entity_type":%q,"entity_id":%q,"patch":{%q:%q},"note":"w2"}`,
+		editspec.TypeWork, idstr(work), editspec.FieldWorkDisplayName, name))
 	require.Equal(t, 201, status, string(body))
 	var prop liveProposalBody
 	require.NoError(t, json.Unmarshal(body, &prop))
+	return prop
+}
 
-	path := "/v2/moderation/proposals/" + prop.ID + "?include=patch"
-	for _, token := range []string{livePlainToken, liveSecondPlainToken} {
-		status, _, body = liveDo(t, env, http.MethodGet, path, token, "")
-		require.Equal(t, 403, status, string(body))
-		require.Equal(t, "PERMISSION_REQUIRED", liveProblemCode(t, body))
+// kungal overlays every work field with OwnerReview, so a game's owner reaches
+// a verdict on it holding no review permission — the forum ships that path
+// (/galgame-edit/proposals/:id is plain authed, gated on CanModerate OR
+// isGameOwner). The owner arm must stay pinned to the entity: granting the
+// whole type's queue through it would be worse than the gap it closes.
+func TestLiveProposalDetailAdmitsTheEntityOwnerAndNobodyElse(t *testing.T) {
+	env := liveCatalog(t)
+	mine := liveClaimedBy(t, env, "W2 Owner Mine", 30111, livePlainUID)
+	theirs := liveClaimedBy(t, env, "W2 Owner Theirs", 30112, liveSecondPlainUID)
+	onMine := liveProposalOn(t, env, mine, liveSecondPlainToken, "W2 Owner Mine Renamed")
+	onTheirs := liveProposalOn(t, env, theirs, livePlainToken, "W2 Owner Theirs Renamed")
+
+	detail := func(id, token string) (int, []byte) {
+		status, _, body := liveDo(t, env, http.MethodGet, "/v2/moderation/proposals/"+id+"?include=patch", token, "")
+		return status, body
 	}
 
-	status, _, body = liveDo(t, env, http.MethodGet, "/v2/me/proposals/"+prop.ID+"?include=patch",
-		liveSecondPlainToken, "")
-	require.Equal(t, 200, status, "positive control: the proposer still reads their own: %s", body)
-	status, _, body = liveDo(t, env, http.MethodGet, path, liveUserToken, "")
-	require.Equal(t, 200, status, "positive control: a reviewer reads the queue entry: %s", body)
+	status, body := detail(onMine.ID, livePlainToken)
+	require.Equal(t, 200, status, "the owner reads the queue entry on their own entity: %s", body)
+	var got liveProposalBody
+	require.NoError(t, json.Unmarshal(body, &got))
+	require.NotNil(t, got.Patch)
+
+	status, body = detail(onTheirs.ID, livePlainToken)
+	require.Equal(t, 403, status, "owning one entity is not standing over another: %s", body)
+	require.Equal(t, "PERMISSION_REQUIRED", liveProblemCode(t, body))
+
+	status, body = detail(onMine.ID, liveUserToken)
+	require.Equal(t, 200, status, "positive control: a reviewer reads any of them: %s", body)
+}
+
+func TestLiveModerationQueueOwnerArmIsEntityScoped(t *testing.T) {
+	env := liveCatalog(t)
+	mine := liveClaimedBy(t, env, "W2 Queue Owner Mine", 30113, livePlainUID)
+	theirs := liveClaimedBy(t, env, "W2 Queue Owner Theirs", 30114, liveSecondPlainUID)
+	onMine := liveProposalOn(t, env, mine, liveSecondPlainToken, "W2 Queue Owner Mine Renamed")
+	liveProposalOn(t, env, theirs, livePlainToken, "W2 Queue Owner Theirs Renamed")
+
+	status, _, body := liveDo(t, env, http.MethodGet, "/v2/moderation/proposals", livePlainToken, "")
+	require.Equal(t, 403, status, "the whole type's queue is never reachable through the owner arm: %s", body)
+	require.Equal(t, "PERMISSION_REQUIRED", liveProblemCode(t, body))
+
+	status, _, body = liveDo(t, env, http.MethodGet,
+		"/v2/moderation/proposals?object=work&entity_id="+idstr(theirs), livePlainToken, "")
+	require.Equal(t, 403, status, "naming someone else's entity is not standing either: %s", body)
+
+	status, _, body = liveDo(t, env, http.MethodGet,
+		"/v2/moderation/proposals?object=work&entity_id="+idstr(mine), livePlainToken, "")
+	require.Equal(t, 200, status, "the owner reads their own entity's queue: %s", body)
+	var page liveProposalPage
+	require.NoError(t, json.Unmarshal(body, &page))
+	require.NotEmpty(t, page.Items)
+	for _, it := range page.Items {
+		require.Equal(t, idstr(mine), it.EntityID, "the entity filter must reach the query, not only the check")
+		require.Equal(t, onMine.ID, it.ID)
+	}
+
+	status, _, body = liveDo(t, env, http.MethodGet,
+		"/v2/moderation/proposals?entity_id="+idstr(mine), livePlainToken, "")
+	require.Equal(t, 422, status, "entity ids are unique only within a family: %s", body)
+
+	status, _, body = liveDo(t, env, http.MethodGet, "/v2/moderation/proposals", liveUserToken, "")
+	require.Equal(t, 200, status, "positive control: a reviewer still reads the whole queue: %s", body)
+}
+
+// Owner-can-decide is the live behaviour: forum's Merge/Decline sit behind the
+// same OR and its Amend route carries no role gate at all.
+func TestLiveEntityOwnerCanStillAmendAndDecide(t *testing.T) {
+	env := liveCatalog(t)
+	work := liveClaimedBy(t, env, "W2 Owner Writes", 30115, livePlainUID)
+	prop := liveProposalOn(t, env, work, liveSecondPlainToken, "W2 Owner Writes Renamed")
+	path := "/v2/moderation/proposals/" + prop.ID
+
+	etag := liveETag(t, env, path, livePlainToken)
+	status, _, body := liveDoHeader(t, env, http.MethodPost, "/v2/me/proposals/"+prop.ID+"/amendments",
+		livePlainToken, `{"set":{"catalog.work.display_name":"W2 Owner Amended"},"note":"owner"}`,
+		map[string]string{"If-Match": etag})
+	require.Equal(t, 201, status, "the owner amends a proposal on their own entity: %s", body)
+
+	etag = liveETag(t, env, path, livePlainToken)
+	status, _, body = liveDoHeader(t, env, http.MethodPost, path+"/decisions", livePlainToken,
+		`{"decision":"merge"}`, map[string]string{"If-Match": etag})
+	require.Equal(t, 201, status, "and reaches the verdict: %s", body)
+	require.Equal(t, "W2 Owner Amended", liveWorkName(t, env, work))
+}
+
+// The owner channel is kungal site configuration, not a universal rule and not
+// a hard-coded site: letmoe's overlay carries AutomergeOwner and no
+// OwnerReview, so the same owner has no standing there.
+func TestReviewStandingFollowsTheSiteOverlay(t *testing.T) {
+	env := liveCatalog(t)
+	work := liveClaimedBy(t, env, "W2 Overlay Probe", 30116, livePlainUID)
+	owner := func(site string) editing.PolicyContext {
+		return editing.PolicyContext{UserID: livePlainUID, Site: site, HasPerm: func(string) bool { return false }}
+	}
+	ctx := t.Context()
+
+	require.True(t, env.cat.reviewsAnyField(ctx, editspec.TypeWork, liveSite, work, owner(liveSite)),
+		"kungal overlays catalog.work with OwnerReview")
+	for _, site := range []string{"letmoe", "letmoe-staging"} {
+		require.False(t, env.cat.reviewsAnyField(ctx, editspec.TypeWork, site, work, owner(site)),
+			"%s carries AutomergeOwner and no OwnerReview", site)
+	}
+	require.False(t, env.cat.reviewsAnyField(ctx, editspec.TypeCharacter, liveSite, work, owner(liveSite)),
+		"OwnerReview is on work and release only, never on character")
+	require.False(t, env.cat.reviewsAnyField(ctx, editspec.TypeWork, liveSite, 0, owner(liveSite)),
+		"nobody owns entity 0; that is what keeps the type-level queue type-level")
+
+	capped := owner(liveSite)
+	capped.ModerationCapped = true
+	require.False(t, env.cat.reviewsAnyField(ctx, editspec.TypeWork, liveSite, work, capped),
+		"a developer-owned app's token reaches no verdict, ownership or not")
 }
 
 // GET /v2/moderation/snapshots/{object}/{id} is not a moderation face despite
@@ -216,9 +314,16 @@ func TestLiveThirdPartyClientReachesNoVerdict(t *testing.T) {
 	work := liveDraftClaim(t, env, "W2 Capped Target", 30106)
 	prop := liveOpenProposal(t, env, work, "W2 Capped Renamed")
 	path := "/v2/moderation/proposals/" + prop.ID
-	etag := liveETag(t, env, path, liveThirdPartyToken)
+	// The validator is a property of the proposal, not of the reader, so it has
+	// to come from an uncapped token: a capped surface is refused the queue
+	// read too, which is the point — what it keeps is what a tier-zero stranger
+	// keeps, filing and withdrawing its own.
+	etag := liveETag(t, env, path, liveUserToken)
 
-	status, _, body := liveDoHeader(t, env, http.MethodPost, path+"/decisions", liveThirdPartyToken,
+	status, _, body := liveDo(t, env, http.MethodGet, path, liveThirdPartyToken, "")
+	require.Equal(t, 403, status, "a capped surface does not read the review queue either: %s", body)
+
+	status, _, body = liveDoHeader(t, env, http.MethodPost, path+"/decisions", liveThirdPartyToken,
 		`{"decision":"merge"}`, map[string]string{"If-Match": etag})
 	require.Equal(t, 403, status, string(body))
 	require.Equal(t, "PERMISSION_REQUIRED", liveProblemCode(t, body))

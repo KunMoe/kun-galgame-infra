@@ -92732,7 +92732,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/moderation/proposals",
               "summary": "Moderation proposal queue",
-              "description": "Open proposals on the token site.",
+              "description": "Open proposals on the token site. The whole queue requires a catalog review permission. object=+entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without object= is 422.",
               "scope": "",
               "auth": {
                 "kind": "user_token",
@@ -92817,6 +92817,20 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "true includes r18. false or absent hides r18. Only true or false."
+                },
+                {
+                  "name": "object",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Closed family filter: work, company, character, release, tag, engine, series."
+                },
+                {
+                  "name": "entity_id",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Catalog id of one entity. Requires object=. Narrows the queue to that entity, which its owner may read without a review permission."
                 }
               ],
               "responses": [

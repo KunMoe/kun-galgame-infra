@@ -14747,7 +14747,7 @@ paths:
         - moderation
   /v2/moderation/proposals:
     get:
-      description: Open proposals on the token site.
+      description: Open proposals on the token site. The whole queue requires a catalog review permission. object=+entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without object= is 422.
       operationId: listModerationProposals
       parameters:
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -14837,6 +14837,22 @@ paths:
           schema:
             description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
+            type: string
+        - description: "Closed family filter: work, company, character, release, tag, engine, series."
+          explode: false
+          in: query
+          name: object
+          schema:
+            description: "Closed family filter: work, company, character, release, tag, engine, series."
+            maxLength: 32
+            type: string
+        - description: Catalog id of one entity. Requires object=. Narrows the queue to that entity, which its owner may read without a review permission.
+          explode: false
+          in: query
+          name: entity_id
+          schema:
+            description: Catalog id of one entity. Requires object=. Narrows the queue to that entity, which its owner may read without a review permission.
+            maxLength: 20
             type: string
       responses:
         "200":
