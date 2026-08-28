@@ -16,7 +16,7 @@ catalog **不存**产品展示体:简介、封面/截图字节、评分、点赞
 
 来源注册表(节选):`source` `2=vndb 3=bangumi 4=dlsite 5=erogamescape 20=howlongtobeat 1=user`;`medium` `1=galgame 5=asmr`;`content_rating` `0=all_ages 1=sensitive 2=r18`。完整注册表由 `cmd/migrate catalog` 的 seed 落库。
 
-⚠️ **`content_rating` 是年龄轴,不是展示轴**(A2-R5,doc 106 §38 事故)。这一列答的是「**游戏本体**是什么分级」;「我要**渲染的素材**(封面/截图/简介)能不能摆上公开页」是**另一个问题**,由**编辑展示轴**回答——公开面 `claimed_by.content_limit`(词表 `sfw|nsfw`),认领作品读 **`catalog_work.display_nsfw`**(人工编辑判定;**W1-pre 本体化**前是读时桥接 wiki 正文的 `galgame.content_limit`,refs/proj/140 §5b 把该判定物化成 registry 自己的列,wiki 表族退役后由 catalog 编辑面持有),未认领行按年龄轴回落(该列对未认领行恒 false 且从不被读)。生产实测两轴在 5,568 部作品上不一致(r18 游戏 × 编辑判定 sfw),**互不是对方的放宽或收紧**;把年龄轴当展示门正是那次 SEO 塌缩的根因。语义源 = `model.DisplayLimitKey`,契约与闸参见 [developer-platform/02 §3.2.8](../developer-platform/02-public-api.md#328-编辑展示轴-content_limit闸a2-r5)。
+⚠️ **`content_rating` 是年龄轴,不是展示轴**(A2-R5,doc 106 §38 事故)。这一列答的是「**游戏本体**是什么分级」;「我要**渲染的素材**(封面/截图/简介)能不能摆上公开页」是**另一个问题**,由**编辑展示轴**回答——公开面 `claimed_by.content_limit`(词表 `sfw|nsfw`),认领作品读 **`catalog_work.display_nsfw`**(人工编辑判定;**W1-pre 本体化**前是读时桥接 wiki 正文的 `galgame.content_limit`,refs/proj/140 §5b 把该判定物化成 registry 自己的列,wiki 表族退役后由 catalog 编辑面持有),未认领行按年龄轴回落(该列对未认领行恒 false 且从不被读)。生产实测两轴在 5,568 部作品上不一致(r18 游戏 × 编辑判定 sfw),**互不是对方的放宽或收紧**;把年龄轴当展示门正是那次 SEO 塌缩的根因。语义源 = `model.DisplayLimitKey`,契约与闸参见 [developer-platform/02 §3.2.8](../developer-platform/02-public-api.md#328-编辑展示轴-content_limit闸a2-r5)。**把这条判定缓存到本地列的消费站,同步信道见本篇 §8(`/v2/catalog/changes` 是镜像信道)。**
 
 **release 粒度自 wave 174 起有了公开读面**:`GET /v1/catalog/releases`(发售动态时间线)把**每一行带日期的 release** 当作一个条目按其**自身日期**排序,认领与未认领同规;人口 = LIVE galgame 作品的 release 且日期**至少精确到月**(只到年与无日期者不入本面,它们仍归日历的 pending / tba 两桶)。它是**日历的下一粒度**:日历按作品的**最早**发行日安放作品、一部作品只出现一次,故移植版/复刻版/本地化版在那里**构造上不可见**;本面的 `is_first`(该行是否为该作品最早的带日期 release)正是把二者分开的那一位。`kind` 缺省**排除 trial / patch**(发售动态问的是「东西出了」),`lang` 按 `COALESCE(release.lang, work.olang)` 匹配(dlsite/getchu 泳道的店铺 SKU 不记语言,构造上即作品原语),`official` 视**缺键为 official**(只有 VNDB 泳道写这个旗,写 `false` 即民间汉化/非官方版)。契约见 [developer-platform/02 §3.2](../developer-platform/02-public-api.md)。
 
@@ -518,3 +518,25 @@ wave 176-179 把人类的**写**搬完了;本波搬的是搬完写之后还留�
 - ⚠️ **导入类 cmd 不随部署自动跑**:`reconcile-galgame-works` / `import-*` / `reindex-catalog` 等是手动运维工具(经 `tools` 镜像 + env-file),**部署不会触发**。跑完批量导入后需**手动** `reindex-catalog` 重建搜索索引(批量脚本不走写穿钩子)。
 - **主库变更提醒**:`oauth_clients.catalog_site` 列落在**主库 `kun_galgame_infra`**(经 `cmd/migrate` AutoMigrate)——见工程侧变更时的迁移铁则。
 - **服务拓扑**:catalog 内网端口 9281,产品后端经 `http://catalog:9281` 走 dokploy-network(无公开域名);web(oauth admin 前端)SSR 经 `NUXT_CATALOG_API_BASE_SSR=http://catalog:9281/api/v1`。
+
+## 8. 展示轴镜像:`/v2/catalog/changes` 是镜像信道
+
+产品站会把 catalog 的编辑展示判定(§1 的 `content_limit`)缓存成自己的一列,好在 SQL 里过滤列表页。此前**没有任何 feed 被声明**承载这个字段——论坛的代码里留着原话:「There is no feed for that field — the claim-event feed carries claim state only — so a full sweep is the only way an editor's flip reaches the local lists.」于是论坛与 moyu 各自退回夜间全量扫(约 300 次请求扫 ~7.8k 行),编辑翻一个标志最坏要等一整夜才到本地列表。**信道其实一直在**:`GET /v2/catalog/changes` 按 `(updated_at, id)` 升序翻 `catalog_work`。本节把它声明成契约。
+
+**不变量**:凡改动作品的 **claim 状态**、**编辑展示轴**(`display_nsfw` / `content_rating`)或**作品存在性**的写路径,都会 bump `catalog_work.updated_at`,因而必在本 feed 现身。当前这些写路径是:编辑面 `applyWorkColumn`、claim 生命周期八动作、周跑 `releasemeta` 评级泳道、合并的认领转移与来源退役、导入(只 INSERT,新行自带新时间戳),以及子资源写路径统一走的 `repository.TouchWorks`。**其余字段(封面/标签/标题/简介/评分)尽力而为**——它们多数也会 touch 作品,但只有上面三项是承诺。
+
+**判定配方**(与 §1 同一条,服务端语义源 `model.DisplayLimitKey(site, product_work_id, display_nsfw, content_rating)`):
+
+```
+content_limit = claimed_by.content_limit          若 claimed_by 块存在(仅已认领作品渲染)
+              = content_rating == "r18" ? nsfw : sfw   否则
+```
+
+**镜像回路**:
+
+1. **冷启动**:从空游标翻本 feed。它按「最旧更新优先」枚举**整个人口**,所以第一次翻完就是一次全量清点——不需要另一个「列全部 id」的面。每页拿到的 id 以 **≤100 一批**打 `/v2/catalog/works?ids=`,**两道闸全开**(`nsfw=true`,且**不传** `content_limit`),否则被闸掉的作品会在本地留成空洞。
+2. **稳态**:存下 `next_cursor`,按自己的节奏轮询;游标是不透明串,原样回传。注意 feed 有 5 秒的在途事务水位,刚写的行会晚一拍出现——这不是丢失。
+3. **`gone: true`**:该 id 已离开公开人口(被合并,或不再被服务),删掉本地行。
+4. **被合并的 id** 同时出现在 `/v2/catalog/redirects`,那里给出接替它的规范 id——有 redirect 就**重指**而不是删除。
+
+**本地谓词写法**:缓存列用可空列,`NULL` 表示「尚未同步」并且**放行**,例如 `WHERE content_limit IS NULL OR content_limit = 'sfw'`。冷启动期间未水合的行因此照常可见而不是整站空白;真正的权威始终是水合时 catalog 自己的闸,本地列只是列表页的快筛。
