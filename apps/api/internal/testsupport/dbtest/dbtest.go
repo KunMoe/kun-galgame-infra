@@ -19,13 +19,17 @@
 // says so: the integration job sets REQUIRE_DB_TESTS=1, and a missing DSN there
 // is a misconfigured job, not an absent service.
 //
-// Deliberately no default DSN. Falling back to a hard-coded localhost database
-// is how a suite silently adopts whichever database happens to be listening —
-// including one another track is mid-run against. On 2026-08-28 that was not
-// hypothetical: 75 of the 76 files reading TEST_DATABASE_DSN read os.Getenv
-// directly and never reached this package, 30 of them carrying a
-// `dbname=kun_catalog_test` fallback whose database exists on the development
-// box. Route every read through DSN(); a bare os.Getenv here is the defect.
+// Deliberately no default DSN — not merely no default password. On 2026-08-28,
+// 75 of the 76 files reading TEST_DATABASE_DSN read os.Getenv directly and
+// never reached this package. 62 carried a hard-coded localhost fallback in two
+// shapes, and only the weaker-looking one actually did harm: the 58 with an
+// explicit password=postgres are rejected under md5 (an explicit password also
+// overrides ~/.pgpass) and merely skip, while the 4 that omitted the password
+// let ~/.pgpass complete the DSN and CONNECTED to the shared kun_catalog_test.
+// A suite that silently adopts whichever database happens to be listening is
+// worse than one that silently skips, because a green run against the wrong
+// database is indistinguishable from a green run against the right one.
+// Route every read through DSN(); a bare os.Getenv here is the defect.
 package dbtest
 
 import (
