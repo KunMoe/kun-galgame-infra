@@ -234,6 +234,9 @@ func (c *Catalog) GetRevision(ctx context.Context, id int64, q collect.Query, di
 		}
 		return out, nil
 	}
+	if herr := c.refuseHiddenDiff(ctx, rev, q.NSFW); herr != nil {
+		return repr.Revision{}, herr
+	}
 	base, berr := c.diffBaseRevision(ctx, rev, diffBase)
 	if berr != nil {
 		return repr.Revision{}, berr
@@ -245,6 +248,41 @@ func (c *Catalog) GetRevision(ctx context.Context, id int64, q collect.Query, di
 	out.Diff = &diff
 	out.DiffBase = optionalRevisionID(base)
 	return out, nil
+}
+
+// The revision ROWS are ids and field keys and deliberately carry no display
+// axis (deviation 16); include=diff prints the values, which is a different
+// promise. Without this an r18 work's titles and cover hashes were one query
+// away on a plain catalog:read key.
+func (c *Catalog) refuseHiddenDiff(ctx context.Context, rev *editing.Revision, nsfw bool) error {
+	if nsfw || c.EditHistory == nil {
+		return nil
+	}
+	workID := int64(0)
+	switch rev.EntityType {
+	case editspec.TypeWork:
+		workID = rev.EntityID
+	case editspec.TypeRelease:
+		id, err := c.EditHistory.ReleaseWorkID(ctx, rev.EntityID)
+		if err != nil {
+			return err
+		}
+		workID = id
+	default:
+		return nil
+	}
+	hidden, err := c.EditHistory.WorkDisplayNSFW(ctx, workID)
+	if err != nil {
+		return err
+	}
+	if !hidden {
+		return nil
+	}
+	p := problem.New(problem.CodeInvalidParameter, "", "",
+		"include=diff on an r18 entity requires nsfw=true.")
+	p.Errors = []problem.FieldError{{Parameter: "include", Reason: problem.ReasonNotAllowedValue,
+		Detail: "the diff carries this entity's own field values; pass nsfw=true"}}
+	return p
 }
 
 func optionalRevisionID(base *editing.Revision) *string {

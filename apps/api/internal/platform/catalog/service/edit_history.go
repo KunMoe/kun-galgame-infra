@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"api/internal/platform/catalog/model"
 	"api/internal/platform/editing"
 
 	"gorm.io/gorm"
@@ -103,6 +104,46 @@ func (s *EditHistoryService) RevisionByID(ctx context.Context, id int64) (*editi
 		return nil, err
 	}
 	return &rev, nil
+}
+
+// The revision rows themselves are ids and field keys, but include=diff prints
+// the values, and an r18 work's titles and cover hashes reached a SFW mirror
+// through it. The display axis lives on catalog_work, so a release inherits
+// its parent's.
+func (s *EditHistoryService) WorkDisplayNSFW(ctx context.Context, workID int64) (bool, error) {
+	if s == nil || s.db == nil || workID <= 0 {
+		return false, nil
+	}
+	var row struct {
+		ID            int64
+		Site          *string
+		ProductWorkID *int64
+		DisplayNSFW   bool
+		ContentRating int16
+	}
+	if err := s.db.WithContext(ctx).Table("catalog_work").
+		Select("id, site, product_work_id, display_nsfw, content_rating").
+		Where("id = ? AND deleted_at IS NULL", workID).
+		Scan(&row).Error; err != nil {
+		return false, err
+	}
+	if row.ID == 0 {
+		return false, nil
+	}
+	return model.DisplayLimitKey(row.Site, row.ProductWorkID, row.DisplayNSFW, row.ContentRating) ==
+		model.DisplayLimitKeyNSFW, nil
+}
+
+func (s *EditHistoryService) ReleaseWorkID(ctx context.Context, releaseID int64) (int64, error) {
+	if s == nil || s.db == nil || releaseID <= 0 {
+		return 0, nil
+	}
+	var workID int64
+	if err := s.db.WithContext(ctx).Table("catalog_release").
+		Select("work_id").Where("id = ?", releaseID).Scan(&workID).Error; err != nil {
+		return 0, err
+	}
+	return workID, nil
 }
 
 func (s *EditHistoryService) PreviousRevisionID(ctx context.Context, rev *editing.Revision) (int64, error) {
