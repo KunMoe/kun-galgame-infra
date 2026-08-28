@@ -30,6 +30,9 @@ const liveWizardFields = `{
 	"catalog.work.intros": [{"lang": "zh-Hans", "intro": "向导提交的简介。"}]
 }`
 
+// The token has to hold moderation authority: the snapshot face publishes raw
+// registered field values with no display axis, so it is a moderator read of
+// the caller's own tenant, not a receipt the submitter can fetch.
 func liveSnapshot(t *testing.T, env *liveEnv, workID, token string) map[string]any {
 	t.Helper()
 	status, _, body := liveDo(t, env, http.MethodGet, "/v2/moderation/snapshots/work/"+workID, token, "")
@@ -78,7 +81,7 @@ func TestLiveMintClaimFromWizardFields(t *testing.T) {
 	require.Equal(t, "pending", rec.State)
 	require.NotEmpty(t, rec.ID)
 
-	snap := liveSnapshot(t, env, rec.ID, livePlainToken)
+	snap := liveSnapshot(t, env, rec.ID, liveUserToken)
 	// display_name in the map is a seed, not the final value: applyTitles runs
 	// after olang and rewrites the column to the official title in that language.
 	// The wizard sends the zh-Hans name first and olang ja, so the work is born
@@ -164,7 +167,7 @@ func TestLiveClaimFieldsDisplayNamePrecedence(t *testing.T) {
 	status, rec, p := liveCreateClaim(t, env, livePlainToken,
 		`{"display_name":"Body Wins","field_values":{"catalog.work.display_name":"Map Loses","catalog.work.olang":"ja"}}`)
 	require.Equal(t, 201, status, p.Detail)
-	snap := liveSnapshot(t, env, rec.ID, livePlainToken)
+	snap := liveSnapshot(t, env, rec.ID, liveUserToken)
 	require.Equal(t, "Body Wins", snap[editspec.FieldWorkDisplayName])
 }
 
@@ -203,7 +206,7 @@ func TestLiveClaimRefsMintUnionsLinks(t *testing.T) {
 	}`)
 	require.Equal(t, 201, status, p.Detail)
 
-	snap := liveSnapshot(t, env, rec.ID, livePlainToken)
+	snap := liveSnapshot(t, env, rec.ID, liveUserToken)
 	require.ElementsMatch(t,
 		[]any{"https://vndb.org/v66602", "https://x.com/r4handle"},
 		snap[editspec.FieldWorkLinks],

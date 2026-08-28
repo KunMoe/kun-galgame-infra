@@ -48,6 +48,17 @@ var (
 	livePlainUID   = int64(8)
 	liveClient     = "kungal-client"
 	liveSite       = "kungal"
+
+	// Same person, same roles, three different surfaces: a peer tenant, a
+	// developer-owned app, and a second reviewer on the caller's own tenant.
+	liveOtherSiteToken   = "user-live-othersite-token"
+	liveOtherSiteUID     = int64(11)
+	liveOtherClient      = "moyu-client"
+	liveOtherSite        = "moyu"
+	liveThirdPartyToken  = "user-live-thirdparty-token"
+	liveThirdPartyClient = "portal-app-client"
+	liveSecondPlainToken = "user-live-second-plain-token"
+	liveSecondPlainUID   = int64(12)
 )
 
 // liveUnlimitedStore never rate-limits, but it does remember: without a real
@@ -214,15 +225,26 @@ func liveCatalog(t *testing.T) *liveEnv {
 					return UserIdentity{UID: liveUID, ClientID: liveClient, Roles: []string{"admin"}}, nil
 				case livePlainToken:
 					return UserIdentity{UID: livePlainUID, ClientID: liveClient, Roles: []string{"user"}}, nil
+				case liveSecondPlainToken:
+					return UserIdentity{UID: liveSecondPlainUID, ClientID: liveClient, Roles: []string{"user"}}, nil
+				case liveOtherSiteToken:
+					return UserIdentity{UID: liveOtherSiteUID, ClientID: liveOtherClient, Roles: []string{"admin"}}, nil
+				case liveThirdPartyToken:
+					return UserIdentity{UID: liveUID, ClientID: liveThirdPartyClient, Roles: []string{"admin"}}, nil
 				default:
 					return UserIdentity{}, os.ErrPermission
 				}
 			},
-			LookupSite: func(_ context.Context, clientID string) (string, error) {
-				if clientID == liveClient {
-					return liveSite, nil
+			LookupSite: func(_ context.Context, clientID string) (SiteBinding, error) {
+				switch clientID {
+				case liveClient:
+					return SiteBinding{Site: liveSite}, nil
+				case liveOtherClient:
+					return SiteBinding{Site: liveOtherSite}, nil
+				case liveThirdPartyClient:
+					return SiteBinding{Site: liveSite, ThirdParty: true}, nil
 				}
-				return "", nil
+				return SiteBinding{}, nil
 			},
 		})
 		fx, ferr := seedLiveFixtures(db, cat.Claims)

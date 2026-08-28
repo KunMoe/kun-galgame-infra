@@ -282,12 +282,20 @@ func setupPublicCatalog(
 		return err
 	})
 
-	siteOfClient := func(ctx context.Context, clientID string) (string, error) {
+	// owner_user_id is set only on a developer-owned app; every client bound to
+	// a catalog site in production has it NULL. Wave R3 deleted the v1 surface
+	// that read it, and PolicyContext.ModerationCapped has been set by nothing
+	// since.
+	bindingOfClient := func(ctx context.Context, clientID string) (v2handler.SiteBinding, error) {
 		cl, err := clientRepo.FindByClientID(ctx, clientID)
 		if err != nil || cl == nil {
-			return "", err
+			return v2handler.SiteBinding{}, err
 		}
-		return cl.CatalogSite, nil
+		return v2handler.SiteBinding{Site: cl.CatalogSite, ThirdParty: cl.OwnerUserID != nil}, nil
+	}
+	siteOfClient := func(ctx context.Context, clientID string) (string, error) {
+		bind, err := bindingOfClient(ctx, clientID)
+		return bind.Site, err
 	}
 	v2API := v2handler.SetupWith(application.Fiber, v2handler.Options{
 		Store:            protocol.NewRedisStore(devCache),
@@ -299,7 +307,7 @@ func setupPublicCatalog(
 			}
 			return v2handler.UserIdentity{UID: int64(claims.ID), ClientID: claims.ClientID, Roles: claims.Roles}, nil
 		},
-		LookupSite: siteOfClient,
+		LookupSite: bindingOfClient,
 		Catalog: &v2handler.Catalog{
 			Public:      publicSvc,
 			Resolve:     resolveSvc,

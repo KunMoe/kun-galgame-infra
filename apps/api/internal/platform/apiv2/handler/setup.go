@@ -25,7 +25,7 @@ type Options struct {
 	Catalog          *Catalog
 	LookupCredential func(ctx context.Context, rawToken string) (*devapi.Credential, error)
 	LookupUser       func(ctx context.Context, rawToken string) (UserIdentity, error)
-	LookupSite       func(ctx context.Context, clientID string) (string, error)
+	LookupSite       func(ctx context.Context, clientID string) (SiteBinding, error)
 }
 
 func Setup(app *fiber.App) huma.API {
@@ -79,6 +79,9 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 		}
 		if roles, ok := fc.Locals("user_roles").([]string); ok {
 			ctx = huma.WithValue(ctx, ctxRoles, roles)
+		}
+		if tp, ok := fc.Locals("catalog_third_party").(bool); ok {
+			ctx = huma.WithValue(ctx, ctxThirdParty, tp)
 		}
 		if cred := devapi.CredentialFrom(fc); cred != nil {
 			ctx = huma.WithValue(ctx, ctxCredClient, cred.ClientID)

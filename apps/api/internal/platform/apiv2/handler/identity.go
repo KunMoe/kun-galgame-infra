@@ -19,7 +19,17 @@ const (
 	ctxSite       ctxKey = "v2_catalog_site"
 	ctxRoles      ctxKey = "v2_user_roles"
 	ctxCredClient ctxKey = "v2_credential_client_id"
+	ctxThirdParty ctxKey = "v2_third_party_client"
 )
+
+// SiteBinding is what the token's OAuth client is, not just where it points.
+// Wave R3 deleted the v1 surface that filled PolicyContext.ModerationCapped
+// from ThirdParty and carried nothing to v2, so from that day the editing
+// engine's review cap was a flag nothing ever set.
+type SiteBinding struct {
+	Site       string
+	ThirdParty bool
+}
 
 func appClientFrom(ctx context.Context) string {
 	v, _ := ctx.Value(ctxCredClient).(string)
@@ -65,6 +75,11 @@ func rolesFrom(ctx context.Context) []string {
 	return v
 }
 
+func thirdPartyFrom(ctx context.Context) bool {
+	v, _ := ctx.Value(ctxThirdParty).(bool)
+	return v
+}
+
 func requireSite(ctx context.Context) (string, error) {
 	site := siteFrom(ctx)
 	if site == "" {
@@ -91,7 +106,7 @@ type UserIdentity struct {
 	Roles    []string
 }
 
-func userAuth(lookup func(context.Context, string) (UserIdentity, error), lookupSite func(context.Context, string) (string, error)) fiber.Handler {
+func userAuth(lookup func(context.Context, string) (UserIdentity, error), lookupSite func(context.Context, string) (SiteBinding, error)) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		// Same trap as catalogAuth: c.Path() is not what fiber matched on, so
 		// GET /v2/Me/claims skipped this gate entirely.
@@ -134,8 +149,13 @@ func userAuth(lookup func(context.Context, string) (UserIdentity, error), lookup
 				c.Locals("user_roles", ident.Roles)
 			}
 			if lookupSite != nil && ident.ClientID != "" {
-				if site, serr := lookupSite(c.Context(), ident.ClientID); serr == nil && site != "" {
-					c.Locals("catalog_site", site)
+				if bind, serr := lookupSite(c.Context(), ident.ClientID); serr == nil {
+					if bind.Site != "" {
+						c.Locals("catalog_site", bind.Site)
+					}
+					if bind.ThirdParty {
+						c.Locals("catalog_third_party", true)
+					}
 				}
 			}
 		}
