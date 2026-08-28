@@ -51,11 +51,37 @@ func New(cfg *config.Config, opts Options) (*App, error) {
 	if name == "" {
 		name = "kun-api"
 	}
-	a.Fiber = fiber.New(fiber.Config{
+	a.Fiber = fiber.New(FiberConfig(name))
+	// First on purpose: a recover registered later still lets panics drop the connection with no 500.
+	a.Fiber.Use(middleware.Recover())
+
+	return a, nil
+}
+
+// FiberConfig is exported so a test can build the app the router-hardening
+// guarantee is stated about, instead of a config the test picked itself.
+func FiberConfig(name string) fiber.Config {
+	if name == "" {
+		name = "kun-api"
+	}
+	return fiber.Config{
 		AppName:        name,
 		ServerHeader:   name,
 		ErrorHandler:   errorHandler,
 		ReadBufferSize: 32 * 1024,
+		// Routes are matched on detectionPath, which fiber lowercases while
+		// CaseSensitive is off, and c.Path() returns the raw path. Every /v2
+		// auth gate compares c.Path(), so GET /v2/Catalog/works matched the
+		// route, missed every prefix in the gate and served the whole catalog
+		// surface — claim-events included — with no credential in production
+		// until 2026-08-28.
+		//
+		// StrictRouting stays off: cmd/oauth registers `sites.Get("/")` and
+		// `oauthClients.Get("/")`, i.e. /api/v1/sites/ and /api/v1/oauth/clients/,
+		// while apps/web calls them without the trailing slash. Turning it on
+		// 404s the admin console's site and OAuth-client pages. The /v2 gate
+		// trims trailing slashes itself instead.
+		CaseSensitive: true,
 		// Real client IP behind Cloudflare → Traefik (dokploy). Without this,
 		// c.IP() returns the immediate peer (Traefik, ~10.0.1.x) for EVERY user,
 		// which silently makes the rate limiters global-per-proxy (the strict
@@ -74,11 +100,7 @@ func New(cfg *config.Config, opts Options) (*App, error) {
 		TrustProxyConfig: fiber.TrustProxyConfig{
 			Private: true,
 		},
-	})
-	// First on purpose: a recover registered later still lets panics drop the connection with no 500.
-	a.Fiber.Use(middleware.Recover())
-
-	return a, nil
+	}
 }
 
 func (a *App) Run(host string, port int) error {

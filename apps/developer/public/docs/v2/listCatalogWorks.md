@@ -35,7 +35,7 @@ Keyset-paginated work collection. q= switches to search (sort defaults to releva
 | `q` | query | 否 | string | Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant. |
 | `content_rating` | query | 否 | string | Closed: all_ages, sensitive, r18. r18 requires nsfw=true. |
 | `claimed` | query | 否 | string | true or false. Absent = no gate. |
-| `claim_state` | query | 否 | string | Comma-separated closed states: none, live, draft. Moderation states live on /v2/moderation/claims. |
+| `claim_state` | query | 否 | string | Comma-separated closed states: none, live, draft. pending, declined and hidden are the per-site moderation queue: they need a key holding claim_events:read and a site= naming the caller's own site, and are otherwise not in the vocabulary. |
 | `content_limit` | query | 否 | string | Comma-separated closed editorial axis: sfw, nsfw. |
 | `site` | query | 否 | string | Claiming site key. Open vocabulary; unknown values match nothing. |
 | `owner_uid` | query | 否 | string | The claiming site's own user id of the claim owner. Requires site=. Live registry filter; cannot be combined with q= or search sorts. |

@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -33,7 +34,73 @@ type worksFilter struct {
 	OLang          catsvc.PublicOLang
 }
 
-func parseWorksFilter(in *listWorksInput) (worksFilter, *problem.Problem) {
+var publicClaimStates = []string{
+	catmodel.ClaimStateKeyNone, catmodel.ClaimStateKeyLive, catmodel.ClaimStateKeyDraft,
+}
+
+var moderationClaimStates = []string{
+	catmodel.ClaimStateKeyPending, catmodel.ClaimStateKeyDeclined, catmodel.ClaimStateKeyHidden,
+}
+
+func mentionsModerationClaimState(raw string) bool {
+	for _, tok := range strings.Split(raw, ",") {
+		if slices.Contains(moderationClaimStates, strings.TrimSpace(tok)) {
+			return true
+		}
+	}
+	return false
+}
+
+// moderationClaimStateSite answers the caller's own site when it may read the
+// moderation states, "" when it may not — in which case parseWorksFilter keeps
+// the public three-state vocabulary and the request gets the identical closed
+// -enum 400 it got before, so the wider set stays invisible.
+func (c *Catalog) moderationClaimStateSite(ctx context.Context, rawClaimState string) (string, *problem.Problem) {
+	if !mentionsModerationClaimState(rawClaimState) {
+		return "", nil
+	}
+	if !catalogAuthzFrom(ctx).ModerationRead {
+		return "", nil
+	}
+	if c == nil || c.SiteOfAppClient == nil {
+		return "", problem.New(problem.CodeServiceUnavailable, "", "", "the moderation site resolver is not bound.")
+	}
+	site, err := c.SiteOfAppClient(ctx, catalogAuthzFrom(ctx).ClientID)
+	if err != nil {
+		return "", problem.New(problem.CodeServiceUnavailable, "", "", "the moderation site resolver is unavailable.")
+	}
+	if site == "" {
+		return "", problem.New(problem.CodeSiteNotBound, "", "",
+			"this key's application is not bound to a catalog site, so it has no moderation queue.")
+	}
+	return site, nil
+}
+
+func fenceModerationSite(f worksFilter, ownSite string) *problem.Problem {
+	moderation := false
+	for _, st := range f.ClaimStates {
+		if slices.Contains(moderationClaimStates, st) {
+			moderation = true
+			break
+		}
+	}
+	if !moderation {
+		return nil
+	}
+	if f.Site == "" {
+		p := problem.New(problem.CodeValidationFailed, "", "", "a moderation claim_state needs site= to be unambiguous.")
+		p.Errors = []problem.FieldError{{Parameter: "site", Reason: problem.ReasonRequired,
+			Detail: "moderation states are per-site queues; pass site=" + ownSite}}
+		return p
+	}
+	if f.Site != ownSite {
+		return problem.New(problem.CodePermissionRequired, "", "",
+			"a moderation claim_state is fenced to the caller's own site.")
+	}
+	return nil
+}
+
+func parseWorksFilter(in *listWorksInput, moderationAllowed bool) (worksFilter, *problem.Problem) {
 	f := worksFilter{OLang: catsvc.PublicOLang{All: true}}
 	if in == nil {
 		return f, nil
@@ -53,12 +120,15 @@ func parseWorksFilter(in *listWorksInput) (worksFilter, *problem.Problem) {
 		}
 		f.Claimed = &v
 	}
-	// pending/declined/hidden are moderation-workflow states; v1 kept its pending
-	// queue behind a moderation scope, and the first v2 cut left all six states
-	// open to any catalog:read key. The queue lives on /v2/moderation/claims.
-	states, err := closedCSV(in.ClaimState, "claim_state", []string{
-		catmodel.ClaimStateKeyNone, catmodel.ClaimStateKeyLive, catmodel.ClaimStateKeyDraft,
-	})
+	// R1 closed this to the public three and pointed the queue at
+	// /v2/moderation/claims, but the forum's admin queue reads it from here with
+	// an application key, which that face does not accept — the review queue
+	// answered 400 in production and rendered as "no pending submissions".
+	allowedStates := publicClaimStates
+	if moderationAllowed {
+		allowedStates = append(append([]string{}, publicClaimStates...), moderationClaimStates...)
+	}
+	states, err := closedCSV(in.ClaimState, "claim_state", allowedStates)
 	if err != nil {
 		return worksFilter{}, err
 	}

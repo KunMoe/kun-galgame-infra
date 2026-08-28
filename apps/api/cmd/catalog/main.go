@@ -282,6 +282,13 @@ func setupPublicCatalog(
 		return err
 	})
 
+	siteOfClient := func(ctx context.Context, clientID string) (string, error) {
+		cl, err := clientRepo.FindByClientID(ctx, clientID)
+		if err != nil || cl == nil {
+			return "", err
+		}
+		return cl.CatalogSite, nil
+	}
 	v2API := v2handler.SetupWith(application.Fiber, v2handler.Options{
 		Store:            protocol.NewRedisStore(devCache),
 		LookupCredential: mw.Lookup,
@@ -292,13 +299,7 @@ func setupPublicCatalog(
 			}
 			return v2handler.UserIdentity{UID: int64(claims.ID), ClientID: claims.ClientID, Roles: claims.Roles}, nil
 		},
-		LookupSite: func(ctx context.Context, clientID string) (string, error) {
-			cl, err := clientRepo.FindByClientID(ctx, clientID)
-			if err != nil || cl == nil {
-				return "", err
-			}
-			return cl.CatalogSite, nil
-		},
+		LookupSite: siteOfClient,
 		Catalog: &v2handler.Catalog{
 			Public:      publicSvc,
 			Resolve:     resolveSvc,
@@ -314,6 +315,8 @@ func setupPublicCatalog(
 			EditHistory: service.NewEditHistoryService(catalogDB.DB()),
 			Uploads:     v2handler.EditImageUpload(editUpload),
 			Store:       storeSvc,
+
+			SiteOfAppClient: siteOfClient,
 		},
 	})
 	v2spec, err := json.Marshal(v2API.OpenAPI())
