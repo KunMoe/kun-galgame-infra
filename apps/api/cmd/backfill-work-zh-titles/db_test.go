@@ -10,6 +10,7 @@ import (
 	"api/internal/platform/catalog/seed"
 	srcb "api/internal/platform/catalog/srcbangumi"
 	srcv "api/internal/platform/catalog/srcvndb"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
@@ -20,15 +21,13 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		fmt.Fprintln(os.Stderr, "SKIP: TEST_DATABASE_DSN is unset")
-		os.Exit(0)
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("cmd/backfill-work-zh-titles")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("cmd/backfill-work-zh-titles", "cannot connect to test database: %v", err)
 	}
 	for _, step := range []struct {
 		name string

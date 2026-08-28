@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"api/internal/platform/catalog/seed"
 	srcb "api/internal/platform/catalog/srcbangumi"
 	srcv "api/internal/platform/catalog/srcvndb"
+	"api/internal/testsupport/dbtest"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -27,33 +27,28 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_catalog_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("catalog/service")
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("catalog/service", "cannot connect to test database: %v", err)
 	}
 	if err := migrate.Run(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog migration failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("catalog/service", "catalog migration failed: %v", err)
 	}
 	if err := seed.Run(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog seeding failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("catalog/service", "catalog seeding failed: %v", err)
 	}
 	if err := srcb.EnsureSchema(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: src_bangumi schema failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("catalog/service", "src_bangumi schema failed: %v", err)
 	}
 	if err := srcv.EnsureSchema(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: src_vndb schema failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("catalog/service", "src_vndb schema failed: %v", err)
 	}
 
 	testDB = db
@@ -66,6 +61,7 @@ func TestMain(m *testing.M) {
 	release := acquireCatalogSuiteLock(db)
 	code := m.Run()
 	release()
+	sweepWorksSearchIndexes()
 	os.Exit(code)
 }
 

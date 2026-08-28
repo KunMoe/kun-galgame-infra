@@ -11,6 +11,7 @@ import (
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/seed"
 	srcb "api/internal/platform/catalog/srcbangumi"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,26 +29,23 @@ var (
 var backdated = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func TestMain(m *testing.M) {
-	testDSN = os.Getenv("TEST_DATABASE_DSN")
-	if testDSN == "" {
-		testDSN = "host=localhost port=5432 user=postgres password=postgres dbname=kun_catalog_test sslmode=disable"
+	var ok bool
+	testDSN, ok = dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("jobs/bgmzhnames")
 	}
 	db, err := gorm.Open(postgres.Open(testDSN), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/bgmzhnames", "cannot connect to test database: %v", err)
 	}
 	if err := migrate.Run(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog migrate failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/bgmzhnames", "catalog migrate failed: %v", err)
 	}
 	if err := seed.Run(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog seed failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/bgmzhnames", "catalog seed failed: %v", err)
 	}
 	if err := srcb.EnsureSchema(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: src_bangumi schema failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/bgmzhnames", "src_bangumi schema failed: %v", err)
 	}
 	testDB = db
 	os.Exit(m.Run())

@@ -1373,7 +1373,7 @@ curl "https://api.nextmoe.dev/v2/catalog/works/value/tags" \
 
 List news items
 
-Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are required on every item.
+Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are required on every item. lane=, source=, published_after= and published_before= narrow the population, and include_total= counts the narrowed one. ids= and refs= are not accepted.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：无需凭据
@@ -1392,6 +1392,10 @@ Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are r
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
+| `lane` | query | 否 | string | Comma-separated closed lanes: news, column. Absent means both. An unknown lane is 400 UNKNOWN_ENUM_VALUE. |
+| `source` | query | 否 | string | Comma-separated news source keys, at most 20. Open vocabulary; an unknown key matches nothing rather than failing. |
+| `published_after` | query | 否 | string | Inclusive lower bound on published_at. RFC 3339 UTC ending in Z. |
+| `published_before` | query | 否 | string | Inclusive upper bound on published_at. RFC 3339 UTC ending in Z. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/news"

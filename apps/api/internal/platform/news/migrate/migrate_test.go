@@ -6,8 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"api/internal/platform/news/dbtest"
+	suitelock "api/internal/platform/news/dbtest"
 	"api/internal/platform/news/model"
+	"api/internal/testsupport/dbtest"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -17,22 +18,20 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_news_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("news/migrate")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("news/migrate", "cannot connect to test database: %v", err)
 	}
 	sqlDB, _ := db.DB()
-	release := dbtest.AcquireSuiteLock(sqlDB)
+	release := suitelock.AcquireSuiteLock(sqlDB)
 
 	if err := Run(db); err != nil {
 		release()
-		fmt.Fprintf(os.Stderr, "SKIP: news migration failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("news/migrate", "news migration failed: %v", err)
 	}
 	// Second run is the idempotency probe: every deploy reruns this migration.
 	if err := Run(db); err != nil {

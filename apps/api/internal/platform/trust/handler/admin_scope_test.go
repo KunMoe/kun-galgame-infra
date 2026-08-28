@@ -8,11 +8,12 @@ import (
 	"testing"
 
 	siteModel "api/internal/platform/site/model"
-	"api/internal/platform/trust/dbtest"
+	suitelock "api/internal/platform/trust/dbtest"
 	"api/internal/platform/trust/dto"
 	"api/internal/platform/trust/migrate"
 	"api/internal/platform/trust/model"
 	"api/internal/platform/trust/service"
+	"api/internal/testsupport/dbtest"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -23,13 +24,13 @@ var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
 	release := func() {}
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_trust_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("trust/handler")
 	}
 	if db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)}); err == nil {
 		sqlDB, _ := db.DB()
-		release = dbtest.AcquireSuiteLock(sqlDB)
+		release = suitelock.AcquireSuiteLock(sqlDB)
 		if merr := migrate.Run(db); merr != nil {
 			fmt.Fprintf(os.Stderr, "SKIP DB tests: trust migration failed: %v\n", merr)
 		} else {
@@ -140,7 +141,7 @@ func seedItem(t *testing.T, site, subject string) int64 {
 
 func TestAdminReviewItemsSiteScoped(t *testing.T) {
 	if testDB == nil {
-		t.Skip("trust test DB unavailable")
+		dbtest.Skipf(t, "the trust test database is unavailable")
 	}
 	truncateReviewTables(t)
 	ownID := seedItem(t, "kungal", "own")

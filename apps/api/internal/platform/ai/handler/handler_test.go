@@ -2,19 +2,19 @@ package handler
 
 import (
 	"encoding/base64"
-	"fmt"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 
-	"api/internal/platform/ai/dbtest"
+	suitelock "api/internal/platform/ai/dbtest"
 	aiMigrate "api/internal/platform/ai/migrate"
 	aiModel "api/internal/platform/ai/model"
 	"api/internal/platform/ai/service"
 	"api/internal/platform/ai/upstream"
 	siteModel "api/internal/platform/site/model"
 	siteRepo "api/internal/platform/site/repository"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/datatypes"
@@ -26,27 +26,24 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_ai_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("ai/handler")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("ai/handler", "cannot connect to test database: %v", err)
 	}
 	sqlDB, _ := db.DB()
-	release := dbtest.AcquireSuiteLock(sqlDB)
+	release := suitelock.AcquireSuiteLock(sqlDB)
 
 	if err := aiMigrate.Run(db); err != nil {
 		release()
-		fmt.Fprintf(os.Stderr, "SKIP: ai migration failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("ai/handler", "ai migration failed: %v", err)
 	}
 	if err := db.AutoMigrate(&siteModel.Site{}, &siteModel.OAuthClient{}); err != nil {
 		release()
-		fmt.Fprintf(os.Stderr, "SKIP: oauth_clients migration failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("ai/handler", "oauth_clients migration failed: %v", err)
 	}
 
 	testDB = db

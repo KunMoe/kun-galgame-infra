@@ -794,7 +794,11 @@ export const mcpTools = [
       "include_total",
       "facets",
       "sort",
-      "nsfw"
+      "nsfw",
+      "lane",
+      "source",
+      "published_after",
+      "published_before"
     ]
   },
   {

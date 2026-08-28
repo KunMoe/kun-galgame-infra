@@ -6,6 +6,7 @@ import (
 
 	"api/internal/platform/trust/dto"
 	"api/internal/platform/trust/service"
+	"api/internal/testsupport/dbtest"
 )
 
 func TestAdminTermsPermGate(t *testing.T) {
@@ -43,7 +44,7 @@ func TestAdminTermsHandlersRejectModerator(t *testing.T) {
 
 func TestAdminTermsCRUD(t *testing.T) {
 	if testDB == nil {
-		t.Skip("trust test DB unavailable")
+		dbtest.Skipf(t, "the trust test database is unavailable")
 	}
 	if err := testDB.Exec("TRUNCATE trust_term, trust_audit_log RESTART IDENTITY CASCADE").Error; err != nil {
 		t.Fatalf("truncate: %v", err)

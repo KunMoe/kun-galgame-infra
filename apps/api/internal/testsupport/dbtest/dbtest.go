@@ -19,9 +19,17 @@
 // says so: the integration job sets REQUIRE_DB_TESTS=1, and a missing DSN there
 // is a misconfigured job, not an absent service.
 //
-// Deliberately no default DSN. Falling back to a hard-coded localhost database
-// is how a suite silently adopts whichever database happens to be listening —
-// including one another track is mid-run against.
+// Deliberately no default DSN — not merely no default password. On 2026-08-28,
+// 75 of the 76 files reading TEST_DATABASE_DSN read os.Getenv directly and
+// never reached this package. 62 carried a hard-coded localhost fallback in two
+// shapes, and only the weaker-looking one actually did harm: the 58 with an
+// explicit password=postgres are rejected under md5 (an explicit password also
+// overrides ~/.pgpass) and merely skip, while the 4 that omitted the password
+// let ~/.pgpass complete the DSN and CONNECTED to the shared kun_catalog_test.
+// A suite that silently adopts whichever database happens to be listening is
+// worse than one that silently skips, because a green run against the wrong
+// database is indistinguishable from a green run against the right one.
+// Route every read through DSN(); a bare os.Getenv here is the defect.
 package dbtest
 
 import (
@@ -37,7 +45,7 @@ func DSN() (dsn string, ok bool) {
 	if dsn != "" {
 		return dsn, true
 	}
-	if os.Getenv(RequireEnv) != "" {
+	if Required() {
 		fmt.Fprintf(os.Stderr,
 			"FAIL: %s is set but TEST_DATABASE_DSN is empty — this run was supposed to have a database\n",
 			RequireEnv)
@@ -57,3 +65,33 @@ func Skip(t *testing.T) {
 	t.Helper()
 	t.Skipf("TEST_DATABASE_DSN unset — DB-backed test not run (set %s=1 to make this a failure)", RequireEnv)
 }
+
+// SkipMainf and Skipf are for the refusals that happen AFTER a DSN was handed
+// over: an unreachable server, a migration that will not run. Those used to
+// os.Exit(0) too, so a suite whose migration failed under REQUIRE_DB_TESTS=1
+// still printed `ok` — the same lie DSN() closes, one step further down.
+func SkipMainf(suite, format string, args ...any) {
+	reason := fmt.Sprintf(format, args...)
+	if Required() {
+		fmt.Fprintf(os.Stderr, "FAIL: %s is set but %s cannot use the database: %s\n",
+			RequireEnv, suite, reason)
+		os.Exit(2)
+	}
+	fmt.Fprintf(os.Stderr, "SKIP: %s not run: %s (set %s=1 to make this a failure)\n",
+		suite, reason, RequireEnv)
+	os.Exit(0)
+}
+
+func Skipf(t *testing.T, format string, args ...any) {
+	t.Helper()
+	reason := fmt.Sprintf(format, args...)
+	if Required() {
+		t.Fatalf("%s is set but the database is unusable: %s", RequireEnv, reason)
+	}
+	t.Skipf("%s — DB-backed test not run (set %s=1 to make this a failure)", reason, RequireEnv)
+}
+
+// Required is for the few callers that decide for themselves what an unusable
+// database means — newstest.Open is reached from a TestMain and from a per-test
+// helper, so neither os.Exit nor t.Fatal fits both.
+func Required() bool { return os.Getenv(RequireEnv) != "" }

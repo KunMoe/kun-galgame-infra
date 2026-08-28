@@ -37,68 +37,132 @@ func liveOpMethod(item *huma.PathItem, op *huma.Operation) string {
 	}
 }
 
+// liveReadPaths is templated, not concrete, so TestLiveReadsCoverEveryGet can
+// compare it against the document. It was a hand-written list of concrete URLs
+// and had fallen seventeen routes behind the route table, including the whole
+// news lane and characters/{id}/appearances.
+var liveReadPaths = []string{
+	"/v2/problems",
+	"/v2/problems/reasons",
+	"/v2/problems/{code}",
+	"/v2/vocabularies",
+	"/v2/vocabularies/{name}",
+	"/v2/catalog/stats",
+	"/v2/catalog/schemas/{object}",
+	"/v2/catalog/works",
+	"/v2/catalog/works/{id}",
+	"/v2/catalog/works/{id}/covers",
+	"/v2/catalog/works/{id}/screenshots",
+	"/v2/catalog/works/{id}/tags",
+	"/v2/catalog/works/{id}/characters",
+	"/v2/catalog/works/{id}/credits",
+	"/v2/catalog/works/{id}/releases",
+	"/v2/catalog/works/{id}/intros",
+	"/v2/catalog/works/{id}/ratings",
+	"/v2/catalog/works/{id}/relations",
+	"/v2/catalog/works/{id}/series",
+	"/v2/catalog/works/{id}/links",
+	"/v2/catalog/works/{id}/engines",
+	"/v2/catalog/companies",
+	"/v2/catalog/companies/{id}",
+	"/v2/catalog/companies/{id}/graph",
+	"/v2/catalog/tags",
+	"/v2/catalog/tags/{id}",
+	"/v2/catalog/series",
+	"/v2/catalog/series/{id}",
+	"/v2/catalog/engines",
+	"/v2/catalog/engines/{id}",
+	"/v2/catalog/releases",
+	"/v2/catalog/releases/{id}",
+	"/v2/catalog/characters",
+	"/v2/catalog/characters/{id}",
+	"/v2/catalog/characters/{id}/appearances",
+	"/v2/catalog/credit-names",
+	"/v2/catalog/credit-names/{id}",
+	"/v2/catalog/credit-names/{id}/credits",
+	"/v2/catalog/persons",
+	"/v2/catalog/persons/{id}",
+	"/v2/catalog/persons/{id}/credit-names",
+	"/v2/catalog/traits",
+	"/v2/catalog/traits/{id}",
+	"/v2/catalog/calendar",
+	"/v2/catalog/changes",
+	"/v2/catalog/redirects",
+	"/v2/catalog/claim-events",
+	"/v2/catalog/proposals",
+	"/v2/catalog/revisions",
+	"/v2/news",
+	"/v2/news/sources",
+	"/v2/news/{id}",
+	"/v2/me/playtimes",
+	"/v2/me/cover-votes",
+	"/v2/me/claims",
+	"/v2/me/claims/{id}",
+	"/v2/me/proposals",
+	"/v2/me/news",
+	"/v2/me/news/{id}",
+	"/v2/moderation/claims",
+	"/v2/moderation/claims/{id}",
+	"/v2/moderation/proposals",
+	"/v2/moderation/snapshots/{object}/{id}",
+}
+
+// The GET operations the fixture cannot bring to 200, each with the reason it
+// is out. A new read route belongs in liveReadPaths or here; the completeness
+// test refuses both "in neither" and "in both".
+var liveReadsNotSwept = map[string]string{
+	"/v2/catalog/proposals/{id}":            "no proposal survives seedLiveFixtures; TestLiveWrites200 creates the only one",
+	"/v2/catalog/revisions/{id}":            "no revision survives seedLiveFixtures",
+	"/v2/me/proposals/{id}":                 "same: no proposal id to address",
+	"/v2/moderation/proposals/{id}":         "same: no proposal id to address",
+	"/v2/me/playtimes/{work_id}":            "404 until a playtime is written, which is TestLiveWrites200's job",
+	"/v2/catalog/search":                    "the live env binds no Meilisearch, so this face is 503 here",
+	"/v2/store/purchase-links/{product_id}": "the live env binds no store service",
+	"/v2/store/stats":                       "the live env binds no store service",
+}
+
+func liveReadURL(t *testing.T, tmpl string, fx liveFix) string {
+	t.Helper()
+	url := strings.NewReplacer(
+		"{code}", problem.CodeRateLimited, "{name}", "medium", "{object}", "work",
+	).Replace(tmpl)
+	// Longest-prefix, not liveSubstitute's substring switch: that one matches
+	// "/tags" inside /v2/catalog/works/{id}/tags and addresses a tag id as if it
+	// were a work.
+	for _, e := range []struct {
+		prefix string
+		id     int64
+	}{
+		{"/v2/catalog/works/", fx.Work},
+		{"/v2/catalog/companies/", fx.Company},
+		{"/v2/catalog/tags/", fx.Tag},
+		{"/v2/catalog/series/", fx.Series},
+		{"/v2/catalog/engines/", fx.Engine},
+		{"/v2/catalog/releases/", fx.Release},
+		{"/v2/catalog/characters/", fx.Character},
+		{"/v2/catalog/credit-names/", fx.Credit},
+		{"/v2/catalog/persons/", fx.Person},
+		{"/v2/catalog/traits/", fx.Trait},
+		{"/v2/me/claims/", fx.Pending},
+		{"/v2/moderation/claims/", fx.Pending},
+		{"/v2/moderation/snapshots/work/", fx.Work},
+		{"/v2/me/news/", fx.NewsItem},
+		{"/v2/news/", fx.NewsItem},
+	} {
+		if strings.HasPrefix(url, e.prefix) {
+			url = strings.ReplaceAll(url, "{id}", idstr(e.id))
+			break
+		}
+	}
+	require.NotContainsf(t, url, "{", "unsubstituted path param in %s", tmpl)
+	return url
+}
+
 func TestLiveReads200(t *testing.T) {
 	env := liveCatalog(t)
-	fx := env.fx
-	gets := []string{
-		"/v2/problems",
-		"/v2/vocabularies",
-		"/v2/vocabularies/medium",
-		"/v2/problems/" + problem.CodeRateLimited,
-		"/v2/problems/reasons",
-		"/v2/catalog/stats",
-		"/v2/catalog/schemas/work",
-		"/v2/catalog/works",
-		"/v2/catalog/works/" + idstr(fx.Work),
-		"/v2/catalog/works/" + idstr(fx.Work) + "/covers",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/screenshots",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/tags",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/characters",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/credits",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/releases",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/intros",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/ratings",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/relations",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/series",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/links",
-		"/v2/catalog/works/" + idstr(fx.Work) + "/engines",
-		"/v2/catalog/companies",
-		"/v2/catalog/companies/" + idstr(fx.Company),
-		"/v2/catalog/companies/" + idstr(fx.Company) + "/graph",
-		"/v2/catalog/tags",
-		"/v2/catalog/tags/" + idstr(fx.Tag),
-		"/v2/catalog/series",
-		"/v2/catalog/series/" + idstr(fx.Series),
-		"/v2/catalog/engines",
-		"/v2/catalog/engines/" + idstr(fx.Engine),
-		"/v2/catalog/releases",
-		"/v2/catalog/releases/" + idstr(fx.Release),
-		"/v2/catalog/characters",
-		"/v2/catalog/characters/" + idstr(fx.Character),
-		"/v2/catalog/characters/" + idstr(fx.Character) + "?view=full",
-		"/v2/catalog/credit-names",
-		"/v2/catalog/credit-names/" + idstr(fx.Credit),
-		"/v2/catalog/credit-names/" + idstr(fx.Credit) + "/credits",
-		"/v2/catalog/persons",
-		"/v2/catalog/persons/" + idstr(fx.Person),
-		"/v2/catalog/persons/" + idstr(fx.Person) + "/credit-names",
-		"/v2/catalog/traits",
-		"/v2/catalog/traits/" + idstr(fx.Trait),
-		"/v2/catalog/calendar",
-		"/v2/catalog/changes",
-		"/v2/catalog/redirects",
-		"/v2/me/playtimes",
-		"/v2/me/cover-votes",
-		"/v2/me/claims",
-		"/v2/me/claims/" + idstr(fx.Pending),
-		"/v2/me/proposals",
-		"/v2/moderation/claims",
-		"/v2/moderation/claims/" + idstr(fx.Pending),
-		"/v2/moderation/proposals",
-		"/v2/moderation/snapshots/work/" + idstr(fx.Work),
-	}
-	for _, path := range gets {
-		status, ct, body := liveDo(t, env, http.MethodGet, path, liveAuthPath(path), "")
+	for _, tmpl := range liveReadPaths {
+		path := liveReadURL(t, tmpl, env.fx)
+		status, ct, body := liveDo(t, env, http.MethodGet, path, liveAuthPath(tmpl), "")
 		if status != 200 {
 			t.Errorf("GET %s -> %d %s", path, status, body)
 			continue
@@ -107,6 +171,43 @@ func TestLiveReads200(t *testing.T) {
 			t.Errorf("GET %s content-type %q", path, ct)
 		}
 	}
+	full := liveReadURL(t, "/v2/catalog/characters/{id}", env.fx) + "?view=full"
+	status, _, body := liveDo(t, env, http.MethodGet, full, liveAppKey, "")
+	require.Equal(t, 200, status, string(body))
+}
+
+func TestLiveReadsCoverEveryGet(t *testing.T) {
+	env := liveCatalog(t)
+	specApp := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
+	doc := SetupWith(specApp, Options{Catalog: env.cat}).OpenAPI()
+
+	swept := map[string]bool{}
+	for _, p := range liveReadPaths {
+		require.Falsef(t, swept[p], "%s is listed twice", p)
+		swept[p] = true
+	}
+	declared := map[string]bool{}
+	for path, item := range doc.Paths {
+		if item.Get == nil {
+			continue
+		}
+		declared[path] = true
+		reason, named := liveReadsNotSwept[path]
+		require.Falsef(t, swept[path] && named, "%s is both swept and excluded", path)
+		require.Truef(t, swept[path] || named,
+			"GET %s is registered and neither swept by TestLiveReads200 nor named in liveReadsNotSwept", path)
+		if named {
+			require.NotEmptyf(t, reason, "%s needs a reason, not an empty string", path)
+		}
+	}
+	for p := range swept {
+		require.Truef(t, declared[p], "%s is swept but no longer a registered GET", p)
+	}
+	for p := range liveReadsNotSwept {
+		require.Truef(t, declared[p], "%s is excluded but no longer a registered GET", p)
+	}
+	require.Equal(t, len(declared), len(swept)+len(liveReadsNotSwept))
+	t.Logf("GET operations: %d swept, %d named exclusions", len(swept), len(liveReadsNotSwept))
 }
 
 func TestLiveWrites200(t *testing.T) {

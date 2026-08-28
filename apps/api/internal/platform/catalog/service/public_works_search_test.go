@@ -154,7 +154,21 @@ func TestNormalizeVNDBID(t *testing.T) {
 	}
 }
 
-const worksSearchTestPrefix = "test_svc_"
+var worksSearchTestPrefix = dbtest.SearchIndexPrefix("svc")
+
+func sweepWorksSearchIndexes() {
+	host, apiKey := dbtest.SearchHost()
+	if host == "" {
+		return
+	}
+	client, err := infrasearch.NewClient(config.MeilisearchConfig{
+		Host: host, APIKey: apiKey, IndexPrefix: worksSearchTestPrefix,
+	})
+	if err != nil {
+		return
+	}
+	dbtest.SweepSearchIndexes(client.Svc(), worksSearchTestPrefix)
+}
 
 func worksSearchIndexer(t *testing.T) *catsearch.Indexer {
 	t.Helper()

@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 
+	"api/internal/testsupport/dbtest"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	glogger "gorm.io/gorm/logger"
@@ -14,14 +16,12 @@ import (
 const editSuiteLockKey int64 = 0x65647473
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_catalog_test sslmode=disable"
-	}
 	release := func() {}
-	if db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: glogger.Default.LogMode(glogger.Silent)}); err == nil {
-		if sqlDB, derr := db.DB(); derr == nil {
-			release = acquireEditSuiteLock(sqlDB)
+	if dsn, ok := dbtest.DSN(); ok {
+		if db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: glogger.Default.LogMode(glogger.Silent)}); err == nil {
+			if sqlDB, derr := db.DB(); derr == nil {
+				release = acquireEditSuiteLock(sqlDB)
+			}
 		}
 	}
 	code := m.Run()

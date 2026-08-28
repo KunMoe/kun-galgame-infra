@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http/httptest"
-	"os"
 	"sync"
 	"testing"
 
@@ -13,6 +12,7 @@ import (
 	"api/internal/platform/catalog/perm"
 	"api/internal/platform/catalog/seed"
 	siteModel "api/internal/platform/site/model"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
@@ -76,17 +76,19 @@ func TestAdminGate_403WithoutRole(t *testing.T) {
 }
 
 var (
-	catalogTestOnce sync.Once
-	catalogTestDBH  *gorm.DB
-	catalogTestErr  error
+	catalogTestOnce  sync.Once
+	catalogTestDBH   *gorm.DB
+	catalogTestNoDSN bool
+	catalogTestErr   error
 )
 
 func openCatalogTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	catalogTestOnce.Do(func() {
-		dsn := os.Getenv("TEST_DATABASE_DSN")
-		if dsn == "" {
-			dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_catalog_test sslmode=disable"
+		dsn, ok := dbtest.DSN()
+		if !ok {
+			catalogTestNoDSN = true
+			return
 		}
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: glogger.Default.LogMode(glogger.Silent)})
 		if err != nil {
@@ -103,8 +105,11 @@ func openCatalogTestDB(t *testing.T) *gorm.DB {
 		}
 		catalogTestDBH = db
 	})
+	if catalogTestNoDSN {
+		dbtest.Skip(t)
+	}
 	if catalogTestErr != nil {
-		t.Skip(catalogTestErr.Error())
+		dbtest.Skipf(t, "%s", catalogTestErr)
 	}
 	return catalogTestDBH
 }

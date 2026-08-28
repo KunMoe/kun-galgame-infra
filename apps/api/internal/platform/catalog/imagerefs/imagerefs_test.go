@@ -3,13 +3,13 @@ package imagerefs
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 
 	"api/internal/platform/catalog/migrate"
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/seed"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,17 +38,19 @@ func TestDetachSetMatchesColumnNullability(t *testing.T) {
 }
 
 var (
-	testOnce sync.Once
-	testDB   *gorm.DB
-	testErr  error
+	testOnce  sync.Once
+	testDB    *gorm.DB
+	testNoDSN bool
+	testErr   error
 )
 
 func openTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	testOnce.Do(func() {
-		dsn := os.Getenv("TEST_DATABASE_DSN")
-		if dsn == "" {
-			dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_catalog_test sslmode=disable"
+		dsn, ok := dbtest.DSN()
+		if !ok {
+			testNoDSN = true
+			return
 		}
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: glogger.Default.LogMode(glogger.Silent)})
 		if err != nil {
@@ -65,8 +67,11 @@ func openTestDB(t *testing.T) *gorm.DB {
 		}
 		testDB = db
 	})
+	if testNoDSN {
+		dbtest.Skip(t)
+	}
 	if testErr != nil {
-		t.Skip(testErr.Error())
+		dbtest.Skipf(t, "%s", testErr)
 	}
 	return testDB
 }

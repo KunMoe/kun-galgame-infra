@@ -123,11 +123,11 @@ func (c *Catalog) Stats(ctx context.Context) (repr.CatalogStats, error) {
 	}, nil
 }
 
-func (c *Catalog) ListNews(ctx context.Context, q collect.Query) (repr.List[repr.NewsItem], error) {
+func (c *Catalog) ListNews(ctx context.Context, q collect.Query, filter newssvc.FeedFilter) (repr.List[repr.NewsItem], error) {
 	if c == nil || c.News == nil {
 		return repr.List[repr.NewsItem]{}, problem.New(problem.CodeServiceUnavailable, "", "", "news is not bound.")
 	}
-	data, err := c.News.Feed(ctx, newssvc.FeedFilter{}, q.Cursor, q.Limit)
+	data, err := c.News.Feed(ctx, filter, q.Cursor, q.Limit)
 	if err != nil {
 		if errors.Is(err, newssvc.ErrBadCursor) {
 			return repr.List[repr.NewsItem]{}, collectInvalidCursor()
@@ -138,12 +138,22 @@ func (c *Catalog) ListNews(ctx context.Context, q collect.Query) (repr.List[repr
 	for _, it := range data.Items {
 		items = append(items, newsFromDTO(it))
 	}
+	// Hand-rolled repr.NewList instead of finishList was why /v2/news was the
+	// one face of the twenty-six declaring include_total= that never answered a
+	// total; the forum's news client asks for one on every request.
+	var total int64
+	if q.IncludeTotal {
+		n, _, _, merr := c.News.FeedMeta(ctx, filter)
+		if merr != nil {
+			return repr.List[repr.NewsItem]{}, merr
+		}
+		total = n
+	}
 	var next *string
 	if data.NextCursor != nil && *data.NextCursor != "" {
-		enc := collect.EncodeCursor(*data.NextCursor)
-		next = &enc
+		next = data.NextCursor
 	}
-	return repr.NewList(items, next), nil
+	return finishList(items, next, total, q, nil), nil
 }
 
 func (c *Catalog) NewsItem(ctx context.Context, id int64) (repr.NewsItem, error) {

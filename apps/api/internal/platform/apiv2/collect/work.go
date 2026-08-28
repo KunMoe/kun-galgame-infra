@@ -64,6 +64,11 @@ func ProblemSpec() Spec {
 	}
 }
 
+// NewsSpec is NoBatch for the same reason the three below are, and it was the
+// one deviation 82 missed: /v2/news declares ids= and refs=, parses them, and
+// has no hydration lane, so q.Batch zeroed the limit and
+// GET /v2/news?ids=<an id that exists> answered 200 with an empty items[], no
+// missing[] and no cursor.
 func NewsSpec() Spec {
 	return Spec{
 		Sort:    []string{"published"},
@@ -71,6 +76,7 @@ func NewsSpec() Spec {
 		FullSet: []string{},
 		Fields:  []string{"object", "id", "title", "summary", "source", "source_url", "published_at"},
 		Facets:  []string{},
+		NoBatch: true,
 	}
 }
 

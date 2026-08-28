@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	"api/internal/platform/community/dbtest"
+	suitelock "api/internal/platform/community/dbtest"
 	"api/internal/platform/community/migrate"
 	"api/internal/platform/community/model"
+	"api/internal/testsupport/dbtest"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -26,21 +26,19 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_community_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("cmd/import-kungal-resource-comments")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("cmd/import-kungal-resource-comments", "cannot connect to test database: %v", err)
 	}
 	sqlDB, _ := db.DB()
-	release := dbtest.AcquireSuiteLock(sqlDB)
+	release := suitelock.AcquireSuiteLock(sqlDB)
 	quit := func(msg string, err error) {
 		release()
-		fmt.Fprintf(os.Stderr, "SKIP: %s: %v\n", msg, err)
-		os.Exit(0)
+		dbtest.SkipMainf("cmd/import-kungal-resource-comments", "%s: %v", msg, err)
 	}
 	if err := migrate.Run(db); err != nil {
 		quit("community migration failed", err)

@@ -11,6 +11,7 @@ import (
 	"api/internal/platform/catalog/seed"
 	srcb "api/internal/platform/catalog/srcbangumi"
 	srcv "api/internal/platform/catalog/srcvndb"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,19 +23,17 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_catalog_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("catalog/importer")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: no test db: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("catalog/importer", "no test db: %v", err)
 	}
 	for _, step := range []func(*gorm.DB) error{migrate.Run, seed.Run, srcb.EnsureSchema, srcv.EnsureSchema, llmsuggest.EnsureSchema} {
 		if err := step(db); err != nil {
-			fmt.Fprintf(os.Stderr, "SKIP: setup: %v\n", err)
-			os.Exit(0)
+			dbtest.SkipMainf("catalog/importer", "setup: %v", err)
 		}
 	}
 	stmts := []string{
@@ -55,8 +54,7 @@ func TestMain(m *testing.M) {
 	}
 	for _, s := range stmts {
 		if err := db.Exec(s).Error; err != nil {
-			fmt.Fprintf(os.Stderr, "SKIP: %s: %v\n", s, err)
-			os.Exit(0)
+			dbtest.SkipMainf("catalog/importer", "%s: %v", s, err)
 		}
 	}
 	testDB = db

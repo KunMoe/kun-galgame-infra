@@ -11,6 +11,7 @@ import (
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/seed"
 	"api/internal/platform/catalog/srcvndb"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,26 +28,23 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	testDSN = os.Getenv("TEST_DATABASE_DSN")
-	if testDSN == "" {
-		testDSN = "host=localhost port=5432 user=postgres password=postgres dbname=kun_catalog_test sslmode=disable"
+	var ok bool
+	testDSN, ok = dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("jobs/workplaytime")
 	}
 	db, err := gorm.Open(postgres.Open(testDSN), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/workplaytime", "cannot connect to test database: %v", err)
 	}
 	if err := migrate.Run(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog migrate failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/workplaytime", "catalog migrate failed: %v", err)
 	}
 	if err := seed.Run(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog seed failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/workplaytime", "catalog seed failed: %v", err)
 	}
 	if err := srcvndb.EnsureSchema(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: src_vndb schema failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/workplaytime", "src_vndb schema failed: %v", err)
 	}
 	for _, ddl := range []string{
 		`CREATE SCHEMA IF NOT EXISTS workplaytime_eg`,
@@ -55,8 +53,7 @@ func TestMain(m *testing.M) {
 		`CREATE TABLE IF NOT EXISTS workplaytime_hltb.games (hltb_id bigint PRIMARY KEY, raw jsonb)`,
 	} {
 		if err := db.Exec(ddl).Error; err != nil {
-			fmt.Fprintf(os.Stderr, "SKIP: mirror fixture failed: %v\n", err)
-			os.Exit(0)
+			dbtest.SkipMainf("jobs/workplaytime", "mirror fixture failed: %v", err)
 		}
 	}
 	egTestDSN = testDSN + " options='-csearch_path=workplaytime_eg'"
