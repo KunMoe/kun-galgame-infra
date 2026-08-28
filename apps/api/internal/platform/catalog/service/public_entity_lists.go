@@ -17,14 +17,12 @@ const (
 )
 
 type EntityListRow struct {
-	ID          int64
-	DisplayName string
-	Latin       *string
-	Lang        string
-	PersonID    *int64
-	// GORM snake-cases VndbTID to vndb_t_id, which matches no result column, so
-	// every /v2/catalog/traits row shipped vndb_tid:"" until 2026-08-28.
-	VndbTID             string `gorm:"column:vndb_tid"`
+	ID                  int64
+	DisplayName         string
+	Latin               *string
+	Lang                string
+	PersonID            *int64
+	VndbTID             string
 	NameZh              string
 	Sexual              bool
 	PrimaryCreditNameID *int64
@@ -38,6 +36,37 @@ type EntityListRow struct {
 	Intros              []dto.PublicIntro
 	Refs                []dto.PublicCatalogRef
 	Traits              []dto.PublicCharacterTrait
+}
+
+// entityListScan is the Scan destination behind EntityListRow: column-backed
+// fields only. Scanning into EntityListRow itself made GORM log
+// `failed to parse field: Localized, error: unsupported data type: &map[]` on
+// every entity-list read, once per call site.
+type entityListScan struct {
+	ID          int64
+	DisplayName string
+	Latin       *string
+	Lang        string
+	PersonID    *int64
+	// GORM snake-cases VndbTID to vndb_t_id, which matches no result column, so
+	// every /v2/catalog/traits row shipped vndb_tid:"" until 2026-08-28.
+	VndbTID             string `gorm:"column:vndb_tid"`
+	NameZh              string
+	Sexual              bool
+	PrimaryCreditNameID *int64
+	Gender              *int16
+}
+
+func entityListRows(scanned []entityListScan) []EntityListRow {
+	rows := make([]EntityListRow, len(scanned))
+	for i, r := range scanned {
+		rows[i] = EntityListRow{
+			ID: r.ID, DisplayName: r.DisplayName, Latin: r.Latin, Lang: r.Lang,
+			PersonID: r.PersonID, VndbTID: r.VndbTID, NameZh: r.NameZh, Sexual: r.Sexual,
+			PrimaryCreditNameID: r.PrimaryCreditNameID, Gender: r.Gender,
+		}
+	}
+	return rows
 }
 
 type EntityListPage struct {
@@ -200,10 +229,11 @@ func (s *PublicService) entityIDList(ctx context.Context, spec entityListSpec) (
 	}
 	q := `SELECT ` + spec.selectSQL + ` FROM ` + spec.table + ` ` + whereClause(where) + ` ORDER BY id ASC`
 	q, args, paginated := applyBrowseLimit(q, args, limit+taxonomyOverFetch, spec.ids)
-	var rows []EntityListRow
-	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
+	var scanned []entityListScan
+	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&scanned).Error; err != nil {
 		return EntityListPage{}, err
 	}
+	rows := entityListRows(scanned)
 	var more bool
 	if paginated {
 		rows, more = taxonomyTrim(rows, limit)
@@ -263,17 +293,18 @@ func (s *PublicService) PersonNames(ctx context.Context, personID int64) ([]Enti
 	if _, ok, err := s.Person(ctx, personID); err != nil || !ok {
 		return nil, ok, err
 	}
-	var rows []EntityListRow
+	var scanned []entityListScan
 	// link_visibility is the public gate the detail face applies to the same
 	// edge (read_service.go NameWorks + its siblings query); listing a hidden
 	// link here would have published the association the detail face refuses.
 	err := s.db.WithContext(ctx).Raw(
 		`SELECT id, name AS display_name, latin, lang, person_id
 		 FROM catalog_credit_name WHERE person_id = ? AND link_visibility = ? ORDER BY id ASC`,
-		personID, model.LinkVisibilityPublic).Scan(&rows).Error
+		personID, model.LinkVisibilityPublic).Scan(&scanned).Error
 	if err != nil {
 		return nil, false, err
 	}
+	rows := entityListRows(scanned)
 	ids := make([]int64, len(rows))
 	for i, r := range rows {
 		ids[i] = r.ID
