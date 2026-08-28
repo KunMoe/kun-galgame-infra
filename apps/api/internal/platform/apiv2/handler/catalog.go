@@ -32,6 +32,9 @@ type Catalog struct {
 	EditHistory *catsvc.EditHistoryService
 	Uploads     EditImageUpload
 	Store       *storesvc.Service
+	// oauth_clients lives in the infra database, which no catalog service can
+	// reach, so the moderation fence takes its client -> site resolver here.
+	SiteOfAppClient func(ctx context.Context, clientID string) (string, error)
 }
 
 func (c *Catalog) ListWorks(ctx context.Context, q collect.Query) (repr.List[repr.Work], error) {

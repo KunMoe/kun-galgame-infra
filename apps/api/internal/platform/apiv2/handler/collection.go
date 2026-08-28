@@ -67,7 +67,7 @@ type listWorksInput struct {
 	Q              string `query:"q" maxLength:"512" doc:"Work title search. Switches this collection to the search index; sort defaults to relevance. Must not be used as a discriminant."`
 	ContentRating  string `query:"content_rating" maxLength:"16" doc:"Closed: all_ages, sensitive, r18. r18 requires nsfw=true."`
 	Claimed        string `query:"claimed" maxLength:"8" doc:"true or false. Absent = no gate."`
-	ClaimState     string `query:"claim_state" maxLength:"128" doc:"Comma-separated closed states: none, live, draft. Moderation states live on /v2/moderation/claims."`
+	ClaimState     string `query:"claim_state" maxLength:"128" doc:"Comma-separated closed states: none, live, draft. pending, declined and hidden are the per-site moderation queue: they need a key holding claim_events:read and a site= naming the caller's own site, and are otherwise not in the vocabulary."`
 	ContentLimit   string `query:"content_limit" maxLength:"32" doc:"Comma-separated closed editorial axis: sfw, nsfw."`
 	Site           string `query:"site" maxLength:"64" doc:"Claiming site key. Open vocabulary; unknown values match nothing."`
 	OwnerUID       string `query:"owner_uid" maxLength:"20" doc:"The claiming site's own user id of the claim owner. Requires site=. Live registry filter; cannot be combined with q= or search sorts."`
@@ -159,9 +159,16 @@ func listWorks(src WorksFunc, cat *Catalog) func(context.Context, *listWorksInpu
 		if err != nil {
 			return nil, withIdent(ctx, err)
 		}
-		filt, ferr := parseWorksFilter(in)
+		modSite, merr := cat.moderationClaimStateSite(ctx, in.ClaimState)
+		if merr != nil {
+			return nil, withIdent(ctx, merr)
+		}
+		filt, ferr := parseWorksFilter(in, modSite != "")
 		if ferr != nil {
 			return nil, withIdent(ctx, ferr)
+		}
+		if serr := fenceModerationSite(filt, modSite); serr != nil {
+			return nil, withIdent(ctx, serr)
 		}
 		if cat != nil && cat.Public != nil {
 			page, lerr := cat.ListWorksFiltered(ctx, q, filt)
@@ -237,9 +244,38 @@ func credentialLimitIdentity(c fiber.Ctx) (protocol.LimitIdentity, bool) {
 	return protocol.LimitIdentity{}, false
 }
 
+// Fiber routes on detectionPath — c.Path() lowercased while CaseSensitive is
+// off, with trailing slashes trimmed while StrictRouting is off — but c.Path()
+// itself returns the raw path. Reading c.Path() here meant /v2/Catalog/works
+// matched the route, missed every prefix below, fell out the open default arm
+// and answered 200 with no credential; /v2/catalog/claim-events/ likewise
+// missed the operator-scope compare. Both were live in production until
+// 2026-08-28. The gate must key on what fiber matched, not on what was typed.
+func routedPath(raw string) string {
+	p := strings.ToLower(raw)
+	for len(p) > 1 && p[len(p)-1] == '/' {
+		p = p[:len(p)-1]
+	}
+	return p
+}
+
+// The gate resolves the moderation verdict once and the handlers consume it,
+// so no face re-derives policy from raw scopes.
+type catalogAuthz struct {
+	ClientID       string
+	ModerationRead bool
+}
+
+const ctxCatalogAuthz ctxKey = "v2_catalog_authz"
+
+func catalogAuthzFrom(ctx context.Context) catalogAuthz {
+	v, _ := ctx.Value(ctxCatalogAuthz).(catalogAuthz)
+	return v
+}
+
 func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error)) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		path := c.Path()
+		path := routedPath(c.Path())
 		scope := ""
 		switch {
 		case strings.HasPrefix(path, "/v2/catalog/"):
@@ -267,8 +303,12 @@ func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error
 			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
 				"Authorization Bearer token is invalid."))
 		}
+		// This arm used to `return c.Next()`: with no credential store wired,
+		// every gated /v2 face answered anonymously. A missing dependency is a
+		// server fault, never a grant.
 		if lookup == nil {
-			return c.Next()
+			return problem.WriteFiberError(c, problem.New(problem.CodeServiceUnavailable, problem.RequestID(c), problem.Instance(c),
+				"credential store is unavailable."))
 		}
 		if devapi.HasV1KeyPrefix(token) {
 			return problem.WriteFiberError(c, problem.New(problem.CodeInvalidCredential, problem.RequestID(c), problem.Instance(c),
@@ -296,6 +336,10 @@ func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error
 				"this operation additionally requires the claim_events:read scope."))
 		}
 		devapi.WithCredential(c, cred)
+		c.Locals(ctxCatalogAuthz, catalogAuthz{
+			ClientID:       cred.ClientID,
+			ModerationRead: cred.HasScope(devapi.ScopeClaimEventsRead),
+		})
 		return c.Next()
 	}
 }

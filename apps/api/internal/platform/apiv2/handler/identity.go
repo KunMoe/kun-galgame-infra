@@ -93,7 +93,9 @@ type UserIdentity struct {
 
 func userAuth(lookup func(context.Context, string) (UserIdentity, error), lookupSite func(context.Context, string) (string, error)) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		path := c.Path()
+		// Same trap as catalogAuth: c.Path() is not what fiber matched on, so
+		// GET /v2/Me/claims skipped this gate entirely.
+		path := routedPath(c.Path())
 		if !strings.HasPrefix(path, "/v2/me/") && !strings.HasPrefix(path, "/v2/moderation/") {
 			return c.Next()
 		}

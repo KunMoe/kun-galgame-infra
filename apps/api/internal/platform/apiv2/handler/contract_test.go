@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,15 +10,37 @@ import (
 	"testing"
 
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/devapi"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
 )
 
+// A nil LookupCredential used to mean "gate open", which is what these tests
+// leaned on when they sent `Bearer test`. It now answers 503, so the shared
+// test app carries a real credential store.
+var testAPIKey = func() string {
+	k, err := devapi.GenerateV2Key(false)
+	if err != nil {
+		panic(err)
+	}
+	return k
+}()
+
+func testCredentialLookup(_ context.Context, raw string) (*devapi.Credential, error) {
+	if raw == testAPIKey {
+		return &devapi.Credential{
+			KeyID: 99, ClientID: "test-app", Tier: devapi.TierInternal,
+			Scopes: []string{devapi.ScopeCatalogRead, devapi.ScopeStoreRead},
+		}, nil
+	}
+	return nil, nil
+}
+
 func testApp(t *testing.T) *fiber.App {
 	t.Helper()
 	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
-	Setup(app)
+	SetupWith(app, Options{LookupCredential: testCredentialLookup})
 	return app
 }
 
@@ -231,13 +254,13 @@ func TestWorksRequiresCredential(t *testing.T) {
 	require.Equal(t, problem.CodeMissingCredential, p.Code)
 
 	req := httptest.NewRequest(http.MethodGet, "/v2/catalog/works?limit=101", nil)
-	req.Header.Set("Authorization", "Bearer test")
+	req.Header.Set("Authorization", "Bearer "+testAPIKey)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	require.Equal(t, 400, resp.StatusCode)
 
 	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/works?nsfw=true", nil)
-	req.Header.Set("Authorization", "Bearer test")
+	req.Header.Set("Authorization", "Bearer "+testAPIKey)
 	resp, err = app.Test(req)
 	require.NoError(t, err)
 	body, err = io.ReadAll(resp.Body)
@@ -248,7 +271,7 @@ func TestWorksRequiresCredential(t *testing.T) {
 	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 
 	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/works/1?nsfw=yes", nil)
-	req.Header.Set("Authorization", "Bearer test")
+	req.Header.Set("Authorization", "Bearer "+testAPIKey)
 	resp, err = app.Test(req)
 	require.NoError(t, err)
 	body, err = io.ReadAll(resp.Body)
@@ -292,7 +315,7 @@ func TestCatalogStatsAndNewsUnauthenticated(t *testing.T) {
 	require.Equal(t, problem.CodeMissingCredential, p.Code)
 
 	req := httptest.NewRequest(http.MethodGet, "/v2/catalog/works/1", nil)
-	req.Header.Set("Authorization", "Bearer test")
+	req.Header.Set("Authorization", "Bearer "+testAPIKey)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	body, err = io.ReadAll(resp.Body)
@@ -302,7 +325,7 @@ func TestCatalogStatsAndNewsUnauthenticated(t *testing.T) {
 	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 
 	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/companies/1", nil)
-	req.Header.Set("Authorization", "Bearer test")
+	req.Header.Set("Authorization", "Bearer "+testAPIKey)
 	resp, err = app.Test(req)
 	require.NoError(t, err)
 	require.Equal(t, 503, resp.StatusCode)
@@ -314,7 +337,7 @@ func TestCatalogStatsAndNewsUnauthenticated(t *testing.T) {
 	require.Equal(t, problem.CodeMissingCredential, p.Code)
 
 	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/companies/1/graph", nil)
-	req.Header.Set("Authorization", "Bearer test")
+	req.Header.Set("Authorization", "Bearer "+testAPIKey)
 	resp, err = app.Test(req)
 	require.NoError(t, err)
 	require.Equal(t, 503, resp.StatusCode)
@@ -345,7 +368,7 @@ func TestCatalogCollectionsRequireCredential(t *testing.T) {
 		require.Equal(t, problem.CodeMissingCredential, p.Code, path)
 
 		req := httptest.NewRequest(http.MethodGet, path, nil)
-		req.Header.Set("Authorization", "Bearer test")
+		req.Header.Set("Authorization", "Bearer "+testAPIKey)
 		resp, err := app.Test(req)
 		require.NoError(t, err, path)
 		require.Equal(t, 503, resp.StatusCode, path)
@@ -362,13 +385,13 @@ func TestWorkSubresourcesRequireCredential(t *testing.T) {
 	require.Equal(t, problem.CodeMissingCredential, p.Code)
 
 	req := httptest.NewRequest(http.MethodGet, "/v2/catalog/works/1/covers", nil)
-	req.Header.Set("Authorization", "Bearer test")
+	req.Header.Set("Authorization", "Bearer "+testAPIKey)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 	require.Equal(t, 503, resp.StatusCode)
 
 	req = httptest.NewRequest(http.MethodGet, "/v2/catalog/works/1?include=nope", nil)
-	req.Header.Set("Authorization", "Bearer test")
+	req.Header.Set("Authorization", "Bearer "+testAPIKey)
 	resp, err = app.Test(req)
 	require.NoError(t, err)
 	body, err = io.ReadAll(resp.Body)

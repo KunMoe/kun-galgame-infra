@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"net/http/httptest"
 	"testing"
 
 	v2handler "api/internal/platform/apiv2/handler"
+	"api/internal/platform/devapi"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -19,7 +21,8 @@ import (
 //
 // The Authorization header is load-bearing: without it catalogAuth answers 401
 // from a middleware registered at "/" and c.Route().Path is "/" for every path,
-// which would make this test green on nothing.
+// which would make this test green on nothing. A real credential store is
+// load-bearing for the same reason — a nil one now answers 503 there.
 func routePatternApp(seen *[]string) *fiber.App {
 	f := fiber.New()
 	f.Use("/v2", func(c fiber.Ctx) error {
@@ -27,9 +30,27 @@ func routePatternApp(seen *[]string) *fiber.App {
 		*seen = append(*seen, c.Route().Path)
 		return err
 	})
-	v2handler.Setup(f)
+	v2handler.SetupWith(f, v2handler.Options{
+		LookupCredential: func(_ context.Context, raw string) (*devapi.Credential, error) {
+			if raw != probeKey {
+				return nil, nil
+			}
+			return &devapi.Credential{
+				KeyID: 1, ClientID: "probe", Tier: devapi.TierInternal,
+				Scopes: []string{devapi.ScopeCatalogRead, devapi.ScopeStoreRead},
+			}, nil
+		},
+	})
 	return f
 }
+
+var probeKey = func() string {
+	k, err := devapi.GenerateV2Key(true)
+	if err != nil {
+		panic(err)
+	}
+	return k
+}()
 
 func TestUsageRecordsTheRoutePatternNotTheConcretePath(t *testing.T) {
 	for _, tc := range []struct {
@@ -47,7 +68,7 @@ func TestUsageRecordsTheRoutePatternNotTheConcretePath(t *testing.T) {
 		var seen []string
 		f := routePatternApp(&seen)
 		r := httptest.NewRequest(tc.method, tc.path, nil)
-		r.Header.Set("Authorization", "Bearer nmk_live_probe")
+		r.Header.Set("Authorization", "Bearer "+probeKey)
 		if _, err := f.Test(r); err != nil {
 			t.Fatalf("%s %s: %v", tc.method, tc.path, err)
 		}

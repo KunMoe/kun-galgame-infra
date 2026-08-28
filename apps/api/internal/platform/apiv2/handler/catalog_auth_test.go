@@ -114,7 +114,7 @@ func TestCatalogAuthLookupStoreFailureIs503(t *testing.T) {
 
 func TestCatalogAuthStubServesNSFWWithoutACapability(t *testing.T) {
 	app := testApp(t)
-	status, p := authGET(t, app, "/v2/catalog/works?nsfw=true", "test")
+	status, p := authGET(t, app, "/v2/catalog/works?nsfw=true", testAPIKey)
 	require.Equal(t, 503, status)
 	require.Equal(t, problem.CodeServiceUnavailable, p.Code)
 }
