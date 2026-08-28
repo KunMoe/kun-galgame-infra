@@ -117,6 +117,58 @@ Date: 2026-08-24, GA declared 2026-08-25 (stage 9); news write face added 2026-0
 
 47. **User-token traffic is rate-limited per user, not per IP** (2026-08-28). Deviation 29 moved keyed traffic onto per-key tier limits and left "any request that never authenticates" on the per-IP default — but a user access token *does* authenticate and still resolved no limiter identity, so the whole `/v2/me` and `/v2/moderation` plane fell into the anonymous bucket. A first-party backend relays every logged-in user's call from one egress IP: the forum's entire user plane shared a single `100/min + 10k/day` bucket and answered 429 `QUOTA_EXCEEDED` from 2026-08-27T22:46Z, re-tripping after each UTC-midnight reset (`v2:quota:<forum egress IP>` measured 17,848 by 07:35Z the next day). Now `credentialLimitIdentity` falls through to the authenticated uid — key `u<uid>`, the default `100/min + 10,000/day` per user. Anonymous keyless paths (problems, vocabularies, stats, schemas, openapi.json) keep the per-IP default; an application key still wins over a uid when both are present.
 
+48. **`claim_state=pending|declined|hidden` is readable on `/v2/catalog/works`, behind moderation authority** (2026-08-28). Wave R1 narrowed the closed set to `{none, live, draft}` and pointed the queue at `/v2/moderation/claims`, but the forum's live admin submission queue reads it from here (`claim_state=pending&claimed=true&site=kungal&sort=updated`) with an **application key**, and the moderation face demands a user token carrying `catalog.claim.review`. The queue answered 400 `UNKNOWN_ENUM_VALUE` in production and rendered as "no pending submissions" — the review POST on the same page still worked, so nothing looked broken. R1's intent is kept and only its instrument replaced: the three moderation states are admitted **only** to a credential holding the operator-granted `claim_events:read` scope, and then `site=` is **mandatory** and fenced to the caller's own catalog site (resolved from the key's oauth client, `oauth_clients.catalog_site`) — 403 `PERMISSION_REQUIRED` on another tenant's queue, 403 `SITE_NOT_BOUND` when the key's application has no site. Without the scope the request gets the **identical** 400 `UNKNOWN_ENUM_VALUE` with `allowed values: none, live, draft` it got before, byte for byte: the wider set must not be discoverable by the shape of the refusal, and no unauthorized caller sees any change at all. The adjudicated user-token half of the rule (`catalog.claim.review`) is **not reachable on this face** and is not implemented — `catalogAuth` rejects anything that is not an `nmk_` application key on `/v2/catalog/*` before a user token could be looked at. Zero migrations; the service layer already supported the states (`WorksListFilter.ClaimStates`).
+
+## Wave — the /v2 gate read a path fiber never matched on (2026-08-28)
+
+`GET /v2/Catalog/works` answered **200 with no credential** on production, and so
+did `/v2/CATALOG/works` and `/v2/Catalog/claim-events` — the last one returning
+real operator rows (`actor_uid`, `reason`, `site`, `from_state`, `to_state`)
+across every tenant. `/V2/catalog/works` 404'd, because Traefik's
+`PathPrefix(/v2)` is case-sensitive; only the segments after `/v2` were
+exploitable.
+
+The mechanism is one fiber fact. `Route.match` compares against
+`c.detectionPath` — `c.path` lowercased while `CaseSensitive` is off and with
+trailing slashes stripped while `StrictRouting` is off — while `c.Path()`
+returns the raw `c.path`. `catalogAuth` and `userAuth` both dispatched on
+`c.Path()` with case-sensitive `strings.HasPrefix` over an **open**
+`default: return c.Next()` arm, which is correct in itself (`/v2/me`,
+`/v2/news`, `/v2/problems`, `/v2/vocabularies` legitimately take no application
+key). So a case-variant path matched the route, missed every prefix in the gate,
+and fell out the open arm. The same mismatch defeated the operator guard, which
+compared `path == "/v2/catalog/claim-events"`: one trailing slash routed to the
+same handler with the extra scope unchecked.
+
+Three layers, because any one of them alone is a config flip away from
+regressing:
+
+1. **Both gates key on a normalized path** (`routedPath`: lowercase, trailing
+   slashes trimmed), so the gate sees what fiber matched. This holds even if the
+   router config is reverted.
+2. **`CaseSensitive: true`** on the shared fiber config, so variants 404 rather
+   than falling through. **`StrictRouting` stays off**: `cmd/oauth` registers
+   `sites.Get("/")` and `oauthClients.Get("/")` — i.e. `/api/v1/sites/` and
+   `/api/v1/oauth/clients/` — while `apps/web` calls both without the trailing
+   slash, so turning it on 404s the admin console's site and OAuth-client pages.
+   Verified empirically against fiber v3.2.0 rather than assumed. Layer 1 covers
+   the slash case instead.
+3. **A walk over every published path** (`route_gate_walk_test.go`) issues the
+   case-variant, `…/` and `…//` forms of every path in
+   `docs/catalog/v2-openapi.yaml` with no credential and asserts the answer is
+   still the gate's own (`MISSING_CREDENTIAL` / `NOT_FOUND`), never a
+   handler's. Asserting merely "not a 2xx" was tried first and passed green
+   against the unfixed gate — every face is unbound in a unit test, so a request
+   that sails past the gate still answers 503.
+
+`catalogAuth` also stopped treating a nil credential store as a grant: with no
+lookup wired, every gated face answered anonymously. It is 503
+`SERVICE_UNAVAILABLE` now, the same shape the lookup-error branch already used.
+Two existing tests leaned on that escape hatch (`Bearer test` against a nil
+store) and now carry a real credential store.
+
+Zero migrations. No spec change beyond deviation 48's `claim_state` description.
+
 ## Stage 6 write
 
 | Route | Bind |
