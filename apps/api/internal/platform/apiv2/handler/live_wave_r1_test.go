@@ -324,8 +324,8 @@ func TestLiveClaimEventsAuthLadder(t *testing.T) {
 func TestLiveClaimEventsFeed(t *testing.T) {
 	env := liveCatalog(t)
 
-	// A tenant the token pipeline cannot reach: LookupSite binds every live
-	// client to kungal, so the second site has to be written straight to the log.
+	// A tenant no live client is bound to, so the second site has to be written
+	// straight to the log.
 	const otherSite = "othersite"
 	const otherActor = int64(9901)
 	foreign := make([]int64, 0, 2)

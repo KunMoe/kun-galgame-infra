@@ -93,3 +93,19 @@ func TestCreatorGrantsNothing(t *testing.T) {
 		}
 	}
 }
+
+func TestModeratesTracksTheReviewBundles(t *testing.T) {
+	for _, role := range []string{"moderator", "admin", "ren"} {
+		if !perm.Moderates([]string{role}) {
+			t.Errorf("%s can reach a verdict on something and must read the moderation faces", role)
+		}
+	}
+	for _, role := range []string{"user", "creator"} {
+		if perm.Moderates([]string{role}) {
+			t.Errorf("%s holds no review permission and must not read the moderation queue", role)
+		}
+	}
+	if perm.Moderates(nil) {
+		t.Error("a token with no roles is not moderation authority")
+	}
+}

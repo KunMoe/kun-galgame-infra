@@ -73,8 +73,22 @@ func (m *Middleware) ResolveCredential(c fiber.Ctx) error {
 	return c.Next()
 }
 
+func credCacheKey(hashHex string) string { return "devkey:" + hashHex }
+
+// The cached credential carries the APP's dev_enabled, tier and limits, not
+// only the key's own row, so every writer of those columns is a writer of this
+// cache. RevokeKey has busted its own entry since the beginning; disabling an
+// app did not, and its keys went on resolving for the 60s TTL.
+func credCacheKeyForStoredHash(storedHash string) (string, bool) {
+	hexPart, ok := strings.CutPrefix(storedHash, keyHashPrefix)
+	if !ok {
+		return "", false
+	}
+	return credCacheKey(hexPart), true
+}
+
 func (m *Middleware) resolve(ctx context.Context, raw string) (*Credential, error) {
-	cacheKey := "devkey:" + hashHex(raw)
+	cacheKey := credCacheKey(hashHex(raw))
 	if b, _ := m.store.Get(ctx, cacheKey); len(b) > 0 {
 		if len(b) == 1 && b[0] == credCacheNeg {
 			return nil, nil

@@ -437,9 +437,28 @@ func (s *ClaimLifecycleService) ClaimByWorkID(ctx context.Context, workID int64,
 		Site          *string
 		ProductWorkID *int64
 		ClaimState    *int16
+		LastEventID   *int64
+		FromState     *int16
+		ToState       *int16
+		Reason        *string
+		LastActorUID  *int64
+		LastEventAt   *time.Time
 	}
+	// The newest event joins here so the write lane's pre-read and the me
+	// lane's read agree on one monotonic number: without it a claim validator
+	// could only be built from the state name, which an ABA round trip
+	// (pending -> live -> draft -> pending) returns to unchanged.
 	q := s.db.WithContext(ctx).Table("catalog_work AS w").
-		Select("w.id AS work_id, w.display_name, w.site, w.product_work_id, w.claim_state").
+		Select(`w.id AS work_id, w.display_name, w.site, w.product_work_id, w.claim_state,
+			le.id AS last_event_id, le.from_state, le.to_state, le.reason,
+			le.actor_uid AS last_actor_uid, le.created_at AS last_event_at`).
+		Joins(`LEFT JOIN LATERAL (
+			SELECT e.id, e.from_state, e.to_state, e.reason, e.actor_uid, e.created_at
+			FROM catalog_claim_event e
+			WHERE e.work_id = w.id
+			ORDER BY e.id DESC
+			LIMIT 1
+		) le ON true`).
 		Where("w.id = ? AND w.deleted_at IS NULL", workID)
 	if site != "" {
 		q = q.Where("w.site = ?", site)
@@ -457,6 +476,23 @@ func (s *ClaimLifecycleService) ClaimByWorkID(ctx context.Context, workID int64,
 	}
 	if row.Site != nil {
 		item.Site = *row.Site
+	}
+	if row.LastEventID != nil {
+		item.LastEventID = *row.LastEventID
+		if row.ToState != nil {
+			item.LastToState = stateKeyOf(*row.ToState)
+		}
+		if row.FromState != nil {
+			from := stateKeyOf(*row.FromState)
+			item.LastFromState = &from
+		}
+		item.LastReason = row.Reason
+		if row.LastActorUID != nil {
+			item.LastActorUID = *row.LastActorUID
+		}
+		if row.LastEventAt != nil {
+			item.LastEventAt = *row.LastEventAt
+		}
 	}
 	return &item, nil
 }

@@ -45,7 +45,7 @@ func bindingApp(t *testing.T) (*fiber.App, huma.API, string, string) {
 			}
 			return UserIdentity{UID: 7, ClientID: "kungal-client"}, nil
 		},
-		LookupSite: func(context.Context, string) (string, error) { return "kungal", nil },
+		LookupSite: func(context.Context, string) (SiteBinding, error) { return SiteBinding{Site: "kungal"}, nil },
 	})
 	return app, api, appKey, userToken
 }

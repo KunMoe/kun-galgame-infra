@@ -3,6 +3,7 @@ package oidctoken
 import (
 	"context"
 	"crypto"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -219,5 +220,88 @@ func TestRejectAlgNone(t *testing.T) {
 	}
 	if _, err := NewVerifier("secret", stubResolver{}).Parse(context.Background(), s); err == nil {
 		t.Fatal("verifier must reject alg=none")
+	}
+}
+
+// The keyfunc's type switch IS the algorithm pin: it hands an HMAC token the
+// configured secret and an ECDSA/RSA token a JWK Set key, so "sign an RS256
+// token's payload with HS256 using the public key as the secret" cannot work.
+// Simplifying it to `return secret, nil` would open exactly that.
+func TestRejectAlgorithmConfusion(t *testing.T) {
+	km, err := oidckeys.Generate(oidckeys.AlgRS256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pub := pubFromMaterial(t, km)
+	pubDER, err := x509.MarshalPKIXPublicKey(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	claims := utils.TokenClaims{UserUUID: "attacker", ID: 1,
+		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute))}}
+	forged := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	forged.Header["kid"] = km.Kid
+	tok, err := forged.SignedString(pubDER)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resolver := stubResolver{keys: map[string]crypto.PublicKey{km.Kid: pub}}
+	if _, err := NewVerifier("", resolver).Parse(context.Background(), tok); err == nil {
+		t.Fatal("an HS256 token signed with the OP's public key must not verify")
+	}
+
+	priv, err := oidckeys.ParsePrivate(km.PrivateDER)
+	if err != nil {
+		t.Fatal(err)
+	}
+	real := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	real.Header["kid"] = km.Kid
+	realTok, err := real.SignedString(priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewVerifier("", resolver).Parse(context.Background(), realTok); err != nil {
+		t.Fatalf("positive control: the genuinely signed token still verifies: %v", err)
+	}
+}
+
+func TestRequiringIssuer(t *testing.T) {
+	const secret = "issuer-secret"
+	const want = "https://oauth.example"
+	claims := utils.TokenClaims{UserUUID: "u-3", ID: 9}
+
+	mine, err := NewHS256Signer(secret, want).SignAccess(claims, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	elsewhere, err := NewHS256Signer(secret, "https://someone-else.example").SignAccess(claims, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	noIss := jwt.NewWithClaims(jwt.SigningMethodHS256, utils.TokenClaims{
+		UserUUID: "u-3", ID: 9,
+		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute))},
+	})
+	legacy, err := noIss.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	strict := NewVerifier(secret, stubResolver{}).RequiringIssuer(want)
+	if _, err := strict.Parse(context.Background(), mine); err != nil {
+		t.Fatalf("positive control: our own issuer still parses: %v", err)
+	}
+	if _, err := strict.Parse(context.Background(), elsewhere); err == nil {
+		t.Error("the same secret signs every service's tokens; iss is what tells them apart")
+	}
+	if _, err := strict.Parse(context.Background(), legacy); err == nil {
+		t.Error("a token with no iss must not satisfy a required issuer")
+	}
+
+	lax := NewVerifier(secret, stubResolver{})
+	if _, err := lax.Parse(context.Background(), elsewhere); err != nil {
+		t.Fatalf("positive control: a verifier with no expected issuer is unchanged: %v", err)
 	}
 }

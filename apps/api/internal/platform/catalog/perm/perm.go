@@ -36,6 +36,26 @@ var adminPerms = append(append([]authz.Permission{}, moderatorPerms...),
 
 var renPerms = append(append([]authz.Permission{}, adminPerms...), Review)
 
+// The v2 moderation faces are one place, not one per family: a proposal queue
+// row can be any registered entity type, and a snapshot is addressed by family.
+// Standing to read them is therefore "can reach a verdict on something", which
+// is the union below. It is a hand-maintained list over a growing permission
+// set: a new review permission that is not added here is silently not
+// moderation authority.
+var moderationPerms = []authz.Permission{
+	ClaimReview, Review,
+	EditWorkReview, EditTaxonomyReview, EditCharacterReview, EditReleaseReview,
+}
+
+func Moderates(roles []string) bool {
+	for _, p := range moderationPerms {
+		if Resolver.Can(roles, p) {
+			return true
+		}
+	}
+	return false
+}
+
 var Bundles = authz.Bundles{
 	"moderator": moderatorPerms,
 	"admin":     adminPerms,

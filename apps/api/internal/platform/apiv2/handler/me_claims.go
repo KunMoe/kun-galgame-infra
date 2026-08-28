@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"slices"
 	"strconv"
@@ -179,6 +181,11 @@ func claimRecordFrom(r catsvc.UserClaimItem) repr.ClaimRecord {
 			FromState: r.LastFromState, ToState: r.LastToState, Reason: r.LastReason,
 			ActorUID: repr.ID(r.LastActorUID), CreatedAt: rfc3339(r.LastEventAt),
 		}
+	}
+	// first_acted_at and acted_count are the BEARER's aggregate, so only the me
+	// lane has them; hanging them off the last event would publish a zero time
+	// and a zero count on the site-scoped reads that also carry one now.
+	if r.ActedCount > 0 {
 		first := rfc3339(r.FirstActedAt)
 		rec.FirstActedAt = &first
 		acted := r.ActedCount
@@ -516,8 +523,25 @@ func moderationClaimAction(decision string) (catsvc.ClaimAction, bool) {
 	}
 }
 
+// "c<id>.<state>" was forgeable without ever reading the claim, and it did not
+// advance with the record: an ABA round trip (pending -> live -> draft ->
+// pending) re-matched a stale If-Match, and a display_name change still
+// answered 304 on the GET. The newest claim event id is the monotonic part;
+// the rest is every field both the me lane and the write lane's pre-read fill,
+// which is why the whole record is not hashed -- first_acted_at and
+// acted_count exist only on the me lane and the two would never agree.
 func claimETag(rec repr.ClaimRecord) string {
-	return `"` + "c" + rec.ID + "." + rec.State + `"`
+	event := "0"
+	if rec.LastEvent != nil {
+		event = rec.LastEvent.ID
+	}
+	product := ""
+	if rec.ProductWorkID != nil {
+		product = *rec.ProductWorkID
+	}
+	sum := sha256.Sum256([]byte(strings.Join(
+		[]string{rec.ID, rec.State, rec.Site, product, event, rec.DisplayName}, "\x00")))
+	return `"c` + rec.ID + "." + hex.EncodeToString(sum[:16]) + `"`
 }
 
 func claimWriteErr(err error) error {

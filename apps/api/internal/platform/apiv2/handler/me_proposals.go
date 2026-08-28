@@ -25,10 +25,83 @@ func (c *Catalog) policyActor(ctx context.Context) (editing.PolicyContext, error
 	roles := rolesFrom(ctx)
 	return editing.PolicyContext{
 		UserID: uid, Site: site,
+		ModerationCapped: thirdPartyFrom(ctx),
 		HasPerm: func(key string) bool {
 			return catalogPerm.Resolver.Can(roles, authz.Permission(key))
 		},
 	}, nil
+}
+
+// Standing to review ONE item is the engine's own per-field rule, never a
+// permission list. OwnerReview lives only in the kungal site overlay for
+// catalog.work and catalog.release (editspec/work.go:65, release.go:54), so a
+// gate built on a hand-maintained permission union cannot see entityID and
+// cannot express the owner channel at all — it refused exactly the owners the
+// forum's own gate admits (CanModerate OR isGameOwner). entityID 0 means "no
+// entity", which nobody owns: that is what keeps the type-level queue
+// type-level rather than leaking it to every claimant.
+func (c *Catalog) reviewsAnyField(ctx context.Context, entityType, site string, entityID int64, actor editing.PolicyContext) bool {
+	if c.EditTypes == nil {
+		return false
+	}
+	spec, ok := c.EditTypes.Type(entityType)
+	if !ok {
+		return false
+	}
+	if entityID > 0 && actor.UserID > 0 && spec.OwnerUserID != nil {
+		owner, err := spec.OwnerUserID(ctx, entityID)
+		if err == nil && owner != nil && *owner == actor.UserID {
+			actor.IsEntityOwner = true
+		}
+	}
+	if site == "" {
+		site = actor.Site
+	}
+	for i := range spec.Fields {
+		if spec.EffectivePolicy(spec.Fields[i].Key, site).AllowsReview(actor) {
+			return true
+		}
+	}
+	return false
+}
+
+func permissionRequired(detail string) error {
+	return problem.New(problem.CodePermissionRequired, "", "", detail)
+}
+
+// The read faces have fenced on Site since they shipped; the write faces
+// compared neither Site nor ProposerUID, so review authority on one tenant
+// decided, amended and withdrew another tenant's proposals. If-Match did not
+// stand in the way either: `If-Match: *` matches any non-empty validator.
+func (c *Catalog) fenceProposal(ctx context.Context, prop *editing.Proposal, actor editing.PolicyContext, proposerOrReviewer bool) error {
+	if prop.Site != actor.Site {
+		return problem.New(problem.CodeTenantMismatch, "", "",
+			"this proposal was filed on another catalog site.")
+	}
+	if proposerOrReviewer && prop.ProposerUID != actor.UserID &&
+		!c.reviewsAnyField(ctx, prop.EntityType, prop.Site, prop.EntityID, actor) {
+		return permissionRequired("only the proposer, or someone with review standing on this entity, may change this proposal.")
+	}
+	return nil
+}
+
+func (c *Catalog) fenceEntitySite(ctx context.Context, entityType string, entityID int64, site string) error {
+	if c.EditTypes == nil {
+		return nil
+	}
+	spec, ok := c.EditTypes.Type(entityType)
+	if !ok || spec.OwnerSite == nil {
+		return nil
+	}
+	owner, err := spec.OwnerSite(ctx, entityID)
+	if err != nil {
+		return proposalErr(err)
+	}
+	if owner == nil || *owner == "" || *owner == site {
+		return nil
+	}
+	return problem.New(problem.CodeTenantMismatch, "", "",
+		"this entity is claimed by another catalog site.")
 }
 
 func proposalFrom(p *editing.Proposal) repr.ProposalRecord {
@@ -75,8 +148,10 @@ func (c *Catalog) proposalDetail(ctx context.Context, id int64, include []string
 	return rec, proposalETag(prop), nil
 }
 
+// Microseconds, like the news validator: at whole-second granularity two
+// amendments inside the same second left a stale validator matching.
 func proposalETag(p *editing.Proposal) string {
-	return `"p` + repr.ID(p.ID) + "." + strconv.FormatInt(p.UpdatedAt.Unix(), 10) + `"`
+	return `"p` + repr.ID(p.ID) + "." + strconv.FormatInt(p.UpdatedAt.UnixMicro(), 10) + `"`
 }
 
 func (c *Catalog) ListMyProposals(ctx context.Context, q collect.Query, state string) (repr.List[repr.ProposalRecord], error) {
@@ -141,20 +216,22 @@ func (c *Catalog) GetModerationProposal(ctx context.Context, id int64, include [
 	if c == nil || c.Engine == nil {
 		return repr.ProposalRecord{}, "", problem.New(problem.CodeServiceUnavailable, "", "", "proposals are not bound.")
 	}
-	if _, _, err := requireUser(ctx); err != nil {
-		return repr.ProposalRecord{}, "", err
-	}
-	site, serr := requireSite(ctx)
-	if serr != nil {
-		return repr.ProposalRecord{}, "", serr
+	actor, aerr := c.policyActor(ctx)
+	if aerr != nil {
+		return repr.ProposalRecord{}, "", aerr
 	}
 	rec, etag, derr := c.proposalDetail(ctx, id, include)
 	if derr != nil {
 		return repr.ProposalRecord{}, "", derr
 	}
-	if rec.Site != site {
+	if rec.Site != actor.Site {
 		return repr.ProposalRecord{}, "", problem.New(problem.CodeTenantMismatch, "", "",
 			"this proposal was filed on another catalog site.")
+	}
+	eid, _ := repr.ParseID(rec.EntityID)
+	if !c.reviewsAnyField(ctx, rec.EntityType, rec.Site, eid, actor) {
+		return repr.ProposalRecord{}, "", permissionRequired(
+			"this face publishes another contributor's patch; it needs review standing on this entity.")
 	}
 	return rec, etag, nil
 }
@@ -194,6 +271,9 @@ func (c *Catalog) PatchProposal(ctx context.Context, id int64, state string, pat
 	if gerr != nil {
 		return repr.ProposalRecord{}, proposalErr(gerr)
 	}
+	if ferr := c.fenceProposal(ctx, prop, actor, true); ferr != nil {
+		return repr.ProposalRecord{}, ferr
+	}
 	if err := requireIfMatch(ifMatch, proposalETag(prop)); err != nil {
 		return repr.ProposalRecord{}, err
 	}
@@ -227,6 +307,9 @@ func (c *Catalog) AmendProposal(ctx context.Context, id int64, set map[string]an
 	if gerr != nil {
 		return repr.ProposalRecord{}, proposalErr(gerr)
 	}
+	if ferr := c.fenceProposal(ctx, prop, actor, true); ferr != nil {
+		return repr.ProposalRecord{}, ferr
+	}
 	if err := requireIfMatch(ifMatch, proposalETag(prop)); err != nil {
 		return repr.ProposalRecord{}, err
 	}
@@ -240,16 +323,19 @@ func (c *Catalog) AmendProposal(ctx context.Context, id int64, set map[string]an
 	return proposalFrom(prop), nil
 }
 
-func (c *Catalog) ListModerationProposals(ctx context.Context, q collect.Query) (repr.List[repr.ProposalRecord], error) {
+// Two lanes, two authorities. The whole type's queue needs a type-level review
+// permission; naming object=+entity_id= narrows it to one entity, which its
+// owner may read even holding no permission at all. Reading the whole queue
+// must never be reachable through the owner arm — that is the failure this
+// split exists to prevent, and the entity filter is applied to the query, not
+// only to the check.
+func (c *Catalog) ListModerationProposals(ctx context.Context, q collect.Query, object, entityID string) (repr.List[repr.ProposalRecord], error) {
 	if c == nil || c.Engine == nil {
 		return repr.List[repr.ProposalRecord]{}, problem.New(problem.CodeServiceUnavailable, "", "", "proposals are not bound.")
 	}
-	if _, _, err := requireUser(ctx); err != nil {
-		return repr.List[repr.ProposalRecord]{}, err
-	}
-	site, err := requireSite(ctx)
-	if err != nil {
-		return repr.List[repr.ProposalRecord]{}, err
+	actor, aerr := c.policyActor(ctx)
+	if aerr != nil {
+		return repr.List[repr.ProposalRecord]{}, aerr
 	}
 	limit := q.Limit
 	if limit <= 0 {
@@ -259,7 +345,25 @@ func (c *Catalog) ListModerationProposals(ctx context.Context, q collect.Query) 
 	if berr != nil {
 		return repr.List[repr.ProposalRecord]{}, berr
 	}
-	f := editing.ProposalFilter{Status: editing.StatusOpen, Limit: limit + 1, Site: site, BeforeID: before}
+	f, ferr := c.proposalQuery(proposalFilter{
+		Object: object, EntityID: entityID, Site: actor.Site,
+	}, limit+1, before)
+	if ferr != nil {
+		return repr.List[repr.ProposalRecord]{}, ferr
+	}
+	f.Status = editing.StatusOpen
+	if f.EntityID > 0 {
+		if terr := c.fenceEntitySite(ctx, f.EntityType, f.EntityID, actor.Site); terr != nil {
+			return repr.List[repr.ProposalRecord]{}, terr
+		}
+		if !c.reviewsAnyField(ctx, f.EntityType, actor.Site, f.EntityID, actor) {
+			return repr.List[repr.ProposalRecord]{}, permissionRequired(
+				"this entity's queue needs review standing on it, which its owner has.")
+		}
+	} else if !catalogPerm.Moderates(rolesFrom(ctx)) {
+		return repr.List[repr.ProposalRecord]{}, permissionRequired(
+			"the whole queue requires a catalog review permission; name object= and entity_id= to read one entity's.")
+	}
 	rows, total, lerr := c.Engine.ListProposalsWithTotal(ctx, f)
 	if lerr != nil {
 		return repr.List[repr.ProposalRecord]{}, lerr
@@ -288,6 +392,9 @@ func (c *Catalog) DecideProposal(ctx context.Context, id int64, decision, note, 
 	prop, _, _, gerr := c.Engine.GetProposal(ctx, id)
 	if gerr != nil {
 		return repr.DecisionRecord{}, proposalErr(gerr)
+	}
+	if ferr := c.fenceProposal(ctx, prop, actor, false); ferr != nil {
+		return repr.DecisionRecord{}, ferr
 	}
 	if err := requireIfMatch(ifMatch, proposalETag(prop)); err != nil {
 		return repr.DecisionRecord{}, err
@@ -326,6 +433,9 @@ func (c *Catalog) RevertRevision(ctx context.Context, revisionID, reason string)
 	rev, rerr := c.Engine.RevisionByID(ctx, rid)
 	if rerr != nil {
 		return repr.ProposalRecord{}, proposalErr(rerr)
+	}
+	if ferr := c.fenceEntitySite(ctx, rev.EntityType, rev.EntityID, actor.Site); ferr != nil {
+		return repr.ProposalRecord{}, ferr
 	}
 	prop, _, verr := c.Engine.Revert(ctx, editing.RevertInput{
 		EntityType: rev.EntityType, EntityID: rev.EntityID, ToSeq: rev.Seq, Note: reason, Actor: actor,

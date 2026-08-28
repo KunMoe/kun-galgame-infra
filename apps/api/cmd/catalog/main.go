@@ -282,24 +282,38 @@ func setupPublicCatalog(
 		return err
 	})
 
-	siteOfClient := func(ctx context.Context, clientID string) (string, error) {
+	// owner_user_id is set only on a developer-owned app; every client bound to
+	// a catalog site in production has it NULL. Wave R3 deleted the v1 surface
+	// that read it, and PolicyContext.ModerationCapped has been set by nothing
+	// since.
+	bindingOfClient := func(ctx context.Context, clientID string) (v2handler.SiteBinding, error) {
 		cl, err := clientRepo.FindByClientID(ctx, clientID)
 		if err != nil || cl == nil {
-			return "", err
+			return v2handler.SiteBinding{}, err
 		}
-		return cl.CatalogSite, nil
+		return v2handler.SiteBinding{Site: cl.CatalogSite, ThirdParty: cl.OwnerUserID != nil}, nil
 	}
+	siteOfClient := func(ctx context.Context, clientID string) (string, error) {
+		bind, err := bindingOfClient(ctx, clientID)
+		return bind.Site, err
+	}
+	// Every service in the platform shares one HS256 secret and one JWK Set, so
+	// a token this OP signed for anything else parsed here as a v2 user token.
+	// KUN_SITE_URL sits in the shared compose env and is the OP's own issuer in
+	// every process, which is what makes this checkable here at all.
+	v2TokenVerifier := tokenVerifier.RequiringIssuer(cfg.OIDC.Issuer)
+
 	v2API := v2handler.SetupWith(application.Fiber, v2handler.Options{
 		Store:            protocol.NewRedisStore(devCache),
 		LookupCredential: mw.Lookup,
 		LookupUser: func(ctx context.Context, raw string) (v2handler.UserIdentity, error) {
-			claims, err := tokenVerifier.Parse(ctx, raw)
+			claims, err := v2TokenVerifier.Parse(ctx, raw)
 			if err != nil {
 				return v2handler.UserIdentity{}, err
 			}
 			return v2handler.UserIdentity{UID: int64(claims.ID), ClientID: claims.ClientID, Roles: claims.Roles}, nil
 		},
-		LookupSite: siteOfClient,
+		LookupSite: bindingOfClient,
 		Catalog: &v2handler.Catalog{
 			Public:      publicSvc,
 			Resolve:     resolveSvc,

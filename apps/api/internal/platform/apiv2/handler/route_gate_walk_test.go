@@ -13,6 +13,7 @@ import (
 
 	kunapp "api/internal/app"
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/devapi"
 
 	"github.com/gofiber/fiber/v3"
@@ -75,12 +76,21 @@ func caseVariantPath(p string) (string, bool) {
 	return "/v2/" + string(c) + rest[1:], true
 }
 
+// The walk fires several hundred credential-less requests from one address,
+// which is exactly the shape protocol's anti-abuse bucket blocks: sharing one
+// bucket with itself turned the walk's own positive control into a 429 where
+// it asserts 401. Only the block marker is dropped; the counters still run.
+type unblockedStore struct{ *protocol.Memory }
+
+func (unblockedStore) Get(context.Context, string) ([]byte, error) { return nil, nil }
+
 func gateWalkApp(t *testing.T, cred *devapi.Credential) *fiber.App {
 	t.Helper()
 	// The production config, not one this test chose: CaseSensitive lives there,
 	// and a test that set its own would prove nothing about the running service.
 	app := fiber.New(kunapp.FiberConfig("kun-catalog"))
 	SetupWith(app, Options{
+		Store:            unblockedStore{protocol.NewMemory()},
 		LookupCredential: func(context.Context, string) (*devapi.Credential, error) { return cred, nil },
 	})
 	return app
