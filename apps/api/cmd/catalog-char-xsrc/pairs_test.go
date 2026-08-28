@@ -10,6 +10,7 @@ import (
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/seed"
 	"api/internal/platform/editing"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,15 +22,14 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
+	dsn, ok := dbtest.DSN()
+	if !ok {
 		fmt.Fprintln(os.Stderr, "SKIP: no TEST_DATABASE_DSN — the DB-backed test here skips individually")
 		os.Exit(m.Run())
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(m.Run())
+		dbtest.SkipMainf("cmd/catalog-char-xsrc", "cannot connect to test database: %v", err)
 	}
 	if err := migrate.Run(db); err != nil {
 		fmt.Fprintf(os.Stderr, "FAIL: catalog migrate failed: %v\n", err)

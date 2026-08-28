@@ -10,6 +10,7 @@ import (
 	"api/internal/platform/catalog/migrate"
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/seed"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	if dsn := os.Getenv("TEST_DATABASE_DSN"); dsn != "" {
+	if dsn, ok := dbtest.DSN(); ok {
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 		switch {
 		case err != nil:
@@ -44,7 +45,7 @@ func TestMain(m *testing.M) {
 func requireDB(t *testing.T) {
 	t.Helper()
 	if testDB == nil {
-		t.Skip("needs TEST_DATABASE_DSN")
+		dbtest.Skipf(t, "the catalog test database is unavailable")
 	}
 }
 

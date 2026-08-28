@@ -2,8 +2,9 @@ package jobs
 
 import (
 	"context"
-	"os"
 	"testing"
+
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,9 +15,9 @@ import (
 
 func dsnEnv(t *testing.T) string {
 	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		t.Skip("TEST_DATABASE_DSN not set")
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.Skip(t)
 	}
 	return dsn
 }

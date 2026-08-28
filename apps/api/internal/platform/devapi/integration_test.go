@@ -10,6 +10,7 @@ import (
 	"time"
 
 	siteModel "api/internal/platform/site/model"
+	"api/internal/testsupport/dbtest"
 
 	"gorm.io/datatypes"
 	"gorm.io/driver/postgres"
@@ -22,22 +23,20 @@ var testDB *gorm.DB
 const suiteLockKey = 0x64766170
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_galgame_infra_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("devapi")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("devapi", "cannot connect to test database: %v", err)
 	}
 	sqlDB, _ := db.DB()
 	release := acquireSuiteLock(sqlDB)
 
 	if err := provision(db); err != nil {
 		release()
-		fmt.Fprintf(os.Stderr, "SKIP: devapi migration failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("devapi", "devapi migration failed: %v", err)
 	}
 	if err := provision(db); err != nil {
 		release()

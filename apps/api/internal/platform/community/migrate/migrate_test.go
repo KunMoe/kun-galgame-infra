@@ -7,8 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"api/internal/platform/community/dbtest"
+	suitelock "api/internal/platform/community/dbtest"
 	"api/internal/platform/community/model"
+	"api/internal/testsupport/dbtest"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -16,8 +17,7 @@ import (
 )
 
 // Integration test against a real Postgres (the catalog service_test.go
-// convention): TEST_DATABASE_DSN or a local default; a missing database skips
-// the whole package. Schema comes from migrate.Run — the exact production
+// convention): a missing database skips the whole package. Schema comes from migrate.Run — the exact production
 // migration — so these probes assert the storage-level invariants of doc 11 §3
 // (4/5/7/12/13) directly against the shipped schema. `go test -p 1` (pinned in
 // test.yml) serializes packages that share the CI database.
@@ -25,30 +25,28 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_community_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("community/migrate")
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("community/migrate", "cannot connect to test database: %v", err)
 	}
 	// Serialize against the sibling community test packages (service/handler)
 	// that share this database — otherwise parallel `go test` TRUNCATEs race.
 	sqlDB, _ := db.DB()
-	release := dbtest.AcquireSuiteLock(sqlDB)
+	release := suitelock.AcquireSuiteLock(sqlDB)
 
 	// First migration provisions the schema; running it again here is the
 	// idempotency probe (a second AutoMigrate + IF NOT EXISTS raw section must
 	// be a no-op).
 	if err := Run(db); err != nil {
 		release()
-		fmt.Fprintf(os.Stderr, "SKIP: community migration failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("community/migrate", "community migration failed: %v", err)
 	}
 	if err := Run(db); err != nil {
 		release()

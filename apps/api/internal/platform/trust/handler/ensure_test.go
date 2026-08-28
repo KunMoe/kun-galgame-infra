@@ -9,6 +9,7 @@ import (
 	siteModel "api/internal/platform/site/model"
 	"api/internal/platform/trust/dto"
 	"api/internal/platform/trust/service"
+	"api/internal/testsupport/dbtest"
 )
 
 func s2sCtx(site string) context.Context {
@@ -46,7 +47,7 @@ func TestEnsureSubjectKindsGuards(t *testing.T) {
 
 func TestEnsureSubjectKindsHandler(t *testing.T) {
 	if testDB == nil {
-		t.Skip("trust test DB unavailable")
+		dbtest.Skipf(t, "the trust test database is unavailable")
 	}
 	truncateRegistry(t)
 	s := &Server{registry: service.NewRegistryService(testDB)}
@@ -120,7 +121,7 @@ func TestBatchSubjectKindsPermissionGolden(t *testing.T) {
 
 func TestBatchSubjectKindsConvergence(t *testing.T) {
 	if testDB == nil {
-		t.Skip("trust test DB unavailable")
+		dbtest.Skipf(t, "the trust test database is unavailable")
 	}
 	truncateRegistry(t)
 	s := &AdminServer{registry: service.NewRegistryService(testDB), clients: &fakeClients{}}

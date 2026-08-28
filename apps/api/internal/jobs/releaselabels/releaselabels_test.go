@@ -2,7 +2,6 @@ package releaselabels
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -10,6 +9,7 @@ import (
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/seed"
 	srcv "api/internal/platform/catalog/srcvndb"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,19 +24,18 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	testDSN = os.Getenv("TEST_DATABASE_DSN")
-	if testDSN == "" {
-		testDSN = "host=localhost port=5432 user=postgres dbname=kun_catalog_test sslmode=disable"
+	var ok bool
+	testDSN, ok = dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("jobs/releaselabels")
 	}
 	db, err := gorm.Open(postgres.Open(testDSN), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: no test db: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/releaselabels", "no test db: %v", err)
 	}
 	for _, step := range []func(*gorm.DB) error{migrate.Run, seed.Run, srcv.EnsureSchema} {
 		if err := step(db); err != nil {
-			fmt.Fprintf(os.Stderr, "SKIP: setup: %v\n", err)
-			os.Exit(0)
+			dbtest.SkipMainf("jobs/releaselabels", "setup: %v", err)
 		}
 	}
 	testDB = db

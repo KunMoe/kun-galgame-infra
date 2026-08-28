@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
 	"api/internal/platform/catalog/migrate"
 	"api/internal/platform/catalog/seed"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,23 +19,19 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		fmt.Fprintln(os.Stderr, "SKIP: TEST_DATABASE_DSN is unset")
-		os.Exit(0)
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("cmd/backfill-char-zh-names")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: gormlogger.Default.LogMode(gormlogger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("cmd/backfill-char-zh-names", "cannot connect to test database: %v", err)
 	}
 	if err := migrate.Run(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog migrate failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("cmd/backfill-char-zh-names", "catalog migrate failed: %v", err)
 	}
 	if err := seed.Run(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog seed failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("cmd/backfill-char-zh-names", "catalog seed failed: %v", err)
 	}
 	testDB = db
 	os.Exit(m.Run())
@@ -48,21 +44,21 @@ func TestPureHan(t *testing.T) {
 	}{
 		{"雪村時音", true},
 		{"結城 美柑", true},
-		{"佐々木", true},          // iteration mark 々 is script Han (U+3005)
-		{"涼宮ハルヒ", false},        // katakana
-		{"ひなた", false},          // hiragana
-		{"アリス", false},          // katakana only
-		{"Alice", false},        // latin
-		{"雪村Alice", false},      // mixed latin
-		{"エレン＝ローズ", false},      // katakana + double hyphen
-		{"レナ=リヒテ", false},       // separator
-		{"雪村・時音", false},        // katakana middle dot — conservative exclusion
-		{"雪風ー", false},          // long-vowel mark
-		{"", false},             // empty
-		{" ", false},            // whitespace only
-		{"時雨　沢", true},          // ideographic space between Han
-		{"雪村23", false},         // digits
-		{"猫神さま", false},         // trailing hiragana
+		{"佐々木", true},      // iteration mark 々 is script Han (U+3005)
+		{"涼宮ハルヒ", false},   // katakana
+		{"ひなた", false},     // hiragana
+		{"アリス", false},     // katakana only
+		{"Alice", false},   // latin
+		{"雪村Alice", false}, // mixed latin
+		{"エレン＝ローズ", false}, // katakana + double hyphen
+		{"レナ=リヒテ", false},  // separator
+		{"雪村・時音", false},   // katakana middle dot — conservative exclusion
+		{"雪風ー", false},     // long-vowel mark
+		{"", false},        // empty
+		{" ", false},       // whitespace only
+		{"時雨　沢", true},     // ideographic space between Han
+		{"雪村23", false},    // digits
+		{"猫神さま", false},    // trailing hiragana
 	}
 	for _, c := range cases {
 		assert.Equal(t, c.want, pureHan(c.name), "pureHan(%q)", c.name)

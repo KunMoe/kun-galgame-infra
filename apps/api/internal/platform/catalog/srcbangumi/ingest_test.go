@@ -1,10 +1,11 @@
 package srcbangumi
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
+
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,20 +47,18 @@ func TestJSONOrNull(t *testing.T) {
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_catalog_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("catalog/srcbangumi")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("catalog/srcbangumi", "cannot connect to test database: %v", err)
 	}
 	if err := EnsureSchema(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: ensure src_bangumi schema failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("catalog/srcbangumi", "ensure src_bangumi schema failed: %v", err)
 	}
 	testDB = db
 	os.Exit(m.Run())

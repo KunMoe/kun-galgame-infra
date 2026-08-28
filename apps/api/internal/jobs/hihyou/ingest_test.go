@@ -11,6 +11,7 @@ import (
 
 	"api/internal/platform/news/model"
 	"api/internal/platform/news/newstest"
+	"api/internal/testsupport/dbtest"
 	"api/pkg/config"
 	"api/pkg/imageclient"
 
@@ -57,16 +58,13 @@ func openTestDB(t *testing.T) (*gorm.DB, string) {
 	t.Helper()
 	db, release, ok := newstest.Open()
 	if !ok {
-		t.Skip("news test database unavailable")
+		dbtest.Skipf(t, "news test database unavailable")
 	}
 	t.Cleanup(release)
 	if err := newstest.Truncate(db); err != nil {
 		t.Fatal(err)
 	}
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_news_test sslmode=disable"
-	}
+	dsn, _ := dbtest.DSN()
 	return db, dsn
 }
 

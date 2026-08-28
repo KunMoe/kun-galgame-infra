@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"api/internal/testsupport/dbtest"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
@@ -78,13 +80,13 @@ func TestExtractResidueValidatesJSON(t *testing.T) {
 
 func testCatalogDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_catalog_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.Skip(t)
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		t.Skipf("no test database: %v", err)
+		dbtest.Skipf(t, "no test database: %v", err)
 	}
 	require.NoError(t, EnsureSchema(db))
 	require.NoError(t, db.Exec("TRUNCATE src_llm.name_pair_judgment, src_llm.run RESTART IDENTITY").Error)

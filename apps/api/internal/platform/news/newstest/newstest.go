@@ -8,41 +8,53 @@ import (
 	"fmt"
 	"os"
 
-	"api/internal/platform/news/dbtest"
+	suitelock "api/internal/platform/news/dbtest"
 	"api/internal/platform/news/migrate"
+	"api/internal/testsupport/dbtest"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-const defaultDSN = "host=localhost port=5432 user=postgres password=postgres dbname=kun_news_test sslmode=disable"
-
 // Open connects to the news test database and provisions it with the exact
 // production migration, returning the handle and the suite-lock release.
 //
 // A missing database SKIPS the package — and a skipped package still reports
-// ok, so acceptance for any DB-backed change must run with an explicit
-// TEST_DATABASE_DSN and read the -v PASS counts, never the ok line.
+// ok, so REQUIRE_DB_TESTS is the only thing standing between "the suite ran"
+// and "the suite printed ok". Every refusal below goes through it.
 func Open() (*gorm.DB, func(), bool) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = defaultDSN
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		fmt.Fprintln(os.Stderr, "SKIP: TEST_DATABASE_DSN unset — news test database not provisioned")
+		return nil, nil, false
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		return nil, nil, false
+		return nil, nil, unusable("cannot connect to test database: %v", err)
 	}
 	sqlDB, _ := db.DB()
-	release := dbtest.AcquireSuiteLock(sqlDB)
+	release := suitelock.AcquireSuiteLock(sqlDB)
 
 	if err := migrate.Run(db); err != nil {
 		release()
-		fmt.Fprintf(os.Stderr, "SKIP: news migration failed: %v\n", err)
-		return nil, nil, false
+		return nil, nil, unusable("news migration failed: %v", err)
 	}
 	return db, release, true
+}
+
+// unusable always reports false; it exits first when the run was supposed to
+// have a database, because Open is called from TestMains that os.Exit(0) on a
+// false and from a per-test helper that t.Skips on one.
+func unusable(format string, args ...any) bool {
+	reason := fmt.Sprintf(format, args...)
+	if dbtest.Required() {
+		fmt.Fprintf(os.Stderr, "FAIL: %s is set but the news test database is unusable: %s\n",
+			dbtest.RequireEnv, reason)
+		os.Exit(2)
+	}
+	fmt.Fprintf(os.Stderr, "SKIP: %s\n", reason)
+	return false
 }
 
 // Truncate empties every news item table, children first. news_source survives:

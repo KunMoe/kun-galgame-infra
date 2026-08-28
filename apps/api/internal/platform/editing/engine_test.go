@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"api/internal/platform/editing"
+	"api/internal/testsupport/dbtest"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -41,22 +42,20 @@ func acquireEditSuiteLock(db *sql.DB) func() {
 }
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_catalog_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("editing")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("editing", "cannot connect to test database: %v", err)
 	}
 	sqlDB, _ := db.DB()
 	release := acquireEditSuiteLock(sqlDB)
 	if err := editing.AutoMigrate(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: editing migration failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("editing", "editing migration failed: %v", err)
 	}
 	if err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS edit_test_widget (
@@ -68,8 +67,7 @@ func TestMain(m *testing.M) {
 			trusted_note text NOT NULL DEFAULT '',
 			locked_code  text NOT NULL DEFAULT ''
 		)`).Error; err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: widget table creation failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("editing", "widget table creation failed: %v", err)
 	}
 	testDB = db
 	code := m.Run()

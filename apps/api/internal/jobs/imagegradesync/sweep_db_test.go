@@ -11,6 +11,7 @@ import (
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/seed"
 	imgmodel "api/internal/platform/image/model"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,37 +29,39 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	catalogDSN = os.Getenv("TEST_DATABASE_DSN")
+	var ok bool
+	catalogDSN, ok = dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("jobs/imagegradesync")
+	}
+	// REQUIRE_DB_TESTS deliberately does not reach TEST_IMAGES_DSN: the
+	// integration job in test.yml runs a Postgres service and no images
+	// database, so failing hard on it would turn that job permanently red.
 	imagesDSN = os.Getenv("TEST_IMAGES_DSN")
-	if catalogDSN == "" || imagesDSN == "" {
-		fmt.Fprintln(os.Stderr, "SKIP: TEST_DATABASE_DSN and/or TEST_IMAGES_DSN are unset")
+	if imagesDSN == "" {
+		fmt.Fprintln(os.Stderr, "SKIP: TEST_IMAGES_DSN is unset — jobs/imagegradesync not run")
 		os.Exit(0)
 	}
 	open := func(dsn string) *gorm.DB {
 		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-			os.Exit(0)
+			dbtest.SkipMainf("jobs/imagegradesync", "cannot connect to test database: %v", err)
 		}
 		return db
 	}
 	catalogDB = open(catalogDSN)
 	imagesDB = open(imagesDSN)
 	if err := migrate.Run(catalogDB); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog migrate failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/imagegradesync", "catalog migrate failed: %v", err)
 	}
 	if err := seed.Run(catalogDB); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog seed failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/imagegradesync", "catalog seed failed: %v", err)
 	}
 	if err := imagesDB.AutoMigrate(&imgmodel.Image{}); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: images migrate failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/imagegradesync", "images migrate failed: %v", err)
 	}
 	if err := catalogDB.Raw(`SELECT id FROM catalog_medium WHERE key = 'galgame'`).Scan(&mediumID).Error; err != nil || mediumID == 0 {
-		fmt.Fprintf(os.Stderr, "SKIP: galgame medium not seeded: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("jobs/imagegradesync", "galgame medium not seeded: %v", err)
 	}
 	os.Exit(m.Run())
 }

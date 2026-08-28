@@ -6,8 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"api/internal/platform/trust/dbtest"
+	suitelock "api/internal/platform/trust/dbtest"
 	"api/internal/platform/trust/model"
+	"api/internal/testsupport/dbtest"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -15,8 +16,8 @@ import (
 )
 
 // Integration test against a real Postgres (the community/catalog convention):
-// TEST_DATABASE_DSN or a local default; a missing database skips the whole
-// package. Schema comes from migrate.Run — the exact production migration — so
+// a missing database skips the whole package.
+// Schema comes from migrate.Run — the exact production migration — so
 // these probes assert the storage-level invariants of doc 18 §3 directly
 // against the shipped schema. `go test -p 1` (pinned in test.yml) serializes
 // packages that share the CI database.
@@ -24,26 +25,24 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		dsn = "host=localhost port=5432 user=postgres password=postgres dbname=kun_trust_test sslmode=disable"
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("trust/migrate")
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("trust/migrate", "cannot connect to test database: %v", err)
 	}
 	sqlDB, _ := db.DB()
-	release := dbtest.AcquireSuiteLock(sqlDB)
+	release := suitelock.AcquireSuiteLock(sqlDB)
 
 	// First migration provisions the schema; running it again is the
 	// idempotency probe (E1) — a second AutoMigrate + IF NOT EXISTS raw
 	// section + seed upsert must be a no-op.
 	if err := Run(db); err != nil {
 		release()
-		fmt.Fprintf(os.Stderr, "SKIP: trust migration failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("trust/migrate", "trust migration failed: %v", err)
 	}
 	if err := Run(db); err != nil {
 		release()

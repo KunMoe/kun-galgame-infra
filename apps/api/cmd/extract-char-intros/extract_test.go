@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
 
 	"api/internal/platform/catalog/migrate"
 	"api/internal/platform/catalog/seed"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,23 +20,19 @@ import (
 var testDB *gorm.DB
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		fmt.Fprintln(os.Stderr, "SKIP: TEST_DATABASE_DSN is unset")
-		os.Exit(0)
+	dsn, ok := dbtest.DSN()
+	if !ok {
+		dbtest.SkipMain("cmd/extract-char-intros")
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: gormlogger.Default.LogMode(gormlogger.Silent)})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: cannot connect to test database: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("cmd/extract-char-intros", "cannot connect to test database: %v", err)
 	}
 	if err := migrate.Run(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog migrate failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("cmd/extract-char-intros", "catalog migrate failed: %v", err)
 	}
 	if err := seed.Run(db); err != nil {
-		fmt.Fprintf(os.Stderr, "SKIP: catalog seed failed: %v\n", err)
-		os.Exit(0)
+		dbtest.SkipMainf("cmd/extract-char-intros", "catalog seed failed: %v", err)
 	}
 	testDB = db
 	os.Exit(m.Run())
