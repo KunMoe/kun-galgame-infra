@@ -123,11 +123,10 @@ func (c *Catalog) Stats(ctx context.Context) (repr.CatalogStats, error) {
 	}, nil
 }
 
-func (c *Catalog) ListNews(ctx context.Context, q collect.Query) (repr.List[repr.NewsItem], error) {
+func (c *Catalog) ListNews(ctx context.Context, q collect.Query, filter newssvc.FeedFilter) (repr.List[repr.NewsItem], error) {
 	if c == nil || c.News == nil {
 		return repr.List[repr.NewsItem]{}, problem.New(problem.CodeServiceUnavailable, "", "", "news is not bound.")
 	}
-	filter := newssvc.FeedFilter{}
 	data, err := c.News.Feed(ctx, filter, q.Cursor, q.Limit)
 	if err != nil {
 		if errors.Is(err, newssvc.ErrBadCursor) {

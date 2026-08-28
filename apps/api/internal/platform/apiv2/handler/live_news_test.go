@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"api/internal/platform/apiv2/collect"
 	"api/internal/platform/apiv2/problem"
@@ -342,6 +343,138 @@ func TestLiveNewsCollectionParams(t *testing.T) {
 	require.NotNil(t, page.Total, "include_total= is declared on /v2/news and must be answered")
 	require.GreaterOrEqual(t, *page.Total, int64(1))
 	require.Len(t, page.Items, 1)
+}
+
+// newsFeedIDs reads /v2/news with an arbitrary query and returns the ids and
+// the total, so a filter can be judged by what it KEEPS as well as by what it
+// drops. An empty result set is not evidence a filter ran.
+func newsFeedIDs(t *testing.T, env *liveEnv, query string) (map[string]bool, *int64) {
+	t.Helper()
+	status, _, raw := liveDo(t, env, http.MethodGet, "/v2/news?limit=100&"+query, "", "")
+	require.Equal(t, 200, status, query+": "+string(raw))
+	var page struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+		Total *int64 `json:"total"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &page), query)
+	ids := map[string]bool{}
+	for _, it := range page.Items {
+		ids[it.ID] = true
+	}
+	return ids, page.Total
+}
+
+const (
+	newsFiltEarly = "2026-03-01T00:00:00Z"
+	newsFiltMid   = "2026-04-01T00:00:00Z"
+	newsFiltLate  = "2026-05-01T00:00:00Z"
+)
+
+// GET /v2/news accepted lane=, source=, published_after= and published_before=
+// and dropped all four: they were never declared, so SkipValidateParams ate
+// them and the handler passed a hard-coded empty FeedFilter. The forum sends
+// every one of them (newsclient.FeedQuery.values), so its 情报 page has been
+// rendering the unfiltered feed. Each arm below asserts both halves of the
+// partition — a filter that returned nothing would pass a "the wrong rows are
+// gone" test and fail this one.
+func TestLiveNewsFeedFilters(t *testing.T) {
+	env := liveCatalog(t)
+	require.NoError(t, env.db.Exec(`DELETE FROM news_item WHERE external_id LIKE 'filt-%'`).Error)
+	for _, key := range []string{"filt_a", "filt_b"} {
+		require.NoError(t, env.db.Exec(`
+			INSERT INTO news_source (key, display_name, homepage_url, attribution, publisher_uid, column_url, active)
+			VALUES (?, ?, 'https://example.test', 'a', ?, '', true)
+			ON CONFLICT (key) DO UPDATE SET active = true`, key, key, liveUID).Error)
+	}
+	seed := func(external, source, lane, published string) string {
+		t.Helper()
+		require.NoError(t, env.db.Exec(`
+			INSERT INTO news_item (source_key, lane, upstream_category, external_id, title, preview,
+				source_url, banner_hash, banner_origin_url, published_at, status)
+			VALUES (?, ?, '', ?, 't', 'p', 'https://example.test/f', '', '', ?::timestamptz, ?)`,
+			source, lane, external, published, newsmodel.StatusPublished).Error)
+		var id int64
+		require.NoError(t, env.db.Raw(`SELECT id FROM news_item WHERE external_id = ?`, external).Scan(&id).Error)
+		return idstr(id)
+	}
+	a1 := seed("filt-a1", "filt_a", newsmodel.LaneNews, newsFiltEarly)
+	a2 := seed("filt-a2", "filt_a", newsmodel.LaneColumn, newsFiltMid)
+	b1 := seed("filt-b1", "filt_b", newsmodel.LaneNews, newsFiltLate)
+
+	all, _ := newsFeedIDs(t, env, "")
+	for _, id := range []string{a1, a2, b1} {
+		require.Truef(t, all[id], "control: %s is on the unfiltered feed to begin with", id)
+	}
+
+	for _, tc := range []struct {
+		query      string
+		keep, drop []string
+	}{
+		{"source=filt_a", []string{a1, a2}, []string{b1}},
+		{"source=filt_b", []string{b1}, []string{a1, a2}},
+		{"source=filt_a,filt_b", []string{a1, a2, b1}, nil},
+		{"lane=news", []string{a1, b1}, []string{a2}},
+		{"lane=column", []string{a2}, []string{a1, b1}},
+		{"lane=news,column&source=filt_a", []string{a1, a2}, []string{b1}},
+		{"published_after=" + newsFiltMid, []string{a2, b1}, []string{a1}},
+		{"published_before=" + newsFiltMid, []string{a1, a2}, []string{b1}},
+		{"published_after=" + newsFiltMid + "&published_before=" + newsFiltMid, []string{a2}, []string{a1, b1}},
+		{"published_after=" + newsFiltEarly + "&published_before=" + newsFiltLate, []string{a1, a2, b1}, nil},
+	} {
+		got, _ := newsFeedIDs(t, env, tc.query)
+		require.NotEmptyf(t, tc.keep, "%s: a filter arm with nothing to keep proves nothing", tc.query)
+		for _, id := range tc.keep {
+			require.Truef(t, got[id], "%s must keep %s", tc.query, id)
+		}
+		for _, id := range tc.drop {
+			require.Falsef(t, got[id], "%s must drop %s", tc.query, id)
+		}
+	}
+
+	// include_total counts the NARROWED population, which is the assertion that
+	// separates "the filter ran" from "the filter ran and returned nothing" and
+	// from "the filter was ignored": ignored would report the whole feed.
+	_, narrowed := newsFeedIDs(t, env, "source=filt_a&include_total=true")
+	require.NotNil(t, narrowed)
+	require.Equal(t, int64(2), *narrowed)
+	_, whole := newsFeedIDs(t, env, "include_total=true")
+	require.NotNil(t, whole)
+	require.Greater(t, *whole, *narrowed, "control: the unfiltered population is strictly larger")
+
+	// The exact wire format the forum emits, which is why published_* is an
+	// RFC 3339 instant rather than the YYYY-MM-DD released_after= on works.
+	forum := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339Nano)
+	got, _ := newsFeedIDs(t, env, "published_after="+forum)
+	require.True(t, got[a2] && got[b1] && !got[a1], "forum wire format %q", forum)
+
+	// Accept-and-ignore is the defect; every unusable value is refused.
+	for _, tc := range []struct{ query, code, param string }{
+		{"lane=bogus", problem.CodeUnknownEnumValue, "lane"},
+		{"lane=news,bogus", problem.CodeUnknownEnumValue, "lane"},
+		{"published_after=2026-04-01", problem.CodeInvalidParameter, "published_after"},
+		{"published_before=2026-04-01T00:00:00%2B08:00", problem.CodeInvalidParameter, "published_before"},
+		{"published_after=" + newsFiltLate + "&published_before=" + newsFiltEarly, problem.CodeInvalidParameter, "published_after"},
+		{"source=" + strings.TrimSuffix(strings.Repeat("s,", newsMaxSources+1), ","), problem.CodeInvalidParameter, "source"},
+	} {
+		status, ct, raw := liveDo(t, env, http.MethodGet, "/v2/news?"+tc.query, "", "")
+		require.Equalf(t, 400, status, "%s: %s", tc.query, raw)
+		require.Contains(t, ct, "application/problem+json", tc.query)
+		p := liveProblem(t, raw)
+		require.Equal(t, tc.code, p.Code, tc.query)
+		require.NotEmpty(t, p.Errors, tc.query)
+		require.Equal(t, tc.param, p.Errors[0].Parameter, tc.query)
+	}
+
+	// An unknown source key matches nothing rather than failing: the vocabulary
+	// is the news_source table, which is open.
+	empty, total := newsFeedIDs(t, env, "source=no_such_source&include_total=true")
+	require.Empty(t, empty)
+	require.NotNil(t, total)
+	require.Equal(t, int64(0), *total)
+
+	require.NoError(t, env.db.Exec(`DELETE FROM news_item WHERE external_id LIKE 'filt-%'`).Error)
 }
 
 func TestLiveNewsIsFencedToTheCaller(t *testing.T) {
