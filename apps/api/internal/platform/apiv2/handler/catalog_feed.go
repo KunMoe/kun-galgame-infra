@@ -56,7 +56,15 @@ func (c *Catalog) ListChanges(ctx context.Context, q collect.Query) (repr.List[r
 		s := data.NextCursor
 		next = &s
 	}
-	return finishList(items, next, 0, q, nil), nil
+	var total int64
+	if q.IncludeTotal {
+		n, terr := c.Public.ChangesTotal(ctx)
+		if terr != nil {
+			return repr.List[repr.Change]{}, terr
+		}
+		total = n
+	}
+	return finishList(items, next, total, q, nil), nil
 }
 
 func (c *Catalog) ListRedirects(ctx context.Context, q collect.Query, object string) (repr.List[repr.Redirect], error) {
@@ -108,7 +116,15 @@ func (c *Catalog) ListRedirects(ctx context.Context, q collect.Query, object str
 		s := encodeRedirectInner(nextCur)
 		next = &s
 	}
-	return finishList(items, next, 0, q, nil), nil
+	var total int64
+	if q.IncludeTotal {
+		n, terr := c.Resolve.RedirectsTotal(ctx, filter)
+		if terr != nil {
+			return repr.List[repr.Redirect]{}, terr
+		}
+		total = n
+	}
+	return finishList(items, next, total, q, nil), nil
 }
 
 func feedNoBatch(name string) *problem.Problem {

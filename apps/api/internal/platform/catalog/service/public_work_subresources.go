@@ -56,9 +56,11 @@ func (s *PublicService) WorkCovers(ctx context.Context, id int64, nsfw bool, lim
 		}
 	}
 	page, next := pageOf(renderable, limit, offset)
-	return dto.PublicWorkCoversData{
-		Items: s.publicCovers(page, s.coverMetaFor(ctx, page)), NextOffset: next,
-	}, true, nil
+	items, err := s.publicCovers(ctx, page, s.coverMetaFor(ctx, page))
+	if err != nil {
+		return dto.PublicWorkCoversData{}, false, err
+	}
+	return dto.PublicWorkCoversData{Items: items, NextOffset: next}, true, nil
 }
 
 func (s *PublicService) WorkScreenshots(ctx context.Context, id int64, nsfw bool, limit, offset int) (dto.PublicWorkScreenshotsData, bool, error) {
@@ -274,7 +276,11 @@ func (s *PublicService) WorkSeries(ctx context.Context, id int64, nsfw bool, lim
 	if err != nil {
 		return dto.PublicWorkSeriesData{}, false, err
 	}
-	page, next := pageOf(s.publicWorkSeries(byWork[id]), limit, offset)
+	items, err := s.publicWorkSeries(ctx, byWork[id], nsfw)
+	if err != nil {
+		return dto.PublicWorkSeriesData{}, false, err
+	}
+	page, next := pageOf(items, limit, offset)
 	return dto.PublicWorkSeriesData{Items: page, NextOffset: next}, true, nil
 }
 

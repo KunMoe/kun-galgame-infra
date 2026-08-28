@@ -62,7 +62,7 @@ func coverFromPublic(c dto.PublicCover) *repr.Cover {
 		return nil
 	}
 	return &repr.Cover{
-		ID: id, VoteCount: 0, PortraitPinned: c.PortraitPinned, Kind: c.Kind,
+		ID: id, VoteCount: c.VoteCount, PortraitPinned: c.PortraitPinned, Kind: c.Kind,
 		URL: img.URL, Hash: img.Hash, Width: img.Width, Height: img.Height,
 		Thumbhash: img.Thumbhash, Sexual: img.Sexual, Violence: img.Violence, Source: img.Source,
 	}
@@ -144,7 +144,7 @@ func rosterVoicesFrom(in []dto.PublicRosterVoice) []repr.CreditName {
 		out = append(out, repr.CreditName{
 			Object: "credit_name", ID: repr.ID(v.ID), DisplayName: v.DisplayName,
 			Latin: optString(v.Latin), Lang: optString(v.Lang),
-			Localized: localizedFrom(v.Localized),
+			Localized: localizedFrom(v.Localized), PersonID: optID(v.PersonID),
 		})
 	}
 	return out
@@ -174,6 +174,7 @@ func creditGroupsFrom(in []dto.PublicCreditGroup) []repr.CreditGroup {
 			credits = append(credits, repr.CreditEntry{
 				Object: "credit_name", ID: repr.ID(c.ID), DisplayName: c.DisplayName,
 				Latin: optString(c.Latin), Localized: localizedFrom(c.Localized), CharacterID: charID,
+				Identity: c.Identity,
 			})
 		}
 		out = append(out, repr.CreditGroup{RoleKey: g.RoleKey, RoleName: g.RoleName, Credits: credits})
@@ -234,9 +235,13 @@ func relationsFrom(in []dto.PublicRelation) []repr.Relation {
 }
 
 func workFromBrief(b dto.PublicWorkBrief) repr.Work {
+	created := b.Created
+	if created == "" {
+		created = b.Updated
+	}
 	w, _ := repr.NewWork(
-		b.ID, b.Medium, b.DisplayName, "", b.ContentRating, "unknown",
-		"", "", optString(b.Latin), localizedFrom(b.Localized),
+		b.ID, b.Medium, b.DisplayName, b.OLang, b.ContentRating, "unknown",
+		created, b.Updated, optString(b.Latin), localizedFrom(b.Localized),
 		nil, nil, nil, nil, claimFrom(b.ClaimedBy),
 	)
 	if w.Object == "" {
@@ -245,9 +250,11 @@ func workFromBrief(b dto.PublicWorkBrief) repr.Work {
 		w.Medium = "galgame"
 		w.DisplayName = b.DisplayName
 		w.ContentRating = b.ContentRating
+		w.OLang = b.OLang
 		w.Localized = localizedFrom(b.Localized)
 		w.Claim = claimFrom(b.ClaimedBy)
 		w.ReleaseStatus = "unknown"
+		w.CreatedAt, w.UpdatedAt = created, b.Updated
 	}
 	return w
 }

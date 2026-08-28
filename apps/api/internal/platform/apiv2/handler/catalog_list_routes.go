@@ -112,7 +112,7 @@ func registerCatalogLists(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/characters",
 		Summary:            "List characters",
-		Description:        "Keyset-paginated characters. Requires an application key. ids=/refs= is a batch lane and does not paginate.",
+		Description:        "Keyset-paginated characters. Requires an application key. ids=/refs= is a batch lane and does not paginate. include=gender,birthday,height_cm,weight_kg,measurements,blood_type,instance_of_id,image,figure,traits,aliases,intros,refs fills on every lane, and view=full is all of them; traits are cut at the default spoiler ceiling and follow the nsfw gate, exactly as on the detail face.",
 		Tags:               catalog,
 		Errors:             errs,
 		SkipValidateParams: true,

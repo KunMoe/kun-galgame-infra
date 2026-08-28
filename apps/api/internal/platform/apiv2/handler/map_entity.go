@@ -140,11 +140,35 @@ func seriesIntrosFrom(in []dto.PublicSeriesIntro) []repr.Intro {
 	return out
 }
 
-func characterFromRow(it catsvc.EntityListRow) repr.Character {
-	return repr.Character{
+func characterFromRow(it catsvc.EntityListRow, include []string) repr.Character {
+	out := repr.Character{
 		Object: "character", ID: repr.ID(it.ID), DisplayName: it.DisplayName,
 		Latin: it.Latin, Lang: optString(it.Lang), Localized: localizedFrom(it.Localized),
 	}
+	if it.Attrs != nil {
+		attachCharacterAttrs(&out, *it.Attrs)
+	}
+	for _, t := range include {
+		switch t {
+		case "image":
+			if it.Image != "" {
+				out.Image = imageFromPublicMeta(it.Image, it.ImageMeta, "")
+			}
+		case "figure":
+			if it.Figure != "" {
+				out.Figure = imageFromPublicMeta(it.Figure, it.FigureMeta, "")
+			}
+		case "traits":
+			out.Traits = ptrSlice(characterTraitsFrom(it.Traits))
+		case "aliases":
+			out.Aliases = ptrSlice(entityNamesFrom(it.Aliases))
+		case "intros":
+			out.Intros = ptrSlice(introsFrom(it.Intros))
+		case "refs":
+			out.Refs = ptrSlice(refsFrom(it.Refs))
+		}
+	}
+	return out
 }
 
 func creditNameFromRow(it catsvc.EntityListRow) repr.CreditName {
@@ -161,7 +185,16 @@ func creditNameFromRow(it catsvc.EntityListRow) repr.CreditName {
 }
 
 func personFromRow(it catsvc.EntityListRow) repr.Person {
-	return repr.Person{Object: "person", ID: repr.ID(it.ID), DisplayName: it.DisplayName}
+	var primary *string
+	if it.PrimaryCreditNameID != nil && *it.PrimaryCreditNameID > 0 {
+		s := repr.ID(*it.PrimaryCreditNameID)
+		primary = &s
+	}
+	g, _ := repr.Gender(it.Gender)
+	return repr.Person{
+		Object: "person", ID: repr.ID(it.ID), DisplayName: it.DisplayName,
+		PrimaryCreditNameID: primary, Gender: g,
+	}
 }
 
 func traitFromRow(it catsvc.EntityListRow) repr.Trait {

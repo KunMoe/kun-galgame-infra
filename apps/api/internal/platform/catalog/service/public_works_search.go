@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	stderrors "errors"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -159,6 +160,11 @@ func (f WorksSearchFilter) meiliFilter(docID string) string {
 		}
 		clauses = append(clauses, "("+strings.Join(or, " OR ")+")")
 	}
+	// The browse lane's ban exclusion, in Meili: a banned work must not come
+	// back through q= either, and it did while claim_state= was absent.
+	if !slices.Contains(f.ClaimStates, model.ClaimStateKeyHidden) {
+		clauses = append(clauses, "claim_state != '"+model.ClaimStateKeyHidden+"'")
+	}
 	if len(f.DisplayLimits) > 0 {
 		or := make([]string, 0, len(f.DisplayLimits))
 		for _, lim := range f.DisplayLimits {
@@ -276,9 +282,10 @@ func (s *PublicService) hydrateWorkIDs(ctx context.Context, ids []int64, nsfw bo
 		Site          *string
 		ProductWorkID *int64
 		ClaimState    *int16 `gorm:"column:claim_state"`
+		CreatedAt     time.Time
 		UpdatedAt     time.Time
 	}
-	q := `SELECT w.id, w.medium_id, w.display_name, w.olang, w.content_rating, w.site, w.product_work_id, w.claim_state, w.updated_at
+	q := `SELECT w.id, w.medium_id, w.display_name, w.olang, w.content_rating, w.site, w.product_work_id, w.claim_state, w.created_at, w.updated_at
 		FROM catalog_work w WHERE ` + strings.Join(where, " AND ")
 	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
 		return nil, err
@@ -289,7 +296,8 @@ func (s *PublicService) hydrateWorkIDs(ctx context.Context, ids []int64, nsfw bo
 		byID[r.ID] = workListSourceRow{
 			ID: r.ID, MediumID: r.MediumID, DisplayName: r.DisplayName, OLang: r.OLang,
 			ContentRating: r.ContentRating, Site: r.Site, ProductWorkID: r.ProductWorkID,
-			ClaimState: r.ClaimState, UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
+			ClaimState: r.ClaimState, CreatedAt: r.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 	}
 	src := make([]workListSourceRow, 0, len(ids))

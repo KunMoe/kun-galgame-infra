@@ -139,6 +139,7 @@ type releaseFeedRow struct {
 	Site          *string
 	ProductWorkID *int64
 	ClaimState    *int16 `gorm:"column:claim_state"`
+	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
 
@@ -172,7 +173,7 @@ func (s *PublicService) ReleaseFeed(ctx context.Context, f ReleaseFeedFilter, cu
 				WHERE r2.work_id = r.work_id AND r2.deleted_at IS NULL
 				  AND r2.released_y IS NOT NULL AND r2.released_m IS NOT NULL) AS is_first,
 			w.id AS work_id, w.medium_id, w.display_name, w.olang, w.content_rating,
-			w.site, w.product_work_id, w.claim_state, w.updated_at ` +
+			w.site, w.product_work_id, w.claim_state, w.created_at, w.updated_at ` +
 		from + ` WHERE ` + strings.Join(where, " AND ") +
 		` ORDER BY ord ` + dir + `, r.id ASC`
 	q, args, paginated := applyBrowseLimit(q, args, limit, f.IDs)
@@ -210,7 +211,8 @@ func (s *PublicService) buildReleaseFeedItems(ctx context.Context, rows []releas
 		src = append(src, workListSourceRow{
 			ID: r.WorkID, MediumID: r.MediumID, DisplayName: r.DisplayName, OLang: r.OLang,
 			ContentRating: r.ContentRating, Site: r.Site, ProductWorkID: r.ProductWorkID,
-			ClaimState: r.ClaimState, UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
+			ClaimState: r.ClaimState, CreatedAt: r.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 	refs, err := s.entityRefsFor(ctx, model.EntityTypeRelease, releaseIDs)

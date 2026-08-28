@@ -21,14 +21,15 @@ func (c *Catalog) ListCharacters(ctx context.Context, q collect.Query) (repr.Lis
 	if q.Batch && len(ids) == 0 {
 		return finishList([]repr.Character{}, nil, 0, q, missing), nil
 	}
-	data, lerr := c.Public.CharactersList(ctx, ids, q.Cursor, listLimit(q))
+	data, lerr := c.Public.CharactersList(ctx, ids, q.Cursor, listLimit(q),
+		catsvc.CharacterListIncludeFrom(q.Include), q.NSFW)
 	if lerr != nil {
 		return repr.List[repr.Character]{}, listCursorErr(lerr)
 	}
 	items := make([]repr.Character, 0, len(data.Items))
 	seen := map[int64]bool{}
 	for _, it := range data.Items {
-		items = append(items, characterFromRow(it))
+		items = append(items, characterFromRow(it, q.Include))
 		seen[it.ID] = true
 	}
 	missing = appendUnseen(missing, ids, seen)

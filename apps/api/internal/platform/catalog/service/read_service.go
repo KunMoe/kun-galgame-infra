@@ -153,6 +153,7 @@ type WorkCharacterVARow struct {
 	Name         string
 	Lang         string
 	Latin        *string
+	PersonID     *int64
 }
 
 type RefDetail struct {
@@ -623,9 +624,13 @@ func (s *ReadService) loadWorkCharacters(ctx context.Context, workID int64) ([]W
 		Name         string  `gorm:"column:name"`
 		NameLang     string  `gorm:"column:name_lang"`
 		NameLatin    *string `gorm:"column:name_latin"`
+		PersonID     *int64  `gorm:"column:person_id"`
 	}
+	// The person link follows link_visibility here exactly as the credit-name
+	// detail face applies it: a hidden link publishes no person_id.
 	if err := db.Raw(`SELECT DISTINCT c.character_id, ch.display_name, ch.latin, ch.gender, ch.image_hash, ch.figure_hash,
-		cn.id AS credit_name_id, cn.name, cn.lang AS name_lang, cn.latin AS name_latin
+		cn.id AS credit_name_id, cn.name, cn.lang AS name_lang, cn.latin AS name_latin,
+		CASE WHEN cn.link_visibility = 0 THEN cn.person_id END AS person_id
 		FROM catalog_credit c
 		JOIN catalog_character ch ON ch.id = c.character_id
 		JOIN catalog_credit_name cn ON cn.id = c.credit_name_id
@@ -652,7 +657,10 @@ func (s *ReadService) loadWorkCharacters(ctx context.Context, workID int64) ([]W
 			}
 			byID[c.CharacterID] = row
 		}
-		row.Va = append(row.Va, WorkCharacterVARow{CreditNameID: c.CreditNameID, Name: c.Name, Lang: c.NameLang, Latin: c.NameLatin})
+		row.Va = append(row.Va, WorkCharacterVARow{
+			CreditNameID: c.CreditNameID, Name: c.Name, Lang: c.NameLang,
+			Latin: c.NameLatin, PersonID: c.PersonID,
+		})
 	}
 
 	out := make([]WorkCharacterRow, 0, len(byID))
@@ -977,6 +985,7 @@ type VoiceNameRow struct {
 	Name         string `gorm:"column:name"`
 	Lang         string `gorm:"column:lang"`
 	Latin        *string
+	PersonID     *int64 `gorm:"column:person_id"`
 }
 
 type CharacterWorkDetail struct {
@@ -1051,8 +1060,10 @@ func (s *ReadService) CharacterWorks(ctx context.Context, characterID int64, lim
 		Name         string `gorm:"column:name"`
 		Lang         string `gorm:"column:lang"`
 		Latin        *string
+		PersonID     *int64 `gorm:"column:person_id"`
 	}
-	if err := db.Raw(`SELECT DISTINCT c.work_id, cn.id AS credit_name_id, cn.name, cn.lang, cn.latin
+	if err := db.Raw(`SELECT DISTINCT c.work_id, cn.id AS credit_name_id, cn.name, cn.lang, cn.latin,
+			CASE WHEN cn.link_visibility = 0 THEN cn.person_id END AS person_id
 		FROM catalog_credit c JOIN catalog_credit_name cn ON cn.id = c.credit_name_id
 		WHERE c.character_id = ? AND c.work_id IN ?
 		  AND `+editspec.NotSuppressedCreditSQL("c")+`
@@ -1062,7 +1073,7 @@ func (s *ReadService) CharacterWorks(ctx context.Context, characterID int64, lim
 	voicesByWork := make(map[int64][]VoiceNameRow, len(workIDs))
 	for _, v := range voiceRows {
 		voicesByWork[v.WorkID] = append(voicesByWork[v.WorkID], VoiceNameRow{
-			CreditNameID: v.CreditNameID, Name: v.Name, Lang: v.Lang, Latin: v.Latin,
+			CreditNameID: v.CreditNameID, Name: v.Name, Lang: v.Lang, Latin: v.Latin, PersonID: v.PersonID,
 		})
 	}
 	for _, wid := range workIDs {
@@ -1229,6 +1240,13 @@ type CreditRow struct {
 	Identity     string
 }
 
+// The last two ORDER BY terms are the tiebreak, and they are not decoration:
+// uq_catalog_credit is (work_id, credit_name_id, role_id,
+// COALESCE(character_id, 0)), so one voice actor on three characters of one work
+// is three rows that tie on every earlier term. works/{id}/credits pages by
+// OFFSET, and an unstable sort there duplicates or drops rows at a page
+// boundary. COLLATE "C" pins src.key against the database's collation, which is
+// not part of this contract.
 func (s *ReadService) WorkCredits(ctx context.Context, workID int64) ([]CreditRow, error) {
 	var rows []CreditRow
 	err := s.db.WithContext(ctx).Raw(`SELECT
@@ -1245,6 +1263,7 @@ func (s *ReadService) WorkCredits(ctx context.Context, workID int64) ([]CreditRo
 		LEFT JOIN catalog_source src ON src.id = c.source_id
 		WHERE c.work_id = ? AND `+editspec.NotSuppressedCreditSQL("c")+`
 		ORDER BY c.role_id ASC, `+editspec.HumanLaneFirstNoProvenanceSQL("c.source_id")+
-		`, src.key ASC NULLS LAST, cn.id ASC`, workID).Scan(&rows).Error
+		`, src.key COLLATE "C" ASC NULLS LAST, cn.id ASC, COALESCE(c.character_id, 0) ASC, c.id ASC`,
+		workID).Scan(&rows).Error
 	return rows, err
 }

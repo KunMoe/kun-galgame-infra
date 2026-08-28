@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -75,7 +76,7 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 		order = "ORDER BY w.id ASC"
 	}
 
-	q := `SELECT w.id, w.medium_id, w.display_name, w.olang, w.content_rating, w.site, w.product_work_id, w.claim_state, w.updated_at
+	q := `SELECT w.id, w.medium_id, w.display_name, w.olang, w.content_rating, w.site, w.product_work_id, w.claim_state, w.created_at, w.updated_at
 		FROM catalog_work w WHERE ` + strings.Join(where, " AND ") + " " + order
 	q, args, paginated := applyBrowseLimit(q, args, limit, f.IDs)
 
@@ -91,6 +92,7 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 		Site          *string
 		ProductWorkID *int64
 		ClaimState    *int16 `gorm:"column:claim_state"`
+		CreatedAt     time.Time
 		UpdatedAt     time.Time
 	}
 	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
@@ -102,7 +104,8 @@ func (s *PublicService) WorksList(ctx context.Context, f WorksListFilter, cursor
 		src[i] = workListSourceRow{
 			ID: r.ID, MediumID: r.MediumID, DisplayName: r.DisplayName, OLang: r.OLang,
 			ContentRating: r.ContentRating, Site: r.Site, ProductWorkID: r.ProductWorkID,
-			ClaimState: r.ClaimState, UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
+			ClaimState: r.ClaimState, CreatedAt: r.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: r.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 	}
 	items, err := s.enrichWorkListItems(ctx, src, f.NSFW, f.Include, f.Fields)
@@ -155,11 +158,14 @@ func worksListWhere(f WorksListFilter) ([]string, []any) {
 		where = append(where, "w.content_rating = ?")
 		args = append(args, *f.ContentRating)
 	}
+	// claimedSQL, not a local spelling of it: claimed= tested only w.site while
+	// claim_state= also requires product_work_id, so a row with a site and no
+	// product id was claimed=true and claim_state=none at the same time.
 	if f.Claimed != nil {
 		if *f.Claimed {
-			where = append(where, "w.site <> ''")
+			where = append(where, claimedSQL)
 		} else {
-			where = append(where, "(w.site = '' OR w.site IS NULL)")
+			where = append(where, "NOT "+claimedSQL)
 		}
 	}
 	if f.Site != "" {
@@ -172,6 +178,16 @@ func worksListWhere(f WorksListFilter) ([]string, []any) {
 	}
 	if pred, pargs := claimStateWhere(f.ClaimStates); pred != "" {
 		where = append(where, pred)
+		args = append(args, pargs...)
+	}
+	// A ban only writes claim_state, never status, and the claim-state predicate
+	// ran only when claim_state= was passed — so a banned work stayed in the
+	// default GET /v2/catalog/works page. The decision face promises ban "hides
+	// it from any state", so the exclusion is not conditional on the caller
+	// having asked; only an explicit claim_state=hidden opts back in.
+	if !slices.Contains(f.ClaimStates, model.ClaimStateKeyHidden) {
+		pred, pargs := claimStateWhere([]string{model.ClaimStateKeyHidden})
+		where = append(where, "NOT "+pred)
 		args = append(args, pargs...)
 	}
 	if pred, pargs := displayLimitWhere(f.DisplayLimits); pred != "" {
@@ -277,6 +293,16 @@ func (s *PublicService) Changes(ctx context.Context, cursor string, limit int) (
 	return out, nil
 }
 
+// The population is the one Changes pages over, counted before the cursor: a
+// total that shrank as the mirror paged would be worse than no total at all.
+func (s *PublicService) ChangesTotal(ctx context.Context) (int64, error) {
+	var n int64
+	err := s.db.WithContext(ctx).Raw(
+		`SELECT count(*) FROM catalog_work WHERE medium_id = ? AND updated_at < now() - interval '5 seconds'`,
+		galgameMediumID).Scan(&n).Error
+	return n, err
+}
+
 func worksSortLane(sort string) string {
 	if sort == "updated" {
 		return "updated"
@@ -293,6 +319,7 @@ type workListSourceRow struct {
 	Site          *string
 	ProductWorkID *int64
 	ClaimState    *int16
+	CreatedAt     string
 	UpdatedAt     string
 }
 
@@ -341,7 +368,7 @@ func (s *PublicService) enrichWorkListItems(ctx context.Context, rows []workList
 			ClaimedBy:   claimedBy(r.Site, r.ProductWorkID, r.ClaimState, limits[r.ID], r.ContentRating),
 			Cover: s.pickListCover(covers[r.ID],
 				nsfw && effectiveDisplayNSFW(r.Site, r.ProductWorkID, limits[r.ID], r.ContentRating)),
-			Updated: r.UpdatedAt,
+			Created: r.CreatedAt, Updated: r.UpdatedAt,
 		}
 	}
 	if err := s.attachWorkListBlocks(ctx, out, rows, subjects, covers, inc, nsfw, limits); err != nil {

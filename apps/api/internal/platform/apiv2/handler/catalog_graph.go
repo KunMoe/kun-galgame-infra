@@ -53,5 +53,5 @@ func companyGraphFrom(g dto.PublicLabelGraph, include []string, logoURL func(str
 			FromID: repr.ID(e.From), ToID: repr.ID(e.To), Relation: rel,
 		})
 	}
-	return repr.CompanyGraph{Object: "company_graph", Nodes: nodes, Edges: edges}
+	return repr.CompanyGraph{Object: "company_graph", Nodes: nodes, Edges: edges, Truncated: g.Truncated}
 }

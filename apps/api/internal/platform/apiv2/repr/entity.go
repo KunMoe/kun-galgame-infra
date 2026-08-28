@@ -125,6 +125,7 @@ type Appearance struct {
 	Work       Work         `json:"work" doc:"Work this character appears on. view=basic."`
 	RosterRole string       `json:"roster_role" enum:"main,secondary,appears,unknown" doc:"Appearance strength on this work."`
 	Spoiler    string       `json:"spoiler" enum:"none,minor,major" doc:"Spoiler level of this appearance."`
+	Identity   *string      `json:"identity,omitempty" maxLength:"64" doc:"Opaque roster row identity for a catalog.work.roster.suppressed proposal on THIS work; echo it back, never rebuild it. The same key the mirror-image works/{id}.characters[] row publishes. Absent when the work is reached only through a voice credit, where roster_role is unknown and spoiler is none. Must not be used as a discriminant."`
 	Voices     []CreditName `json:"voices" doc:"Voice credits on this appearance. Empty array, never null."`
 }
 

@@ -29,7 +29,7 @@ func (s *PublicService) LabelRelationGraph(ctx context.Context, id int64, nsfw b
 		return dto.PublicLabelGraph{}, false, nil
 	}
 
-	nodes, err := s.labelGraphNodes(ctx, seed)
+	nodes, truncated, err := s.labelGraphNodes(ctx, seed)
 	if err != nil {
 		return dto.PublicLabelGraph{}, false, err
 	}
@@ -57,8 +57,9 @@ func (s *PublicService) LabelRelationGraph(ctx context.Context, id int64, nsfw b
 	logoMeta := s.entityMetaFor(ctx, logoHashes...)
 
 	out := dto.PublicLabelGraph{
-		Nodes: make([]dto.PublicLabelGraphNode, len(nodes)),
-		Edges: edges,
+		Nodes:     make([]dto.PublicLabelGraphNode, len(nodes)),
+		Edges:     edges,
+		Truncated: truncated,
 	}
 	for i, n := range nodes {
 		out.Nodes[i] = dto.PublicLabelGraphNode{
@@ -70,12 +71,17 @@ func (s *PublicService) LabelRelationGraph(ctx context.Context, id int64, nsfw b
 	return out, true, nil
 }
 
-func (s *PublicService) labelGraphNodes(ctx context.Context, seed labelGraphNodeRow) ([]labelGraphNodeRow, error) {
+// The second return is the response's `truncated`: both ceilings are silent
+// otherwise, and a family cut at 60 nodes is indistinguishable from a complete
+// one on the wire.
+func (s *PublicService) labelGraphNodes(ctx context.Context, seed labelGraphNodeRow) ([]labelGraphNodeRow, bool, error) {
 	nodes := []labelGraphNodeRow{seed}
 	visited := map[int64]struct{}{seed.ID: {}}
 	frontier := []int64{seed.ID}
+	truncated := false
 
-	for depth := 0; depth < labelGraphMaxDepth && len(frontier) > 0 && len(nodes) < labelGraphMaxNodes; depth++ {
+	depth := 0
+	for ; depth < labelGraphMaxDepth && len(frontier) > 0; depth++ {
 		var rows []labelGraphNodeRow
 		if err := s.db.WithContext(ctx).Raw(`
 			SELECT DISTINCT other.id, other.display_name, other.logo_hash
@@ -83,7 +89,7 @@ func (s *PublicService) labelGraphNodes(ctx context.Context, seed labelGraphNode
 			JOIN catalog_label other ON other.id = r.other_label_id AND other.deleted_at IS NULL
 			WHERE r.label_id IN ?
 			ORDER BY other.display_name, other.id`, frontier).Scan(&rows).Error; err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		next := make([]int64, 0, len(rows))
 		for _, r := range rows {
@@ -91,6 +97,7 @@ func (s *PublicService) labelGraphNodes(ctx context.Context, seed labelGraphNode
 				continue
 			}
 			if len(nodes) >= labelGraphMaxNodes {
+				truncated = true
 				break
 			}
 			visited[r.ID] = struct{}{}
@@ -98,8 +105,29 @@ func (s *PublicService) labelGraphNodes(ctx context.Context, seed labelGraphNode
 			next = append(next, r.ID)
 		}
 		frontier = next
+		if truncated {
+			break
+		}
 	}
-	return nodes, nil
+	if !truncated && depth == labelGraphMaxDepth && len(frontier) > 0 {
+		// Hitting the depth ceiling is not itself truncation: the last ring may
+		// have no unvisited neighbours at all. Asking costs one EXISTS and is
+		// the difference between "partial" and "complete" on the wire.
+		ids := make([]int64, 0, len(visited))
+		for id := range visited {
+			ids = append(ids, id)
+		}
+		var more bool
+		if err := s.db.WithContext(ctx).Raw(`
+			SELECT EXISTS (
+				SELECT 1 FROM catalog_label_relation r
+				JOIN catalog_label other ON other.id = r.other_label_id AND other.deleted_at IS NULL
+				WHERE r.label_id IN ? AND other.id NOT IN ?)`, frontier, ids).Scan(&more).Error; err != nil {
+			return nil, false, err
+		}
+		truncated = more
+	}
+	return nodes, truncated, nil
 }
 
 var labelGraphEdgeRelations = []int16{

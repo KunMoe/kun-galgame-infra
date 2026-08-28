@@ -41,10 +41,16 @@ type RedirectCursor struct {
 	OldID      int64
 }
 
+// A row-value comparison against a NULL merged_at is NULL, not true, so a
+// redirect with no recorded merge time was invisible on every page of the feed
+// and no mirror could ever learn about that merge. redirectOrdSQL folds those
+// rows onto the epoch, which is also what the feed publishes for them.
+const redirectOrdSQL = "COALESCE(merged_at, to_timestamp(0))"
+
 func (r *RedirectRepository) Since(ctx context.Context, entityType *int16, cursor RedirectCursor, limit int) ([]model.CatalogRedirect, error) {
 	q := r.db.WithContext(ctx).
-		Where("(merged_at, entity_type, old_id) > (?, ?, ?)", cursor.MergedAt, cursor.EntityType, cursor.OldID).
-		Order("merged_at, entity_type, old_id").
+		Where("("+redirectOrdSQL+", entity_type, old_id) > (?, ?, ?)", cursor.MergedAt, cursor.EntityType, cursor.OldID).
+		Order(redirectOrdSQL + ", entity_type, old_id").
 		Limit(limit)
 	if entityType != nil {
 		q = q.Where("entity_type = ?", *entityType)
@@ -52,6 +58,16 @@ func (r *RedirectRepository) Since(ctx context.Context, entityType *int16, curso
 	var rows []model.CatalogRedirect
 	err := q.Find(&rows).Error
 	return rows, err
+}
+
+func (r *RedirectRepository) Count(ctx context.Context, entityType *int16) (int64, error) {
+	q := r.db.WithContext(ctx).Model(&model.CatalogRedirect{})
+	if entityType != nil {
+		q = q.Where("entity_type = ?", *entityType)
+	}
+	var n int64
+	err := q.Count(&n).Error
+	return n, err
 }
 
 func getRedirect(db *gorm.DB, entityType int16, oldID int64) (*model.CatalogRedirect, error) {

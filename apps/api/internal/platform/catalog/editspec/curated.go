@@ -75,8 +75,13 @@ func HumanLaneFirstSQL(sourceColumn, provenanceColumn string) string {
 // On the intro tables the missing column is not an oversight to backfill:
 // neither has a machine writer today, and R1b's rule is that the axis follows
 // the first one. catalog_credit has no MT axis at all.
+// NULLS LAST is load-bearing on catalog_credit, whose source_id is nullable:
+// `x IN (...)` over a NULL is NULL, and DESC defaults to NULLS FIRST, so the
+// sourceless rows sorted AHEAD of the human lane this term exists to promote —
+// the lane was inverted for exactly the rows it was written for. It is a no-op
+// wherever the column is NOT NULL.
 func HumanLaneFirstNoProvenanceSQL(sourceColumn string) string {
-	return fmt.Sprintf("(%s IN (%d, %d)) DESC", sourceColumn, userSourceID, curatedSourceID)
+	return fmt.Sprintf("(%s IN (%d, %d)) DESC NULLS LAST", sourceColumn, userSourceID, curatedSourceID)
 }
 
 // HumanFieldProvenanceSQL is provenance.IsHuman in SQL, read off a

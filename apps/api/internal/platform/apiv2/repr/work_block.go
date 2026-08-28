@@ -55,6 +55,7 @@ type CreditEntry struct {
 	Latin       *string                  `json:"latin" maxLength:"512" doc:"null if unrecorded. Must not be used as a discriminant."`
 	Localized   map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
 	CharacterID *string                  `json:"character_id" pattern:"^[0-9]+$" maxLength:"20" doc:"null if this credit is not a voice on a character."`
+	Identity    string                   `json:"identity" maxLength:"128" doc:"Opaque credit row identity for a catalog.work.credits.suppressed proposal; echo it back, never rebuild it. It cannot be reconstructed from this object: role_id is not published. Must not be used as a discriminant."`
 }
 
 type Release struct {

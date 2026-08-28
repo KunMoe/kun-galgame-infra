@@ -73,12 +73,12 @@ func (c *Catalog) CharacterAppearances(ctx context.Context, id int64, nsfw bool,
 			voices = append(voices, repr.CreditName{
 				Object: "credit_name", ID: repr.ID(v.ID), DisplayName: v.DisplayName,
 				Latin: optString(v.Latin), Lang: optString(v.Lang),
-				Localized: localizedFrom(v.Localized),
+				Localized: localizedFrom(v.Localized), PersonID: optID(v.PersonID),
 			})
 		}
 		items = append(items, repr.Appearance{
 			Object: "appearance", Work: workFromBrief(row.Work),
-			RosterRole: role, Spoiler: sp, Voices: voices,
+			RosterRole: role, Spoiler: sp, Identity: optString(row.Identity), Voices: voices,
 		})
 	}
 	return repr.NewList(items, collect.EncodeOffset(derefInt(rec.NextOffset))), nil
