@@ -444,12 +444,16 @@ func (s *ClaimLifecycleService) ModerationClaims(ctx context.Context, site strin
 }
 
 type PendingClaimItem struct {
-	WorkID           int64   `json:"work_id"`
-	DisplayName      string  `json:"display_name"`
-	Site             *string `json:"site"`
-	ProductWorkID    *int64  `json:"product_work_id"`
-	ClaimState       *int16  `json:"claim_state"`
-	SubmittedEventID *int64  `json:"submitted_event_id"`
+	WorkID        int64   `json:"work_id"`
+	DisplayName   string  `json:"display_name"`
+	Site          *string `json:"site"`
+	ProductWorkID *int64  `json:"product_work_id"`
+	// Scan target for the v2 moderation queue, which lists several states at
+	// once; json:"-" because the admin face this struct also serves lists only
+	// pending claims, so publishing the column there would add a constant to a
+	// first-party contract and drag apps/web's generated types with it.
+	ClaimState       *int16 `json:"-"`
+	SubmittedEventID *int64 `json:"submitted_event_id"`
 }
 
 func (s *ClaimLifecycleService) ClaimByWorkID(ctx context.Context, workID int64, site string) (*UserClaimItem, error) {
