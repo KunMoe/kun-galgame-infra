@@ -332,7 +332,7 @@ func listMyProposals(cat *Catalog) func(context.Context, *listProposalsInput) (*
 		if in == nil {
 			in = &listProposalsInput{}
 		}
-		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.ClaimSpec())
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.ProposalListSpec())
 		if err != nil {
 			return nil, err
 		}
@@ -482,7 +482,7 @@ func listModerationProposals(cat *Catalog) func(context.Context, *listModeration
 		if in == nil {
 			in = &listModerationProposalsInput{}
 		}
-		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.ClaimSpec())
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.ProposalListSpec())
 		if err != nil {
 			return nil, err
 		}
