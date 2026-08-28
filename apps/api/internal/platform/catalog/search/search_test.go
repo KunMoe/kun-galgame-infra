@@ -15,7 +15,7 @@ import (
 
 var testClient *search.Client
 
-const testPrefix = "test_"
+var testPrefix = dbtest.SearchIndexPrefix("search")
 
 func TestMain(m *testing.M) {
 	host, apiKey := dbtest.SearchHost()
@@ -32,7 +32,9 @@ func TestMain(m *testing.M) {
 		dbtest.SkipSearchMain("catalog/search", "meilisearch unreachable: %v", err)
 	}
 	testClient = client
-	os.Exit(m.Run())
+	code := m.Run()
+	dbtest.SweepSearchIndexes(client.Svc(), testPrefix)
+	os.Exit(code)
 }
 
 func TestEnsureIndexesMatchesMatrix(t *testing.T) {
