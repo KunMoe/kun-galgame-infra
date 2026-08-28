@@ -64962,7 +64962,7 @@ export const docsModel: DocsModel = {
               "method": "post",
               "path": "/v2/me/claims",
               "summary": "Submit a claim",
-              "description": "Mint or claim a work. work_id claims an existing catalog work. refs= claims the work they resolve to, or mints one from display_name when none match. site_work_id with display_name and neither work_id nor refs mints a work anchored to the site's own id. Requires a user access token bound to a catalog site.",
+              "description": "Mint or claim a work. work_id claims an existing catalog work. refs= claims the work they resolve to, or mints one from display_name when none match. site_work_id with display_name and neither work_id nor refs mints a work anchored to the site's own id. field_values carries an editing-engine work field map onto any mint lane and may be sent alone, without work_id, refs or site_work_id; it is refused with work_id, and refs that already resolve to a work answer 409 instead of dropping it. A caller holding catalog.edit.trusted mints straight to live rather than pending. Requires a user access token bound to a catalog site.",
               "scope": "",
               "auth": {
                 "kind": "user_token",
@@ -64978,6 +64978,14 @@ export const docsModel: DocsModel = {
                     "name": "display_name",
                     "doc": "Required to mint when refs do not match. Must not be used as a discriminant.",
                     "type": "string"
+                  },
+                  {
+                    "name": "field_values",
+                    "doc": "Editing-engine field key to value for the minted work, e.g. catalog.work.titles — the same shape GET /v2/moderation/snapshots/{object}/{id} answers. Sent alone it mints from the map; sent with work_id it is 422. Top-level display_name wins over catalog.work.display_name.",
+                    "type": "map",
+                    "itemsOf": {
+                      "type": "object"
+                    }
                   },
                   {
                     "name": "refs",
