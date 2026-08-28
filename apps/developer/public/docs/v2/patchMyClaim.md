@@ -22,7 +22,7 @@ PATCH {state: live|pending|withdrawn}. live publishes a draft without review, pe
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Catalog work id. |
-| `If-Match` | header | 否 | string | Current ETag. Required. |
+| `If-Match` | header | 是 | string | Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED. |
 
 ```bash
 curl -X PATCH "https://api.nextmoe.dev/v2/me/claims/value" \

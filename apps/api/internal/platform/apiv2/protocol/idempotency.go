@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"api/internal/platform/apiv2/problem"
+	"api/pkg/routepath"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -28,7 +29,7 @@ type idempotencyRecord struct {
 // same path replayed each other's writes.
 func Idempotency(store Store, ident IdentityFunc) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		if store == nil || c.Method() != fiber.MethodPost || !strings.HasPrefix(c.Path(), "/v2") {
+		if store == nil || c.Method() != fiber.MethodPost || !strings.HasPrefix(routepath.Normalize(c.Path()), "/v2") {
 			return c.Next()
 		}
 		if c.Get("Idempotency-Key") == "" {
@@ -54,7 +55,7 @@ func idempotencyKey(c fiber.Ctx, ident IdentityFunc) string {
 			who = id.Key
 		}
 	}
-	return "v2:idem:" + who + ":" + c.Method() + ":" + c.Path() + ":" + c.Get("Idempotency-Key")
+	return "v2:idem:" + who + ":" + c.Method() + ":" + routepath.Normalize(c.Path()) + ":" + c.Get("Idempotency-Key")
 }
 
 func bodyHash(b []byte) string {

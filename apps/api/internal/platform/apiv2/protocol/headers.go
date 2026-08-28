@@ -5,14 +5,17 @@ import (
 	"encoding/hex"
 	"strings"
 
+	"api/pkg/routepath"
+
 	"github.com/gofiber/fiber/v3"
 )
 
 const (
-	cacheVocab  = "public, max-age=300, s-maxage=1800, stale-while-revalidate=3600"
-	cacheError  = "no-store"
-	varyPublic  = "Authorization, Accept-Encoding"
-	serviceDesc = `<https://developer.nextmoe.dev/>; rel="service-desc"`
+	cacheVocab   = "public, max-age=300, s-maxage=1800, stale-while-revalidate=3600"
+	cachePrivate = "private, no-store"
+	cacheError   = "no-store"
+	varyPublic   = "Authorization, Accept-Encoding"
+	serviceDesc  = `<https://developer.nextmoe.dev/>; rel="service-desc"`
 )
 
 func applyETag(c fiber.Ctx) {
@@ -46,12 +49,12 @@ func applyHeaders(c fiber.Ctx) {
 		}
 		return
 	}
-	path := c.Path()
-	if (strings.HasPrefix(path, "/v2/me/") || strings.HasPrefix(path, "/v2/moderation/")) && c.GetRespHeader("Cache-Control") == "" {
-		c.Set("Cache-Control", "private, no-store")
-	}
-	if isVocabPath(path) && c.GetRespHeader("Cache-Control") == "" {
-		c.Set("Cache-Control", cacheVocab)
+	if c.GetRespHeader("Cache-Control") == "" {
+		if isPublicPath(routepath.Normalize(c.Path())) {
+			c.Set("Cache-Control", cacheVocab)
+		} else {
+			c.Set("Cache-Control", cachePrivate)
+		}
 	}
 	if c.GetRespHeader("Vary") == "" {
 		c.Set("Vary", varyPublic)
@@ -63,7 +66,20 @@ func applyHeaders(c fiber.Ctx) {
 	}
 }
 
-func isVocabPath(path string) bool {
+// Cache intent is default-deny: a v2 response that names no public lane is
+// private, no-store. The old rule stamped that on /v2/me/ and /v2/moderation/
+// only, which is narrower than the credentialed surface — all of /v2/catalog/*
+// is key-gated and its bodies vary by site fence, nsfw capability and
+// claim_state scope, yet declared nothing, so an intermediary was free to
+// invent an intent. One did: during the 2026-08-28 path-case window Cloudflare
+// cached /v2/Catalog/claim-events and /v2/Catalog/works 200s for max-age=14400
+// (a value this origin never sets), one body carrying actor_uid. Vary:
+// Authorization was already set and did not save us. A third prefix would only
+// be a fourth one waiting to happen; the public set is the opt-in, and it holds
+// nothing whose body a credential can change. /v2/news is public but is
+// deliberately not in it — no measurement says its body is credential-invariant
+// and a wrong "public" is the failure being fixed.
+func isPublicPath(path string) bool {
 	return strings.HasPrefix(path, "/v2/problems") ||
 		strings.HasPrefix(path, "/v2/vocabularies") ||
 		strings.HasPrefix(path, "/v2/catalog/schemas/") ||

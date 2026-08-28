@@ -12,6 +12,7 @@ import (
 	"api/internal/platform/apiv2/repr"
 	"api/internal/platform/apiv2/vocab"
 	"api/internal/platform/devapi"
+	"api/pkg/routepath"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/gofiber/fiber/v3"
@@ -47,6 +48,14 @@ type listWorksOutput struct {
 	Body repr.List[repr.Work]
 }
 
+// The 500 here is redundant, not authoritative: huma.Register appends
+// http.StatusInternalServerError to op.Errors for every operation that declares
+// any error at all (huma.go:736-741), so all 88 v2 operations publish a 500
+// whatever this list says. Dropping it from the two compiled-in lanes
+// (/v2/problems, /v2/vocabularies) was tried and changed nothing in the
+// generated document; removing it there would mean deleting a response huma
+// injects, from two operations out of 88, in annotateSpec — a hand-maintained
+// exception list, which is the shape this file exists to avoid.
 func collectionErrors(extra ...int) []int {
 	out := []int{http.StatusBadRequest, http.StatusTooManyRequests, http.StatusInternalServerError}
 	return append(out, extra...)
@@ -244,19 +253,56 @@ func credentialLimitIdentity(c fiber.Ctx) (protocol.LimitIdentity, bool) {
 	return protocol.LimitIdentity{}, false
 }
 
-// Fiber routes on detectionPath — c.Path() lowercased while CaseSensitive is
-// off, with trailing slashes trimmed while StrictRouting is off — but c.Path()
-// itself returns the raw path. Reading c.Path() here meant /v2/Catalog/works
-// matched the route, missed every prefix below, fell out the open default arm
-// and answered 200 with no credential; /v2/catalog/claim-events/ likewise
-// missed the operator-scope compare. Both were live in production until
-// 2026-08-28. The gate must key on what fiber matched, not on what was typed.
-func routedPath(raw string) string {
-	p := strings.ToLower(raw)
-	for len(p) > 1 && p[len(p)-1] == '/' {
-		p = p[:len(p)-1]
+const (
+	securityAppKey    = "applicationKey"
+	securityUserToken = "userToken"
+)
+
+// One authority for "what credential does this path take", read by the runtime
+// gate and by the published document. The document carried no
+// components.securitySchemes at all and 0 of 88 operations declared security,
+// so every generated client and the MCP surface had no auth parameter to fill
+// in; a second hand-maintained list next to the gate would have drifted from it
+// the first time a prefix moved.
+func v2Security(path string) (scheme, scope string) {
+	switch {
+	case strings.HasPrefix(path, "/v2/me/") || strings.HasPrefix(path, "/v2/moderation/"):
+		return securityUserToken, ""
+	case strings.HasPrefix(path, "/v2/catalog/"):
+		if path == "/v2/catalog/openapi.json" || path == "/v2/catalog/stats" ||
+			strings.HasPrefix(path, "/v2/catalog/schemas/") {
+			return "", ""
+		}
+		return securityAppKey, devapi.ScopeCatalogRead
+	case strings.HasPrefix(path, "/v2/store/"):
+		return securityAppKey, devapi.ScopeStoreRead
 	}
-	return p
+	return "", ""
+}
+
+// The keyless lanes (stats, schemas, openapi.json, news, problems,
+// vocabularies) returned before resolving anything, so an application key sent
+// to them was thrown away and its holder counted into the shared anonymous
+// per-IP bucket instead of its own tier — the same shape as the #92 outage one
+// layer up, where a whole first-party backend shared one 10k/day quota behind
+// one egress IP. Best-effort on purpose: these lanes demand no credential, so a
+// bad key must stay anonymous rather than become a refusal.
+func attachOptionalCredential(c fiber.Ctx, lookup func(context.Context, string) (*devapi.Credential, error)) {
+	if lookup == nil {
+		return
+	}
+	const pfx = "Bearer "
+	h := c.Get("Authorization")
+	if !strings.HasPrefix(h, pfx) {
+		return
+	}
+	token := strings.TrimSpace(h[len(pfx):])
+	if !devapi.IsV2KeyPrefix(token) || !devapi.ValidV2Key(token) {
+		return
+	}
+	if cred, err := lookup(c.Context(), token); err == nil && cred != nil {
+		devapi.WithCredential(c, cred)
+	}
 }
 
 // The gate resolves the moderation verdict once and the handlers consume it,
@@ -275,17 +321,10 @@ func catalogAuthzFrom(ctx context.Context) catalogAuthz {
 
 func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error)) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		path := routedPath(c.Path())
-		scope := ""
-		switch {
-		case strings.HasPrefix(path, "/v2/catalog/"):
-			if path == "/v2/catalog/openapi.json" || path == "/v2/catalog/stats" || strings.HasPrefix(path, "/v2/catalog/schemas/") {
-				return c.Next()
-			}
-			scope = devapi.ScopeCatalogRead
-		case strings.HasPrefix(path, "/v2/store/"):
-			scope = devapi.ScopeStoreRead
-		default:
+		path := routepath.Normalize(c.Path())
+		scheme, scope := v2Security(path)
+		if scheme != securityAppKey {
+			attachOptionalCredential(c, lookup)
 			return c.Next()
 		}
 		h := c.Get("Authorization")

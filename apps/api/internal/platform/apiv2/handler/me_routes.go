@@ -90,8 +90,9 @@ func registerMe(api huma.API, cat *Catalog) {
 	}, listMyClaims(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "listModerationClaims", Method: http.MethodGet, Path: "/v2/moderation/claims",
-		Summary: "Moderation claim queue", Description: "Pending claims. Requires a user access token with review authority.",
-		Tags: []string{"moderation"}, Errors: errs, SkipValidateParams: true,
+		Summary:     "Moderation claim queue",
+		Description: "Claims on the token site awaiting a decision. claim_state= selects which states the queue lists and defaults to pending; the decision face also acts on live, draft and declined (ban) and on hidden (unban), so those are listable here too. Oldest submission first. ids= and refs= are not accepted. Requires a user access token with review authority.",
+		Tags:        []string{"moderation"}, Errors: errs, SkipValidateParams: true,
 	}, listModerationClaims(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "deleteMyCoverVote", Method: http.MethodDelete, Path: "/v2/me/cover-votes/{cover_id}",
@@ -242,13 +243,21 @@ func listMyClaims(cat *Catalog) func(context.Context, *listMyClaimsInput) (*list
 	}
 }
 
-func listModerationClaims(cat *Catalog) func(context.Context, *CollectionInput) (*listClaimsOutput, error) {
-	return func(ctx context.Context, in *CollectionInput) (*listClaimsOutput, error) {
-		q, err := parseCatalogList(ctx, in, collect.ClaimSpec())
+type listModerationClaimsInput struct {
+	CollectionInput
+	ClaimState string `query:"claim_state" maxLength:"128" doc:"Comma-separated closed states: live, draft, pending, declined, hidden. Default pending. hidden is how a banned claim is found for unban."`
+}
+
+func listModerationClaims(cat *Catalog) func(context.Context, *listModerationClaimsInput) (*listClaimsOutput, error) {
+	return func(ctx context.Context, in *listModerationClaimsInput) (*listClaimsOutput, error) {
+		if in == nil {
+			in = &listModerationClaimsInput{}
+		}
+		q, err := parseCatalogList(ctx, &in.CollectionInput, collect.ClaimSpec())
 		if err != nil {
 			return nil, err
 		}
-		page, lerr := cat.ListModerationClaims(ctx, q)
+		page, lerr := cat.ListModerationClaims(ctx, q, in.ClaimState)
 		if lerr != nil {
 			return nil, catalogErr(ctx, lerr)
 		}

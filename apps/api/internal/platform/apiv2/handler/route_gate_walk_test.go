@@ -15,6 +15,7 @@ import (
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/devapi"
+	"api/pkg/routepath"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
@@ -241,6 +242,6 @@ func TestRoutedPathMirrorsFiberDetectionPath(t *testing.T) {
 		"/v2/catalog/works//":       "/v2/catalog/works",
 		"/":                         "/",
 	} {
-		require.Equal(t, want, routedPath(raw), "routedPath(%q)", raw)
+		require.Equal(t, want, routepath.Normalize(raw), "routepath.Normalize(%q)", raw)
 	}
 }

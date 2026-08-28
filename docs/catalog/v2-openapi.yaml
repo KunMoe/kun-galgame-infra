@@ -19,9 +19,10 @@ components:
           description: Field-key to corrected value.
           type: object
         unset:
-          description: Field keys to drop.
+          description: Field keys to drop, at most 100.
           items:
             type: string
+          maxItems: 100
           type: array
       type: object
     Amendment:
@@ -126,6 +127,7 @@ components:
           description: At most 100 items.
           items:
             $ref: "#/components/schemas/Item"
+          maxItems: 100
           type: array
       required:
         - items
@@ -527,6 +529,73 @@ components:
         - site_work_id
         - state
         - content_limit
+      type: object
+    ClaimDecisionRecord:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ClaimDecisionRecord.json
+          format: uri
+          readOnly: true
+          type: string
+        decision:
+          description: approve publishes a pending claim, decline sends it back, ban hides it from any state, unban restores the state it was hidden from.
+          enum:
+            - approve
+            - decline
+            - ban
+            - unban
+          type: string
+          x-vocabulary-closed: true
+        from_state:
+          description: Claim state before this decision. null when the claim had none.
+          enum:
+            - none
+            - live
+            - draft
+            - pending
+            - declined
+            - hidden
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        id:
+          description: Claim event id issued by this decision.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        note:
+          description: Must not be used as a discriminant.
+          maxLength: 2000
+          type: string
+        object:
+          description: Type discriminant. Always decision.
+          enum:
+            - decision
+          type: string
+          x-vocabulary-closed: true
+        to_state:
+          description: Claim state after this decision. The authoritative outcome; do not derive it from decision, because unban has no fixed target.
+          enum:
+            - none
+            - live
+            - draft
+            - pending
+            - declined
+            - hidden
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - object
+        - id
+        - decision
+        - note
+        - from_state
+        - to_state
       type: object
     ClaimEvent:
       additionalProperties: true
@@ -1111,9 +1180,10 @@ components:
           description: Editing-engine field key to value for the minted work, e.g. catalog.work.titles — the same shape GET /v2/moderation/snapshots/{object}/{id} answers. Sent alone it mints from the map; sent with work_id it is 422. Top-level display_name wins over catalog.work.display_name.
           type: object
         refs:
-          description: source:external_id anchors. Used when work_id is absent.
+          description: source:external_id anchors, at most 100. Used when work_id is absent.
           items:
             $ref: "#/components/schemas/ClaimRefBody"
+          maxItems: 100
           type: array
         site_work_id:
           description: The site's own work id. Sent alone with display_name — no work_id, no refs — it mints a work anchored to that id.
@@ -1456,48 +1526,6 @@ components:
           type: string
       required:
         - decision
-      type: object
-    DecisionRecord:
-      additionalProperties: true
-      properties:
-        $schema:
-          description: A URL to the JSON Schema for this object.
-          examples:
-            - https://example.com/DecisionRecord.json
-          format: uri
-          readOnly: true
-          type: string
-        decision:
-          description: Claim decisions are approve, decline, ban, or unban. Proposal decisions are merge or decline.
-          enum:
-            - approve
-            - decline
-            - merge
-            - ban
-            - unban
-          type: string
-          x-vocabulary-closed: true
-        id:
-          description: Decision event id when the backend issues one, else the subject id.
-          maxLength: 20
-          minLength: 1
-          pattern: ^[0-9]+$
-          type: string
-        note:
-          description: Must not be used as a discriminant.
-          maxLength: 2000
-          type: string
-        object:
-          description: Type discriminant. Always decision.
-          enum:
-            - decision
-          type: string
-          x-vocabulary-closed: true
-      required:
-        - object
-        - id
-        - decision
-        - note
       type: object
     EditImage:
       additionalProperties: true
@@ -4475,6 +4503,67 @@ components:
         - title
         - description
       type: object
+    ProposalDecisionRecord:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ProposalDecisionRecord.json
+          format: uri
+          readOnly: true
+          type: string
+        decision:
+          description: merge writes the effective patch and records a revision. decline closes the proposal.
+          enum:
+            - merge
+            - decline
+          type: string
+          x-vocabulary-closed: true
+        from_state:
+          description: Proposal state before this decision. null when it could not be read.
+          enum:
+            - open
+            - merged
+            - declined
+            - withdrawn
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        id:
+          description: Proposal id this decision closed.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+        note:
+          description: Must not be used as a discriminant.
+          maxLength: 2000
+          type: string
+        object:
+          description: Type discriminant. Always decision.
+          enum:
+            - decision
+          type: string
+          x-vocabulary-closed: true
+        to_state:
+          description: Proposal state after this decision, read back rather than derived from decision.
+          enum:
+            - open
+            - merged
+            - declined
+            - withdrawn
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - object
+        - id
+        - decision
+        - note
+        - from_state
+        - to_state
+      type: object
     ProposalRecord:
       additionalProperties: true
       properties:
@@ -6321,6 +6410,15 @@ components:
         - title_kind
         - is_machine
       type: object
+  securitySchemes:
+    applicationKey:
+      description: An application key (nmk_...) minted in the developer portal. Required scopes are named in each operation's description; a key without them answers 403 SCOPE_REQUIRED.
+      scheme: bearer
+      type: http
+    userToken:
+      description: "An OAuth user access token. An application key sent here is refused: /v2/me and /v2/moderation act as a person, not as an app."
+      scheme: bearer
+      type: http
 info:
   description: "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no approval required. The shape evolves additively; a breaking change to this document fails CI."
   title: NextMoe Public API v2
@@ -6520,6 +6618,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Release calendar
       tags:
         - catalog
@@ -6676,6 +6776,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Catalog changes feed
       tags:
         - catalog
@@ -6823,6 +6925,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List characters
       tags:
         - catalog
@@ -6938,6 +7042,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get one character
       tags:
         - catalog
@@ -7037,6 +7143,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Appearances of one character
       tags:
         - catalog
@@ -7176,6 +7284,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Claim event history
       tags:
         - catalog
@@ -7331,6 +7441,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List companies
       tags:
         - catalog
@@ -7438,6 +7550,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get one company
       tags:
         - catalog
@@ -7545,6 +7659,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Company family graph
       tags:
         - catalog
@@ -7700,6 +7816,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List credit names
       tags:
         - catalog
@@ -7807,6 +7925,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get one credit name
       tags:
         - catalog
@@ -7906,6 +8026,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Credits of one credit name
       tags:
         - catalog
@@ -8053,6 +8175,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List engines
       tags:
         - catalog
@@ -8160,6 +8284,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get one engine
       tags:
         - catalog
@@ -8307,6 +8433,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List persons
       tags:
         - catalog
@@ -8414,6 +8542,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get one person
       tags:
         - catalog
@@ -8521,6 +8651,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Credit names of one person
       tags:
         - catalog
@@ -8684,6 +8816,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Edit proposal history
       tags:
         - catalog
@@ -8783,6 +8917,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: One proposal
       tags:
         - catalog
@@ -8938,6 +9074,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Entity merge feed
       tags:
         - catalog
@@ -9085,6 +9223,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List releases
       tags:
         - catalog
@@ -9192,6 +9332,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get one release
       tags:
         - catalog
@@ -9347,6 +9489,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Entity revision history
       tags:
         - catalog
@@ -9454,6 +9598,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: One revision
       tags:
         - catalog
@@ -9695,6 +9841,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Search catalog entities
       tags:
         - catalog
@@ -9842,6 +9990,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List series
       tags:
         - catalog
@@ -9949,6 +10099,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get one series
       tags:
         - catalog
@@ -10144,6 +10296,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List tags
       tags:
         - catalog
@@ -10251,6 +10405,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get one tag
       tags:
         - catalog
@@ -10398,6 +10554,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List traits
       tags:
         - catalog
@@ -10505,6 +10663,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get one trait
       tags:
         - catalog
@@ -10780,6 +10940,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List catalog works
       tags:
         - catalog
@@ -10895,6 +11057,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get one catalog work
       tags:
         - catalog
@@ -10994,6 +11158,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List characters of one work
       tags:
         - catalog
@@ -11093,6 +11259,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List covers of one work
       tags:
         - catalog
@@ -11192,6 +11360,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List credits of one work
       tags:
         - catalog
@@ -11291,6 +11461,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List engines of one work
       tags:
         - catalog
@@ -11390,6 +11562,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List intros of one work
       tags:
         - catalog
@@ -11489,6 +11663,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List links of one work
       tags:
         - catalog
@@ -11588,6 +11764,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List ratings of one work
       tags:
         - catalog
@@ -11687,6 +11865,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List relations of one work
       tags:
         - catalog
@@ -11786,6 +11966,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List releases of one work
       tags:
         - catalog
@@ -11885,6 +12067,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List screenshots of one work
       tags:
         - catalog
@@ -11984,6 +12168,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List series of one work
       tags:
         - catalog
@@ -12091,6 +12277,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: List tags of one work
       tags:
         - catalog
@@ -12268,6 +12456,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: List my claims
       tags:
         - me
@@ -12358,6 +12548,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Submit a claim
       tags:
         - me
@@ -12445,6 +12637,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Delete a draft claim
       tags:
         - me
@@ -12524,6 +12718,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Get one of my claims
       tags:
         - me
@@ -12541,11 +12737,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: Current ETag. Required.
+        - description: Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED.
           in: header
           name: If-Match
+          required: true
           schema:
-            description: Current ETag. Required.
+            description: Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED.
             type: string
       requestBody:
         content:
@@ -12631,6 +12828,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Move a claim the caller owns
       tags:
         - me
@@ -12689,6 +12888,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: List my cover votes
       tags:
         - me
@@ -12758,6 +12959,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Withdraw a cover vote
       tags:
         - me
@@ -12836,6 +13039,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Cast a cover vote
       tags:
         - me
@@ -12947,6 +13152,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Upload an image for an edit proposal
       tags:
         - me
@@ -13100,6 +13307,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: List my news items
       tags:
         - me
@@ -13192,6 +13401,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Submit a news item
       tags:
         - me
@@ -13271,6 +13482,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Get one of my news items
       tags:
         - me
@@ -13377,6 +13590,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Edit or withdraw one of my news items
       tags:
         - me
@@ -13538,6 +13753,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: List my playtimes
       tags:
         - me
@@ -13623,6 +13840,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Batch write playtimes
       tags:
         - me
@@ -13692,6 +13911,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Delete my playtime on one work
       tags:
         - me
@@ -13766,6 +13987,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Get my playtime on one work
       tags:
         - me
@@ -13844,12 +14067,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Replace my playtime on one work
       tags:
         - me
   /v2/me/proposals:
     get:
-      description: state= filters open/merged/declined/withdrawn. Requires a user access token.
+      description: The bearer's own proposals. state= is a closed vocabulary and an unknown value is 400. object= or entity_type= narrows to one family, entity_id= to one entity — on this lane entity_id= is accepted without a family because every row already belongs to the caller. Requires a user access token.
       operationId: listMyProposals
       parameters:
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -13940,13 +14165,37 @@ paths:
             description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
-        - description: open, pending, merged, declined, withdrawn.
+        - description: "Closed: open, pending, merged, declined, withdrawn. Unknown value is 400 UNKNOWN_ENUM_VALUE."
           explode: false
           in: query
           name: state
           schema:
-            description: open, pending, merged, declined, withdrawn.
+            description: "Closed: open, pending, merged, declined, withdrawn. Unknown value is 400 UNKNOWN_ENUM_VALUE."
             maxLength: 16
+            type: string
+        - description: "Closed family filter: work, company, character, release, tag, engine, series."
+          explode: false
+          in: query
+          name: object
+          schema:
+            description: "Closed family filter: work, company, character, release, tag, engine, series."
+            maxLength: 32
+            type: string
+        - description: Editing-engine type, e.g. catalog.work. The same spelling POST /v2/me/proposals takes in its body. Names the same filter as object=; sending both with different families is 400.
+          explode: false
+          in: query
+          name: entity_type
+          schema:
+            description: Editing-engine type, e.g. catalog.work. The same spelling POST /v2/me/proposals takes in its body. Names the same filter as object=; sending both with different families is 400.
+            maxLength: 64
+            type: string
+        - description: Catalog id of one entity. Accepted alone on this lane, which is already fenced to the bearer's own proposals; pair it with object= or entity_type= when ids collide across families.
+          explode: false
+          in: query
+          name: entity_id
+          schema:
+            description: Catalog id of one entity. Accepted alone on this lane, which is already fenced to the bearer's own proposals; pair it with object= or entity_type= when ids collide across families.
+            maxLength: 20
             type: string
       responses:
         "200":
@@ -14005,6 +14254,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: List my proposals
       tags:
         - me
@@ -14095,6 +14346,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: File a proposal
       tags:
         - me
@@ -14191,6 +14444,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Get one of my proposals
       tags:
         - me
@@ -14208,11 +14463,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: Current ETag. Required.
+        - description: Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED.
           in: header
           name: If-Match
+          required: true
           schema:
-            description: Current ETag. Required.
+            description: Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED.
             type: string
       requestBody:
         content:
@@ -14298,6 +14554,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Amend or withdraw a proposal
       tags:
         - me
@@ -14316,11 +14574,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: Current ETag. Required.
+        - description: Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED.
           in: header
           name: If-Match
+          required: true
           schema:
-            description: Current ETag. Required.
+            description: Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED.
             type: string
       requestBody:
         content:
@@ -14406,12 +14665,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Append an amendment
       tags:
         - me
   /v2/moderation/claims:
     get:
-      description: Pending claims. Requires a user access token with review authority.
+      description: Claims on the token site awaiting a decision. claim_state= selects which states the queue lists and defaults to pending; the decision face also acts on live, draft and declined (ban) and on hidden (unban), so those are listable here too. Oldest submission first. ids= and refs= are not accepted. Requires a user access token with review authority.
       operationId: listModerationClaims
       parameters:
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -14502,6 +14763,14 @@ paths:
             description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
             type: string
+        - description: "Comma-separated closed states: live, draft, pending, declined, hidden. Default pending. hidden is how a banned claim is found for unban."
+          explode: false
+          in: query
+          name: claim_state
+          schema:
+            description: "Comma-separated closed states: live, draft, pending, declined, hidden. Default pending. hidden is how a banned claim is found for unban."
+            maxLength: 128
+            type: string
       responses:
         "200":
           content:
@@ -14559,6 +14828,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Moderation claim queue
       tags:
         - moderation
@@ -14639,6 +14910,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Get one moderation claim
       tags:
         - moderation
@@ -14657,11 +14930,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: Current ETag. Required.
+        - description: Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED.
           in: header
           name: If-Match
+          required: true
           schema:
-            description: Current ETag. Required.
+            description: Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED.
             type: string
       requestBody:
         content:
@@ -14674,7 +14948,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DecisionRecord"
+                $ref: "#/components/schemas/ClaimDecisionRecord"
           description: Created
         "400":
           content:
@@ -14742,12 +15016,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Decide a claim
       tags:
         - moderation
   /v2/moderation/proposals:
     get:
-      description: Open proposals on the token site. The whole queue requires a catalog review permission. object=+entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without object= is 422.
+      description: Open proposals on the token site. The whole queue requires a catalog review permission. object= (or entity_type=) with entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without a family is 422.
       operationId: listModerationProposals
       parameters:
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -14846,12 +15122,20 @@ paths:
             description: "Closed family filter: work, company, character, release, tag, engine, series."
             maxLength: 32
             type: string
-        - description: Catalog id of one entity. Requires object=. Narrows the queue to that entity, which its owner may read without a review permission.
+        - description: Editing-engine type, e.g. catalog.work. Names the same filter as object=; sending both with different families is 400.
+          explode: false
+          in: query
+          name: entity_type
+          schema:
+            description: Editing-engine type, e.g. catalog.work. Names the same filter as object=; sending both with different families is 400.
+            maxLength: 64
+            type: string
+        - description: Catalog id of one entity. Requires object= or entity_type=. Narrows the queue to that entity, which its owner may read without a review permission.
           explode: false
           in: query
           name: entity_id
           schema:
-            description: Catalog id of one entity. Requires object=. Narrows the queue to that entity, which its owner may read without a review permission.
+            description: Catalog id of one entity. Requires object= or entity_type=. Narrows the queue to that entity, which its owner may read without a review permission.
             maxLength: 20
             type: string
       responses:
@@ -14911,6 +15195,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Moderation proposal queue
       tags:
         - moderation
@@ -15007,6 +15293,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Get one moderation proposal
       tags:
         - moderation
@@ -15025,11 +15313,12 @@ paths:
             minLength: 1
             pattern: ^[0-9]+$
             type: string
-        - description: Current ETag. Required.
+        - description: Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED.
           in: header
           name: If-Match
+          required: true
           schema:
-            description: Current ETag. Required.
+            description: Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED.
             type: string
       requestBody:
         content:
@@ -15042,7 +15331,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DecisionRecord"
+                $ref: "#/components/schemas/ProposalDecisionRecord"
           description: Created
         "400":
           content:
@@ -15110,6 +15399,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Decide a proposal
       tags:
         - moderation
@@ -15201,6 +15492,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Revert to a revision
       tags:
         - moderation
@@ -15284,6 +15577,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - userToken: []
       summary: Current edit snapshot
       tags:
         - moderation
@@ -15814,6 +16109,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Get purchase and coupon links for one product
       tags:
         - store
@@ -15894,6 +16191,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
           description: Service Unavailable
+      security:
+        - applicationKey: []
       summary: Click statistics for my links
       tags:
         - store

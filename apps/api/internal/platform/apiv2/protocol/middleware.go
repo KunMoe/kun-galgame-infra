@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"api/internal/platform/apiv2/problem"
+	"api/pkg/routepath"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -12,7 +13,7 @@ import (
 func Middleware(store Store) fiber.Handler {
 	lim := newLimiter(store)
 	return func(c fiber.Ctx) error {
-		if !strings.HasPrefix(c.Path(), "/v2") {
+		if !strings.HasPrefix(routepath.Normalize(c.Path()), "/v2") {
 			return c.Next()
 		}
 		applyCORS(c)

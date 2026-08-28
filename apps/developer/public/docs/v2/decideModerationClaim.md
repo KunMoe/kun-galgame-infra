@@ -22,7 +22,7 @@ decision=approve|decline|ban|unban. unban restores the state the claim was hidde
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Catalog work id. |
-| `If-Match` | header | 否 | string | Current ETag. Required. |
+| `If-Match` | header | 是 | string | Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED. |
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v2/moderation/claims/value/decisions" \

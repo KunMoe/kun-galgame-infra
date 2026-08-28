@@ -390,29 +390,53 @@ func (s *ClaimLifecycleService) PendingClaims(ctx context.Context, site string, 
 }
 
 func (s *ClaimLifecycleService) PendingClaimsAfter(ctx context.Context, site string, limit int, before int64) ([]PendingClaimItem, int64, error) {
+	return s.ModerationClaims(ctx, site, []int16{model.ClaimStatePending}, limit, before, 0)
+}
+
+// The sentinel sorts rows whose queue watermark is NULL after every real event
+// id while keeping one totally ordered key, so the keyset can carry them.
+// `submitted_event_id ASC NULLS LAST` with a scalar `> before` cursor put them
+// on page 1 and then made them unreachable — the comparison is NULL for exactly
+// those rows — and the handler also emitted no next_cursor whenever a page
+// ended on one. Inlined as literal SQL rather than bound: gorm's Order() only
+// understands a string or a clause.OrderByColumn and silently drops anything
+// else, so a parameterised ORDER BY would have been no ORDER BY at all.
+const nullEventSentinel = "9223372036854775807"
+
+const claimWatermark = `COALESCE((SELECT max(e.id) FROM catalog_claim_event e
+	WHERE e.work_id = w.id AND e.to_state = w.claim_state), ` + nullEventSentinel + `)`
+
+// The queue used to be claim_state = pending only, while the decision face acts
+// on live|draft|pending|declined (ban) and hidden (unban) — so no GET under
+// /v2/moderation/ could list a hidden claim and unban was reachable only by
+// already knowing the work id.
+func (s *ClaimLifecycleService) ModerationClaims(ctx context.Context, site string, states []int16, limit int, beforeEvent, beforeWork int64) ([]PendingClaimItem, int64, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	q := s.db.WithContext(ctx).Table("catalog_work AS w").
-		Where("w.deleted_at IS NULL AND w.claim_state = ?", model.ClaimStatePending)
+	if len(states) == 0 {
+		states = []int16{model.ClaimStatePending}
+	}
+	base := s.db.WithContext(ctx).Table("catalog_work AS w").
+		Where("w.deleted_at IS NULL AND w.claim_state IN ?", states)
 	if site != "" {
-		q = q.Where("w.site = ?", site)
+		base = base.Where("w.site = ?", site)
 	}
-	if before > 0 {
-		q = q.Where(`(SELECT max(e.id) FROM catalog_claim_event e
-			WHERE e.work_id = w.id AND e.to_state = ?) > ?`, model.ClaimStatePending, before)
-	}
+	// Counted before the cursor predicate: total is the size of the queue, not
+	// of what is left of it, which is what deviation 10 promises.
 	var total int64
-	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+	if err := base.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
+	page := base.Session(&gorm.Session{})
+	if beforeEvent > 0 {
+		page = page.Where("("+claimWatermark+", w.id) > (?, ?)", beforeEvent, beforeWork)
+	}
 	var items []PendingClaimItem
-	if err := q.Session(&gorm.Session{}).
-		Select(`w.id AS work_id, w.display_name, w.site, w.product_work_id,
-		        (SELECT max(e.id) FROM catalog_claim_event e
-		          WHERE e.work_id = w.id AND e.to_state = ?) AS submitted_event_id`,
-			model.ClaimStatePending).
-		Order("submitted_event_id ASC NULLS LAST, w.id ASC").
+	if err := page.
+		Select(`w.id AS work_id, w.display_name, w.site, w.product_work_id, w.claim_state,
+		        ` + claimWatermark + ` AS submitted_event_id`).
+		Order(claimWatermark + " ASC, w.id ASC").
 		Limit(limit).Scan(&items).Error; err != nil {
 		return nil, 0, err
 	}
@@ -424,6 +448,7 @@ type PendingClaimItem struct {
 	DisplayName      string  `json:"display_name"`
 	Site             *string `json:"site"`
 	ProductWorkID    *int64  `json:"product_work_id"`
+	ClaimState       *int16  `json:"claim_state"`
 	SubmittedEventID *int64  `json:"submitted_event_id"`
 }
 

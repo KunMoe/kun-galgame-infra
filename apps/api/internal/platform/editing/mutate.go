@@ -194,7 +194,17 @@ func (e *Engine) AmendProposal(ctx context.Context, proposalID int64, in AmendIn
 			ProposalID: proposalID, Seq: len(amendments) + 1,
 			PatchDelta: rawDelta, AmenderUID: in.Actor.UserID, Note: in.Note,
 		}
-		return etx.Create(amendment).Error
+		if err := etx.Create(amendment).Error; err != nil {
+			return err
+		}
+		// An amendment changes what a merge will write but used to touch only
+		// the child row, so the proposal's validator — built from
+		// edit_proposal.updated_at — never moved: reviewer A's If-Match still
+		// matched after B amended, and the merge wrote B's effective patch
+		// while A believed they had approved their own read. UpdateColumn, not
+		// Update, so GORM does not also stamp the column it is being given.
+		return etx.Model(&Proposal{}).Where("id = ?", proposalID).
+			UpdateColumn("updated_at", time.Now().UTC()).Error
 	})
 	if err != nil {
 		return nil, err

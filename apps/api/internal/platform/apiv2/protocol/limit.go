@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"api/internal/platform/apiv2/problem"
+	"api/pkg/routepath"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -34,7 +35,7 @@ type IdentityFunc func(c fiber.Ctx) (LimitIdentity, bool)
 func RateLimit(store Store, ident IdentityFunc) fiber.Handler {
 	lim := newLimiter(store)
 	return func(c fiber.Ctx) error {
-		if !strings.HasPrefix(c.Path(), "/v2") {
+		if !strings.HasPrefix(routepath.Normalize(c.Path()), "/v2") {
 			return c.Next()
 		}
 		c.Locals(localsPastAuth, true)

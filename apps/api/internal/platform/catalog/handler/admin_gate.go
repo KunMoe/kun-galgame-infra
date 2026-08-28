@@ -7,6 +7,7 @@ import (
 	catperm "api/internal/platform/catalog/perm"
 	"api/pkg/errors"
 	"api/pkg/response"
+	"api/pkg/routepath"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -20,7 +21,7 @@ func AdminGate(clients OAuthClientLookup) fiber.Handler {
 		if err := refuseThirdPartyAdminClient(c, clients); err != nil {
 			return err
 		}
-		if strings.HasPrefix(c.Path(), AdminClaimsPrefix) {
+		if strings.HasPrefix(routepath.Normalize(c.Path()), AdminClaimsPrefix) {
 			return claims(c)
 		}
 		return curation(c)

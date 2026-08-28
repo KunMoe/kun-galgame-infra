@@ -65047,7 +65047,7 @@ export const docsModel: DocsModel = {
                   },
                   {
                     "name": "refs",
-                    "doc": "source:external_id anchors. Used when work_id is absent.",
+                    "doc": "source:external_id anchors, at most 100. Used when work_id is absent.",
                     "type": "array",
                     "itemsOf": {
                       "type": "object",
@@ -67334,9 +67334,9 @@ export const docsModel: DocsModel = {
                 {
                   "name": "If-Match",
                   "in": "header",
-                  "required": false,
+                  "required": true,
                   "type": "string",
-                  "doc": "Current ETag. Required."
+                  "doc": "Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED."
                 }
               ],
               "requestBody": {
@@ -83167,7 +83167,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/me/proposals",
               "summary": "List my proposals",
-              "description": "state= filters open/merged/declined/withdrawn. Requires a user access token.",
+              "description": "The bearer's own proposals. state= is a closed vocabulary and an unknown value is 400. object= or entity_type= narrows to one family, entity_id= to one entity — on this lane entity_id= is accepted without a family because every row already belongs to the caller. Requires a user access token.",
               "scope": "",
               "auth": {
                 "kind": "user_token",
@@ -83258,7 +83258,28 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "open, pending, merged, declined, withdrawn."
+                  "doc": "Closed: open, pending, merged, declined, withdrawn. Unknown value is 400 UNKNOWN_ENUM_VALUE."
+                },
+                {
+                  "name": "object",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Closed family filter: work, company, character, release, tag, engine, series."
+                },
+                {
+                  "name": "entity_type",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Editing-engine type, e.g. catalog.work. The same spelling POST /v2/me/proposals takes in its body. Names the same filter as object=; sending both with different families is 400."
+                },
+                {
+                  "name": "entity_id",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Catalog id of one entity. Accepted alone on this lane, which is already fenced to the bearer's own proposals; pair it with object= or entity_type= when ids collide across families."
                 }
               ],
               "responses": [
@@ -86737,9 +86758,9 @@ export const docsModel: DocsModel = {
                 {
                   "name": "If-Match",
                   "in": "header",
-                  "required": false,
+                  "required": true,
                   "type": "string",
-                  "doc": "Current ETag. Required."
+                  "doc": "Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED."
                 }
               ],
               "requestBody": {
@@ -88086,9 +88107,9 @@ export const docsModel: DocsModel = {
                 {
                   "name": "If-Match",
                   "in": "header",
-                  "required": false,
+                  "required": true,
                   "type": "string",
-                  "doc": "Current ETag. Required."
+                  "doc": "Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED."
                 }
               ],
               "requestBody": {
@@ -88109,7 +88130,7 @@ export const docsModel: DocsModel = {
                   },
                   {
                     "name": "unset",
-                    "doc": "Field keys to drop.",
+                    "doc": "Field keys to drop, at most 100.",
                     "type": "array",
                     "itemsOf": {
                       "type": "string"
@@ -89427,7 +89448,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/moderation/claims",
               "summary": "Moderation claim queue",
-              "description": "Pending claims. Requires a user access token with review authority.",
+              "description": "Claims on the token site awaiting a decision. claim_state= selects which states the queue lists and defaults to pending; the decision face also acts on live, draft and declined (ban) and on hidden (unban), so those are listable here too. Oldest submission first. ids= and refs= are not accepted. Requires a user access token with review authority.",
               "scope": "",
               "auth": {
                 "kind": "user_token",
@@ -89512,6 +89533,13 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "true includes r18. false or absent hides r18. Only true or false."
+                },
+                {
+                  "name": "claim_state",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Comma-separated closed states: live, draft, pending, declined, hidden. Default pending. hidden is how a banned claim is found for unban."
                 }
               ],
               "responses": [
@@ -91542,9 +91570,9 @@ export const docsModel: DocsModel = {
                 {
                   "name": "If-Match",
                   "in": "header",
-                  "required": false,
+                  "required": true,
                   "type": "string",
-                  "doc": "Current ETag. Required."
+                  "doc": "Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED."
                 }
               ],
               "requestBody": {
@@ -91579,20 +91607,34 @@ export const docsModel: DocsModel = {
                       {
                         "name": "decision",
                         "required": true,
-                        "doc": "Claim decisions are approve, decline, ban, or unban. Proposal decisions are merge or decline.",
+                        "doc": "approve publishes a pending claim, decline sends it back, ban hides it from any state, unban restores the state it was hidden from.",
                         "enum": [
                           "approve",
                           "decline",
-                          "merge",
                           "ban",
                           "unban"
                         ],
                         "type": "string"
                       },
                       {
+                        "name": "from_state",
+                        "required": true,
+                        "nullable": true,
+                        "doc": "Claim state before this decision. null when the claim had none.",
+                        "enum": [
+                          "none",
+                          "live",
+                          "draft",
+                          "pending",
+                          "declined",
+                          "hidden"
+                        ],
+                        "type": "string"
+                      },
+                      {
                         "name": "id",
                         "required": true,
-                        "doc": "Decision event id when the backend issues one, else the subject id.",
+                        "doc": "Claim event id issued by this decision.",
                         "type": "string"
                       },
                       {
@@ -91607,6 +91649,20 @@ export const docsModel: DocsModel = {
                         "doc": "Type discriminant. Always decision.",
                         "enum": [
                           "decision"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "name": "to_state",
+                        "required": true,
+                        "doc": "Claim state after this decision. The authoritative outcome; do not derive it from decision, because unban has no fixed target.",
+                        "enum": [
+                          "none",
+                          "live",
+                          "draft",
+                          "pending",
+                          "declined",
+                          "hidden"
                         ],
                         "type": "string"
                       }
@@ -92732,7 +92788,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/moderation/proposals",
               "summary": "Moderation proposal queue",
-              "description": "Open proposals on the token site. The whole queue requires a catalog review permission. object=+entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without object= is 422.",
+              "description": "Open proposals on the token site. The whole queue requires a catalog review permission. object= (or entity_type=) with entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without a family is 422.",
               "scope": "",
               "auth": {
                 "kind": "user_token",
@@ -92826,11 +92882,18 @@ export const docsModel: DocsModel = {
                   "doc": "Closed family filter: work, company, character, release, tag, engine, series."
                 },
                 {
+                  "name": "entity_type",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Editing-engine type, e.g. catalog.work. Names the same filter as object=; sending both with different families is 400."
+                },
+                {
                   "name": "entity_id",
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "Catalog id of one entity. Requires object=. Narrows the queue to that entity, which its owner may read without a review permission."
+                  "doc": "Catalog id of one entity. Requires object= or entity_type=. Narrows the queue to that entity, which its owner may read without a review permission."
                 }
               ],
               "responses": [
@@ -94965,9 +95028,9 @@ export const docsModel: DocsModel = {
                 {
                   "name": "If-Match",
                   "in": "header",
-                  "required": false,
+                  "required": true,
                   "type": "string",
-                  "doc": "Current ETag. Required."
+                  "doc": "Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED."
                 }
               ],
               "requestBody": {
@@ -95000,20 +95063,30 @@ export const docsModel: DocsModel = {
                       {
                         "name": "decision",
                         "required": true,
-                        "doc": "Claim decisions are approve, decline, ban, or unban. Proposal decisions are merge or decline.",
+                        "doc": "merge writes the effective patch and records a revision. decline closes the proposal.",
                         "enum": [
-                          "approve",
-                          "decline",
                           "merge",
-                          "ban",
-                          "unban"
+                          "decline"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "name": "from_state",
+                        "required": true,
+                        "nullable": true,
+                        "doc": "Proposal state before this decision. null when it could not be read.",
+                        "enum": [
+                          "open",
+                          "merged",
+                          "declined",
+                          "withdrawn"
                         ],
                         "type": "string"
                       },
                       {
                         "name": "id",
                         "required": true,
-                        "doc": "Decision event id when the backend issues one, else the subject id.",
+                        "doc": "Proposal id this decision closed.",
                         "type": "string"
                       },
                       {
@@ -95028,6 +95101,18 @@ export const docsModel: DocsModel = {
                         "doc": "Type discriminant. Always decision.",
                         "enum": [
                           "decision"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "name": "to_state",
+                        "required": true,
+                        "doc": "Proposal state after this decision, read back rather than derived from decision.",
+                        "enum": [
+                          "open",
+                          "merged",
+                          "declined",
+                          "withdrawn"
                         ],
                         "type": "string"
                       }

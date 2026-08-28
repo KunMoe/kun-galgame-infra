@@ -22,7 +22,7 @@ func (c *Catalog) ListPlaytimes(ctx context.Context, q collect.Query, workIDs []
 		return repr.List[repr.UserPlaytime]{}, err
 	}
 	if len(workIDs) > 0 {
-		if len(workIDs) > 100 {
+		if len(workIDs) > collect.MaxBatchItems {
 			return repr.List[repr.UserPlaytime]{}, problem.New(problem.CodeTooManyIDs, "", "", "work_ids named more than 100 items.")
 		}
 		items := make([]repr.UserPlaytime, 0, len(workIDs))
@@ -147,7 +147,10 @@ func (c *Catalog) BatchPlaytimes(ctx context.Context, items []struct {
 	Minutes int
 }) (repr.List[repr.PlaytimeBatchItem], error) {
 	out := make([]repr.PlaytimeBatchItem, 0, len(items))
-	if len(items) > 100 {
+	// maxItems on the request schema refuses this first with a 422; the
+	// guard stays because the schema and this function are two different
+	// authorities and only one of them is the one that writes rows.
+	if len(items) > collect.MaxBatchItems {
 		return repr.List[repr.PlaytimeBatchItem]{}, problem.New(problem.CodeTooManyIDs, "", "", "batch playtimes named more than 100 items.")
 	}
 	for i, it := range items {
