@@ -155,7 +155,7 @@ run() {
 # 64MB docker-default /dev/shm, and parallel hash joins on the big staging
 # tables exhaust it (SQLSTATE 53100). Serial plans spill to disk instead —
 # slower but bounded. Remove once the compose sets shm_size on postgres.
-DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$KUN_PG_PASSWORD}"; B="host=127.0.0.1 port=5432 user=$U password=$P sslmode=disable options='"'"'-c max_parallel_workers_per_gather=0'"'"'"; CAT="$B dbname=kun_catalog"; EG="$B dbname=erogamescape"; DL="$B dbname=dlsite"'
+DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$KUN_PG_PASSWORD}"; B="host=127.0.0.1 port=5432 user=$U password=$P sslmode=disable options='"'"'-c max_parallel_workers_per_gather=0'"'"'"; CAT="$B dbname=kun_catalog"; EG="$B dbname=erogamescape"; DL="$B dbname=dlsite"; HL="$B dbname=howlongtobeat"'
 
 # 4. Re-stage the 29 src_vndb tables plus vn_vote_stats (env-config tool, no --dsn).
 run ingest-vndb --dump-dir /w/dump/db --votes-file /w/votes.gz
@@ -278,6 +278,18 @@ run import-vndb-releases --apply --stale-anchors-out /w/stale-anchors.tsv
 #      wrote zero).
 run sh -c "$DSNSH"'; backfill-work-zh-titles --dsn "$CAT" --mode source --source vndb --apply'
 
+# 6a4. Steam release anchors from the extlinks step 4 just reloaded. Until this
+#      line the steam lane only ever ran by hand (store wave, 2026-08-26), so
+#      works minted after that day had no steam anchor and the whole HLTB layer
+#      below would silently never cover them. --only steam on purpose: the dmm /
+#      dlsite lanes stay manual, this run changes nothing about them.
+run sh -c "$DSNSH"'; import-store-anchors --dsn "$CAT" --only steam --apply'
+
+# 6a5. HLTB work refs ride the steam anchors 6a4 just minted (HLTB carries no
+#      vndb ids; the Steam appid is the only deterministic bridge). Probable,
+#      rule:hltb-steam, rejection-guarded — a pair a human rejected stays dead.
+run sh -c "$DSNSH"'; import-hltb-refs --dsn "$CAT" --hltb-dsn "$HL" --apply'
+
 # 6b. Character facets for the characters 6a just created.
 run sh -c "$DSNSH"'; import-character-traits --dsn "$CAT" --apply'
 run sh -c "$DSNSH"'; backfill-character-attrs --dsn "$CAT" --apply'
@@ -291,6 +303,7 @@ run sh -c "$DSNSH"'; import-label-relations --dsn "$CAT" --apply'
 run sh -c "$DSNSH"'; import-vndb-links --dsn "$CAT" --apply'
 run import-work-relations --source vndb --run
 run sh -c "$DSNSH"'; backfill-work-playtime --dsn "$CAT" --eg-dsn "$EG" --source vndb --apply'
+run sh -c "$DSNSH"'; backfill-work-playtime --dsn "$CAT" --hltb-dsn "$HL" --source hltb --apply'
 
 # 6d. Derived: re-cluster the relation graph the vndb lane just grew. Reaper
 #     semantics — an unchanged graph writes nothing; the worklist captures the
@@ -303,7 +316,7 @@ run sh -c "$DSNSH"'; build-derived-series --dsn "$CAT" --apply --receipts /w/sta
 #     bgm-refresh issues the identical command on its own clock and that is
 #     fine: every lane is a change-detected upsert, so whichever job runs second
 #     reports `unchanged` and writes nothing.
-run sh -c "$DSNSH"'; backfill-work-ratings --dsn "$CAT" --eg-dsn "$EG" --dlsite-dsn "$DL" --apply'
+run sh -c "$DSNSH"'; backfill-work-ratings --dsn "$CAT" --eg-dsn "$EG" --dlsite-dsn "$DL" --hltb-dsn "$HL" --apply'
 
 # DELIBERATELY NOT RUN HERE (each is a manual follow-up, see NOTES.md):
 #   reconcile-org-labels  — mints labels and human-review candidates

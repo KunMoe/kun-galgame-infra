@@ -18,6 +18,7 @@ func main() {
 	dsn := flag.String("dsn", "", "catalog DSN (also hosts src_bangumi) — REQUIRED; the rehearsal copy locally, the live catalog only in the acceptance run")
 	egDSN := flag.String("eg-dsn", "", "EG mirror DSN (the erogamescape database) — REQUIRED")
 	dlsiteDSN := flag.String("dlsite-dsn", "", "DLsite mirror DSN (the dlsite database) — REQUIRED")
+	hltbDSN := flag.String("hltb-dsn", "", "HLTB mirror DSN (the howlongtobeat database); empty skips the hltb lane")
 	limit := flag.Int("limit", 0, "max candidate works per lane (0 = all)")
 	offset := flag.Int("offset", 0, "skip this many candidate works per lane (for chunking)")
 	flag.Parse()
@@ -33,6 +34,7 @@ func main() {
 		DSN:       *dsn,
 		EGDSN:     *egDSN,
 		DlsiteDSN: *dlsiteDSN,
+		HltbDSN:   *hltbDSN,
 		Limit:     *limit,
 		Offset:    *offset,
 	})
@@ -75,6 +77,14 @@ func main() {
 		"pop_planned", st.PopPlanned,
 		"pop_written", st.PopWritten,
 		"pop_unchanged", st.PopUnchanged,
+		"hltb_candidates", st.HltbCandidates,
+		"hltb_multi_anchor", st.HltbMultiAnchor,
+		"hltb_missing_mirror", st.HltbMissingMirror,
+		"hltb_no_score", st.HltbNoScore,
+		"hltb_planned", st.HltbPlanned,
+		"hltb_written", st.HltbWritten,
+		"hltb_unchanged", st.HltbUnchanged,
+		"hltb_distribution", st.HltbDistribution,
 		"errors", st.Errors,
 	)
 	if !*apply {

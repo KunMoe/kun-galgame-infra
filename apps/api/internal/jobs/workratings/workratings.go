@@ -19,6 +19,7 @@ type Opts struct {
 	DSN       string
 	EGDSN     string
 	DlsiteDSN string
+	HltbDSN   string
 	Limit     int
 	Offset    int
 }
@@ -74,12 +75,22 @@ type Stats struct {
 	PopWritten        int
 	PopUnchanged      int
 
+	HltbCandidates    int
+	HltbMultiAnchor   int
+	HltbMissingMirror int
+	HltbNoScore       int
+	HltbPlanned       int
+	HltbWritten       int
+	HltbUnchanged     int
+	HltbDistribution  int
+
 	Errors int
 
 	BgmSamples  []Sample
 	EgSamples   []Sample
 	DlSamples   []Sample
 	VndbSamples []Sample
+	HltbSamples []Sample
 }
 
 func Run(ctx context.Context, opts Opts) (*Stats, error) {
@@ -133,6 +144,20 @@ func Run(ctx context.Context, opts Opts) (*Stats, error) {
 	if err := runVndbLane(ctx, db, w, reg, opts); err != nil {
 		return nil, err
 	}
+	if opts.HltbDSN != "" {
+		hltbDB, err := openGorm(opts.HltbDSN)
+		if err != nil {
+			return nil, fmt.Errorf("connect HLTB mirror db: %w", err)
+		}
+		if sqlDB, e := hltbDB.DB(); e == nil {
+			defer sqlDB.Close()
+		}
+		if err := runHltbLane(ctx, db, hltbDB, w, reg, opts); err != nil {
+			return nil, err
+		}
+	} else {
+		slog.Warn("hltb lane SKIPPED: --hltb-dsn not set")
+	}
 	if err := w.touch(ctx); err != nil {
 		return nil, fmt.Errorf("touch works: %w", err)
 	}
@@ -154,11 +179,16 @@ func Run(ctx context.Context, opts Opts) (*Stats, error) {
 		"vndb_planned", st.VndbPlanned, "vndb_written", st.VndbWritten, "vndb_unchanged", st.VndbUnchanged,
 		"vndb_stats", st.VndbStats, "vndb_distribution", st.VndbDistribution, "vndb_no_votes", st.VndbNoVotes,
 		"pop_planned", st.PopPlanned, "pop_written", st.PopWritten, "pop_unchanged", st.PopUnchanged,
+		"hltb_candidates", st.HltbCandidates, "hltb_multi_anchor", st.HltbMultiAnchor,
+		"hltb_missing_mirror", st.HltbMissingMirror, "hltb_no_score", st.HltbNoScore,
+		"hltb_planned", st.HltbPlanned, "hltb_written", st.HltbWritten, "hltb_unchanged", st.HltbUnchanged,
+		"hltb_distribution", st.HltbDistribution,
 		"errors", st.Errors)
 	logSamples("bgm", st.BgmSamples)
 	logSamples("eg", st.EgSamples)
 	logSamples("dlsite", st.DlSamples)
 	logSamples("vndb", st.VndbSamples)
+	logSamples("hltb", st.HltbSamples)
 	return st, nil
 }
 

@@ -17,10 +17,11 @@ import (
 const capMinutes = 1000 * 60
 
 type Opts struct {
-	Apply  bool
-	DSN    string
-	EGDSN  string
-	Source string
+	Apply   bool
+	DSN     string
+	EGDSN   string
+	HltbDSN string
+	Source  string
 }
 
 type Stats struct {
@@ -35,6 +36,12 @@ type Stats struct {
 	VndbWritten   int
 	VndbUnchanged int
 
+	HltbAnchored  int
+	HltbPlanned   int
+	HltbRejected  int
+	HltbWritten   int
+	HltbUnchanged int
+
 	Errors int
 }
 
@@ -47,6 +54,9 @@ func Run(ctx context.Context, opts Opts) (*Stats, error) {
 	}
 	if (opts.Source == "eg" || opts.Source == "all") && opts.EGDSN == "" {
 		return nil, fmt.Errorf("EG mirror DSN is required for the eg lane (--eg-dsn)")
+	}
+	if opts.Source == "hltb" && opts.HltbDSN == "" {
+		return nil, fmt.Errorf("HLTB mirror DSN is required for the hltb lane (--hltb-dsn)")
 	}
 	db, err := openGorm(opts.DSN)
 	if err != nil {
@@ -70,11 +80,20 @@ func Run(ctx context.Context, opts Opts) (*Stats, error) {
 			return nil, err
 		}
 	}
+	if opts.Source == "hltb" || (opts.Source == "all" && opts.HltbDSN != "") {
+		if err := runHltb(ctx, db, opts, ids, st); err != nil {
+			return nil, err
+		}
+	} else if opts.Source == "all" {
+		slog.Warn("hltb lane SKIPPED: --hltb-dsn not set")
+	}
 	slog.Info("workplaytime done", "apply", opts.Apply,
 		"eg_anchored", st.EGAnchored, "eg_planned", st.EGPlanned, "eg_rejected", st.EGRejected,
 		"eg_written", st.EGWritten, "eg_unchanged", st.EGUnchanged,
 		"vndb_planned", st.VndbPlanned, "vndb_rejected", st.VndbRejected,
-		"vndb_written", st.VndbWritten, "vndb_unchanged", st.VndbUnchanged, "errors", st.Errors)
+		"vndb_written", st.VndbWritten, "vndb_unchanged", st.VndbUnchanged,
+		"hltb_anchored", st.HltbAnchored, "hltb_planned", st.HltbPlanned, "hltb_rejected", st.HltbRejected,
+		"hltb_written", st.HltbWritten, "hltb_unchanged", st.HltbUnchanged, "errors", st.Errors)
 	return st, nil
 }
 
@@ -82,6 +101,7 @@ type registryIDs struct {
 	galgameMedium int16
 	egSource      int16
 	vndbSource    int16
+	hltbSource    int16
 }
 
 func resolveIDs(ctx context.Context, db *gorm.DB) (registryIDs, error) {
@@ -95,8 +115,12 @@ func resolveIDs(ctx context.Context, db *gorm.DB) (registryIDs, error) {
 	if err := db.WithContext(ctx).Raw(`SELECT id FROM catalog_source WHERE key = 'vndb'`).Scan(&r.vndbSource).Error; err != nil {
 		return r, fmt.Errorf("resolve vndb source: %w", err)
 	}
-	if r.galgameMedium == 0 || r.egSource == 0 || r.vndbSource == 0 {
-		return r, fmt.Errorf("registry not seeded (medium=%d eg=%d vndb=%d)", r.galgameMedium, r.egSource, r.vndbSource)
+	if err := db.WithContext(ctx).Raw(`SELECT id FROM catalog_source WHERE key = 'howlongtobeat'`).Scan(&r.hltbSource).Error; err != nil {
+		return r, fmt.Errorf("resolve howlongtobeat source: %w", err)
+	}
+	if r.galgameMedium == 0 || r.egSource == 0 || r.vndbSource == 0 || r.hltbSource == 0 {
+		return r, fmt.Errorf("registry not seeded (medium=%d eg=%d vndb=%d howlongtobeat=%d)",
+			r.galgameMedium, r.egSource, r.vndbSource, r.hltbSource)
 	}
 	return r, nil
 }

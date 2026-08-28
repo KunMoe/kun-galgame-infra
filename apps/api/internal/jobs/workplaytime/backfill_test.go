@@ -20,9 +20,10 @@ import (
 )
 
 var (
-	testDB    *gorm.DB
-	testDSN   string
-	egTestDSN string
+	testDB      *gorm.DB
+	testDSN     string
+	egTestDSN   string
+	hltbTestDSN string
 )
 
 func TestMain(m *testing.M) {
@@ -50,6 +51,8 @@ func TestMain(m *testing.M) {
 	for _, ddl := range []string{
 		`CREATE SCHEMA IF NOT EXISTS workplaytime_eg`,
 		`CREATE TABLE IF NOT EXISTS workplaytime_eg.games (id bigint PRIMARY KEY, raw jsonb)`,
+		`CREATE SCHEMA IF NOT EXISTS workplaytime_hltb`,
+		`CREATE TABLE IF NOT EXISTS workplaytime_hltb.games (hltb_id bigint PRIMARY KEY, raw jsonb)`,
 	} {
 		if err := db.Exec(ddl).Error; err != nil {
 			fmt.Fprintf(os.Stderr, "SKIP: mirror fixture failed: %v\n", err)
@@ -57,6 +60,7 @@ func TestMain(m *testing.M) {
 		}
 	}
 	egTestDSN = testDSN + " options='-csearch_path=workplaytime_eg'"
+	hltbTestDSN = testDSN + " options='-csearch_path=workplaytime_hltb'"
 	testDB = db
 	os.Exit(m.Run())
 }
@@ -65,7 +69,7 @@ func clean(t *testing.T) {
 	t.Helper()
 	for _, table := range []string{
 		"catalog_work_playtime", "catalog_external_ref", "catalog_work",
-		"src_vndb.vn", "workplaytime_eg.games",
+		"src_vndb.vn", "workplaytime_eg.games", "workplaytime_hltb.games",
 	} {
 		require.NoError(t, testDB.Exec("TRUNCATE "+table+" RESTART IDENTITY CASCADE").Error)
 	}
