@@ -26,6 +26,7 @@ import (
 	newsmodel "api/internal/platform/news/model"
 	"api/internal/platform/news/newstest"
 	newssvc "api/internal/platform/news/service"
+	"api/internal/testsupport/dbtest"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
@@ -149,8 +150,12 @@ var (
 
 func liveCatalog(t *testing.T) *liveEnv {
 	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
+	// dbtest.DSN, not os.Getenv: the bare read skipped green under
+	// REQUIRE_DB_TESTS=1 with no DSN, so the whole v2 live suite -- every gate,
+	// fence and validator test in this wave -- reported ok in 0.3s while
+	// running nothing, on the one flag that exists to make that impossible.
+	dsn, ok := dbtest.DSN()
+	if !ok {
 		t.Skip("TEST_DATABASE_DSN unset")
 	}
 	liveOnce.Do(func() {
