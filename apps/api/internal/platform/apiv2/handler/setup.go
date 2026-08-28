@@ -50,6 +50,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	app.Use(catalogAuth(opt.LookupCredential))
 	app.Use(userAuth(opt.LookupUser, opt.LookupSite))
 	app.Use(protocol.RateLimit(opt.Store, credentialLimitIdentity))
+	app.Use(protocol.Idempotency(opt.Store, credentialLimitIdentity))
 
 	cfg := huma.DefaultConfig("NextMoe Public API v2", "2.1.0")
 	cfg.OpenAPIPath = ""

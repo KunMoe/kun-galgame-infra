@@ -20,6 +20,7 @@ func protoApp(t *testing.T) *fiber.App {
 	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
 	app.Use(Middleware(store))
 	app.Use(RateLimit(store, nil))
+	app.Use(Idempotency(store, nil))
 	app.Get("/v2/problems", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"object": "list", "items": []any{}})
 	})

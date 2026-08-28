@@ -1,7 +1,6 @@
 package protocol
 
 import (
-	"context"
 	"strconv"
 	"strings"
 	"time"
@@ -16,11 +15,7 @@ const (
 	QuotaPerDay   = 10000
 )
 
-const (
-	localsRateKey  = "v2_rate_key"
-	localsQuotaKey = "v2_quota_key"
-	localsCounted  = "v2_counted"
-)
+const localsPastAuth = "v2_past_auth"
 
 type LimitIdentity struct {
 	Key       string
@@ -31,17 +26,18 @@ type LimitIdentity struct {
 
 type IdentityFunc func(c fiber.Ctx) (LimitIdentity, bool)
 
-// RateLimit must be registered AFTER the auth middlewares and INSIDE
-// Middleware: the counting decision needs the resolved credential, which does
-// not exist yet when Middleware runs, while the 304-decrement must happen
-// after applyETag rewrites the status, which only Middleware sees. The two
-// halves meet through the locals keys.
+// RateLimit must be registered AFTER the auth middlewares: the counting
+// decision needs the resolved credential, which does not exist yet when
+// Middleware runs. Reaching this handler at all is therefore the proof that
+// the auth stack let the request through, which is what localsPastAuth
+// records for the auth-failure bucket.
 func RateLimit(store Store, ident IdentityFunc) fiber.Handler {
 	lim := newLimiter(store)
 	return func(c fiber.Ctx) error {
 		if !strings.HasPrefix(c.Path(), "/v2") {
 			return c.Next()
 		}
+		c.Locals(localsPastAuth, true)
 		id := LimitIdentity{Rate: RatePerMinute, Quota: QuotaPerDay}
 		if ident != nil {
 			if ki, ok := ident(c); ok {
@@ -84,16 +80,15 @@ func (l *limiter) before(c fiber.Ctx, id LimitIdentity) error {
 
 	n, err := l.store.Incr(ctx, rateKey, 70*time.Second)
 	if err != nil {
+		storeDegraded("rate counter", err)
 		return nil
 	}
 	qn, err := l.store.Incr(ctx, quotaKey, untilTomorrow(now))
 	if err != nil {
+		storeDegraded("quota counter", err)
 		_ = l.store.Decr(ctx, rateKey)
 		return nil
 	}
-	c.Locals(localsRateKey, rateKey)
-	c.Locals(localsQuotaKey, quotaKey)
-	c.Locals(localsCounted, true)
 
 	rateRemaining := id.Rate - int(n)
 	if rateRemaining < 0 {
@@ -123,23 +118,6 @@ func (l *limiter) before(c fiber.Ctx, id LimitIdentity) error {
 		return tooMany(c, problem.CodeQuotaExceeded, quotaReset)
 	}
 	return nil
-}
-
-func (l *limiter) after(c fiber.Ctx) {
-	if c.Response().StatusCode() != fiber.StatusNotModified {
-		return
-	}
-	counted, _ := c.Locals(localsCounted).(bool)
-	if !counted {
-		return
-	}
-	ctx := context.Background()
-	if k, _ := c.Locals(localsRateKey).(string); k != "" {
-		_ = l.store.Decr(ctx, k)
-	}
-	if k, _ := c.Locals(localsQuotaKey).(string); k != "" {
-		_ = l.store.Decr(ctx, k)
-	}
 }
 
 func writeLimitHeaders(c fiber.Ctx, id LimitIdentity, rateRemaining, rateReset int) {

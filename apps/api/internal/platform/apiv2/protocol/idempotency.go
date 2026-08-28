@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"api/internal/platform/apiv2/problem"
@@ -20,8 +21,40 @@ type idempotencyRecord struct {
 	Hash        string `json:"hash"`
 }
 
-func idempotencyKey(c fiber.Ctx) string {
-	return "v2:idem:" + c.IP() + ":" + c.Method() + ":" + c.Path() + ":" + c.Get("Idempotency-Key")
+// Idempotency must be registered AFTER the auth middlewares. The key was
+// c.IP() + method + path + Idempotency-Key while this lived in Middleware
+// (pre-auth), and a first-party backend relays every one of its users from one
+// egress IP — so two different users sending the same Idempotency-Key on the
+// same path replayed each other's writes.
+func Idempotency(store Store, ident IdentityFunc) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		if store == nil || c.Method() != fiber.MethodPost || !strings.HasPrefix(c.Path(), "/v2") {
+			return c.Next()
+		}
+		if c.Get("Idempotency-Key") == "" {
+			return c.Next()
+		}
+		key := idempotencyKey(c, ident)
+		if replayed, err := replayPOST(store, c, key); replayed {
+			if err != nil {
+				return writeErr(c, err)
+			}
+			return nil
+		}
+		err := c.Next()
+		rememberPOST(store, c, key)
+		return err
+	}
+}
+
+func idempotencyKey(c fiber.Ctx, ident IdentityFunc) string {
+	who := "ip:" + clientIP(c)
+	if ident != nil {
+		if id, ok := ident(c); ok && id.Key != "" {
+			who = id.Key
+		}
+	}
+	return "v2:idem:" + who + ":" + c.Method() + ":" + c.Path() + ":" + c.Get("Idempotency-Key")
 }
 
 func bodyHash(b []byte) string {
@@ -29,12 +62,8 @@ func bodyHash(b []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func replayPOST(store Store, c fiber.Ctx) (replayed bool, err error) {
-	key := c.Get("Idempotency-Key")
-	if key == "" || store == nil {
-		return false, nil
-	}
-	raw, err := store.Get(c.Context(), idempotencyKey(c))
+func replayPOST(store Store, c fiber.Ctx, key string) (replayed bool, err error) {
+	raw, err := store.Get(c.Context(), key)
 	if err != nil || len(raw) == 0 {
 		return false, nil
 	}
@@ -56,11 +85,7 @@ func replayPOST(store Store, c fiber.Ctx) (replayed bool, err error) {
 	return true, c.Send(rec.Body)
 }
 
-func rememberPOST(store Store, c fiber.Ctx) {
-	key := c.Get("Idempotency-Key")
-	if key == "" || store == nil {
-		return
-	}
+func rememberPOST(store Store, c fiber.Ctx, key string) {
 	status := c.Response().StatusCode()
 	// 429 became reachable here when the limiter moved inside the chain
 	// (RateLimit runs within c.Next()); remembering one would replay the
@@ -78,5 +103,5 @@ func rememberPOST(store Store, c fiber.Ctx) {
 	if err != nil {
 		return
 	}
-	_ = store.Set(c.Context(), idempotencyKey(c), b, idempotencyTTL)
+	_ = store.Set(c.Context(), key, b, idempotencyTTL)
 }

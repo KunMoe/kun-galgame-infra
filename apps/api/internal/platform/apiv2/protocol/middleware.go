@@ -21,22 +21,13 @@ func Middleware(store Store) fiber.Handler {
 		}
 		_ = problem.RequestID(c)
 
-		if c.Method() == fiber.MethodPost {
-			if replayed, err := replayPOST(store, c); replayed {
-				if err != nil {
-					return writeErr(c, err)
-				}
-				applyHeaders(c)
-				return nil
-			}
+		if lim.authFailBlocked(c) {
+			return writeErr(c, authFailRefusal(c))
 		}
 
 		err := c.Next()
 		applyETag(c)
-		lim.after(c)
-		if c.Method() == fiber.MethodPost {
-			rememberPOST(store, c)
-		}
+		lim.countAuthFailure(c)
 		applyHeaders(c)
 
 		status := c.Response().StatusCode()
