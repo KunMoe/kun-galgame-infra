@@ -120,7 +120,7 @@ Date: 2026-08-24, GA declared 2026-08-25 (stage 9); news write face added 2026-0
 | Route | Bind |
 |---|---|
 | `POST /v2/me/playtimes` | 207 list of playtime-or-problem items |
-| `POST /v2/me/claims` | `work_id` → `Act(claim)`; else `refs` → `LookupEntityID` then claim or mint with `display_name` + links |
+| `POST /v2/me/claims` | `work_id` → `Act(claim)`; else `refs` → `LookupEntityID` then claim or mint; else `site_work_id` and/or `field_values` → mint. Every mint is one `SubmitWork` call, `Trusted` from `catalog.edit.trusted` (wave R4) |
 | `GET/PATCH /v2/me/claims/{id}` | `{id}` is catalog work id. PATCH `{state: live\|pending\|withdrawn}` + If-Match, one `Act` call each (publish / submit / withdraw) |
 | `POST /v2/me/edit-images` | multipart `preset` + `file`; `cover`/`screenshot` map to the image service's `catalog_cover`/`catalog_screenshot` |
 | `GET/POST /v2/me/proposals` | `editing.Engine` |
@@ -338,3 +338,97 @@ relay allowlist; and the generated per-operation Markdown twins under
 Traefik/compose were deliberately **left untouched**: the v1 routers point at the
 same catalog service that now answers 410 on those prefixes, so removing them
 would turn a documented 410 into a 404 that names no successor.
+
+## Wave R4 — `POST /v2/me/claims` carries the wizard's field map (2026-08-27)
+
+R1 filled the capability gaps and R3 deleted v1, but one caller was left without
+a lane: moyu's publish wizard. Its v1 call `POST /api/v1/user/catalog/works/submit`
+handed an **editing-engine field map** straight to `SubmitWork` — multi-language
+official titles, lang-less aliases, `olang`, an explicit content rating,
+`display_nsfw` and a zh-Hans intro — and `POST /v2/me/claims` had nowhere to put
+one. Every v2 mint was born with a display name and links and nothing else. This
+wave adds an optional `field_values` object to the request body: additive, no new
+operation (88 stays 88), no response change, **no migration**.
+
+**The property is `field_values`, not v1's `fields`.** Gate G8 wants one shape
+per property name, and `object_schema.fields` is already an array of
+`schema_field` descriptors — `fields` as an object fails `TestG7toG16`, the same
+rule that produced `cover_kind` and `from_date`/`to_date`. `field_values` is not
+a coined name: `snapshot.field_values` already carries exactly this map, so
+`POST /v2/me/claims {field_values}` mints the work that
+`GET /v2/moderation/snapshots/work/{id}` answers with the same key. (`patch`,
+the proposal faces' spelling of the same map, was the other candidate; it reads
+as an edit to something that exists.)
+
+`field_values` is a bare `map[string]any` in the schema on purpose. The accepted
+keys are the service's whitelist (`editspec.submissionFields`), and duplicating
+it in the huma input would be a second copy to drift. An unrecognised key answers
+`VALIDATION_FAILED` with pointer `/field_values/<key>`, from
+`editspec.SubmissionFieldError` — which `claimWriteErr` had never mapped, so
+before this wave it would have escaped as a 500.
+
+The lanes:
+
+| Body | Result |
+|---|---|
+| `work_id` + `field_values` | **422** `VALIDATION_FAILED`, pointer `/field_values` |
+| `refs` that resolve to a work, **with** `field_values` | **409** `ALREADY_EXISTS`, naming the anchor and that work's id |
+| `refs` that resolve to a work, no `field_values` | claims it — unchanged |
+| `refs` with no match, `field_values` | mints; the ref-derived URLs are unioned into `catalog.work.links` |
+| `site_work_id` + `field_values` | mints anchored to the site's own id |
+| `field_values` alone | mints — moyu's exact shape |
+
+Decisions behind that table:
+
+- **A ref that already resolves is 409, not a silent claim.** Without
+  `field_values` the old behaviour stands. With them the caller asserted content
+  for a work they believe is new, so claiming the match would answer 201 while
+  dropping the whole map on the floor. The last-resort problem now reads
+  "work_id, refs, site_work_id, or field_values is required."
+- **The ref anchors survive a caller who also sends links.** The URLs derived
+  from `refs` are unioned into `catalog.work.links` rather than replacing or
+  being replaced by the caller's list, deduped on the exact URL string. They are
+  what `SubmissionAnchorsOf` turns into the identity anchors a later submission
+  is recognised by, so losing them to a caller-supplied `links` would make the
+  mint unrecognisable to its own retry.
+- **`display_name` resolution.** Top-level `display_name` wins and is written
+  into the map; otherwise `field_values["catalog.work.display_name"]` must be present;
+  otherwise the existing `/display_name` required problem. The map's display name
+  is only a **seed**: inside the same transaction `applyTitles` runs after
+  `olang` and rewrites `catalog_work.display_name` to the official title in the
+  work's `olang`. That is `ApplyWorkFields`'s standing behaviour and was v1's
+  too — the wizard sends the zh-Hans name first with `olang: ja`, and the work is
+  born under its Japanese title.
+- **An explicit `content_rating` is honored.** When
+  `field_values["catalog.work.content_rating"]` is present `DeriveContentRating` is
+  skipped entirely: the field goes through editspec and stamps curated
+  provenance, where the derived value is written straight to the column with no
+  stamp so the weekly releasemeta lane can still correct it. When it is absent
+  the derivation is exactly what it was.
+- **The trusted fast lane came back.** v1 computed
+  `catperm.Resolver.Can(roles, EditTrusted)` and passed it as
+  `SubmitWorkParams.Trusted`, which mints `live` instead of `pending`; v2's
+  `CreateClaim` never set it, so an editor holding `catalog.edit.trusted` lost
+  the privilege by moving to /v2. It is now set on every mint lane. v1 also
+  required `!isThirdPartyClient`; that half is **not** reproduced — see below.
+- **`released` is deliberately still absent.** `SubmitWorkParams.Released` stays
+  zero from /v2, so `ErrSubmitInvalidDate` is unreachable here and is not mapped.
+  No caller ever sent it.
+
+On the third-party half of v1's trusted condition: v2 has no notion of a
+third-party client anywhere in `apiv2`, and site binding is **not** structurally
+first-party-only. `ctxSite` is filled from `Options.LookupSite`, which in
+`cmd/catalog` is `clientRepo.FindByClientID(clientID).CatalogSite` with no
+first-party check, while third-party-ness is the independent column
+`oauth_clients.owner_user_id`. Nothing in the schema forbids a row from carrying
+both. What does hold is that **no code path can produce that row**: the only
+writer of `owner_user_id` is `devapi.SelfServiceService.CreateApp`, which never
+sets `catalog_site`; `devapi.AdminService.UpdateAppConfig` cannot write
+`catalog_site`; and `site/service`'s first-party client creation does not set it
+either. A third-party app with a catalog site can only be made by an operator
+editing the column by hand. The guard would also not be a privilege boundary on
+/v2: `patchMyClaim` lets a claim's owner move `pending → withdrawn → live`
+(publish requires ownership, not a permission), so the same actor reaches `live`
+in two more calls with or without `Trusted`. Adding the check would mean
+widening `Options.LookupSite` to carry the client's owner, for a fence that is
+already open next door.

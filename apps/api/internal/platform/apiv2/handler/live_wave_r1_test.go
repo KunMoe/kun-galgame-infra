@@ -60,7 +60,9 @@ func liveClaimByID(page liveClaimPage, id string) *liveClaimRecord {
 }
 
 // liveMintClaim mints a work through the site_work_id anchor and returns the
-// catalog work id it landed on.
+// catalog work id it landed on. Not for liveUserToken: that user is an admin,
+// admin carries catalog.edit.trusted, and since wave R4 a trusted mint lands
+// live rather than pending.
 func liveMintClaim(t *testing.T, env *liveEnv, token, siteWorkID, displayName string) string {
 	t.Helper()
 	status, _, body := liveDo(t, env, http.MethodPost, "/v2/me/claims", token,
@@ -116,9 +118,9 @@ func TestLiveModerationQueueCarriesIdentity(t *testing.T) {
 func TestLiveCreateClaimFromSiteWorkID(t *testing.T) {
 	env := liveCatalog(t)
 
-	id := liveMintClaim(t, env, liveUserToken, "41001", "Anchored Mint")
+	id := liveMintClaim(t, env, livePlainToken, "41001", "Anchored Mint")
 
-	status, _, body := liveDo(t, env, http.MethodGet, "/v2/me/claims/"+id, liveUserToken, "")
+	status, _, body := liveDo(t, env, http.MethodGet, "/v2/me/claims/"+id, livePlainToken, "")
 	require.Equal(t, 200, status, string(body))
 	var rec liveClaimRecord
 	require.NoError(t, json.Unmarshal(body, &rec))
@@ -127,7 +129,7 @@ func TestLiveCreateClaimFromSiteWorkID(t *testing.T) {
 	require.NotNil(t, rec.ProductWorkID)
 	require.Equal(t, "41001", *rec.ProductWorkID)
 
-	status, _, body = liveDo(t, env, http.MethodPost, "/v2/me/claims", liveUserToken,
+	status, _, body = liveDo(t, env, http.MethodPost, "/v2/me/claims", livePlainToken,
 		`{"site_work_id":"41002"}`)
 	require.Equal(t, 422, status, string(body))
 	p := liveProblem(t, body)
@@ -135,7 +137,7 @@ func TestLiveCreateClaimFromSiteWorkID(t *testing.T) {
 	require.Len(t, p.Errors, 1)
 	require.Equal(t, "/display_name", p.Errors[0].Pointer)
 
-	status, _, body = liveDo(t, env, http.MethodPost, "/v2/me/claims", liveUserToken,
+	status, _, body = liveDo(t, env, http.MethodPost, "/v2/me/claims", livePlainToken,
 		`{"display_name":"No Anchor At All"}`)
 	require.Equal(t, 422, status, string(body))
 	p = liveProblem(t, body)
@@ -144,7 +146,7 @@ func TestLiveCreateClaimFromSiteWorkID(t *testing.T) {
 
 	// The anchor is unique per site: minting the same (site, product_work_id)
 	// twice is the existing 409, not a second work.
-	status, _, body = liveDo(t, env, http.MethodPost, "/v2/me/claims", liveUserToken,
+	status, _, body = liveDo(t, env, http.MethodPost, "/v2/me/claims", livePlainToken,
 		`{"site_work_id":"41001","display_name":"Anchored Mint Again"}`)
 	require.Equal(t, 409, status, string(body))
 	require.Equal(t, problem.CodeAlreadyExists, liveProblem(t, body).Code)

@@ -12,6 +12,7 @@ import (
 	"api/internal/platform/apiv2/collect"
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
+	"api/internal/platform/catalog/editspec"
 	catsvc "api/internal/platform/catalog/service"
 	"api/pkg/imageclient"
 
@@ -91,14 +92,19 @@ func TestCreateClaimRequiresWorkIDOrRefs(t *testing.T) {
 	ctx := contextWithUser(t.Context(), 7, "client-a")
 	ctx = context.WithValue(ctx, ctxSite, "kungal")
 	cat := &Catalog{Claims: &catsvc.ClaimLifecycleService{}}
-	_, err := cat.CreateClaim(ctx, "", "", "", nil)
+	_, err := cat.CreateClaim(ctx, "", "", "", nil, nil)
 	p, ok := err.(*problem.Problem)
 	if !ok || p.Code != problem.CodeValidationFailed {
 		t.Fatalf("%v", err)
 	}
-	_, err = cat.CreateClaim(ctx, "", "", "", []repr.Ref{{Source: "vndb", ExternalID: "v1"}})
+	_, err = cat.CreateClaim(ctx, "", "", "", []repr.Ref{{Source: "vndb", ExternalID: "v1"}}, nil)
 	if p, ok = err.(*problem.Problem); !ok || p.Code != problem.CodeValidationFailed {
 		t.Fatalf("refs without display_name %v", err)
+	}
+	_, err = cat.CreateClaim(ctx, "12", "", "", nil, map[string]any{editspec.FieldWorkOLang: "ja"})
+	if p, ok = err.(*problem.Problem); !ok || p.Code != problem.CodeValidationFailed ||
+		len(p.Errors) != 1 || p.Errors[0].Pointer != "/field_values" {
+		t.Fatalf("work_id with fields %v", err)
 	}
 	_, err = cat.ListMyClaims(ctx, collect.Query{Cursor: "not-an-event-id"}, myClaimFilter{})
 	if p, ok = err.(*problem.Problem); !ok || p.Code != problem.CodeInvalidCursor {
