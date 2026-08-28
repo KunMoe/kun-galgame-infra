@@ -1,27 +1,27 @@
 package service
 
 import (
-	"os"
 	"strings"
 	"testing"
 
 	infrasearch "api/internal/infrastructure/search"
 	"api/internal/platform/catalog/model"
 	catsearch "api/internal/platform/catalog/search"
+	"api/internal/testsupport/dbtest"
 	"api/pkg/config"
 )
 
 func worksSearchClient(t *testing.T) *infrasearch.Client {
 	t.Helper()
-	host := os.Getenv("MEILISEARCH_TEST_HOST")
+	host, apiKey := dbtest.SearchHost()
 	if host == "" {
-		t.Skip("MEILISEARCH_TEST_HOST unset — search-backed test not run")
+		dbtest.SkipSearch(t, "MEILISEARCH_TEST_HOST unset")
 	}
 	client, err := infrasearch.NewClient(config.MeilisearchConfig{
-		Host: host, APIKey: os.Getenv("MEILISEARCH_TEST_API_KEY"), IndexPrefix: worksSearchTestPrefix,
+		Host: host, APIKey: apiKey, IndexPrefix: worksSearchTestPrefix,
 	})
 	if err != nil {
-		t.Skipf("meilisearch client: %v", err)
+		dbtest.SkipSearch(t, "meilisearch client: %v", err)
 	}
 	return client
 }

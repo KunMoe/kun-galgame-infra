@@ -133,6 +133,11 @@ jobs:
       REQUIRE_DB_TESTS: "1"
       MEILISEARCH_TEST_HOST: "http://127.0.0.1:7700"
       MEILISEARCH_TEST_API_KEY: citest_meili_master_key_change_me
+      # Same assertion for the search-backed suites, and it is not hypothetical:
+      # the W4 wave shipped a Meili filter that returned zero hits for every
+      # query, and catalog/service still printed `ok` because every test touching
+      # the index had skipped itself.
+      REQUIRE_SEARCH_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
