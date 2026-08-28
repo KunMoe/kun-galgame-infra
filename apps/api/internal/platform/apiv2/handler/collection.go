@@ -208,16 +208,33 @@ func withIdent(ctx context.Context, p *problem.Problem) *problem.Problem {
 }
 
 func credentialLimitIdentity(c fiber.Ctx) (protocol.LimitIdentity, bool) {
-	cred := devapi.CredentialFrom(c)
-	if cred == nil {
-		return protocol.LimitIdentity{}, false
+	if cred := devapi.CredentialFrom(c); cred != nil {
+		rate, unlimited := cred.EffectiveRate()
+		quota, _ := cred.EffectiveQuota()
+		return protocol.LimitIdentity{
+			Key:  "k" + strconv.FormatUint(uint64(cred.KeyID), 10),
+			Rate: rate, Quota: quota, Unlimited: unlimited,
+		}, true
 	}
-	rate, unlimited := cred.EffectiveRate()
-	quota, _ := cred.EffectiveQuota()
-	return protocol.LimitIdentity{
-		Key:  "k" + strconv.FormatUint(uint64(cred.KeyID), 10),
-		Rate: rate, Quota: quota, Unlimited: unlimited,
-	}, true
+	// A user token authenticates but carries no application key, so this used to
+	// fall through to the anonymous per-IP bucket. A first-party backend relays
+	// every logged-in user's /v2/me call from one egress IP, so the whole site
+	// shared one 10k/day quota: the forum's user plane answered "Daily quota
+	// exceeded." from 2026-08-27T22:46Z on, re-tripping after each midnight reset.
+	var uid int64
+	switch id := c.Locals("user_id").(type) {
+	case uint:
+		uid = int64(id)
+	case int64:
+		uid = id
+	}
+	if uid > 0 {
+		return protocol.LimitIdentity{
+			Key:  "u" + strconv.FormatInt(uid, 10),
+			Rate: protocol.RatePerMinute, Quota: protocol.QuotaPerDay,
+		}, true
+	}
+	return protocol.LimitIdentity{}, false
 }
 
 func catalogAuth(lookup func(context.Context, string) (*devapi.Credential, error)) fiber.Handler {

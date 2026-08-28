@@ -115,6 +115,8 @@ Date: 2026-08-24, GA declared 2026-08-25 (stage 9); news write face added 2026-0
 
 46. **`/v2/catalog/tags` honors `has_works=`** (2026-08-27). Deviation 30 restored `has_works=` on the companies lane and left the tags lane behind, though v1 carries it on both and `TagsListFilter.HasWorks` already existed — so the flag was silently ignored (the huma input never declared it) and a tag index drowned in zero-work rows. Declared and wired exactly like companies: `parse.Bool` (bogus → 400), same nsfw-gated `work_count > 0` predicate, total converges with the filter.
 
+47. **User-token traffic is rate-limited per user, not per IP** (2026-08-28). Deviation 29 moved keyed traffic onto per-key tier limits and left "any request that never authenticates" on the per-IP default — but a user access token *does* authenticate and still resolved no limiter identity, so the whole `/v2/me` and `/v2/moderation` plane fell into the anonymous bucket. A first-party backend relays every logged-in user's call from one egress IP: the forum's entire user plane shared a single `100/min + 10k/day` bucket and answered 429 `QUOTA_EXCEEDED` from 2026-08-27T22:46Z, re-tripping after each UTC-midnight reset (`v2:quota:<forum egress IP>` measured 17,848 by 07:35Z the next day). Now `credentialLimitIdentity` falls through to the authenticated uid — key `u<uid>`, the default `100/min + 10,000/day` per user. Anonymous keyless paths (problems, vocabularies, stats, schemas, openapi.json) keep the per-IP default; an application key still wins over a uid when both are present.
+
 ## Stage 6 write
 
 | Route | Bind |
