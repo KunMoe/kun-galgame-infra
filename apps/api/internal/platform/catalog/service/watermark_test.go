@@ -184,6 +184,6 @@ func TestMergeRehangOfCoverTouchesTarget(t *testing.T) {
 
 	assert.True(t, workUpdatedAt(t, dst.ID).After(before),
 		"the target gained a cover it did not render before")
-	assert.Equal(t, []int64{dst.ID}, changesSince(t, cursor),
-		"only the surviving work enters the feed")
+	assert.ElementsMatch(t, []int64{src.ID, dst.ID}, changesSince(t, cursor),
+		"the survivor enters the feed, and so does the id that stopped being served")
 }

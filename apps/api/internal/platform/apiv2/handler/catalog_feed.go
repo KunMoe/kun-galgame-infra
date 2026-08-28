@@ -42,9 +42,14 @@ func (c *Catalog) ListChanges(ctx context.Context, q collect.Query) (repr.List[r
 		if target == "label" {
 			target = "company"
 		}
-		items = append(items, repr.Change{
+		ch := repr.Change{
 			Object: "change", TargetObject: target, ID: repr.ID(it.ID), UpdatedAt: it.Updated,
-		})
+		}
+		if it.Gone {
+			gone := true
+			ch.Gone = &gone
+		}
+		items = append(items, ch)
 	}
 	var next *string
 	if len(data.Items) == limit && data.NextCursor != "" {

@@ -509,6 +509,7 @@ type PublicChangeItem struct {
 	EntityType string `json:"entity_type"`
 	ID         int64  `json:"id"`
 	Updated    string `json:"updated"`
+	Gone       bool   `json:"gone,omitempty"`
 }
 
 type PublicChangesData struct {
