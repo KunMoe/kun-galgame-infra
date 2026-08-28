@@ -3,6 +3,8 @@ package search
 import (
 	"math"
 	"strconv"
+
+	"api/internal/platform/catalog/model"
 )
 
 func GuessLang(s string) string {
@@ -55,11 +57,20 @@ type WorkDocInput struct {
 
 func BuildWorkDoc(in WorkDocInput) EntityDoc {
 	rating, claimed := in.ContentRating, in.Claimed
+	// Every work document must carry a claim_state. ClaimState is omitempty, and
+	// Meilisearch answers `claim_state != 'hidden'` with zero hits and no error
+	// when no document in the index has the attribute at all — one state-less
+	// document is a hole, an index of them empties the whole works search. An
+	// unclaimed work is "none", which is what model.ClaimStateKey returns for it.
+	claimState := in.ClaimState
+	if claimState == "" {
+		claimState = model.ClaimStateKeyNone
+	}
 	d := EntityDoc{
 		ID: WorkDocID(in.ID), EntityType: "work",
 		Sources: in.Sources, SourceKeys: in.SourceKeys,
 		ContentRating: &rating, Popularity: in.Popularity,
-		Claimed: &claimed, ClaimState: in.ClaimState, ContentLimit: in.ContentLimit, OLang: in.OLang,
+		Claimed: &claimed, ClaimState: claimState, ContentLimit: in.ContentLimit, OLang: in.OLang,
 		TagIDs: in.TagIDs, LabelIDs: in.LabelIDs,
 		EngineIDs: in.EngineIDs, SeriesIDs: in.SeriesIDs,
 		ReleasedOrd: in.ReleasedOrd, UpdatedTS: in.UpdatedTS,

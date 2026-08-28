@@ -93,6 +93,36 @@ func TestClaimStateVocabularyIsClosed(t *testing.T) {
 	}
 }
 
+// The ban gate is a negated filter, and Meilisearch answers a negated filter
+// with zero hits — no error — when no document in the index carries the
+// attribute at all. Any caller that builds a work document without a claim state
+// therefore removes itself from every search, and an index of them empties the
+// whole works face.
+func TestWorksSearchServesDocumentsBuiltWithoutAClaimState(t *testing.T) {
+	cleanTables(t)
+	cleanTagTables(t)
+	cleanTaxonomyTables(t)
+	idx := worksSearchIndexer(t)
+	svc := newPublicSvc().WithWorksSearch(idx)
+
+	w := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "状態無し作品")
+	indexWorks(t, idx, []catsearch.WorkDocInput{{
+		ID: w.ID, DisplayName: "状態無し作品", OLang: "ja",
+		ContentRating: model.ContentRatingAllAges, UpdatedTS: 1700000000,
+	}})
+
+	for _, q := range []string{"", "状態無し作品"} {
+		data, err := svc.WorksSearch(t.Context(), WorksSearchFilter{Q: q, Sort: "id", Limit: 50})
+		if err != nil {
+			t.Fatalf("q=%q: WorksSearch: %v", q, err)
+		}
+		if len(data.Items) != 1 || data.Items[0].ID != w.ID {
+			t.Fatalf("q=%q: a document built without a claim_state must still be served, got %d items",
+				q, len(data.Items))
+		}
+	}
+}
+
 func TestWorksSearchClaimStateGate(t *testing.T) {
 	cleanTables(t)
 	cleanTagTables(t)
@@ -142,7 +172,10 @@ func TestWorksSearchClaimStateGate(t *testing.T) {
 		states []string
 		want   []int64
 	}{
-		{nil, []int64{bodyless.ID, live.ID, draft.ID, hidden.ID}},
+		// No claim_state= must serve every state but the banned one, matching
+		// the browse lane; this row still asserted the pre-ban-gate contract
+		// after the gate landed.
+		{nil, []int64{bodyless.ID, live.ID, draft.ID}},
 		{[]string{model.ClaimStateKeyLive}, []int64{live.ID}},
 		{[]string{model.ClaimStateKeyLive, model.ClaimStateKeyDraft}, []int64{live.ID, draft.ID}},
 		{[]string{model.ClaimStateKeyNone}, []int64{bodyless.ID}},
