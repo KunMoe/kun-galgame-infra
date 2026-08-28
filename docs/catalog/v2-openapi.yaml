@@ -15584,7 +15584,7 @@ paths:
         - moderation
   /v2/news:
     get:
-      description: Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are required on every item.
+      description: Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are required on every item. lane=, source=, published_after= and published_before= narrow the population, and include_total= counts the narrowed one. ids= and refs= are not accepted.
       operationId: listNews
       parameters:
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -15674,6 +15674,38 @@ paths:
           schema:
             description: true includes r18. false or absent hides r18. Only true or false.
             maxLength: 8
+            type: string
+        - description: "Comma-separated closed lanes: news, column. Absent means both. An unknown lane is 400 UNKNOWN_ENUM_VALUE."
+          explode: false
+          in: query
+          name: lane
+          schema:
+            description: "Comma-separated closed lanes: news, column. Absent means both. An unknown lane is 400 UNKNOWN_ENUM_VALUE."
+            maxLength: 64
+            type: string
+        - description: Comma-separated news source keys, at most 20. Open vocabulary; an unknown key matches nothing rather than failing.
+          explode: false
+          in: query
+          name: source
+          schema:
+            description: Comma-separated news source keys, at most 20. Open vocabulary; an unknown key matches nothing rather than failing.
+            maxLength: 256
+            type: string
+        - description: Inclusive lower bound on published_at. RFC 3339 UTC ending in Z.
+          explode: false
+          in: query
+          name: published_after
+          schema:
+            description: Inclusive lower bound on published_at. RFC 3339 UTC ending in Z.
+            maxLength: 40
+            type: string
+        - description: Inclusive upper bound on published_at. RFC 3339 UTC ending in Z.
+          explode: false
+          in: query
+          name: published_before
+          schema:
+            description: Inclusive upper bound on published_at. RFC 3339 UTC ending in Z.
+            maxLength: 40
             type: string
       responses:
         "200":

@@ -61877,7 +61877,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/news",
               "summary": "List news items",
-              "description": "Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are required on every item.",
+              "description": "Published news feed. Keyset-paginated. Unauthenticated. Attribution fields are required on every item. lane=, source=, published_after= and published_before= narrow the population, and include_total= counts the narrowed one. ids= and refs= are not accepted.",
               "scope": "",
               "auth": {
                 "kind": "none",
@@ -61962,6 +61962,34 @@ export const docsModel: DocsModel = {
                   "required": false,
                   "type": "string",
                   "doc": "true includes r18. false or absent hides r18. Only true or false."
+                },
+                {
+                  "name": "lane",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Comma-separated closed lanes: news, column. Absent means both. An unknown lane is 400 UNKNOWN_ENUM_VALUE."
+                },
+                {
+                  "name": "source",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Comma-separated news source keys, at most 20. Open vocabulary; an unknown key matches nothing rather than failing."
+                },
+                {
+                  "name": "published_after",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Inclusive lower bound on published_at. RFC 3339 UTC ending in Z."
+                },
+                {
+                  "name": "published_before",
+                  "in": "query",
+                  "required": false,
+                  "type": "string",
+                  "doc": "Inclusive upper bound on published_at. RFC 3339 UTC ending in Z."
                 }
               ],
               "responses": [
