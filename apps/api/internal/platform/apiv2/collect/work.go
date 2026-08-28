@@ -82,6 +82,7 @@ func NewsSubmissionSpec() Spec {
 			"object", "id", "source", "lane", "status", "title", "summary",
 			"source_url", "banner_hash", "published_at", "work_ids",
 		},
+		NoBatch: true,
 	}
 }
 
@@ -154,6 +155,7 @@ func PlaytimeSpec() Spec {
 		Include: []string{},
 		FullSet: []string{},
 		Fields:  []string{"object", "work_id", "minutes"},
+		NoBatch: true,
 	}
 }
 
@@ -173,6 +175,7 @@ func ClaimSpec() Spec {
 			"object", "id", "state", "display_name", "site", "product_work_id",
 			"last_event", "first_acted_at", "acted_count",
 		},
+		NoBatch: true,
 	}
 }
 

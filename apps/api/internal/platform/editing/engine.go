@@ -134,19 +134,24 @@ func (e *Engine) ListProposalsWithTotal(ctx context.Context, f ProposalFilter) (
 	if f.Status >= 0 {
 		q = q.Where("status = ?", f.Status)
 	}
-	if f.BeforeID > 0 {
-		q = q.Where("id < ?", f.BeforeID)
-	}
 	limit := f.Limit
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
+	// The cursor predicate is added after the count on purpose: total is the
+	// size of the filtered collection, not of the page's remainder. Counting
+	// the cursor-narrowed query made total shrink on every page, which is what
+	// deviation 10 says it must not do.
 	var total int64
 	if err := q.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
+	page := q.Session(&gorm.Session{})
+	if f.BeforeID > 0 {
+		page = page.Where("id < ?", f.BeforeID)
+	}
 	var out []Proposal
-	if err := q.Session(&gorm.Session{}).Order("id DESC").Limit(limit).Find(&out).Error; err != nil {
+	if err := page.Order("id DESC").Limit(limit).Find(&out).Error; err != nil {
 		return nil, 0, err
 	}
 	return out, total, nil

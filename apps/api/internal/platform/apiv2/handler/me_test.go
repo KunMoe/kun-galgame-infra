@@ -51,7 +51,7 @@ func TestPlaytimeUnboundWithUser(t *testing.T) {
 func TestWriteOpsUnbound(t *testing.T) {
 	ctx := contextWithUser(t.Context(), 7, "client-a")
 	ctx = context.WithValue(ctx, ctxSite, "kungal")
-	_, err := (*Catalog)(nil).CreateProposal(ctx, "catalog.work", "1", map[string]any{"catalog.work.display_name": "x"}, "")
+	_, _, err := (*Catalog)(nil).CreateProposal(ctx, "catalog.work", "1", map[string]any{"catalog.work.display_name": "x"}, "")
 	p, ok := err.(*problem.Problem)
 	if !ok || p.Code != problem.CodeServiceUnavailable {
 		t.Fatalf("proposal %v", err)
@@ -77,7 +77,7 @@ func TestClaimsUnbound(t *testing.T) {
 func TestModerationClaimsRequireSite(t *testing.T) {
 	ctx := contextWithUser(t.Context(), 7, "client-a")
 	cat := &Catalog{Claims: &catsvc.ClaimLifecycleService{}}
-	_, err := cat.ListModerationClaims(ctx, collect.Query{})
+	_, err := cat.ListModerationClaims(ctx, collect.Query{}, "")
 	p, ok := err.(*problem.Problem)
 	if !ok || p.Code != problem.CodeSiteNotBound {
 		t.Fatalf("list %v", err)

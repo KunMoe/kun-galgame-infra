@@ -2,28 +2,35 @@ package collect
 
 import (
 	"encoding/json"
+	"strings"
 )
 
-func ApplyFields(v any, fields []string) (any, error) {
-	if len(fields) == 0 {
-		return v, nil
+// ApplyFields trims a rendered v2 body to the requested top-level keys. It
+// takes bytes because the only caller is the one post-response hook that also
+// computes the ETag: projecting anywhere else would be one implementation per
+// face, which is the drift this whole parameter's absence came from.
+//
+// Unknown tokens are already 400 UNKNOWN_FIELD at parse time, so this does not
+// validate; it only projects. object and id are never dropped — a projected
+// item that cannot say what it is is not a smaller representation, it is an
+// unusable one.
+func ApplyFields(body []byte, fields []string) ([]byte, error) {
+	if len(fields) == 0 || len(body) == 0 {
+		return body, nil
 	}
-	keep := map[string]bool{}
+	keep := map[string]bool{"object": true, "id": true}
 	for _, f := range fields {
-		keep[f] = true
-	}
-	keep["object"] = true
-	keep["id"] = true
-	b, err := json.Marshal(v)
-	if err != nil {
-		return nil, err
+		f = strings.TrimSpace(f)
+		if f != "" {
+			keep[f] = true
+		}
 	}
 	var root any
-	if err := json.Unmarshal(b, &root); err != nil {
+	if err := json.Unmarshal(body, &root); err != nil {
 		return nil, err
 	}
 	trim(root, keep)
-	return root, nil
+	return json.Marshal(root)
 }
 
 func trim(v any, keep map[string]bool) {

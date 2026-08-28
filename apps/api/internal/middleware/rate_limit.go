@@ -6,6 +6,7 @@ import (
 
 	"api/internal/infrastructure/cache"
 	"api/pkg/errors"
+	"api/pkg/routepath"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
@@ -71,7 +72,7 @@ func StrictRateLimit(redisCache *cache.RedisCache) fiber.Handler {
 		Max:        10,
 		Expiration: 1 * time.Minute,
 		KeyGenerator: func(c fiber.Ctx) string {
-			return c.IP() + ":" + c.Path()
+			return c.IP() + ":" + routepath.Normalize(c.Path())
 		},
 		LimitReached: func(c fiber.Ctx) error {
 			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{

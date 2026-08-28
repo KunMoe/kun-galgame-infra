@@ -218,6 +218,23 @@ func (c *Catalog) ListWorksFiltered(ctx context.Context, q collect.Query, f work
 		p.Errors = []problem.FieldError{{Parameter: "owner_uid", Reason: problem.ReasonNotAllowedValue, Detail: "the search index carries no claim owner"}}
 		return repr.List[repr.Work]{}, p
 	}
+	// WorksSearchFilter has no Site and no Platform member, so these two were
+	// accepted, dropped on the way to Meilisearch and answered with the
+	// unfiltered population — including whenever facets= alone switched the
+	// collection to search, which is how the consumers reach this lane. They are
+	// refused rather than filtered because neither is a filterable attribute on
+	// the works index; making them work is a document-shape change and a
+	// reindex, not a parameter fix.
+	if f.Site != "" || f.Platform != "" {
+		name := "site"
+		if f.Site == "" {
+			name = "platform"
+		}
+		p := problem.New(problem.CodeMutuallyExclusiveParameters, "", "", name+"= cannot be combined with q=, facets= or a search sort.")
+		p.Errors = []problem.FieldError{{Parameter: name, Reason: problem.ReasonNotAllowedValue,
+			Detail: "the search index carries neither the claiming site nor the platform; drop q=/facets=/the search sort to filter on it"}}
+		return repr.List[repr.Work]{}, p
+	}
 	return c.listWorksSearch(ctx, q, f, inc)
 }
 

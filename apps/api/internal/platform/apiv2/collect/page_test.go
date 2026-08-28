@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"encoding/json"
 	"testing"
 
 	"api/internal/platform/apiv2/problem"
@@ -113,23 +114,19 @@ func TestSliceIncludeTotal(t *testing.T) {
 }
 
 func TestApplyFieldsTrimsListItems(t *testing.T) {
-	type item struct {
-		Object string `json:"object"`
-		ID     string `json:"id"`
-		Name   string `json:"name"`
-		Extra  string `json:"extra"`
-	}
-	list := map[string]any{
-		"object": "list",
-		"items": []any{
-			map[string]any{"object": "work", "id": "1", "name": "n", "extra": "x"},
-		},
-	}
-	out, err := ApplyFields(list, []string{"id", "name"})
+	body := []byte(`{"object":"list","next_cursor":"cur_x","items":[` +
+		`{"object":"work","id":"1","name":"n","extra":"x"}]}`)
+	out, err := ApplyFields(body, []string{"id", "name"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := out.(map[string]any)
+	var root map[string]any
+	if err := json.Unmarshal(out, &root); err != nil {
+		t.Fatal(err)
+	}
+	if root["next_cursor"] != "cur_x" {
+		t.Fatalf("the list envelope is not an item and must survive: %v", root)
+	}
 	items := root["items"].([]any)
 	it := items[0].(map[string]any)
 	if _, ok := it["extra"]; ok {
@@ -137,5 +134,16 @@ func TestApplyFieldsTrimsListItems(t *testing.T) {
 	}
 	if it["id"] != "1" || it["object"] != "work" || it["name"] != "n" {
 		t.Fatalf("kept keys: %v", it)
+	}
+}
+
+func TestApplyFieldsAbsentIsByteIdentical(t *testing.T) {
+	body := []byte(`{"object":"list","items":[{"object":"work","id":"1","name":"n"}]}`)
+	out, err := ApplyFields(body, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != string(body) {
+		t.Fatalf("no fields= must not reshape the body:\n got %s\nwant %s", out, body)
 	}
 }

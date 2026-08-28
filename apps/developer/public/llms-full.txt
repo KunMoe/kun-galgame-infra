@@ -1516,7 +1516,7 @@ PATCH {state: live|pending|withdrawn}. live publishes a draft without review, pe
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Catalog work id. |
-| `If-Match` | header | 否 | string | Current ETag. Required. |
+| `If-Match` | header | 是 | string | Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED. |
 
 ```bash
 curl -X PATCH "https://api.nextmoe.dev/v2/me/claims/value" \
@@ -1819,7 +1819,7 @@ curl -X DELETE "https://api.nextmoe.dev/v2/me/playtimes/value" \
 
 List my proposals
 
-state= filters open/merged/declined/withdrawn. Requires a user access token.
+The bearer's own proposals. state= is a closed vocabulary and an unknown value is 400. object= or entity_type= narrows to one family, entity_id= to one entity — on this lane entity_id= is accepted without a family because every row already belongs to the caller. Requires a user access token.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer <用户访问令牌>
@@ -1838,7 +1838,10 @@ state= filters open/merged/declined/withdrawn. Requires a user access token.
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
-| `state` | query | 否 | string | open, pending, merged, declined, withdrawn. |
+| `state` | query | 否 | string | Closed: open, pending, merged, declined, withdrawn. Unknown value is 400 UNKNOWN_ENUM_VALUE. |
+| `object` | query | 否 | string | Closed family filter: work, company, character, release, tag, engine, series. |
+| `entity_type` | query | 否 | string | Editing-engine type, e.g. catalog.work. The same spelling POST /v2/me/proposals takes in its body. Names the same filter as object=; sending both with different families is 400. |
+| `entity_id` | query | 否 | string | Catalog id of one entity. Accepted alone on this lane, which is already fenced to the bearer's own proposals; pair it with object= or entity_type= when ids collide across families. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/me/proposals" \
@@ -1898,7 +1901,7 @@ If-Match required. Requires a user access token.
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Proposal id. |
-| `If-Match` | header | 否 | string | Current ETag. Required. |
+| `If-Match` | header | 是 | string | Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED. |
 
 ```bash
 curl -X PATCH "https://api.nextmoe.dev/v2/me/proposals/value" \
@@ -1920,7 +1923,7 @@ If-Match required. Requires a user access token.
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Proposal id. |
-| `If-Match` | header | 否 | string | Current ETag. Required. |
+| `If-Match` | header | 是 | string | Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED. |
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v2/me/proposals/value/amendments" \
@@ -1935,7 +1938,7 @@ curl -X POST "https://api.nextmoe.dev/v2/me/proposals/value/amendments" \
 
 Moderation claim queue
 
-Pending claims. Requires a user access token with review authority.
+Claims on the token site awaiting a decision. claim_state= selects which states the queue lists and defaults to pending; the decision face also acts on live, draft and declined (ban) and on hidden (unban), so those are listable here too. Oldest submission first. ids= and refs= are not accepted. Requires a user access token with review authority.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer <用户访问令牌>
@@ -1954,6 +1957,7 @@ Pending claims. Requires a user access token with review authority.
 | `facets` | query | 否 | string | Comma-separated facet names. Unknown token is 400 UNKNOWN_FACET. |
 | `sort` | query | 否 | string | Closed per-collection sort key. |
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
+| `claim_state` | query | 否 | string | Comma-separated closed states: live, draft, pending, declined, hidden. Default pending. hidden is how a banned claim is found for unban. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/moderation/claims" \
@@ -1992,7 +1996,7 @@ decision=approve|decline|ban|unban. unban restores the state the claim was hidde
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Catalog work id. |
-| `If-Match` | header | 否 | string | Current ETag. Required. |
+| `If-Match` | header | 是 | string | Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED. |
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v2/moderation/claims/value/decisions" \
@@ -2005,7 +2009,7 @@ curl -X POST "https://api.nextmoe.dev/v2/moderation/claims/value/decisions" \
 
 Moderation proposal queue
 
-Open proposals on the token site. The whole queue requires a catalog review permission. object=+entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without object= is 422.
+Open proposals on the token site. The whole queue requires a catalog review permission. object= (or entity_type=) with entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without a family is 422.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer <用户访问令牌>
@@ -2025,7 +2029,8 @@ Open proposals on the token site. The whole queue requires a catalog review perm
 | `sort` | query | 否 | string | Closed per-collection sort key. |
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `object` | query | 否 | string | Closed family filter: work, company, character, release, tag, engine, series. |
-| `entity_id` | query | 否 | string | Catalog id of one entity. Requires object=. Narrows the queue to that entity, which its owner may read without a review permission. |
+| `entity_type` | query | 否 | string | Editing-engine type, e.g. catalog.work. Names the same filter as object=; sending both with different families is 400. |
+| `entity_id` | query | 否 | string | Catalog id of one entity. Requires object= or entity_type=. Narrows the queue to that entity, which its owner may read without a review permission. |
 
 ```bash
 curl "https://api.nextmoe.dev/v2/moderation/proposals" \
@@ -2066,7 +2071,7 @@ decision=merge|decline. If-Match required.
 | 参数 | 位置 | 必填 | 类型 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | path | 是 | string | Proposal id. |
-| `If-Match` | header | 否 | string | Current ETag. Required. |
+| `If-Match` | header | 是 | string | Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED. |
 
 ```bash
 curl -X POST "https://api.nextmoe.dev/v2/moderation/proposals/value/decisions" \

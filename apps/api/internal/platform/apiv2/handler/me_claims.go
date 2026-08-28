@@ -103,7 +103,34 @@ func requireClaimReview(ctx context.Context) (string, error) {
 	return site, nil
 }
 
-func (c *Catalog) ListModerationClaims(ctx context.Context, q collect.Query) (repr.List[repr.ClaimRecord], error) {
+// The cursor is (queue watermark, work id), not the bare event id: the
+// watermark is NULL for a claim with no event in its current state, so a scalar
+// cursor both hid those rows past page 1 and dropped next_cursor whenever a
+// page ended on one.
+func moderationClaimCursor(raw string) (int64, int64, error) {
+	if raw == "" {
+		return 0, 0, nil
+	}
+	event, work := raw, ""
+	if i := strings.LastIndexByte(raw, '|'); i >= 0 {
+		event, work = raw[:i], raw[i+1:]
+	}
+	e, perr := claimEventCursor(event)
+	if perr != nil {
+		return 0, 0, perr
+	}
+	var w int64
+	if work != "" {
+		id, ok := repr.ParseID(work)
+		if !ok {
+			return 0, 0, collectInvalidCursor()
+		}
+		w = id
+	}
+	return e, w, nil
+}
+
+func (c *Catalog) ListModerationClaims(ctx context.Context, q collect.Query, claimState string) (repr.List[repr.ClaimRecord], error) {
 	if c == nil || c.Claims == nil {
 		return repr.List[repr.ClaimRecord]{}, problem.New(problem.CodeServiceUnavailable, "", "", "claims are not bound.")
 	}
@@ -111,30 +138,38 @@ func (c *Catalog) ListModerationClaims(ctx context.Context, q collect.Query) (re
 	if err != nil {
 		return repr.List[repr.ClaimRecord]{}, err
 	}
+	states, serr := moderationQueueStates(claimState)
+	if serr != nil {
+		return repr.List[repr.ClaimRecord]{}, serr
+	}
 	limit := q.Limit
 	if limit <= 0 {
 		limit = collect.DefaultLimit
 	}
-	before, berr := claimEventCursor(q.Cursor)
+	beforeEvent, beforeWork, berr := moderationClaimCursor(q.Cursor)
 	if berr != nil {
 		return repr.List[repr.ClaimRecord]{}, berr
 	}
-	rows, total, lerr := c.Claims.PendingClaimsAfter(ctx, site, limit+1, before)
+	rows, total, lerr := c.Claims.ModerationClaims(ctx, site, states, limit+1, beforeEvent, beforeWork)
 	if lerr != nil {
 		return repr.List[repr.ClaimRecord]{}, lerr
 	}
 	var next *string
 	if len(rows) > limit {
 		rows = rows[:limit]
-		if last := rows[len(rows)-1].SubmittedEventID; last != nil {
-			s := strconv.FormatInt(*last, 10)
-			next = &s
+		last := rows[len(rows)-1]
+		event := int64(0)
+		if last.SubmittedEventID != nil {
+			event = *last.SubmittedEventID
 		}
+		s := strconv.FormatInt(event, 10) + "|" + strconv.FormatInt(last.WorkID, 10)
+		next = &s
 	}
 	items := make([]repr.ClaimRecord, 0, len(rows))
 	for _, r := range rows {
 		rec := repr.ClaimRecord{
-			Object: "claim", ID: repr.ID(r.WorkID), State: "pending", DisplayName: r.DisplayName,
+			Object: "claim", ID: repr.ID(r.WorkID), DisplayName: r.DisplayName,
+			State:         catmodel.ClaimStateKey(r.Site, r.ProductWorkID, r.ClaimState),
 			ProductWorkID: idPtr(r.ProductWorkID),
 		}
 		if r.Site != nil {
@@ -143,6 +178,34 @@ func (c *Catalog) ListModerationClaims(ctx context.Context, q collect.Query) (re
 		items = append(items, rec)
 	}
 	return finishList(items, next, total, q, nil), nil
+}
+
+var moderationQueueStateValues = map[string]int16{
+	catmodel.ClaimStateKeyLive:     catmodel.ClaimStateLive,
+	catmodel.ClaimStateKeyDraft:    catmodel.ClaimStateDraft,
+	catmodel.ClaimStateKeyPending:  catmodel.ClaimStatePending,
+	catmodel.ClaimStateKeyDeclined: catmodel.ClaimStateDeclined,
+	catmodel.ClaimStateKeyHidden:   catmodel.ClaimStateHidden,
+}
+
+// The five states the decision face acts on, and no more: `none` is the absence
+// of a claim, so it has no queue row to review.
+func moderationQueueStates(raw string) ([]int16, *problem.Problem) {
+	keys, err := closedCSV(raw, "claim_state", []string{
+		catmodel.ClaimStateKeyLive, catmodel.ClaimStateKeyDraft, catmodel.ClaimStateKeyPending,
+		catmodel.ClaimStateKeyDeclined, catmodel.ClaimStateKeyHidden,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(keys) == 0 {
+		return []int16{catmodel.ClaimStatePending}, nil
+	}
+	out := make([]int16, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, moderationQueueStateValues[k])
+	}
+	return out, nil
 }
 
 func (c *Catalog) GetModerationClaim(ctx context.Context, workID int64) (repr.ClaimRecord, error) {
@@ -466,46 +529,49 @@ func (c *Catalog) PatchClaim(ctx context.Context, workID int64, state, ifMatch s
 	return c.claimForWrite(ctx, workID, site)
 }
 
-func (c *Catalog) DecideClaim(ctx context.Context, workID int64, decision, note, ifMatch string) (repr.DecisionRecord, error) {
+func (c *Catalog) DecideClaim(ctx context.Context, workID int64, decision, note, ifMatch string) (repr.ClaimDecisionRecord, error) {
 	if c == nil || c.Claims == nil {
-		return repr.DecisionRecord{}, problem.New(problem.CodeServiceUnavailable, "", "", "claims are not bound.")
+		return repr.ClaimDecisionRecord{}, problem.New(problem.CodeServiceUnavailable, "", "", "claims are not bound.")
 	}
 	uid, _, err := requireUser(ctx)
 	if err != nil {
-		return repr.DecisionRecord{}, err
+		return repr.ClaimDecisionRecord{}, err
 	}
 	site, serr := requireClaimReview(ctx)
 	if serr != nil {
-		return repr.DecisionRecord{}, serr
+		return repr.ClaimDecisionRecord{}, serr
 	}
 	cur, gerr := c.claimForWrite(ctx, workID, site)
 	if gerr != nil {
-		return repr.DecisionRecord{}, gerr
+		return repr.ClaimDecisionRecord{}, gerr
 	}
 	if err := requireIfMatch(ifMatch, claimETag(cur)); err != nil {
-		return repr.DecisionRecord{}, err
+		return repr.ClaimDecisionRecord{}, err
 	}
 	action, known := moderationClaimAction(decision)
 	if !known {
 		p := problem.New(problem.CodeValidationFailed, "", "", "decision must be approve, decline, ban, or unban.")
 		p.Errors = []problem.FieldError{{Pointer: "/decision", Reason: problem.ReasonUnknownValue,
 			Detail: "expected one of: approve, decline, ban, unban"}}
-		return repr.DecisionRecord{}, p
+		return repr.ClaimDecisionRecord{}, p
 	}
 	if from, ok := catsvc.TransitionRule(action); ok && !slices.Contains(from, cur.State) {
 		p := problem.New(problem.CodeInvalidStateTransition, "", "",
 			"this claim is in state "+cur.State+"; "+decision+" applies to "+strings.Join(from, " or ")+".")
 		p.Errors = []problem.FieldError{{Pointer: "/decision", Reason: problem.ReasonNotAllowedValue,
 			Detail: "claim state is " + cur.State}}
-		return repr.DecisionRecord{}, p
+		return repr.ClaimDecisionRecord{}, p
 	}
 	res, aerr := c.Claims.Act(ctx, catsvc.ClaimActionParams{
 		WorkID: workID, Action: action, Site: site, ActorUID: uid, Reason: note,
 	})
 	if aerr != nil {
-		return repr.DecisionRecord{}, claimWriteErr(aerr)
+		return repr.ClaimDecisionRecord{}, claimWriteErr(aerr)
 	}
-	return repr.DecisionRecord{Object: "decision", ID: repr.ID(res.EventID), Decision: decision, Note: note}, nil
+	return repr.ClaimDecisionRecord{
+		Object: "decision", ID: repr.ID(res.EventID), Decision: decision, Note: note,
+		FromState: res.From, ToState: res.To,
+	}, nil
 }
 
 func moderationClaimAction(decision string) (catsvc.ClaimAction, bool) {

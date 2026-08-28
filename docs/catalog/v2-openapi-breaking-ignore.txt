@@ -19,3 +19,24 @@
 
 in API POST /v2/moderation/claims/{id}/decisions removed the enum value `merge` of the request property `decision`
 in API POST /v2/moderation/proposals/{id}/decisions removed the enum value `approve` of the request property `decision`
+
+# W3 (2026-08-28, the consumer-contract wave): If-Match becomes required on the
+# five operations that already hard-reject its absence. requireIfMatch has
+# answered 428 PRECONDITION_REQUIRED on every one of these since they shipped,
+# while the document published the header as optional — so this entry declares a
+# change to the DOCUMENT, not to the server: no request that worked before stops
+# working, and no request that failed before starts. It is the reverse of the
+# usual breaking change, and it is the reason letmoe's withdraw button
+# (catalogv2/me.go:155, an `etag` parameter its transport has no slot to send)
+# is 428 on every click today while a spec-generated SDK would faithfully repeat
+# the same omission.
+#
+# PATCH /v2/me/news/{id} is deliberately NOT in this list: its If-Match is
+# required only for the withdraw transition (me_news.go:152) and optional for a
+# text edit, so `required: true` there would be a false statement.
+
+in API PATCH /v2/me/claims/{id} the `header` request parameter `if-match` became required
+in API PATCH /v2/me/proposals/{id} the `header` request parameter `if-match` became required
+in API POST /v2/me/proposals/{id}/amendments the `header` request parameter `if-match` became required
+in API POST /v2/moderation/claims/{id}/decisions the `header` request parameter `if-match` became required
+in API POST /v2/moderation/proposals/{id}/decisions the `header` request parameter `if-match` became required

@@ -7,6 +7,7 @@ import (
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/devapi"
+	"api/pkg/routepath"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -110,7 +111,7 @@ func userAuth(lookup func(context.Context, string) (UserIdentity, error), lookup
 	return func(c fiber.Ctx) error {
 		// Same trap as catalogAuth: c.Path() is not what fiber matched on, so
 		// GET /v2/Me/claims skipped this gate entirely.
-		path := routedPath(c.Path())
+		path := routepath.Normalize(c.Path())
 		if !strings.HasPrefix(path, "/v2/me/") && !strings.HasPrefix(path, "/v2/moderation/") {
 			return c.Next()
 		}

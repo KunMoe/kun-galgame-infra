@@ -77,12 +77,33 @@ type ProposalRecord struct {
 	EffectivePatch  *map[string]any `json:"effective_patch,omitempty" doc:"Present when include=patch. The patch after every amendment is folded in; this is what a merge would write."`
 }
 
-type DecisionRecord struct {
-	_        struct{} `json:"-" additionalProperties:"true"`
-	Object   string   `json:"object" enum:"decision" doc:"Type discriminant. Always decision."`
-	ID       string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Decision event id when the backend issues one, else the subject id."`
-	Decision string   `json:"decision" enum:"approve,decline,merge,ban,unban" doc:"Claim decisions are approve, decline, ban, or unban. Proposal decisions are merge or decline."`
-	Note     string   `json:"note" maxLength:"2000" doc:"Must not be used as a discriminant."`
+// Split per route for the reason D35 split the decision inputs: one record
+// serving both routes can only carry the union of two state vocabularies, and a
+// shared enum that advertises the other route's values is the defect D35
+// records, not a smaller schema.
+//
+// unban has no fixed target — it restores whatever state the claim was hidden
+// from — so a client that mapped decision to outcome told the moderator
+// "published" for a claim that went back to pending. The service has carried
+// both ends of the transition all along and the face dropped them.
+type ClaimDecisionRecord struct {
+	_         struct{} `json:"-" additionalProperties:"true"`
+	Object    string   `json:"object" enum:"decision" doc:"Type discriminant. Always decision."`
+	ID        string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Claim event id issued by this decision."`
+	Decision  string   `json:"decision" enum:"approve,decline,ban,unban" doc:"approve publishes a pending claim, decline sends it back, ban hides it from any state, unban restores the state it was hidden from."`
+	Note      string   `json:"note" maxLength:"2000" doc:"Must not be used as a discriminant."`
+	FromState *string  `json:"from_state" enum:"none,live,draft,pending,declined,hidden" doc:"Claim state before this decision. null when the claim had none."`
+	ToState   string   `json:"to_state" enum:"none,live,draft,pending,declined,hidden" doc:"Claim state after this decision. The authoritative outcome; do not derive it from decision, because unban has no fixed target."`
+}
+
+type ProposalDecisionRecord struct {
+	_         struct{} `json:"-" additionalProperties:"true"`
+	Object    string   `json:"object" enum:"decision" doc:"Type discriminant. Always decision."`
+	ID        string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Proposal id this decision closed."`
+	Decision  string   `json:"decision" enum:"merge,decline" doc:"merge writes the effective patch and records a revision. decline closes the proposal."`
+	Note      string   `json:"note" maxLength:"2000" doc:"Must not be used as a discriminant."`
+	FromState *string  `json:"from_state" enum:"open,merged,declined,withdrawn" doc:"Proposal state before this decision. null when it could not be read."`
+	ToState   string   `json:"to_state" enum:"open,merged,declined,withdrawn" doc:"Proposal state after this decision, read back rather than derived from decision."`
 }
 
 type SnapshotRecord struct {

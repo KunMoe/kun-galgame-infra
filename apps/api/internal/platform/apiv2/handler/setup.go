@@ -46,7 +46,12 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 		}
 	})
 
+	// Registered inside protocol.Middleware's c.Next(), so the projection is
+	// already applied when applyETag hashes the body. Filled after the
+	// registrations below; the closure holds the map, not a copy.
+	declaredFields := map[string]bool{}
 	app.Use(protocol.Middleware(opt.Store))
+	app.Use(fieldsProjection(declaredFields))
 	app.Use(catalogAuth(opt.LookupCredential))
 	app.Use(userAuth(opt.LookupUser, opt.LookupSite))
 	app.Use(protocol.RateLimit(opt.Store, credentialLimitIdentity))
@@ -105,6 +110,7 @@ func SetupWith(app *fiber.App, opt Options) huma.API {
 	registerStore(api, opt.Catalog)
 	huma.NewError = prevErr
 	annotateSpec(api.OpenAPI())
+	declaredFieldsOps(api.OpenAPI(), declaredFields)
 	return api
 }
 
@@ -142,7 +148,7 @@ func annotateSpec(doc *huma.OpenAPI) {
 			repr.Person{}, repr.Trait{}, repr.Measurements{}, repr.NameCredit{}, repr.NameCreditRole{}, repr.Appearance{},
 			repr.CharacterTrait{}, repr.WorkEngineRef{},
 			repr.UserPlaytime{}, repr.CoverVote{}, repr.ClaimRecord{},
-			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.DecisionRecord{}, repr.SnapshotRecord{},
+			repr.PlaytimeBatchItem{}, repr.ProposalRecord{}, repr.ClaimDecisionRecord{}, repr.ProposalDecisionRecord{}, repr.SnapshotRecord{},
 			repr.Revision{}, repr.FieldDiff{}, repr.Amendment{}, repr.EditImage{},
 			repr.NewsSubmission{}, repr.ClaimEventRef{}, repr.ClaimEvent{},
 			repr.StorePurchaseLinks{}, repr.StoreCampaign{},
@@ -162,15 +168,40 @@ func annotateSpec(doc *huma.OpenAPI) {
 			markOpenVocab(schema)
 		}
 	}
+	declareSecuritySchemes(doc)
 	for path, item := range doc.Paths {
 		for _, op := range pathOps(item) {
 			rewriteErrorResponses(path, op, problemRef)
+			if scheme, _ := v2Security(path); scheme != "" {
+				op.Security = []map[string][]string{{scheme: {}}}
+			}
 			for _, p := range op.Parameters {
 				if p != nil && p.Schema != nil {
 					markClosedEnums(p.Schema)
 				}
 			}
 		}
+	}
+}
+
+// Both are `type: http`, for which OpenAPI requires the per-operation scope
+// list to be empty — the scope a key must hold stays in the operation's own
+// description rather than being smuggled into a field that only means something
+// for oauth2.
+func declareSecuritySchemes(doc *huma.OpenAPI) {
+	if doc.Components == nil {
+		return
+	}
+	if doc.Components.SecuritySchemes == nil {
+		doc.Components.SecuritySchemes = map[string]*huma.SecurityScheme{}
+	}
+	doc.Components.SecuritySchemes[securityAppKey] = &huma.SecurityScheme{
+		Type: "http", Scheme: "bearer",
+		Description: "An application key (nmk_...) minted in the developer portal. Required scopes are named in each operation's description; a key without them answers 403 SCOPE_REQUIRED.",
+	}
+	doc.Components.SecuritySchemes[securityUserToken] = &huma.SecurityScheme{
+		Type: "http", Scheme: "bearer",
+		Description: "An OAuth user access token. An application key sent here is refused: /v2/me and /v2/moderation act as a person, not as an app.",
 	}
 }
 

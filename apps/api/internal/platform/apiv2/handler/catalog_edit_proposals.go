@@ -27,10 +27,18 @@ func amendmentsFrom(items []editing.ProposalAmendment) []repr.Amendment {
 
 type proposalFilter struct {
 	Object      string
+	EntityType  string
 	EntityID    string
 	Site        string
 	ProposerUID string
 	State       string
+	// The me lane's rows are already fenced to one proposer, so entity_id=
+	// alone narrows only what the caller owns and cannot leak a neighbouring
+	// family's proposal to anyone. On the queue lanes the same parameter is the
+	// authority discriminant — naming one entity is what admits an owner who
+	// holds no review permission — so an ambiguous id there is a hole, not a
+	// loose filter, and stays 422.
+	ProposerScoped bool
 }
 
 func (c *Catalog) proposalQuery(f proposalFilter, limit int, cursor int64) (editing.ProposalFilter, error) {
@@ -45,12 +53,31 @@ func (c *Catalog) proposalQuery(f proposalFilter, limit int, cursor int64) (edit
 		}
 		out.EntityType = entityType
 	}
+	// entity_type= is the same editing-engine spelling POST /v2/me/proposals
+	// takes in its body and every proposal record publishes; object= is the
+	// family spelling. Both name one filter, so disagreeing is a contradiction
+	// rather than an intersection.
+	if f.EntityType != "" {
+		if schemaObject(f.EntityType) == "" {
+			p := problem.New(problem.CodeUnknownEnumValue, "", "", "entity_type= is not an editable type.")
+			p.Errors = []problem.FieldError{{Parameter: "entity_type", Reason: problem.ReasonUnknownValue,
+				Detail: "allowed values: catalog.work, catalog.company, catalog.character, catalog.release, catalog.tag, catalog.engine, catalog.series"}}
+			return out, p
+		}
+		if out.EntityType != "" && out.EntityType != f.EntityType {
+			p := problem.New(problem.CodeMutuallyExclusiveParameters, "", "", "object= and entity_type= name different families.")
+			p.Errors = []problem.FieldError{{Parameter: "entity_type", Reason: problem.ReasonInconsistentWith,
+				Detail: "object=" + f.Object + " is " + schemaEntityType(f.Object)}}
+			return out, p
+		}
+		out.EntityType = f.EntityType
+	}
 	if f.EntityID != "" {
 		id, ok := repr.ParseID(f.EntityID)
 		if !ok {
 			return out, badFilterID("entity_id", f.EntityID)
 		}
-		if out.EntityType == "" {
+		if out.EntityType == "" && !f.ProposerScoped {
 			p := problem.New(problem.CodeValidationFailed, "", "", "entity_id= needs object= to be unambiguous.")
 			p.Errors = []problem.FieldError{{Parameter: "entity_id", Reason: problem.ReasonInconsistentWith,
 				Detail: "entity ids are only unique within one family; pass object= as well"}}
@@ -70,7 +97,7 @@ func (c *Catalog) proposalQuery(f proposalFilter, limit int, cursor int64) (edit
 		if !ok {
 			p := problem.New(problem.CodeUnknownEnumValue, "", "", "state= is not a proposal state.")
 			p.Errors = []problem.FieldError{{Parameter: "state", Reason: problem.ReasonUnknownValue,
-				Detail: "allowed values: open, merged, declined, withdrawn"}}
+				Detail: "allowed values: open, pending, merged, declined, withdrawn"}}
 			return out, p
 		}
 		out.Status = st

@@ -53,8 +53,9 @@ func registerMeWrite(api huma.API, cat *Catalog) {
 	}, uploadMyEditImage(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "listMyProposals", Method: http.MethodGet, Path: "/v2/me/proposals",
-		Summary: "List my proposals", Description: "state= filters open/merged/declined/withdrawn. Requires a user access token.",
-		Tags: me, Errors: errs, SkipValidateParams: true,
+		Summary:     "List my proposals",
+		Description: "The bearer's own proposals. state= is a closed vocabulary and an unknown value is 400. object= or entity_type= narrows to one family, entity_id= to one entity — on this lane entity_id= is accepted without a family because every row already belongs to the caller. Requires a user access token.",
+		Tags:        me, Errors: errs, SkipValidateParams: true,
 	}, listMyProposals(cat))
 	huma.Register(api, huma.Operation{
 		OperationID: "createMyProposal", Method: http.MethodPost, Path: "/v2/me/proposals",
@@ -90,7 +91,7 @@ func registerMeWrite(api huma.API, cat *Catalog) {
 	huma.Register(api, huma.Operation{
 		OperationID: "listModerationProposals", Method: http.MethodGet, Path: "/v2/moderation/proposals",
 		Summary:     "Moderation proposal queue",
-		Description: "Open proposals on the token site. The whole queue requires a catalog review permission. object=+entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without object= is 422.",
+		Description: "Open proposals on the token site. The whole queue requires a catalog review permission. object= (or entity_type=) with entity_id= narrows it to one entity, which that entity's owner may read without one — the same owner-review channel the editing engine resolves per field. entity_id= without a family is 422.",
 		Tags:        mod, Errors: errs, SkipValidateParams: true,
 	}, listModerationProposals(cat))
 	huma.Register(api, huma.Operation{
@@ -121,7 +122,7 @@ type batchPlaytimesInput struct {
 		Items []struct {
 			WorkID  string `json:"work_id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Catalog work id."`
 			Minutes int    `json:"minutes" minimum:"0" maximum:"60000" doc:"Absolute cumulative minutes."`
-		} `json:"items" doc:"At most 100 items."`
+		} `json:"items" maxItems:"100" doc:"At most 100 items."`
 	}
 }
 type batchPlaytimesOutput struct {
@@ -138,7 +139,7 @@ type createClaimInput struct {
 		SiteWorkID  string         `json:"site_work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"The site's own work id. Sent alone with display_name — no work_id, no refs — it mints a work anchored to that id."`
 		WorkID      string         `json:"work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"Existing catalog work id to claim."`
 		DisplayName string         `json:"display_name,omitempty" maxLength:"512" doc:"Required to mint when refs do not match. Must not be used as a discriminant."`
-		Refs        []claimRefBody `json:"refs,omitempty" doc:"source:external_id anchors. Used when work_id is absent."`
+		Refs        []claimRefBody `json:"refs,omitempty" maxItems:"100" doc:"source:external_id anchors, at most 100. Used when work_id is absent."`
 		FieldValues map[string]any `json:"field_values,omitempty" doc:"Editing-engine field key to value for the minted work, e.g. catalog.work.titles — the same shape GET /v2/moderation/snapshots/{object}/{id} answers. Sent alone it mints from the map; sent with work_id it is 422. Top-level display_name wins over catalog.work.display_name."`
 	}
 }
@@ -147,7 +148,7 @@ type getClaimInput struct {
 }
 type patchClaimInput struct {
 	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Catalog work id."`
-	IfMatch string `header:"If-Match" doc:"Current ETag. Required."`
+	IfMatch string `header:"If-Match" required:"true" doc:"Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED."`
 	Body    struct {
 		State string `json:"state" enum:"live,pending,withdrawn,draft" doc:"live publishes a draft, pending submits it for review, withdrawn returns a live or pending claim to draft. draft is the older spelling of withdrawn."`
 	}
@@ -158,12 +159,16 @@ type getClaimOutput struct {
 }
 type listProposalsInput struct {
 	CollectionInput
-	State string `query:"state" maxLength:"16" doc:"open, pending, merged, declined, withdrawn."`
+	State      string `query:"state" maxLength:"16" doc:"Closed: open, pending, merged, declined, withdrawn. Unknown value is 400 UNKNOWN_ENUM_VALUE."`
+	Object     string `query:"object" maxLength:"32" doc:"Closed family filter: work, company, character, release, tag, engine, series."`
+	EntityType string `query:"entity_type" maxLength:"64" doc:"Editing-engine type, e.g. catalog.work. The same spelling POST /v2/me/proposals takes in its body. Names the same filter as object=; sending both with different families is 400."`
+	EntityID   string `query:"entity_id" maxLength:"20" doc:"Catalog id of one entity. Accepted alone on this lane, which is already fenced to the bearer's own proposals; pair it with object= or entity_type= when ids collide across families."`
 }
 type listModerationProposalsInput struct {
 	CollectionInput
-	Object   string `query:"object" maxLength:"32" doc:"Closed family filter: work, company, character, release, tag, engine, series."`
-	EntityID string `query:"entity_id" maxLength:"20" doc:"Catalog id of one entity. Requires object=. Narrows the queue to that entity, which its owner may read without a review permission."`
+	Object     string `query:"object" maxLength:"32" doc:"Closed family filter: work, company, character, release, tag, engine, series."`
+	EntityType string `query:"entity_type" maxLength:"64" doc:"Editing-engine type, e.g. catalog.work. Names the same filter as object=; sending both with different families is 400."`
+	EntityID   string `query:"entity_id" maxLength:"20" doc:"Catalog id of one entity. Requires object= or entity_type=. Narrows the queue to that entity, which its owner may read without a review permission."`
 }
 type listProposalsOutput struct {
 	Body repr.List[repr.ProposalRecord]
@@ -187,7 +192,7 @@ type getProposalOutput struct {
 }
 type patchProposalInput struct {
 	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Proposal id."`
-	IfMatch string `header:"If-Match" doc:"Current ETag. Required."`
+	IfMatch string `header:"If-Match" required:"true" doc:"Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED."`
 	Body    struct {
 		State string         `json:"state,omitempty" enum:"withdrawn" doc:"Set withdrawn to withdraw."`
 		Patch map[string]any `json:"patch,omitempty" doc:"Field-key to new value to amend."`
@@ -195,16 +200,16 @@ type patchProposalInput struct {
 }
 type amendProposalInput struct {
 	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Proposal id."`
-	IfMatch string `header:"If-Match" doc:"Current ETag. Required."`
+	IfMatch string `header:"If-Match" required:"true" doc:"Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED."`
 	Body    struct {
 		Set   map[string]any `json:"set,omitempty" doc:"Field-key to corrected value."`
-		Unset []string       `json:"unset,omitempty" doc:"Field keys to drop."`
+		Unset []string       `json:"unset,omitempty" maxItems:"100" doc:"Field keys to drop, at most 100."`
 		Note  string         `json:"note,omitempty" maxLength:"2000" doc:"Must not be used as a discriminant."`
 	}
 }
 type decideClaimInput struct {
 	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Catalog work id."`
-	IfMatch string `header:"If-Match" doc:"Current ETag. Required."`
+	IfMatch string `header:"If-Match" required:"true" doc:"Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED."`
 	Body    struct {
 		Decision string `json:"decision" enum:"approve,decline,ban,unban" doc:"approve publishes a pending claim, decline sends it back, ban hides it from any state, unban restores the state it was hidden from."`
 		Note     string `json:"note,omitempty" maxLength:"2000" doc:"Must not be used as a discriminant. Required to decline."`
@@ -212,13 +217,14 @@ type decideClaimInput struct {
 }
 type decideProposalInput struct {
 	ID      string `path:"id" minLength:"1" maxLength:"20" pattern:"^[0-9]+$" doc:"Proposal id."`
-	IfMatch string `header:"If-Match" doc:"Current ETag. Required."`
+	IfMatch string `header:"If-Match" required:"true" doc:"Current ETag. Required; its absence is 428 PRECONDITION_REQUIRED."`
 	Body    struct {
 		Decision string `json:"decision" enum:"merge,decline" doc:"merge writes the effective patch and records a revision. decline closes the proposal."`
 		Note     string `json:"note,omitempty" maxLength:"2000" doc:"Must not be used as a discriminant."`
 	}
 }
-type decideOutput struct{ Body repr.DecisionRecord }
+type claimDecisionOutput struct{ Body repr.ClaimDecisionRecord }
+type proposalDecisionOutput struct{ Body repr.ProposalDecisionRecord }
 type revertInput struct {
 	Body struct {
 		RevisionID string `json:"revision_id" pattern:"^[0-9]+$" maxLength:"20" doc:"edit_revision id."`
@@ -330,7 +336,9 @@ func listMyProposals(cat *Catalog) func(context.Context, *listProposalsInput) (*
 		if err != nil {
 			return nil, err
 		}
-		page, lerr := cat.ListMyProposals(ctx, q, in.State)
+		page, lerr := cat.ListMyProposals(ctx, q, proposalFilter{
+			Object: in.Object, EntityType: in.EntityType, EntityID: in.EntityID, State: in.State,
+		})
 		if lerr != nil {
 			return nil, catalogErr(ctx, lerr)
 		}
@@ -343,11 +351,11 @@ func createMyProposal(cat *Catalog) func(context.Context, *createProposalInput) 
 		if in == nil {
 			in = &createProposalInput{}
 		}
-		rec, err := cat.CreateProposal(ctx, in.Body.EntityType, in.Body.EntityID, in.Body.Patch, in.Body.Note)
+		rec, etag, err := cat.CreateProposal(ctx, in.Body.EntityType, in.Body.EntityID, in.Body.Patch, in.Body.Note)
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &getProposalOutput{Body: rec}, nil
+		return &getProposalOutput{ETag: etag, Body: rec}, nil
 	}
 }
 
@@ -410,11 +418,11 @@ func patchMyProposal(cat *Catalog) func(context.Context, *patchProposalInput) (*
 		if !ok {
 			return nil, catalogErr(ctx, problemInvalidID(in.ID))
 		}
-		rec, err := cat.PatchProposal(ctx, id, in.Body.State, in.Body.Patch, in.IfMatch)
+		rec, etag, err := cat.PatchProposal(ctx, id, in.Body.State, in.Body.Patch, in.IfMatch)
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &getProposalOutput{Body: rec}, nil
+		return &getProposalOutput{ETag: etag, Body: rec}, nil
 	}
 }
 
@@ -427,11 +435,11 @@ func amendMyProposal(cat *Catalog) func(context.Context, *amendProposalInput) (*
 		if !ok {
 			return nil, catalogErr(ctx, problemInvalidID(in.ID))
 		}
-		rec, err := cat.AmendProposal(ctx, id, in.Body.Set, in.Body.Unset, in.Body.Note, in.IfMatch)
+		rec, etag, err := cat.AmendProposal(ctx, id, in.Body.Set, in.Body.Unset, in.Body.Note, in.IfMatch)
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &getProposalOutput{Body: rec}, nil
+		return &getProposalOutput{ETag: etag, Body: rec}, nil
 	}
 }
 
@@ -452,8 +460,8 @@ func getModerationClaim(cat *Catalog) func(context.Context, *getClaimInput) (*ge
 	}
 }
 
-func decideModerationClaim(cat *Catalog) func(context.Context, *decideClaimInput) (*decideOutput, error) {
-	return func(ctx context.Context, in *decideClaimInput) (*decideOutput, error) {
+func decideModerationClaim(cat *Catalog) func(context.Context, *decideClaimInput) (*claimDecisionOutput, error) {
+	return func(ctx context.Context, in *decideClaimInput) (*claimDecisionOutput, error) {
 		if in == nil {
 			in = &decideClaimInput{}
 		}
@@ -465,7 +473,7 @@ func decideModerationClaim(cat *Catalog) func(context.Context, *decideClaimInput
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &decideOutput{Body: rec}, nil
+		return &claimDecisionOutput{Body: rec}, nil
 	}
 }
 
@@ -478,7 +486,7 @@ func listModerationProposals(cat *Catalog) func(context.Context, *listModeration
 		if err != nil {
 			return nil, err
 		}
-		page, lerr := cat.ListModerationProposals(ctx, q, in.Object, in.EntityID)
+		page, lerr := cat.ListModerationProposals(ctx, q, in.Object, in.EntityType, in.EntityID)
 		if lerr != nil {
 			return nil, catalogErr(ctx, lerr)
 		}
@@ -486,8 +494,8 @@ func listModerationProposals(cat *Catalog) func(context.Context, *listModeration
 	}
 }
 
-func decideModerationProposal(cat *Catalog) func(context.Context, *decideProposalInput) (*decideOutput, error) {
-	return func(ctx context.Context, in *decideProposalInput) (*decideOutput, error) {
+func decideModerationProposal(cat *Catalog) func(context.Context, *decideProposalInput) (*proposalDecisionOutput, error) {
+	return func(ctx context.Context, in *decideProposalInput) (*proposalDecisionOutput, error) {
 		if in == nil {
 			in = &decideProposalInput{}
 		}
@@ -499,7 +507,7 @@ func decideModerationProposal(cat *Catalog) func(context.Context, *decideProposa
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &decideOutput{Body: rec}, nil
+		return &proposalDecisionOutput{Body: rec}, nil
 	}
 }
 
@@ -508,11 +516,11 @@ func revertModeration(cat *Catalog) func(context.Context, *revertInput) (*getPro
 		if in == nil {
 			in = &revertInput{}
 		}
-		rec, err := cat.RevertRevision(ctx, in.Body.RevisionID, in.Body.Reason)
+		rec, etag, err := cat.RevertRevision(ctx, in.Body.RevisionID, in.Body.Reason)
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}
-		return &getProposalOutput{Body: rec}, nil
+		return &getProposalOutput{ETag: etag, Body: rec}, nil
 	}
 }
 
