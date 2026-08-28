@@ -121,6 +121,20 @@ func (s *IDSigner) Sign(sub, aud, nonce string, ttl time.Duration) (string, erro
 type Verifier struct {
 	hs256Secret []byte
 	resolver    Resolver
+	issuer      string
+}
+
+// jwt.ParseWithClaims validates exp, nbf and iat by default and NOTHING else:
+// iss and aud are only checked when the parser is handed the option. Every
+// resource server here shares one HS256 secret and one JWK Set, so without
+// this any token that OP ever signed was accepted anywhere.
+func (v *Verifier) RequiringIssuer(want string) *Verifier {
+	if v == nil || want == "" {
+		return v
+	}
+	clone := *v
+	clone.issuer = want
+	return &clone
 }
 
 func NewVerifier(hs256Secret string, resolver Resolver) *Verifier {
@@ -169,7 +183,11 @@ func (v *Verifier) Parse(ctx context.Context, tokenString string) (*utils.TokenC
 			return nil, fmt.Errorf("oidctoken: unexpected signing method: %v", t.Header["alg"])
 		}
 	}
-	tok, err := jwt.ParseWithClaims(tokenString, &utils.TokenClaims{}, keyfunc)
+	var opts []jwt.ParserOption
+	if v.issuer != "" {
+		opts = append(opts, jwt.WithIssuer(v.issuer))
+	}
+	tok, err := jwt.ParseWithClaims(tokenString, &utils.TokenClaims{}, keyfunc, opts...)
 	if err != nil {
 		return nil, err
 	}

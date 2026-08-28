@@ -652,3 +652,69 @@ func TestAddUsagePathColumnWidensExisting(t *testing.T) {
 }
 
 func boolPtr(b bool) *bool { return &b }
+
+// Disabling an app is a revocation of every key on it: ResolveByHash refuses
+// on !dev_enabled. The cached credential carries dev_enabled, so without a
+// bust the app's keys went on working for the 60s positive-cache TTL.
+func TestDisablingAnAppBustsItsCache(t *testing.T) {
+	cleanup(t)
+	const clientID = "devapitest_appbust"
+	makeApp(t, clientID, true)
+	store := newMemStore()
+	svc := NewAdminService(NewRepository(testDB), store)
+	mw := NewMiddleware(NewRepository(testDB), store)
+	ctx := context.Background()
+
+	_, plaintext, err := svc.MintKey(ctx, clientID, MintKeyInput{Name: "k"}, 1)
+	if err != nil {
+		t.Fatalf("mint: %v", err)
+	}
+	cred, err := mw.Lookup(ctx, plaintext)
+	if err != nil || cred == nil {
+		t.Fatalf("positive control: a live key must resolve, got %+v %v", cred, err)
+	}
+	if _, cached := store.kv[credCacheKey(hashHex(plaintext))]; !cached {
+		t.Fatal("positive control: the resolve must have cached something to bust")
+	}
+
+	if _, err := svc.UpdateAppConfig(ctx, clientID, AppConfig{DevEnabled: boolPtr(false)}); err != nil {
+		t.Fatalf("disable app: %v", err)
+	}
+	cred, err = mw.Lookup(ctx, plaintext)
+	if err != nil {
+		t.Fatalf("lookup after disable: %v", err)
+	}
+	if cred != nil {
+		t.Errorf("a key on a disabled app must stop resolving now, not in 60s: %+v", cred)
+	}
+}
+
+// A tier change is a limit change, and the tier rides in the same cached blob.
+func TestTighteningATierBustsItsCache(t *testing.T) {
+	cleanup(t)
+	const clientID = "devapitest_tierbust"
+	makeApp(t, clientID, true)
+	store := newMemStore()
+	svc := NewAdminService(NewRepository(testDB), store)
+	mw := NewMiddleware(NewRepository(testDB), store)
+	ctx := context.Background()
+
+	_, plaintext, err := svc.MintKey(ctx, clientID, MintKeyInput{Name: "k"}, 1)
+	if err != nil {
+		t.Fatalf("mint: %v", err)
+	}
+	if _, err := mw.Lookup(ctx, plaintext); err != nil {
+		t.Fatalf("warm the cache: %v", err)
+	}
+	trusted := TierTrusted
+	if _, err := svc.UpdateAppConfig(ctx, clientID, AppConfig{DevTier: &trusted}); err != nil {
+		t.Fatalf("retier: %v", err)
+	}
+	cred, err := mw.Lookup(ctx, plaintext)
+	if err != nil || cred == nil {
+		t.Fatalf("lookup after retier: %+v %v", cred, err)
+	}
+	if cred.Tier != TierTrusted {
+		t.Errorf("the cached tier must not outlive the change: got %q", cred.Tier)
+	}
+}

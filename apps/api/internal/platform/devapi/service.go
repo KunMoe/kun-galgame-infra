@@ -69,7 +69,22 @@ func (s *AdminService) UpdateAppConfig(ctx context.Context, clientID string, cfg
 	if err := s.repo.UpdateAppDevConfig(ctx, clientID, fields); err != nil {
 		return nil, err
 	}
+	s.bustAppCredentials(ctx, clientID)
 	return s.repo.GetApp(ctx, clientID)
+}
+
+func (s *AdminService) bustAppCredentials(ctx context.Context, clientID string) {
+	keys, err := s.repo.ListKeysByClient(ctx, clientID)
+	if err != nil {
+		slog.Warn("devapi: app config changed but its resolve cache could not be busted",
+			"client_id", clientID, "err", err)
+		return
+	}
+	for i := range keys {
+		if key, ok := credCacheKeyForStoredHash(keys[i].KeyHash); ok {
+			_ = s.store.Del(ctx, key)
+		}
+	}
 }
 
 func (s *AdminService) ListApps(ctx context.Context, filter string) ([]AppView, error) {
@@ -153,8 +168,8 @@ func (s *AdminService) RevokeKey(ctx context.Context, keyID uint) error {
 	if err := s.repo.RevokeKey(ctx, key.ID, time.Now()); err != nil {
 		return err
 	}
-	if hexPart, ok := strings.CutPrefix(key.KeyHash, keyHashPrefix); ok {
-		_ = s.store.Del(ctx, "devkey:"+hexPart)
+	if cacheKey, ok := credCacheKeyForStoredHash(key.KeyHash); ok {
+		_ = s.store.Del(ctx, cacheKey)
 	}
 	slog.Info("devapi key revoked", "client_id", key.ClientID, "key_id", key.ID)
 	return nil
