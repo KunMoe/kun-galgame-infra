@@ -10612,12 +10612,12 @@ paths:
             description: true or false. Absent = no gate.
             maxLength: 8
             type: string
-        - description: "Comma-separated closed states: none, live, draft. Moderation states live on /v2/moderation/claims."
+        - description: "Comma-separated closed states: none, live, draft. pending, declined and hidden are the per-site moderation queue: they need a key holding claim_events:read and a site= naming the caller's own site, and are otherwise not in the vocabulary."
           explode: false
           in: query
           name: claim_state
           schema:
-            description: "Comma-separated closed states: none, live, draft. Moderation states live on /v2/moderation/claims."
+            description: "Comma-separated closed states: none, live, draft. pending, declined and hidden are the per-site moderation queue: they need a key holding claim_events:read and a site= naming the caller's own site, and are otherwise not in the vocabulary."
             maxLength: 128
             type: string
         - description: "Comma-separated closed editorial axis: sfw, nsfw."

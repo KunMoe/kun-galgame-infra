@@ -41894,7 +41894,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "Comma-separated closed states: none, live, draft. Moderation states live on /v2/moderation/claims."
+                  "doc": "Comma-separated closed states: none, live, draft. pending, declined and hidden are the per-site moderation queue: they need a key holding claim_events:read and a site= naming the caller's own site, and are otherwise not in the vocabulary."
                 },
                 {
                   "name": "content_limit",
