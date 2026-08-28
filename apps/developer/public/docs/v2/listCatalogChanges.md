@@ -15,6 +15,14 @@ Catalog changes feed
 
 Works updated recently, oldest first. Keyset-paginated. Requires an application key. ids= is not accepted.
 
+**This is the mirror channel.** If you cache any catalog-owned fact per work — above all the editorial display axis `content_limit`, whose verdict is `claimed_by.content_limit` when the claim block is present and otherwise `nsfw` when `content_rating` is `r18`, `sfw` otherwise — poll this feed instead of sweeping the catalog. Every write that changes a work's claim state, its display axis (the editorial NSFW flag or its content rating), or its existence bumps `updated_at` and surfaces the id here.
+
+Bootstrap from an empty cursor: the feed enumerates the whole population oldest-updated-first, so the first drain IS the full inventory. Hydrate each page against /v2/catalog/works with ids= in batches of at most 100, with both gates open (nsfw=true and no content_limit), then keep the cursor and poll it at your own cadence.
+
+gone: an entry carrying `gone: true` has left the public population — drop the mirrored row. Merged-away ids appear here as gone AND in /v2/catalog/redirects, which names the id that replaced them; repoint rather than delete when the redirect exists.
+
+Everything else a work serves — covers, tags, titles, intros, ratings — surfaces best-effort: most of those writers touch the work too, but only claim state, the display axis and existence are promised.
+
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
 - scope：catalog:read

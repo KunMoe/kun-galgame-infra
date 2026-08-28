@@ -151,7 +151,11 @@ func retireSource(tx *gorm.DB, entityType int16, src int64) error {
 	case model.EntityTypeCharacter:
 		return tx.Delete(&model.CatalogCharacter{}, src).Error
 	case model.EntityTypeWork:
-		if err := tx.Exec(`UPDATE catalog_work SET status = ?, site = NULL, product_work_id = NULL WHERE id = ?`,
+		// The updated_at bump is what puts the retired id on the changes feed as
+		// a gone entry. GORM's soft delete below writes deleted_at only, so
+		// without it the merge source left the public population without ever
+		// surfacing, and downstream mirrors kept the dead id until a full sweep.
+		if err := tx.Exec(`UPDATE catalog_work SET status = ?, site = NULL, product_work_id = NULL, updated_at = now() WHERE id = ?`,
 			model.WorkStatusMerged, src).Error; err != nil {
 			return err
 		}

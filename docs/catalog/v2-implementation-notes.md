@@ -434,3 +434,53 @@ editing the column by hand. The guard would also not be a privilege boundary on
 in two more calls with or without `Trusted`. Adding the check would mean
 widening `Options.LookupSite` to carry the client's owner, for a fence that is
 already open next door.
+
+## Wave — the changes feed is the display-axis mirror channel (2026-08-28)
+
+Downstream mirrors of the editorial display verdict (`content_limit`) had no
+declared change channel, so both the forum and moyu fell back to a nightly full
+sweep — ~300 requests over ~7.8k rows to learn about a handful of editor flips.
+The forum's code carries the lament verbatim: *"There is no feed for that field
+— the claim-event feed carries claim state only — so a full sweep is the only
+way an editor's flip reaches the local lists."* The channel already existed:
+`GET /v2/catalog/changes` keysets `catalog_work` on `(updated_at, id)`. This
+wave declares it, and closes the two holes that stopped it from being usable.
+
+**Spec is 2.1.0.** Additive only: one optional response property, one longer
+operation description, zero new operations (88 stays 88), **zero migrations**.
+
+**Hole 1 — disappearances were invisible.** `PublicService.Changes` filtered
+`deleted_at IS NULL AND status = live`, so a work that left the population left
+the feed too and downstream kept the dead id until its next sweep. The
+population is now every galgame row, with `gone = (deleted_at IS NOT NULL OR
+status <> live)` computed per row and rendered as an **optional** `gone`
+property — present only when true, following the repr package's pointer +
+`omitempty` house style. `gone` is now exactly the complement of the works face:
+the `ids=` lane serves live, non-deleted works regardless of claim state. The
+widened query still rides `idx_catalog_work_updated_id` (a full index on
+`(updated_at, id)`); EXPLAIN on the 229k-row dev catalog shows the same Index
+Scan as before, with one fewer filter.
+
+**Hole 2 — the one retirement write that did not bump.** `retireSource` in
+`merge_execute.go` set `status = merged, site = NULL, product_work_id = NULL`
+without touching `updated_at`, and the GORM soft delete that follows writes
+`deleted_at` only — so an executed merge retired an id in total silence. It now
+carries `updated_at = now()`. Every other recurring writer of the promised axis
+was audited and already bumps: `editspec.applyWorkColumn` (GORM `Model.Update`,
+`display_nsfw` / `content_rating`), the claim lifecycle's `Model.Updates` on
+`catalog_work`, `releasemeta`'s rating lane (explicit `updated_at = now()`),
+survivorship's claim move (explicit `now()`), importers (INSERT-only for these
+columns), and `repository.TouchWorks` for every subresource write. The
+survivorship merge of `display_name` / `olang` writes through
+`tx.Table("catalog_work")`, which has no schema and therefore no auto
+`updated_at` — it is covered because `ExecuteMerge` appends the target to
+`TouchWorks`.
+
+**What is promised, and what is not.** Claim state, the display axis and
+existence surface here by contract. Covers, tags, titles, intros and ratings
+surface best-effort — most of those writers touch the work as well, but no
+touch-audit was done for them and the feed does not promise them.
+
+Consumer recipe (bootstrap from an empty cursor, hydrate `ids=` in ≤100 batches
+with both gates open, `gone` → drop, redirects → repoint, `NULL` cache column
+means not-synced-yet and passes): [01 §8](./01-service-and-contract.md).

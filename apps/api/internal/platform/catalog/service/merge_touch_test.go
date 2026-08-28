@@ -198,9 +198,8 @@ func TestMergeWorkTouchesTargetAndRelationOtherEnd(t *testing.T) {
 		"a work with no edge to either side must stay out of the feed")
 
 	ids := changesSince(t, cursor)
-	assert.ElementsMatch(t, []int64{dst.ID, aSide.ID, bSide.ID, dupSide.ID}, ids,
-		"the feed carries the target and the rewritten neighbours, nothing else")
-	assert.NotContains(t, ids, src.ID, "a merged-away source must never enter the changes feed")
+	assert.ElementsMatch(t, []int64{src.ID, dst.ID, aSide.ID, bSide.ID, dupSide.ID}, ids,
+		"the feed carries the retired source, the target and the rewritten neighbours, nothing else")
 }
 
 func TestMergeIdentityLayerTouchesNoWork(t *testing.T) {
@@ -257,5 +256,6 @@ func TestMergeWorkClaimTransferTouchesTarget(t *testing.T) {
 	assert.True(t, workUpdatedAt(t, dst.ID).After(before), "the target now carries the claim")
 
 	ids := changesSince(t, cursor)
-	assert.Equal(t, []int64{dst.ID}, ids, "only the claim's new owner enters the feed")
+	assert.ElementsMatch(t, []int64{src.ID, dst.ID}, ids,
+		"the claim's new owner and the id it left enter the feed together")
 }

@@ -240,8 +240,11 @@ func (s *PublicService) Changes(ctx context.Context, cursor string, limit int) (
 	} else if limit > 500 {
 		limit = 500
 	}
-	where := []string{"deleted_at IS NULL", "status = ?", "medium_id = ?",
-		"updated_at < now() - interval '5 seconds'"}
+	// The population is every galgame row, not just the live ones: a mirror
+	// that only ever hears about live works can never learn that a row left,
+	// and the downstream lists kept showing merged-away and deleted ids until
+	// their next full sweep.
+	where := []string{"medium_id = ?", "updated_at < now() - interval '5 seconds'"}
 	args := []any{model.WorkStatusLive, galgameMediumID}
 	if cur.Updated != "" {
 		ts, perr := time.Parse(time.RFC3339Nano, cur.Updated)
@@ -251,12 +254,13 @@ func (s *PublicService) Changes(ctx context.Context, cursor string, limit int) (
 		where = append(where, "(updated_at, id) > (?, ?)")
 		args = append(args, ts, cur.ID)
 	}
-	q := `SELECT id, updated_at FROM catalog_work WHERE ` + strings.Join(where, " AND ") +
-		` ORDER BY updated_at ASC, id ASC LIMIT ?`
+	q := `SELECT id, updated_at, (deleted_at IS NOT NULL OR status <> ?) AS gone FROM catalog_work WHERE ` +
+		strings.Join(where, " AND ") + ` ORDER BY updated_at ASC, id ASC LIMIT ?`
 	args = append(args, limit)
 	var rows []struct {
 		ID        int64
 		UpdatedAt time.Time
+		Gone      bool
 	}
 	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
 		return dto.PublicChangesData{}, err
@@ -265,7 +269,7 @@ func (s *PublicService) Changes(ctx context.Context, cursor string, limit int) (
 	next := cur
 	for i, r := range rows {
 		out.Items[i] = dto.PublicChangeItem{
-			EntityType: "work", ID: r.ID, Updated: r.UpdatedAt.UTC().Format(time.RFC3339),
+			EntityType: "work", ID: r.ID, Updated: r.UpdatedAt.UTC().Format(time.RFC3339), Gone: r.Gone,
 		}
 		next = publicCursor{Sort: "changes", ID: r.ID, Updated: r.UpdatedAt.UTC().Format(time.RFC3339Nano)}
 	}
