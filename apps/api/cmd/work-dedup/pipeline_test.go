@@ -1,0 +1,311 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"os"
+	"testing"
+
+	"api/internal/platform/catalog/migrate"
+	"api/internal/platform/catalog/model"
+	"api/internal/platform/catalog/repository"
+	"api/internal/platform/catalog/seed"
+	"api/internal/platform/catalog/service"
+	srcb "api/internal/platform/catalog/srcbangumi"
+	"api/internal/testsupport/dbtest"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+var testDB *gorm.DB
+
+// TestMain keeps running when there is no database: the verdict table tests in
+// this package are pure Go, and exiting early for a missing DSN would drop them
+// from the DB-less `unit` CI job without any tell.
+func TestMain(m *testing.M) {
+	if dsn, ok := dbtest.DSN(); ok {
+		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "FAIL: cannot connect to the assigned test database")
+			os.Exit(1)
+		}
+		for _, step := range []func(*gorm.DB) error{migrate.Run, seed.Run, srcb.EnsureSchema} {
+			if err := step(db); err != nil {
+				fmt.Fprintf(os.Stderr, "FAIL: catalog test setup: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		testDB = db
+	}
+	os.Exit(m.Run())
+}
+
+func requireDB(t *testing.T) {
+	t.Helper()
+	if testDB == nil {
+		dbtest.Skip(t)
+	}
+}
+
+func cleanPipeline(t *testing.T) {
+	t.Helper()
+	for _, table := range []string{
+		"catalog_match_candidate", "catalog_merge_proposal", "catalog_redirect",
+		"catalog_external_ref", "catalog_revision", "catalog_entity_usage",
+		"catalog_work_label", "catalog_work_title", "catalog_release", "catalog_work",
+		"src_bangumi.subject",
+	} {
+		require.NoError(t, testDB.Exec("TRUNCATE "+table+" RESTART IDENTITY CASCADE").Error)
+	}
+}
+
+func galgameMedium(t *testing.T) int16 {
+	t.Helper()
+	var id int16
+	require.NoError(t, testDB.Raw(`SELECT id FROM catalog_medium WHERE key = 'galgame'`).Scan(&id).Error)
+	require.NotZero(t, id, "galgame medium is not seeded")
+	return id
+}
+
+func mkWork(t *testing.T, medium int16, name string, site *string) int64 {
+	t.Helper()
+	w := &model.CatalogWork{
+		MediumID: medium, OLang: "ja", DisplayName: name,
+		ContentRating: model.ContentRatingAllAges, Status: model.WorkStatusLive,
+	}
+	if site != nil {
+		w.Site = site
+		product := int64(900000 + len(name))
+		w.ProductWorkID = &product
+	}
+	require.NoError(t, testDB.Create(w).Error)
+	return w.ID
+}
+
+func mkTitle(t *testing.T, workID int64, title string) {
+	t.Helper()
+	require.NoError(t, testDB.Create(&model.CatalogWorkTitle{
+		WorkID: workID, Lang: "ja", Title: title, Kind: model.WorkTitleKindOfficial,
+	}).Error)
+}
+
+func mkAnchor(t *testing.T, workID int64, sourceID int16, externalID string) {
+	t.Helper()
+	require.NoError(t, testDB.Create(&model.CatalogExternalRef{
+		EntityType: model.EntityTypeWork, EntityID: workID, SourceID: sourceID,
+		ExternalID: externalID, LinkKind: model.LinkKindExact, MatchedBy: "test:work-dedup",
+	}).Error)
+}
+
+func mkRelease(t *testing.T, workID int64, y, m, d int16) {
+	t.Helper()
+	require.NoError(t, testDB.Create(&model.CatalogRelease{
+		WorkID: workID, Kind: model.ReleaseKindDefault,
+		ReleasedY: &y, ReleasedM: &m, ReleasedD: &d,
+	}).Error)
+}
+
+func candidateStatus(t *testing.T, a, b int64) int16 {
+	t.Helper()
+	var status *int16
+	require.NoError(t, testDB.Raw(
+		`SELECT status FROM catalog_match_candidate WHERE entity_type = ? AND a_id = ? AND b_id = ?`,
+		model.EntityTypeWork, min(a, b), max(a, b)).Scan(&status).Error)
+	require.NotNil(t, status, "no candidate filed for (%d,%d)", a, b)
+	return *status
+}
+
+func countRows(t *testing.T, query string, args ...any) int64 {
+	t.Helper()
+	var n int64
+	require.NoError(t, testDB.Raw(query, args...).Scan(&n).Error)
+	return n
+}
+
+func TestWorkDedupPipeline(t *testing.T) {
+	requireDB(t)
+	cleanPipeline(t)
+	ctx := context.Background()
+	medium := galgameMedium(t)
+	kungal := "kungal"
+	const actor = int64(4242)
+
+	// K1 is a claim carrying an official title; M1 is the import-minted twin
+	// whose only identity string is a display_name spelled with extra spaces.
+	k1 := mkWork(t, medium, "K1クレーム作品テスト", &kungal)
+	mkTitle(t, k1, "重複タイトルテスト検証")
+	mkRelease(t, k1, 2015, 8, 10)
+	m1 := mkWork(t, medium, "重複 タイトル テスト 検証", nil)
+	mkAnchor(t, m1, 3, "777")
+	mkRelease(t, m1, 2015, 9, 9)
+
+	k2 := mkWork(t, medium, "K2アンカー衝突元作品", nil)
+	mkTitle(t, k2, "衝突アンカー作品検証")
+	mkAnchor(t, k2, 3, "111")
+	m2 := mkWork(t, medium, "M2アンカー衝突先作品", nil)
+	mkTitle(t, m2, "衝突アンカー作品検証")
+	mkAnchor(t, m2, 3, "222")
+
+	k3 := mkWork(t, medium, "K3年違い元作品テスト", nil)
+	mkTitle(t, k3, "年違い作品検証テスト")
+	mkRelease(t, k3, 2015, 5, 1)
+	m3 := mkWork(t, medium, "M3年違い先作品テスト", nil)
+	mkTitle(t, m3, "年違い作品検証テスト")
+	mkRelease(t, m3, 2019, 5, 1)
+
+	c, err := buildCensus(ctx, testDB)
+	require.NoError(t, err)
+	require.Len(t, c.rows, 3, "three pairs: %+v", c.rows)
+	verdicts := c.verdictByPair()
+	assert.Equal(t, bucketAuto, verdicts[[2]int64{k1, m1}])
+	assert.Equal(t, bucketAnchorConflict, verdicts[[2]int64{k2, m2}])
+	assert.Equal(t, bucketDateClash, verdicts[[2]int64{k3, m3}])
+	require.Len(t, c.groups, 1)
+	assert.Equal(t, k1, c.groups[0].survivor, "the claimed work survives")
+
+	resolve := service.NewResolveService(repository.NewRedirectRepository(testDB))
+	merge := service.NewMergeService(testDB, resolve,
+		repository.NewProposalRepository(testDB), repository.NewRevisionRepository(testDB))
+	var out bytes.Buffer
+
+	require.NoError(t, runSeed(ctx, testDB, &out, actor, false))
+	assert.Zero(t, countRows(t, `SELECT count(*) FROM catalog_match_candidate`), "dry seed writes nothing")
+
+	out.Reset()
+	require.NoError(t, runSeed(ctx, testDB, &out, actor, true))
+	assert.Equal(t, model.CandidateStatusPending, candidateStatus(t, k1, m1))
+	assert.Equal(t, model.CandidateStatusNeedsManual, candidateStatus(t, k2, m2))
+	assert.Equal(t, model.CandidateStatusNeedsManual, candidateStatus(t, k3, m3))
+
+	out.Reset()
+	require.NoError(t, runPropose(ctx, testDB, &out, merge, actor, waveTagW1, 0, false))
+	assert.Contains(t, out.String(), fmt.Sprintf("PLAN %d <- %d", k1, m1))
+	assert.Zero(t, countRows(t, `SELECT count(*) FROM catalog_merge_proposal`), "dry propose writes nothing")
+	assert.Equal(t, model.CandidateStatusPending, candidateStatus(t, k1, m1))
+
+	out.Reset()
+	require.NoError(t, runPropose(ctx, testDB, &out, merge, actor, waveTagW1, 0, true))
+	var proposal model.CatalogMergeProposal
+	require.NoError(t, testDB.Where("entity_type = ?", model.EntityTypeWork).First(&proposal).Error)
+	assert.Equal(t, m1, proposal.SourceEntityID)
+	assert.Equal(t, k1, proposal.TargetEntityID)
+	assert.Equal(t, model.ProposalStatusApproved, proposal.Status)
+	assert.NotNil(t, proposal.ExecuteAfter, "approval must arm the 48h cooling window")
+	assert.Contains(t, proposal.Note, waveTagW1)
+	assert.Contains(t, proposal.Note, "ev=date(2015-08-10~2015-09-09)")
+	assert.Contains(t, proposal.Note, "norm=重複タイトルテスト検証")
+	assert.Equal(t, model.CandidateStatusAccepted, candidateStatus(t, k1, m1))
+	assert.Equal(t, model.CandidateStatusNeedsManual, candidateStatus(t, k2, m2))
+	assert.Equal(t, model.CandidateStatusNeedsManual, candidateStatus(t, k3, m3))
+
+	out.Reset()
+	require.NoError(t, runExecute(ctx, testDB, &out, merge, resolve, actor, waveTagW1, 0, true))
+	assert.Contains(t, out.String(), "cooled=0", "an approved proposal must wait out its cooling window")
+
+	require.NoError(t, testDB.Exec(`UPDATE catalog_merge_proposal SET execute_after = now() - interval '1 hour'`).Error)
+	out.Reset()
+	require.NoError(t, runExecute(ctx, testDB, &out, merge, resolve, actor, waveTagW1, 0, true))
+	assert.Equal(t, int64(1), countRows(t,
+		`SELECT count(*) FROM catalog_redirect WHERE entity_type = ? AND old_id = ? AND current_id = ?`,
+		model.EntityTypeWork, m1, k1))
+	assert.Equal(t, int64(1), countRows(t,
+		`SELECT count(*) FROM catalog_work WHERE id = ? AND deleted_at IS NOT NULL`, m1))
+	require.NoError(t, testDB.First(&proposal, proposal.ID).Error)
+	assert.Equal(t, model.ProposalStatusExecuted, proposal.Status)
+
+	out.Reset()
+	fresh, err := runWatch(ctx, testDB, &out)
+	require.NoError(t, err)
+	assert.Zero(t, fresh)
+	assert.Contains(t, out.String(), "pairs=2 new=0 pending=0 needs_manual=2")
+	assert.Contains(t, out.String(), "merged=1")
+
+	out.Reset()
+	require.NoError(t, runPropose(ctx, testDB, &out, merge, actor, waveTagW1, 0, true))
+	assert.Equal(t, int64(1), countRows(t, `SELECT count(*) FROM catalog_merge_proposal`),
+		"a second propose pass must not re-open the merge")
+
+	// ExecuteMerge deletes the pair's own candidate row, so the superseded lane
+	// is reached by a candidate filed AFTER the merge — a detector pass that
+	// still had the pre-merge pair in hand, or an operator re-filing it.
+	require.NoError(t, testDB.Create(&model.CatalogMatchCandidate{
+		EntityType: model.EntityTypeWork, AID: min(k1, m1), BID: max(k1, m1),
+		Reason: model.CandidateReasonNameNormEqual, Status: model.CandidateStatusPending,
+	}).Error)
+	out.Reset()
+	require.NoError(t, runPropose(ctx, testDB, &out, merge, actor, waveTagW1, 0, true))
+	assert.Contains(t, out.String(), "superseded=1")
+	assert.Equal(t, model.CandidateStatusAccepted, candidateStatus(t, k1, m1))
+	assert.Equal(t, int64(1), countRows(t, `SELECT count(*) FROM catalog_merge_proposal`))
+}
+
+func TestWatchReportsUndecidedPairs(t *testing.T) {
+	requireDB(t)
+	cleanPipeline(t)
+	ctx := context.Background()
+	medium := galgameMedium(t)
+
+	a := mkWork(t, medium, "監視対象作品エー", nil)
+	mkTitle(t, a, "監視新規ペア検証")
+	mkAnchor(t, a, 3, "555")
+	b := mkWork(t, medium, "監視対象作品ビー", nil)
+	mkTitle(t, b, "監視 新規 ペア 検証")
+	mkAnchor(t, b, 3, "556")
+
+	var out bytes.Buffer
+	fresh, err := runWatch(ctx, testDB, &out)
+	require.NoError(t, err)
+	assert.Equal(t, 1, fresh, "an unfiled pair is the finding the cron alerts on")
+	assert.Contains(t, out.String(), "pairs=1 new=1")
+	assert.Contains(t, out.String(), fmt.Sprintf("new: %d<->%d", min(a, b), max(a, b)))
+
+	require.NoError(t, runSeed(ctx, testDB, &out, 1, true))
+	out.Reset()
+	fresh, err = runWatch(ctx, testDB, &out)
+	require.NoError(t, err)
+	assert.Zero(t, fresh, "a filed pair is no longer new")
+	assert.Contains(t, out.String(), "needs_manual=1")
+}
+
+func TestProposeLimitLeavesTheRestPending(t *testing.T) {
+	requireDB(t)
+	cleanPipeline(t)
+	ctx := context.Background()
+	medium := galgameMedium(t)
+	kungal := "kungal"
+
+	mk := func(title, spaced string, y int16) (int64, int64) {
+		survivor := mkWork(t, medium, "限度テスト"+title, &kungal)
+		mkTitle(t, survivor, title)
+		mkRelease(t, survivor, y, 3, 1)
+		member := mkWork(t, medium, spaced, nil)
+		mkRelease(t, member, y, 3, 20)
+		return survivor, member
+	}
+	s1, m1 := mk("限度検証作品アルファ", "限度 検証 作品 アルファ", 2016)
+	s2, m2 := mk("限度検証作品ベータ", "限度 検証 作品 ベータ", 2017)
+
+	var out bytes.Buffer
+	require.NoError(t, runSeed(ctx, testDB, &out, 1, true))
+	out.Reset()
+	require.NoError(t, runPropose(ctx, testDB, &out, newMerge(t), 1, waveTagW1, 1, true))
+	assert.Contains(t, out.String(), "left_pending=1")
+	assert.Equal(t, int64(1), countRows(t, `SELECT count(*) FROM catalog_merge_proposal`))
+
+	first := candidateStatus(t, s1, m1)
+	second := candidateStatus(t, s2, m2)
+	assert.Equal(t, model.CandidateStatusAccepted, first)
+	assert.Equal(t, model.CandidateStatusPending, second, "the capped pair keeps its place in the queue")
+}
+
+func newMerge(t *testing.T) *service.MergeService {
+	t.Helper()
+	resolve := service.NewResolveService(repository.NewRedirectRepository(testDB))
+	return service.NewMergeService(testDB, resolve,
+		repository.NewProposalRepository(testDB), repository.NewRevisionRepository(testDB))
+}

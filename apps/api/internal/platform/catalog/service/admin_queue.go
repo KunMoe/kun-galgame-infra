@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"api/internal/platform/catalog/model"
@@ -28,6 +29,15 @@ func (s *AdminQueueService) DetachName(ctx context.Context, creditNameID int64, 
 var ErrExactTaken = fmt.Errorf("catalog: external identity is exact-linked to another entity")
 
 const matchedByCurated = "curated"
+
+// NeedsManual belongs here: it is the status the machine lanes park a pair in
+// precisely because a human has to decide it. Leaving it out made every such
+// candidate permanently undecidable in the console — a queue with no exit.
+var decidableCandidateStatuses = []int16{
+	model.CandidateStatusPending,
+	model.CandidateStatusDeferred,
+	model.CandidateStatusNeedsManual,
+}
 
 type EntitySummary struct {
 	ID          int64  `json:"id"`
@@ -180,7 +190,7 @@ func (s *AdminQueueService) DecideCandidate(ctx context.Context, d CandidateDeci
 	if cand.AID == 0 {
 		return nil, fmt.Errorf("%w: candidate (%d, %d, %d)", ErrNotFound, d.EntityType, d.AID, d.BID)
 	}
-	if cand.Status != model.CandidateStatusPending && cand.Status != model.CandidateStatusDeferred {
+	if !slices.Contains(decidableCandidateStatuses, cand.Status) {
 		return nil, fmt.Errorf("%w: candidate already decided (status %d)", ErrProposalState, cand.Status)
 	}
 
@@ -244,8 +254,7 @@ func (s *AdminQueueService) acceptAsPersonLink(ctx context.Context, d CandidateD
 func (s *AdminQueueService) flipCandidate(db *gorm.DB, d CandidateDecision, status int16) (int64, error) {
 	res := db.Model(&model.CatalogMatchCandidate{}).
 		Where("entity_type = ? AND a_id = ? AND b_id = ? AND status IN ?",
-			d.EntityType, d.AID, d.BID,
-			[]int16{model.CandidateStatusPending, model.CandidateStatusDeferred}).
+			d.EntityType, d.AID, d.BID, decidableCandidateStatuses).
 		Updates(map[string]any{"status": status, "decided_by": d.DecidedBy, "decided_at": time.Now()})
 	return res.RowsAffected, res.Error
 }

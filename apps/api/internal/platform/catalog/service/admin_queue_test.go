@@ -119,6 +119,39 @@ func TestDecideCandidatePaths(t *testing.T) {
 	assert.NotEmpty(t, items[0].A.DisplayName)
 }
 
+func TestDecideCandidateResolvesNeedsManual(t *testing.T) {
+	cleanTables(t)
+	ctx := t.Context()
+
+	file := func(a, b int64) CandidateDecision {
+		require.NoError(t, testDB.Create(&model.CatalogMatchCandidate{
+			EntityType: model.EntityTypePerson, AID: min(a, b), BID: max(a, b),
+			Reason: model.CandidateReasonNameNormEqual, Status: model.CandidateStatusNeedsManual,
+		}).Error)
+		return CandidateDecision{EntityType: model.EntityTypePerson, AID: min(a, b), BID: max(a, b), DecidedBy: 9}
+	}
+	statusOf := func(d CandidateDecision) int16 {
+		var cand model.CatalogMatchCandidate
+		require.NoError(t, testDB.Where("a_id = ? AND b_id = ?", d.AID, d.BID).First(&cand).Error)
+		return cand.Status
+	}
+
+	p1, p2 := createPerson(t, "NM1"), createPerson(t, "NM2")
+	accept := file(p1.ID, p2.ID)
+	accept.Action, accept.SourceID, accept.TargetID = "accept", p2.ID, p1.ID
+	outcome, err := testQueues.DecideCandidate(ctx, accept)
+	require.NoError(t, err)
+	require.NotNil(t, outcome.Proposal)
+	assert.Equal(t, model.CandidateStatusAccepted, statusOf(accept))
+
+	p3, p4 := createPerson(t, "NM3"), createPerson(t, "NM4")
+	reject := file(p3.ID, p4.ID)
+	reject.Action = "reject"
+	_, err = testQueues.DecideCandidate(ctx, reject)
+	require.NoError(t, err)
+	assert.Equal(t, model.CandidateStatusRejected, statusOf(reject))
+}
+
 func TestConfirmAndRejectRefs(t *testing.T) {
 	cleanTables(t)
 	ctx := t.Context()

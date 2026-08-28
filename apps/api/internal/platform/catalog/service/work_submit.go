@@ -210,6 +210,9 @@ func (s *ClaimLifecycleService) SubmitWork(ctx context.Context, p SubmitWorkPara
 		if err := editspec.ApplyWorkFields(ctx, tx, w.ID, p.Fields); err != nil {
 			return err
 		}
+		if err := recordWorkDupeSuspects(tx, w.ID); err != nil {
+			return err
+		}
 
 		if p.Released.given() {
 			fp, err := mintedReleaseDateProvenance()

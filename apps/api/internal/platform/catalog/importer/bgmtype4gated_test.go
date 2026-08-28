@@ -155,6 +155,55 @@ func seedVNDBTitle(t *testing.T, id, title string) {
 		VALUES (?, 'ja', false, ?, '')`, id, title).Error)
 }
 
+// The 2026-07 gated wave minted ~4.9k duplicates because these two shapes both
+// read as "no existing work": a wiki claim carries only a display_name, and a
+// title that differs by one internal space compares unequal on raw title_norm.
+func TestBgmType4GatedFoldedCollisions(t *testing.T) {
+	clean(t)
+	require.NoError(t, testDB.Exec(`ALTER TABLE games ADD COLUMN IF NOT EXISTS gamename text`).Error)
+
+	seedSubject(t, 3001, "表示名だけの既存作品", "", `["Galgame","PC","游戏"]`, "", false)
+	seedDisplayOnlyWork(t, "表示名だけの既存作品")
+
+	seedSubject(t, 3002, "空白違いの既存作品", "", `["Galgame","PC","游戏"]`, "", false)
+	seedExistingWork(t, "空白 違いの 既存作品")
+
+	seedSubject(t, 3003, "衝突しない新規作品名", "", `["Galgame","PC","游戏"]`, "", false)
+
+	dry, err := New(testDB, testDB, Options{DryRun: true}).RunBgmType4Gated(testDB)
+	require.NoError(t, err)
+	assert.Equal(t, 3, dry.GatedTotal)
+	assert.Equal(t, 2, dry.SkippedTitleCollision, "display-name-only and space-variant both collide")
+	assert.Equal(t, 1, dry.ToCreate)
+
+	st, err := New(testDB, testDB, Options{}).RunBgmType4Gated(testDB)
+	require.NoError(t, err)
+	assert.Equal(t, 1, st.WorksCreated)
+	assert.Equal(t, int64(1), scalarInt(t, `SELECT count(*) FROM catalog_external_ref
+		WHERE matched_by='rule:bgm-type4-gated' AND external_id='3003'`))
+	assert.Zero(t, scalarInt(t, `SELECT count(*) FROM catalog_external_ref
+		WHERE matched_by='rule:bgm-type4-gated' AND external_id IN ('3001','3002')`))
+}
+
+func TestBgmType4GatedIntraCollisionFoldsSpace(t *testing.T) {
+	clean(t)
+	require.NoError(t, testDB.Exec(`ALTER TABLE games ADD COLUMN IF NOT EXISTS gamename text`).Error)
+
+	seedSubject(t, 3101, "同一プール内衝突作品", "", `["Galgame","PC","游戏"]`, "", false)
+	seedSubject(t, 3102, "同一 プール内 衝突作品", "", `["Galgame","PC","游戏"]`, "", false)
+
+	dry, err := New(testDB, testDB, Options{DryRun: true}).RunBgmType4Gated(testDB)
+	require.NoError(t, err)
+	assert.Equal(t, 2, dry.SkippedIntraCollision, "two pool rows spelling one title must both stand down")
+	assert.Zero(t, dry.ToCreate)
+}
+
+func seedDisplayOnlyWork(t *testing.T, displayName string) {
+	t.Helper()
+	require.NoError(t, testDB.Exec(`INSERT INTO catalog_work (medium_id, olang, display_name, content_rating, status, extra, field_provenance, display_nsfw)
+		VALUES (1,'ja',?,0,0,'{}','{}',false)`, displayName).Error)
+}
+
 func seedExistingWork(t *testing.T, title string) {
 	t.Helper()
 	var wid int64
