@@ -403,3 +403,40 @@ func TestMissingAffTemplateRefusesRatherThanMintingAnEmptyDestination(t *testing
 		t.Errorf("mint calls = %d, want 0", got)
 	}
 }
+
+func TestAffTemplateWithoutTheProductIDSlotRefusesRatherThanMintingOneDeadURL(t *testing.T) {
+	if err := storetest.Truncate(testDB); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+	fake := storetest.NewFakeShortener()
+	t.Cleanup(fake.Close)
+	svc := New(testDB, fake.Client("slk_test"), Options{
+		AffTemplateManiax: "https://dlaf.jp/soft/dlaf/=/t/s/link/work/aid/kungal/id/{workno}.html",
+		AffTemplatePro:    tmplPro,
+	})
+
+	if _, err := svc.PurchaseLinks(context.Background(), "site-a", "RJ123456"); !errors.Is(err, ErrNotConfigured) {
+		t.Fatalf("err = %v, want ErrNotConfigured", err)
+	}
+	if got := len(fake.Mints()); got != 0 {
+		t.Errorf("mint calls = %d, want 0", got)
+	}
+	if _, err := svc.PurchaseLinks(context.Background(), "site-a", "VJ01000123"); err != nil {
+		t.Fatalf("the well-formed pro template must still mint: %v", err)
+	}
+}
+
+func TestValidAffTemplate(t *testing.T) {
+	for _, c := range []struct {
+		tmpl string
+		want bool
+	}{
+		{"", false},
+		{"https://dlaf.jp/soft/dlaf/=/t/s/link/work/aid/kungal/id/{workno}.html", false},
+		{"https://dlaf.jp/soft/dlaf/=/t/s/link/work/aid/kungal/locale/zh_CN/id/{product_id}.html/?locale=zh_CN", true},
+	} {
+		if got := ValidAffTemplate(c.tmpl); got != c.want {
+			t.Errorf("ValidAffTemplate(%q) = %v, want %v", c.tmpl, got, c.want)
+		}
+	}
+}

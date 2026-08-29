@@ -72,15 +72,24 @@ type PurchaseLinks struct {
 
 func ValidProductID(productID string) bool { return productIDRe.MatchString(productID) }
 
+// ReplaceAll silently does nothing when the template spells the slot some other
+// way, and the forum's own template env calls it {workno}. An unsubstituted
+// template mints one alias per product all pointing at the same dead URL, and
+// pins them there: the alias is fixed per (client, product) and the shortener
+// has no re-point face.
+const productIDSlot = "{product_id}"
+
+func ValidAffTemplate(tmpl string) bool { return strings.Contains(tmpl, productIDSlot) }
+
 func (s *Service) affURL(productID string) (string, error) {
 	tmpl := s.opts.AffTemplatePro
 	if strings.HasPrefix(productID, "RJ") {
 		tmpl = s.opts.AffTemplateManiax
 	}
-	if tmpl == "" {
+	if !ValidAffTemplate(tmpl) {
 		return "", ErrNotConfigured
 	}
-	return strings.ReplaceAll(tmpl, "{product_id}", productID), nil
+	return strings.ReplaceAll(tmpl, productIDSlot, productID), nil
 }
 
 func (s *Service) PurchaseLinks(ctx context.Context, clientID, productID string) (*PurchaseLinks, error) {
