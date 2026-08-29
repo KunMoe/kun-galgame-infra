@@ -263,6 +263,11 @@ func setupPublicCatalog(
 	} else {
 		slog.Warn("store face: link shortener not configured — /v2/store answers 503 (set KUN_STORE_SHORTLINK_BASE_URL and KUN_STORE_SHORTLINK_API_KEY)")
 	}
+	if storeMinter != nil && !(storeService.ValidAffTemplate(cfg.Store.AffTemplateManiax) && storeService.ValidAffTemplate(cfg.Store.AffTemplatePro)) {
+		slog.Warn("store face: affiliate template missing or without the {product_id} slot — purchase-link minting answers 503 (set KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX and _PRO)",
+			"maniax_ready", storeService.ValidAffTemplate(cfg.Store.AffTemplateManiax),
+			"pro_ready", storeService.ValidAffTemplate(cfg.Store.AffTemplatePro))
+	}
 	storeSvc := storeService.New(oauthDB, storeMinter, storeService.Options{
 		AffTemplateManiax:  cfg.Store.AffTemplateManiax,
 		AffTemplatePro:     cfg.Store.AffTemplatePro,

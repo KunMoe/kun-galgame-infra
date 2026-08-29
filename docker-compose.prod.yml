@@ -429,6 +429,13 @@ services:
       # working value here.
       KUN_STORE_SHORTLINK_BASE_URL: http://shortlink-api:7845
       KUN_STORE_SHORTLINK_API_KEY: ${KUN_STORE_SHORTLINK_API_KEY:-}
+      # 2026-08-29, the same trap a second time: the affiliate templates and the
+      # quota were filled in the panel alone and the redeployed container came
+      # back without them. EVERY store var has to be listed here, not just the
+      # two the first fix happened to need.
+      KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX: ${KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX:-}
+      KUN_STORE_DLSITE_AFF_URL_TMPL_PRO: ${KUN_STORE_DLSITE_AFF_URL_TMPL_PRO:-}
+      KUN_STORE_LINK_QUOTA_PER_CLIENT: ${KUN_STORE_LINK_QUOTA_PER_CLIENT:-5000}
     # S2S read/admin face stays internal — product backends (wiki/forum/moyu)
     # reach it at http://catalog:9281 over dokploy-network. The ONLY public path
     # is the open-API /v1/catalog projection routed by the labels block below.

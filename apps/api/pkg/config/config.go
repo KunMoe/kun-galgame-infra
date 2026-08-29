@@ -598,10 +598,15 @@ func Load() (*Config, error) {
 	}
 
 	cfg.Store = StoreConfig{
-		ShortlinkBaseURL:   getEnv("KUN_STORE_SHORTLINK_BASE_URL", ""),
-		ShortlinkAPIKey:    getEnv("KUN_STORE_SHORTLINK_API_KEY", ""),
-		AffTemplateManiax:  getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX", "https://www.dlsite.com/maniax/dlaf/=/link/work/aid/nextmoe/id/{product_id}.html"),
-		AffTemplatePro:     getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_PRO", "https://www.dlsite.com/pro/dlaf/=/link/work/aid/nextmoe/id/{product_id}.html"),
+		ShortlinkBaseURL: getEnv("KUN_STORE_SHORTLINK_BASE_URL", ""),
+		ShortlinkAPIKey:  getEnv("KUN_STORE_SHORTLINK_API_KEY", ""),
+		// Deliberately no default. These once fell back to a well-formed URL
+		// carrying the affiliate id aid/nextmoe, which does not exist: an
+		// unconfigured deployment minted real short links crediting nobody, and
+		// a minted alias is pinned to its destination forever. Empty makes the
+		// minting face answer 503 instead, which the caller retries.
+		AffTemplateManiax:  getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX", ""),
+		AffTemplatePro:     getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_PRO", ""),
 		LinkQuotaPerClient: int(getEnvInt64("KUN_STORE_LINK_QUOTA_PER_CLIENT", 5000)),
 	}
 
