@@ -441,6 +441,13 @@ func reindexWorks(ctx context.Context, db *gorm.DB, idx *catalogSearch.Indexer, 
 	if err != nil {
 		return err
 	}
+	// Works was the only soft-deleting lane without this purge: the 2026-08-29
+	// merge wave left its 3,242 soft-deleted works in the index — hits
+	// self-healed through DB hydration, totals and ranking slots did not — and
+	// the stale documents had to be hand-deleted over the Meilisearch API.
+	if err := purgeSoftDeleted(ctx, db, idx, catalogSearch.IndexWorks, "catalog_work", "w"); err != nil {
+		return err
+	}
 	processed, lastID := 0, int64(0)
 	for {
 		var rows []struct {
