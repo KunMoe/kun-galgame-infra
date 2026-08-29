@@ -1255,7 +1255,7 @@ func (s *ReadService) WorkCredits(ctx context.Context, workID int64) ([]CreditRo
 // growing a second copy that would drift away from the D9/D24 rules the detail
 // face enforces.
 //
-// The last three ORDER BY terms are the tiebreak, and they are not decoration:
+// The last two ORDER BY terms are the tiebreak, and they are not decoration:
 // uq_catalog_credit is (work_id, credit_name_id, role_id,
 // COALESCE(character_id, 0)), so one voice actor on three characters of one work
 // is three rows that tie on every earlier term. works/{id}/credits pages by

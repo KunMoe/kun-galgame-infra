@@ -9,8 +9,6 @@ import (
 	"api/internal/platform/catalog/model"
 )
 
-// The works list has no spoiler= axis, so its tags block is cut at the same
-// default ceiling the works detail applies when the caller sends none.
 const listSpoilerCeiling int16 = 0
 
 type WorksListInclude struct {
