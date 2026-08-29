@@ -113,7 +113,8 @@ func setupRoutes(a *app.App, cfg *config.Config, cleanupCtx context.Context) {
 	creatorAppSvc := authService.NewCreatorApplicationService(authRepo.NewCreatorApplicationRepository(db), userRepo, userBatchSvc)
 	moemoepointSvc := authService.NewMoemoepointService(a.DB.DB(), userRepo)
 	authSvc.WithMoemoepoint(moemoepointSvc)
-	siteSvc := siteService.NewSiteService(siteRepository, oauthClientRepo)
+	devRepo := devapi.NewRepository(db)
+	siteSvc := siteService.NewSiteService(siteRepository, oauthClientRepo, devRepo)
 
 	authH := authHandler.NewAuthHandler(authSvc, cfg)
 	oauthH := authHandler.NewOAuthHandler(oauthSvc, cfg)
@@ -291,7 +292,6 @@ func setupRoutes(a *app.App, cfg *config.Config, cleanupCtx context.Context) {
 		siteH.UpdateClientStorage)
 	oauthClients.Delete("/:id", middleware.RequirePermission(sitePerm.Resolver, sitePerm.ClientsDelete), siteH.DeleteClient)
 
-	devRepo := devapi.NewRepository(db)
 	devStore := devapi.NewRedisStore(a.Cache)
 	devAdminSvc := devapi.NewAdminService(devRepo, devStore)
 	devAdminH := devapi.NewAdminHandler(devAdminSvc)

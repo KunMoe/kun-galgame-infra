@@ -2,7 +2,7 @@
 import type { DevKey } from '~~/shared/types/devapi'
 
 defineProps<{ keys: DevKey[]; busy?: boolean }>()
-defineEmits<{ rotate: [DevKey]; revoke: [DevKey] }>()
+defineEmits<{ rotate: [DevKey]; revoke: [DevKey]; delete: [DevKey] }>()
 
 type KeyStatus = { label: string; color: 'success' | 'warning' | 'danger' | 'default' }
 
@@ -17,6 +17,7 @@ const keyStatus = (k: DevKey): KeyStatus => {
 }
 
 const isRevoked = (k: DevKey) => !!k.revoked_at
+const isDeletable = (k: DevKey) => !!k.revoked_at && !k.last_used_at
 </script>
 
 <template>
@@ -70,6 +71,16 @@ const isRevoked = (k: DevKey) => !!k.revoked_at
           >
             <KunIcon name="lucide:ban" class="mr-1 size-4" />
             吊销
+          </KunButton>
+          <KunButton
+            v-if="isDeletable(k)"
+            color="danger"
+            size="sm"
+            :disabled="busy"
+            @click="$emit('delete', k)"
+          >
+            <KunIcon name="lucide:trash-2" class="mr-1 size-4" />
+            删除
           </KunButton>
         </div>
       </div>

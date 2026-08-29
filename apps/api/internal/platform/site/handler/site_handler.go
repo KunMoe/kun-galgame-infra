@@ -2,9 +2,11 @@ package handler
 
 import (
 	"encoding/json"
+	goerrors "errors"
 	"slices"
 	"strconv"
 
+	"api/internal/platform/devapi"
 	"api/internal/platform/site/dto"
 	siteModel "api/internal/platform/site/model"
 	"api/internal/platform/site/perm"
@@ -482,7 +484,14 @@ func (h *SiteHandler) DeleteClient(c fiber.Ctx) error {
 		return response.ForbiddenMsg(c, errors.ErrForbidden, notOwnerMsg)
 	}
 
-	if err := h.siteService.DeleteOAuthClient(c.Context(), clientID); err != nil {
+	switch err := h.siteService.DeleteOAuthClient(c.Context(), clientID); {
+	case goerrors.Is(err, devapi.ErrAppNotArchived):
+		return response.Error(c, fiber.StatusConflict, errors.ErrValidationFailed,
+			"this is a developer application — archive it from the developer console before deleting it")
+	case goerrors.Is(err, devapi.ErrAppHasReferences):
+		return response.Error(c, fiber.StatusConflict, errors.ErrValidationFailed,
+			"this client has keys, usage, store links or logins behind it, or can sign users in — it cannot be deleted")
+	case err != nil:
 		return response.InternalError(c, errors.ErrOperationFailed)
 	}
 

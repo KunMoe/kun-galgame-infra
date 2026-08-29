@@ -12,6 +12,10 @@ export interface DevApp {
   key_count: number
   review_status: DevAppReviewStatus
   review_note?: string
+  archived_at?: string
+  store_settlement_eligible: boolean
+  login_client: boolean
+  bound_site: boolean
   created_at: string
 }
 

@@ -15,7 +15,14 @@ import (
 
 const rotateGrace = 72 * time.Hour
 
-var ErrInvalidTier = errors.New("devapi: invalid tier (want free|trusted|internal)")
+var (
+	ErrInvalidTier      = errors.New("devapi: invalid tier (want free|trusted|internal)")
+	ErrKeyNotRevoked    = errors.New("devapi: a key must be revoked before it can be deleted")
+	ErrKeyHasHistory    = errors.New("devapi: a key that has been used cannot be deleted, only revoked")
+	ErrAppArchived      = errors.New("devapi: application is archived — re-enable it before minting a key")
+	ErrAppNotArchived   = errors.New("devapi: an application must be archived before it can be deleted")
+	ErrAppHasReferences = errors.New("devapi: application still has keys, usage, store links or logins, or can sign users in")
+)
 
 type AdminService struct {
 	repo  *Repository
@@ -27,11 +34,12 @@ func NewAdminService(repo *Repository, store Store) *AdminService {
 }
 
 type AppConfig struct {
-	OwnerUserID    *uint
-	DevEnabled     *bool
-	DevTier        *string
-	DevRatePerMin  *int
-	DevQuotaDaily  *int
+	OwnerUserID             *uint
+	DevEnabled              *bool
+	DevTier                 *string
+	DevRatePerMin           *int
+	DevQuotaDaily           *int
+	StoreSettlementEligible *bool
 }
 
 type AppView struct {
@@ -48,10 +56,14 @@ func (s *AdminService) UpdateAppConfig(ctx context.Context, clientID string, cfg
 		fields["dev_enabled"] = *cfg.DevEnabled
 		// The console's enable path is itself an approval: without this a row
 		// enabled straight from the app list would stay 'pending' and its owner
-		// would still be refused a key on a live application.
+		// would still be refused a key on a live application. It is also the
+		// only un-archive there is — an application put back into service must
+		// reappear in its owner's list, or they hold a live application they
+		// cannot see.
 		if *cfg.DevEnabled {
 			fields["dev_review_status"] = AppReviewApproved
 			fields["dev_review_note"] = ""
+			fields["dev_archived_at"] = nil
 		}
 	}
 	if cfg.DevTier != nil {
@@ -65,6 +77,9 @@ func (s *AdminService) UpdateAppConfig(ctx context.Context, clientID string, cfg
 	}
 	if cfg.DevQuotaDaily != nil {
 		fields["dev_quota_daily"] = *cfg.DevQuotaDaily
+	}
+	if cfg.StoreSettlementEligible != nil {
+		fields["store_settlement_eligible"] = *cfg.StoreSettlementEligible
 	}
 	if err := s.repo.UpdateAppDevConfig(ctx, clientID, fields); err != nil {
 		return nil, err
@@ -110,8 +125,16 @@ type MintKeyInput struct {
 }
 
 func (s *AdminService) MintKey(ctx context.Context, clientID string, in MintKeyInput, createdBy uint) (*DeveloperAPIKey, string, error) {
-	if _, err := s.repo.GetApp(ctx, clientID); err != nil {
+	app, err := s.repo.GetApp(ctx, clientID)
+	if err != nil {
 		return nil, "", err
+	}
+	// The self-service face cannot reach an archived application at all
+	// (GetAppByOwner filters them), so this is the only door left open. A key
+	// minted here could never resolve — archiving clears dev_enabled — but it
+	// would add a row that makes the application undeletable for good.
+	if app.DevArchivedAt != nil {
+		return nil, "", ErrAppArchived
 	}
 	scopes := in.Scopes
 	if len(scopes) == 0 {
@@ -172,6 +195,102 @@ func (s *AdminService) RevokeKey(ctx context.Context, keyID uint) error {
 		_ = s.store.Del(ctx, cacheKey)
 	}
 	slog.Info("devapi key revoked", "client_id", key.ClientID, "key_id", key.ID)
+	return nil
+}
+
+// DeleteKey removes the row, which no other path in this package does. The two
+// conditions are the same for an operator as for an owner, because they are not
+// about permission: a live credential must be revoked first (deleting it is a
+// revocation that leaves no record of having happened), and a key that has ever
+// served a request stays, because developer_api_usage rows carry its key_id
+// with no foreign key behind it and deleting the key turns metered history into
+// rows pointing at nothing. last_used_at is the durable half of that test —
+// usage rows age out after DeveloperUsageRetentionDays, the timestamp does not.
+func (s *AdminService) DeleteKey(ctx context.Context, key *DeveloperAPIKey) error {
+	if key.RevokedAt == nil {
+		return ErrKeyNotRevoked
+	}
+	if key.LastUsedAt != nil {
+		return ErrKeyHasHistory
+	}
+	used, err := s.repo.CountUsageByKey(ctx, key.ID)
+	if err != nil {
+		return err
+	}
+	if used > 0 {
+		return ErrKeyHasHistory
+	}
+	if err := s.repo.DeleteKey(ctx, key.ID); err != nil {
+		return err
+	}
+	if cacheKey, ok := credCacheKeyForStoredHash(key.KeyHash); ok {
+		_ = s.store.Del(ctx, cacheKey)
+	}
+	slog.Info("devapi key deleted", "client_id", key.ClientID, "key_id", key.ID)
+	return nil
+}
+
+// ArchiveApp is the operator's copy of the portal's delete, and the
+// precondition for DeleteApp: nothing is removed until an application has been
+// taken out of service deliberately.
+//
+// It deliberately does NOT delete a referenceless application the way
+// SelfServiceService.ArchiveApp does, and the asymmetry is load-bearing rather
+// than an oversight: this is the only way to produce an archived clean shell,
+// which is the only input DeleteApp's success branch accepts. Unifying the two
+// archives makes that branch unreachable.
+func (s *AdminService) ArchiveApp(ctx context.Context, clientID string) (*siteModel.OAuthClient, error) {
+	app, err := s.repo.GetApp(ctx, clientID)
+	if err != nil {
+		return nil, err
+	}
+	keys, err := s.repo.ListKeysByClient(ctx, app.ID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range keys {
+		if keys[i].RevokedAt != nil {
+			continue
+		}
+		if err := s.RevokeKey(ctx, keys[i].ID); err != nil {
+			return nil, err
+		}
+	}
+	if err := s.repo.UpdateAppFields(ctx, app.ID, map[string]any{
+		"dev_enabled":               false,
+		"dev_archived_at":           time.Now().UTC(),
+		"store_settlement_eligible": false,
+	}); err != nil {
+		return nil, err
+	}
+	slog.Info("devapi application archived", "client_id", app.ID, "owner", app.OwnerUserID)
+	return s.repo.GetApp(ctx, app.ID)
+}
+
+// DeleteApp drops the oauth_clients row itself, and only for a never-used shell.
+// oauth_clients is dual-purpose — the developer application table AND the OAuth
+// login client table — and none of the columns pointing at it is a foreign key,
+// so Postgres would accept any DELETE and leave live sessions authenticating
+// against a client that no longer exists, short links counting clicks the
+// settlement denominator can no longer attribute, and metered calls charged to
+// a gap. Archived-first is part of the guard rather than a courtesy: a login
+// client whose sessions have all expired presents exactly like an unused shell,
+// and only a deliberate archive distinguishes them.
+//
+// The rule itself lives in Repository.EnsureDeletable because this is not the
+// only door into it.
+func (s *AdminService) DeleteApp(ctx context.Context, clientID string) error {
+	app, err := s.repo.GetApp(ctx, clientID)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.EnsureDeletable(ctx, app); err != nil {
+		return err
+	}
+	if err := s.repo.DeleteApp(ctx, clientID); err != nil {
+		return err
+	}
+	slog.Info("devapi application deleted", "client_id", clientID, "owner", app.OwnerUserID)
 	return nil
 }
 

@@ -196,19 +196,27 @@ func (s *SelfServiceService) UpdateApp(ctx context.Context, ownerUserID uint, cl
 	return s.repo.GetApp(ctx, app.ID)
 }
 
-func (s *SelfServiceService) DeactivateApp(ctx context.Context, ownerUserID uint, clientID string) error {
+// ArchiveApp is the portal's "delete application". It revokes every live key,
+// takes the application out of service and — the part a plain dev_enabled=false
+// never did — releases the owner's slot and drops the row out of their list.
+// An application nothing ever used is deleted outright, keys and all; one that
+// served requests keeps its row, because its client_id still anchors sessions,
+// authorization codes, short links and metered history. Either way the owner
+// cannot undo it.
+//
+// A pending or declined application may be archived, which the deactivation
+// this replaces refused. That refusal existed so "waiting for review" could not
+// silently become "gone" — but because CountAppsByOwner has never filtered on
+// status, it also meant a declined application held one of five slots with no
+// self-service way to free it, and five declines locked the account out of the
+// platform for good.
+func (s *SelfServiceService) ArchiveApp(ctx context.Context, ownerUserID uint, clientID string) error {
 	app, err := s.repo.GetAppByOwner(ctx, clientID, ownerUserID)
 	if err != nil {
 		return err
 	}
 	if err := s.requireCapability(ctx, CapabilityAppManage); err != nil {
 		return err
-	}
-	// A pending row was never enabled and a declined one is already inert, so
-	// there is nothing to deactivate; letting it through would silently turn
-	// "waiting for review" into "gone" with no way back.
-	if appAwaitsReview(app.DevReviewStatus) {
-		return ErrAppNotApproved
 	}
 	keys, err := s.repo.ListKeysByClient(ctx, app.ID)
 	if err != nil {
@@ -222,7 +230,47 @@ func (s *SelfServiceService) DeactivateApp(ctx context.Context, ownerUserID uint
 			return err
 		}
 	}
-	return s.repo.UpdateAppFields(ctx, app.ID, map[string]any{"dev_enabled": false})
+	// Keys that never served a request go with the application. Re-read first:
+	// the revocations above happened after the list was taken, and DeleteKey
+	// judges on the row's own RevokedAt. ErrKeyHasHistory is the answer "this
+	// one stays", not a failure — anything a usage row still points at survives
+	// and takes the application's row with it.
+	//
+	// Without this an owner strands themselves: an archived application is
+	// hidden from GetAppByOwner, so they can never reach its keys again, and
+	// "create, mint, never call, delete" would leave an archived row plus an
+	// orphan key that only an operator could clear.
+	keys, err = s.repo.ListKeysByClient(ctx, app.ID)
+	if err != nil {
+		return err
+	}
+	for i := range keys {
+		if err := s.admin.DeleteKey(ctx, &keys[i]); err != nil && !errors.Is(err, ErrKeyHasHistory) {
+			return err
+		}
+	}
+
+	// A shell nothing ever referenced is deleted outright rather than archived.
+	// Not a convenience: archiving releases the owner's slot, so without this
+	// "create, archive, repeat" is an unbounded row-writing loop that the old
+	// five-slot-forever behaviour made impossible. The guard is the same one
+	// AdminService.DeleteApp uses, so the row that disappears here is exactly
+	// the row an operator would have been allowed to delete anyway.
+	refs, err := s.repo.AppReferences(ctx, app.ID)
+	if err != nil {
+		return err
+	}
+	if refs.Empty() {
+		return s.repo.DeleteApp(ctx, app.ID)
+	}
+	// Settlement eligibility goes with it: the short links keep counting clicks
+	// forever, and a share of a fixed pool must not keep accruing to an
+	// application its owner has taken out of service.
+	return s.repo.UpdateAppFields(ctx, app.ID, map[string]any{
+		"dev_enabled":               false,
+		"dev_archived_at":           time.Now().UTC(),
+		"store_settlement_eligible": false,
+	})
 }
 
 func (s *SelfServiceService) MintKey(ctx context.Context, ownerUserID uint, clientID string, in MintKeyInput) (*DeveloperAPIKey, string, error) {
@@ -291,6 +339,20 @@ func (s *SelfServiceService) RevokeKey(ctx context.Context, ownerUserID uint, cl
 		return false, nil
 	}
 	return true, s.admin.RevokeKey(ctx, keyID)
+}
+
+func (s *SelfServiceService) DeleteKey(ctx context.Context, ownerUserID uint, clientID string, keyID uint) (found bool, err error) {
+	if _, err := s.repo.GetAppByOwner(ctx, clientID, ownerUserID); err != nil {
+		return false, err
+	}
+	key, err := s.admin.GetKeyForClient(ctx, clientID, keyID)
+	if err != nil {
+		return false, err
+	}
+	if key == nil {
+		return false, nil
+	}
+	return true, s.admin.DeleteKey(ctx, key)
 }
 
 func checkMintScopes(scopes []string) error {

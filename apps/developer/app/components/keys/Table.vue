@@ -2,7 +2,7 @@
 import type { DevKey } from '~~/shared/types/dev'
 
 defineProps<{ keys: DevKey[]; busy?: boolean; rotateDisabled?: boolean }>()
-defineEmits<{ rotate: [DevKey]; revoke: [DevKey] }>()
+defineEmits<{ rotate: [DevKey]; revoke: [DevKey]; delete: [DevKey] }>()
 
 type KeyStatus = {
   label: string
@@ -20,6 +20,10 @@ const keyStatus = (k: DevKey): KeyStatus => {
 }
 
 const isRevoked = (k: DevKey) => !!k.revoked_at
+
+const isDeletable = (k: DevKey) => !!k.revoked_at && !k.last_used_at
+
+const isKept = (k: DevKey) => !!k.revoked_at && !!k.last_used_at
 </script>
 
 <template>
@@ -54,26 +58,42 @@ const isRevoked = (k: DevKey) => !!k.revoked_at
           </div>
         </div>
 
-        <div class="flex shrink-0 gap-1">
-          <KunButton
-            variant="flat"
-            size="sm"
-            :disabled="busy || rotateDisabled || isRevoked(k)"
-            @click="$emit('rotate', k)"
-          >
-            <KunIcon name="lucide:refresh-cw" class="mr-1 size-4" />
-            轮换
-          </KunButton>
-          <KunButton
-            color="danger"
-            variant="flat"
-            size="sm"
-            :disabled="busy || isRevoked(k)"
-            @click="$emit('revoke', k)"
-          >
-            <KunIcon name="lucide:ban" class="mr-1 size-4" />
-            吊销
-          </KunButton>
+        <div class="flex shrink-0 flex-col items-end gap-1">
+          <div class="flex gap-1">
+            <KunButton
+              variant="flat"
+              size="sm"
+              :disabled="busy || rotateDisabled || isRevoked(k)"
+              @click="$emit('rotate', k)"
+            >
+              <KunIcon name="lucide:refresh-cw" class="mr-1 size-4" />
+              轮换
+            </KunButton>
+            <KunButton
+              color="danger"
+              variant="flat"
+              size="sm"
+              :disabled="busy || isRevoked(k)"
+              @click="$emit('revoke', k)"
+            >
+              <KunIcon name="lucide:ban" class="mr-1 size-4" />
+              吊销
+            </KunButton>
+            <KunButton
+              v-if="isDeletable(k)"
+              color="danger"
+              variant="light"
+              size="sm"
+              :disabled="busy"
+              @click="$emit('delete', k)"
+            >
+              <KunIcon name="lucide:trash-2" class="mr-1 size-4" />
+              删除
+            </KunButton>
+          </div>
+          <p v-if="isKept(k)" class="text-xs text-default-400">
+            已产生调用记录，平台保留存档，不可删除
+          </p>
         </div>
       </div>
 

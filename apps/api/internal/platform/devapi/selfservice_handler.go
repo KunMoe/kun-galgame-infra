@@ -27,12 +27,17 @@ func (h *SelfServiceHandler) Register(r fiber.Router) {
 	r.Get("/apps", h.ListApps)
 	r.Get("/apps/:client_id", h.GetApp)
 	r.Patch("/apps/:client_id", h.UpdateApp)
-	r.Delete("/apps/:client_id", h.DeactivateApp)
+	r.Delete("/apps/:client_id", h.ArchiveApp)
 	r.Post("/apps/:client_id/resubmit", h.ResubmitApp)
 	r.Post("/apps/:client_id/keys", h.MintKey)
 	r.Get("/apps/:client_id/keys", h.ListKeys)
 	r.Post("/apps/:client_id/keys/:id/rotate", h.RotateKey)
-	r.Delete("/apps/:client_id/keys/:id", h.RevokeKey)
+	// Revoke moved off DELETE on 2026-08-29 so DELETE could mean what it says.
+	// The swap is safe to deploy in either order only because DeleteKey refuses
+	// a key that is not already revoked: a stale portal still sending DELETE to
+	// revoke gets a 409, never a silent hard delete of a live credential.
+	r.Post("/apps/:client_id/keys/:id/revoke", h.RevokeKey)
+	r.Delete("/apps/:client_id/keys/:id", h.DeleteKey)
 	r.Get("/apps/:client_id/usage", h.Usage)
 	r.Get("/usage", h.OwnerUsage)
 }
@@ -214,12 +219,12 @@ func (h *SelfServiceHandler) UpdateApp(c fiber.Ctx) error {
 	return response.Success(c, toSelfAppView(app, n))
 }
 
-func (h *SelfServiceHandler) DeactivateApp(c fiber.Ctx) error {
+func (h *SelfServiceHandler) ArchiveApp(c fiber.Ctx) error {
 	ownerID, ok := ownerFromCtx(c)
 	if !ok {
 		return response.Unauthorized(c, apperr.ErrAuthUnauthorized)
 	}
-	err := h.svc.DeactivateApp(c.Context(), ownerID, c.Params("client_id"))
+	err := h.svc.ArchiveApp(c.Context(), ownerID, c.Params("client_id"))
 	if goerrors.Is(err, gorm.ErrRecordNotFound) {
 		return response.NotFound(c, apperr.ErrNotFound)
 	}
@@ -325,6 +330,46 @@ func (h *SelfServiceHandler) RevokeKey(c fiber.Ctx) error {
 		return response.NotFound(c, apperr.ErrNotFound)
 	}
 	return response.Success(c, nil)
+}
+
+func (h *SelfServiceHandler) DeleteKey(c fiber.Ctx) error {
+	ownerID, ok := ownerFromCtx(c)
+	if !ok {
+		return response.Unauthorized(c, apperr.ErrAuthUnauthorized)
+	}
+	keyID, ok := parseIDParam(c)
+	if !ok {
+		return response.BadRequest(c, apperr.ErrInvalidID)
+	}
+	found, err := h.svc.DeleteKey(c.Context(), ownerID, c.Params("client_id"), keyID)
+	if goerrors.Is(err, gorm.ErrRecordNotFound) {
+		return response.NotFound(c, apperr.ErrNotFound)
+	}
+	if resp, handled := keyDeleteConflict(c, err); handled {
+		return resp
+	}
+	if err != nil {
+		return response.InternalError(c, apperr.ErrOperationFailed)
+	}
+	if !found {
+		return response.NotFound(c, apperr.ErrNotFound)
+	}
+	return response.Success(c, nil)
+}
+
+// Shared by both faces: the guard is an integrity rule about the audit trail,
+// not a permission, so an operator gets the same two conflicts as an owner.
+func keyDeleteConflict(c fiber.Ctx, err error) (error, bool) {
+	switch {
+	case goerrors.Is(err, ErrKeyNotRevoked):
+		return response.Error(c, fiber.StatusConflict, apperr.ErrValidationFailed,
+			"revoke this key before deleting it"), true
+	case goerrors.Is(err, ErrKeyHasHistory):
+		return response.Error(c, fiber.StatusConflict, apperr.ErrValidationFailed,
+			"this key has served requests — it can be revoked but not deleted"), true
+	default:
+		return nil, false
+	}
 }
 
 func (h *SelfServiceHandler) Usage(c fiber.Ctx) error {

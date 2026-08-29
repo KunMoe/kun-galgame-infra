@@ -32,10 +32,16 @@ func (h *AdminHandler) Register(r fiber.Router, policyWriteGate fiber.Handler) {
 	r.Patch("/apps/:client_id", h.PatchApp)
 	r.Post("/apps/:client_id/approve", h.ApproveApp)
 	r.Post("/apps/:client_id/decline", h.DeclineApp)
+	r.Post("/apps/:client_id/archive", h.ArchiveApp)
+	r.Delete("/apps/:client_id", h.DeleteApp)
 	r.Post("/apps/:client_id/keys", h.MintKey)
 	r.Get("/apps/:client_id/keys", h.ListKeys)
 	r.Post("/apps/:client_id/keys/:id/rotate", h.RotateKey)
-	r.Delete("/apps/:client_id/keys/:id", h.RevokeKey)
+	// Same swap as the portal face: revoke is a POST now so DELETE can be a
+	// delete. See the note in SelfServiceHandler.Register for why the two
+	// deploy in either order without risk.
+	r.Post("/apps/:client_id/keys/:id/revoke", h.RevokeKey)
+	r.Delete("/apps/:client_id/keys/:id", h.DeleteKey)
 	r.Get("/keys", h.ListAllKeys)
 	r.Get("/policies", h.ListPolicies)
 	r.Put("/policies/:capability", policyWriteGate, h.SetPolicy)
@@ -43,11 +49,12 @@ func (h *AdminHandler) Register(r fiber.Router, policyWriteGate fiber.Handler) {
 }
 
 type patchAppRequest struct {
-	OwnerUserID    *uint   `json:"owner_user_id"`
-	DevEnabled     *bool   `json:"dev_enabled"`
-	DevTier        *string `json:"dev_tier"`
-	DevRatePerMin  *int    `json:"dev_rate_per_min"`
-	DevQuotaDaily  *int    `json:"dev_quota_daily"`
+	OwnerUserID             *uint   `json:"owner_user_id"`
+	DevEnabled              *bool   `json:"dev_enabled"`
+	DevTier                 *string `json:"dev_tier"`
+	DevRatePerMin           *int    `json:"dev_rate_per_min"`
+	DevQuotaDaily           *int    `json:"dev_quota_daily"`
+	StoreSettlementEligible *bool   `json:"store_settlement_eligible"`
 }
 
 type mintKeyRequest struct {
@@ -57,46 +64,62 @@ type mintKeyRequest struct {
 }
 
 type appView struct {
-	ClientID       string `json:"client_id"`
-	Name           string `json:"name"`
-	OwnerUserID    *uint  `json:"owner_user_id,omitempty"`
-	DevEnabled     bool   `json:"dev_enabled"`
-	DevTier        string `json:"dev_tier"`
-	DevRatePerMin  int    `json:"dev_rate_per_min"`
-	DevQuotaDaily  int    `json:"dev_quota_daily"`
-	KeyCount       int64  `json:"key_count"`
-	ReviewStatus   string `json:"review_status"`
-	ReviewNote     string `json:"review_note,omitempty"`
-	CreatedAt      string `json:"created_at"`
+	ClientID                string `json:"client_id"`
+	Name                    string `json:"name"`
+	OwnerUserID             *uint  `json:"owner_user_id,omitempty"`
+	DevEnabled              bool   `json:"dev_enabled"`
+	DevTier                 string `json:"dev_tier"`
+	DevRatePerMin           int    `json:"dev_rate_per_min"`
+	DevQuotaDaily           int    `json:"dev_quota_daily"`
+	KeyCount                int64  `json:"key_count"`
+	ReviewStatus            string `json:"review_status"`
+	ReviewNote              string `json:"review_note,omitempty"`
+	ArchivedAt              string `json:"archived_at,omitempty"`
+	StoreSettlementEligible bool   `json:"store_settlement_eligible"`
+	// The two disqualifiers for a hard delete that no cleanup can ever clear.
+	// Keys, usage, store links and logins can all go away; being able to sign a
+	// user in, or being a site's login client, cannot. The console shows these
+	// so it can withhold a button that would refuse forever, rather than
+	// re-deriving the guard and drifting from it.
+	LoginClient bool   `json:"login_client"`
+	BoundSite   bool   `json:"bound_site"`
+	CreatedAt   string `json:"created_at"`
 }
 
 func toAppView(app *siteModel.OAuthClient, keyCount int64) appView {
-	return appView{
-		ClientID:       app.ID,
-		Name:           app.Name,
-		OwnerUserID:    app.OwnerUserID,
-		DevEnabled:     app.DevEnabled,
-		DevTier:        app.DevTier,
-		DevRatePerMin:  app.DevRatePerMin,
-		DevQuotaDaily:  app.DevQuotaDaily,
-		KeyCount:       keyCount,
-		ReviewStatus:   app.DevReviewStatus,
-		ReviewNote:     app.DevReviewNote,
-		CreatedAt:      app.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+	v := appView{
+		ClientID:                app.ID,
+		Name:                    app.Name,
+		OwnerUserID:             app.OwnerUserID,
+		DevEnabled:              app.DevEnabled,
+		DevTier:                 app.DevTier,
+		DevRatePerMin:           app.DevRatePerMin,
+		DevQuotaDaily:           app.DevQuotaDaily,
+		KeyCount:                keyCount,
+		ReviewStatus:            app.DevReviewStatus,
+		ReviewNote:              app.DevReviewNote,
+		StoreSettlementEligible: app.StoreSettlementEligible,
+		LoginClient:             app.CanSignInUsers(),
+		BoundSite:               app.SiteID != nil,
+		CreatedAt:               app.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
+	if app.DevArchivedAt != nil {
+		v.ArchivedAt = app.DevArchivedAt.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	return v
 }
 
 type keyView struct {
-	ID          uint     `json:"id"`
-	ClientID    string   `json:"client_id"`
-	Name        string   `json:"name"`
-	KeyPrefix   string   `json:"key_prefix"`
-	Last4       string   `json:"last4"`
-	Scopes      []string `json:"scopes"`
-	ExpiresAt   string   `json:"expires_at,omitempty"`
-	RevokedAt   string   `json:"revoked_at,omitempty"`
-	LastUsedAt  string   `json:"last_used_at,omitempty"`
-	CreatedAt   string   `json:"created_at"`
+	ID         uint     `json:"id"`
+	ClientID   string   `json:"client_id"`
+	Name       string   `json:"name"`
+	KeyPrefix  string   `json:"key_prefix"`
+	Last4      string   `json:"last4"`
+	Scopes     []string `json:"scopes"`
+	ExpiresAt  string   `json:"expires_at,omitempty"`
+	RevokedAt  string   `json:"revoked_at,omitempty"`
+	LastUsedAt string   `json:"last_used_at,omitempty"`
+	CreatedAt  string   `json:"created_at"`
 }
 
 type mintedKeyView struct {
@@ -126,11 +149,12 @@ func (h *AdminHandler) PatchApp(c fiber.Ctx) error {
 		return response.BadRequest(c, apperr.ErrBadRequest)
 	}
 	app, err := h.svc.UpdateAppConfig(c.Context(), clientID, AppConfig{
-		OwnerUserID:    req.OwnerUserID,
-		DevEnabled:     req.DevEnabled,
-		DevTier:        req.DevTier,
-		DevRatePerMin:  req.DevRatePerMin,
-		DevQuotaDaily:  req.DevQuotaDaily,
+		OwnerUserID:             req.OwnerUserID,
+		DevEnabled:              req.DevEnabled,
+		DevTier:                 req.DevTier,
+		DevRatePerMin:           req.DevRatePerMin,
+		DevQuotaDaily:           req.DevQuotaDaily,
+		StoreSettlementEligible: req.StoreSettlementEligible,
 	})
 	if goerrors.Is(err, ErrInvalidTier) {
 		return response.BadRequestMsg(c, apperr.ErrValidationFailed, "invalid tier (want free|trusted|internal)")
@@ -162,6 +186,35 @@ func (h *AdminHandler) DeclineApp(c fiber.Ctx) error {
 	reviewer, _ := c.Locals("user_id").(uint)
 	app, err := h.svc.DeclineApp(c.Context(), c.Params("client_id"), reviewer, req.Reason)
 	return h.respondAppReview(c, app, err)
+}
+
+func (h *AdminHandler) ArchiveApp(c fiber.Ctx) error {
+	app, err := h.svc.ArchiveApp(c.Context(), c.Params("client_id"))
+	if goerrors.Is(err, gorm.ErrRecordNotFound) {
+		return response.NotFound(c, apperr.ErrNotFound)
+	}
+	if err != nil {
+		return response.InternalError(c, apperr.ErrOperationFailed)
+	}
+	n, _ := h.svc.repo.CountKeysByClient(c.Context(), app.ID)
+	return response.Success(c, toAppView(app, n))
+}
+
+func (h *AdminHandler) DeleteApp(c fiber.Ctx) error {
+	err := h.svc.DeleteApp(c.Context(), c.Params("client_id"))
+	switch {
+	case goerrors.Is(err, gorm.ErrRecordNotFound):
+		return response.NotFound(c, apperr.ErrNotFound)
+	case goerrors.Is(err, ErrAppNotArchived):
+		return response.Error(c, fiber.StatusConflict, apperr.ErrValidationFailed,
+			"archive this application before deleting it")
+	case goerrors.Is(err, ErrAppHasReferences):
+		return response.Error(c, fiber.StatusConflict, apperr.ErrValidationFailed,
+			"this application has keys, usage, store links or logins behind it, or can sign users in — archive is as far as deletion goes")
+	case err != nil:
+		return response.InternalError(c, apperr.ErrOperationFailed)
+	}
+	return response.Success(c, nil)
 }
 
 func (h *AdminHandler) respondAppReview(c fiber.Ctx, app *siteModel.OAuthClient, err error) error {
@@ -202,6 +255,10 @@ func (h *AdminHandler) MintKey(c fiber.Ctx) error {
 	}, createdBy)
 	if goerrors.Is(err, gorm.ErrRecordNotFound) {
 		return response.NotFound(c, apperr.ErrNotFound)
+	}
+	if goerrors.Is(err, ErrAppArchived) {
+		return response.Error(c, fiber.StatusConflict, apperr.ErrValidationFailed,
+			"this application is archived — re-enable it before minting a key")
 	}
 	if err != nil {
 		return response.InternalError(c, apperr.ErrOperationFailed)
@@ -252,6 +309,29 @@ func (h *AdminHandler) RevokeKey(c fiber.Ctx) error {
 		return err
 	}
 	if err := h.svc.RevokeKey(c.Context(), keyID); err != nil {
+		return response.InternalError(c, apperr.ErrOperationFailed)
+	}
+	return response.Success(c, nil)
+}
+
+func (h *AdminHandler) DeleteKey(c fiber.Ctx) error {
+	clientID := c.Params("client_id")
+	keyID, ok := parseIDParam(c)
+	if !ok {
+		return response.BadRequest(c, apperr.ErrInvalidID)
+	}
+	key, err := h.requireKeyOfClient(c, clientID, keyID)
+	if err != nil {
+		return err
+	}
+	// One call, one error: keyDeleteConflict answers only the two 409s, so a
+	// plain database failure must still be checked for separately or it lands
+	// on the success path.
+	delErr := h.svc.DeleteKey(c.Context(), key)
+	if resp, handled := keyDeleteConflict(c, delErr); handled {
+		return resp
+	}
+	if delErr != nil {
 		return response.InternalError(c, apperr.ErrOperationFailed)
 	}
 	return response.Success(c, nil)
@@ -325,13 +405,13 @@ func toKeyView(k *DeveloperAPIKey) keyView {
 		_ = json.Unmarshal(k.Scopes, &scopes)
 	}
 	v := keyView{
-		ID:          k.ID,
-		ClientID:    k.ClientID,
-		Name:        k.Name,
-		KeyPrefix:   k.KeyPrefix,
-		Last4:       k.Last4,
-		Scopes:      scopes,
-		CreatedAt:   k.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+		ID:        k.ID,
+		ClientID:  k.ClientID,
+		Name:      k.Name,
+		KeyPrefix: k.KeyPrefix,
+		Last4:     k.Last4,
+		Scopes:    scopes,
+		CreatedAt: k.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
 	if k.ExpiresAt != nil {
 		v.ExpiresAt = k.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z")

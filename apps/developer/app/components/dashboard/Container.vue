@@ -77,7 +77,7 @@ const handleCreated = () => {
       class="rounded-lg bg-warning-50 p-3 text-sm text-warning"
     >
       <KunIcon name="lucide:info" class="mr-1 inline size-4" />
-      已达到应用数量上限（{{ MAX_APPS_PER_ACCOUNT }}）。如需更多，请停用不再使用的应用。
+      已达到应用数量上限（{{ MAX_APPS_PER_ACCOUNT }}）。如需更多，请删除不再使用的应用以归还名额。
     </div>
 
     <div v-if="apps.length" class="grid gap-4 sm:grid-cols-2">

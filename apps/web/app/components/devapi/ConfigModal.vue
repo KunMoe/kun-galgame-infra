@@ -16,6 +16,7 @@ const tier = ref<DevTier>('free')
 const ratePerMin = ref<number | null>(null)
 const quotaDaily = ref<number | null>(null)
 const ownerUserId = ref<number | null>(null)
+const settlementEligible = ref(false)
 const error = ref('')
 const isLoading = ref(false)
 
@@ -25,6 +26,7 @@ watch(open, (v) => {
   ratePerMin.value = props.app.dev_rate_per_min
   quotaDaily.value = props.app.dev_quota_daily
   ownerUserId.value = props.app.owner_user_id ?? null
+  settlementEligible.value = props.app.store_settlement_eligible
   error.value = ''
 })
 
@@ -39,6 +41,7 @@ const handleSubmit = async () => {
       dev_rate_per_min: ratePerMin.value ?? 0,
       dev_quota_daily: quotaDaily.value ?? 0,
       owner_user_id: ownerUserId.value ?? 0,
+      store_settlement_eligible: settlementEligible.value,
     }
     const res = await api.patch(`/admin/devapi/apps/${app.client_id}`, body)
     if (res.code === 0) {
@@ -90,6 +93,14 @@ const handleSubmit = async () => {
         :min="0"
         description="第三方开发者应用的所有者用户 ID；0 = 不指定"
       />
+
+      <div class="rounded-lg border border-default-200 p-3">
+        <KunSwitch
+          v-model="settlementEligible"
+          label="DLsite 结算名单（分成资格）"
+          description="铸造商店短链是自助的，人人可用；但每月的优惠券池是固定的一份，按去重后的点击占比切分——名单里每多一个参与者，其余人分到的就更少。这个开关决定谁真正参与分成，不是谁可以铸链。"
+        />
+      </div>
 
       <div class="rounded-lg border border-default-200 p-3">
         <div class="flex items-center gap-2 text-sm text-default-500">

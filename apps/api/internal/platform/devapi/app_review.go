@@ -26,6 +26,7 @@ const (
 	AppFilterPending  = "pending"
 	AppFilterDeclined = "declined"
 	AppFilterDisabled = "disabled"
+	AppFilterArchived = "archived"
 	AppFilterAll      = "all"
 )
 
@@ -47,19 +48,25 @@ func appAwaitsReview(status string) bool {
 	return status == AppReviewPending || status == AppReviewDeclined
 }
 
+// Archived rows are excluded from every filter except their own and "all":
+// an application its owner deleted is not pending review, not disabled pending
+// a decision, and not a live application — leaving it in the working tabs would
+// put rows in the operator's queue that nobody is waiting on.
 func (r *Repository) ListAppsByFilter(ctx context.Context, filter string) ([]siteModel.OAuthClient, error) {
 	q := r.db.WithContext(ctx)
 	switch filter {
 	case AppFilterPending:
-		q = q.Where("dev_review_status = ?", AppReviewPending)
+		q = q.Where("dev_review_status = ? AND dev_archived_at IS NULL", AppReviewPending)
 	case AppFilterDeclined:
-		q = q.Where("dev_review_status = ?", AppReviewDeclined)
+		q = q.Where("dev_review_status = ? AND dev_archived_at IS NULL", AppReviewDeclined)
 	case AppFilterDisabled:
-		q = q.Where("dev_enabled = ? AND dev_review_status NOT IN ?",
+		q = q.Where("dev_enabled = ? AND dev_archived_at IS NULL AND dev_review_status NOT IN ?",
 			false, []string{AppReviewPending, AppReviewDeclined})
+	case AppFilterArchived:
+		q = q.Where("dev_archived_at IS NOT NULL")
 	case AppFilterAll:
 	default:
-		q = q.Where("dev_enabled = ?", true)
+		q = q.Where("dev_enabled = ? AND dev_archived_at IS NULL", true)
 	}
 	var apps []siteModel.OAuthClient
 	err := q.Order("created_at DESC, name ASC").Find(&apps).Error

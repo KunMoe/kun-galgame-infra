@@ -156,10 +156,17 @@ func (r *Repository) CreateApp(ctx context.Context, app *siteModel.OAuthClient) 
 	return r.db.WithContext(ctx).Create(app).Error
 }
 
+// The owner-scoped trio all hide archived rows, which is what makes archiving
+// releasable: before dev_archived_at existed a deactivated or declined
+// application still counted against MaxAppsPerOwner with no self-service way to
+// free the slot, so five dead rows locked the account out of the platform for
+// good. Every self-service operation resolves through GetAppByOwner, so hiding
+// it here is also what stops a key being minted on an application its owner
+// has deleted.
 func (r *Repository) ListAppsByOwner(ctx context.Context, ownerUserID uint) ([]siteModel.OAuthClient, error) {
 	var apps []siteModel.OAuthClient
 	err := r.db.WithContext(ctx).
-		Where("owner_user_id = ?", ownerUserID).
+		Where("owner_user_id = ? AND dev_archived_at IS NULL", ownerUserID).
 		Order("created_at DESC").
 		Find(&apps).Error
 	return apps, err
@@ -168,7 +175,7 @@ func (r *Repository) ListAppsByOwner(ctx context.Context, ownerUserID uint) ([]s
 func (r *Repository) GetAppByOwner(ctx context.Context, clientID string, ownerUserID uint) (*siteModel.OAuthClient, error) {
 	var app siteModel.OAuthClient
 	if err := r.db.WithContext(ctx).
-		Where("id = ? AND owner_user_id = ?", clientID, ownerUserID).
+		Where("id = ? AND owner_user_id = ? AND dev_archived_at IS NULL", clientID, ownerUserID).
 		First(&app).Error; err != nil {
 		return nil, err
 	}
@@ -179,7 +186,7 @@ func (r *Repository) CountAppsByOwner(ctx context.Context, ownerUserID uint) (in
 	var n int64
 	err := r.db.WithContext(ctx).
 		Model(&siteModel.OAuthClient{}).
-		Where("owner_user_id = ?", ownerUserID).
+		Where("owner_user_id = ? AND dev_archived_at IS NULL", ownerUserID).
 		Count(&n).Error
 	return n, err
 }
@@ -191,6 +198,117 @@ func (r *Repository) CountActiveKeysByClient(ctx context.Context, clientID strin
 		Where("client_id = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)", clientID, now).
 		Count(&n).Error
 	return n, err
+}
+
+func (r *Repository) DeleteKey(ctx context.Context, id uint) error {
+	return r.db.WithContext(ctx).Delete(&DeveloperAPIKey{}, id).Error
+}
+
+func (r *Repository) CountUsageByKey(ctx context.Context, keyID uint) (int64, error) {
+	var n int64
+	err := r.db.WithContext(ctx).
+		Model(&DeveloperAPIUsage{}).
+		Where("key_id = ?", keyID).
+		Count(&n).Error
+	return n, err
+}
+
+// AppReferences is everything that would be orphaned by deleting an
+// oauth_clients row. The table is dual-purpose — it is the developer
+// application table AND the OAuth login client table — and none of these
+// references is a foreign key, so Postgres would let the DELETE through and
+// leave live sessions pointing at a client that no longer exists, short links
+// still counting clicks for nobody, and metered calls attributed to a gap.
+type AppReferences struct {
+	Keys        int64
+	Usage       int64
+	StoreLinks  int64
+	Logins      int64
+	BoundSite   bool
+	LoginClient bool
+}
+
+func (a AppReferences) Empty() bool {
+	return a.Keys == 0 && a.Usage == 0 && a.StoreLinks == 0 && a.Logins == 0 &&
+		!a.BoundSite && !a.LoginClient
+}
+
+func (r *Repository) AppReferences(ctx context.Context, clientID string) (AppReferences, error) {
+	var out AppReferences
+	counts := []struct {
+		table string
+		into  *int64
+	}{
+		{"developer_api_keys", &out.Keys},
+		{"developer_api_usage", &out.Usage},
+		{"store_purchase_links", &out.StoreLinks},
+		{"store_coupon_links", &out.StoreLinks},
+		{"sessions", &out.Logins},
+		{"authorization_codes", &out.Logins},
+	}
+	for _, c := range counts {
+		var n int64
+		if err := r.db.WithContext(ctx).
+			Table(c.table).
+			Where("client_id = ?", clientID).
+			Count(&n).Error; err != nil {
+			return AppReferences{}, err
+		}
+		*c.into += n
+	}
+	var app siteModel.OAuthClient
+	if err := r.db.WithContext(ctx).
+		Where("id = ?", clientID).
+		First(&app).Error; err != nil {
+		return AppReferences{}, err
+	}
+	out.BoundSite = app.SiteID != nil
+	// Whether the client could ever have signed a user in — NOT whether a login
+	// exists now. internal/app/cleanup.go hard-deletes expired sessions and
+	// authorization codes, so the two counts above go back to zero on their own
+	// and are no evidence of what a client once did. The login configuration is
+	// written at creation and never cleaned up, which makes it the only durable
+	// answer.
+	//
+	// It has to be durable because the damage lands in another database:
+	// catalog_user_playtimes.client_id lives in kun_catalog, where this
+	// repository cannot reach, and only a client that could authorize a user
+	// can have rows there. So a client that ever offered login is archivable
+	// but never deletable.
+	out.LoginClient = app.CanSignInUsers()
+	return out, nil
+}
+
+// EnsureDeletable is the whole rule for dropping an oauth_clients row, and both
+// doors that can drop one go through it. The developer console was never the
+// only door: DELETE /api/v1/oauth/clients/:id on the site console shipped with
+// no guard at all, so an operator could remove a developer's application — keys,
+// metered usage, short links and all — through a route that had never heard of
+// any of them.
+//
+// Archive-first only binds an application that has an owner. A plain OAuth
+// login client has no archive step to perform — nothing in either console can
+// set dev_archived_at on it — so demanding one would make the site console's
+// delete refuse everything with advice nobody can act on. Its protection is the
+// reference rule below, which a login client never passes anyway.
+func (r *Repository) EnsureDeletable(ctx context.Context, app *siteModel.OAuthClient) error {
+	if app.OwnerUserID != nil && app.DevArchivedAt == nil {
+		return ErrAppNotArchived
+	}
+	refs, err := r.AppReferences(ctx, app.ID)
+	if err != nil {
+		return err
+	}
+	if !refs.Empty() {
+		return ErrAppHasReferences
+	}
+	return nil
+}
+
+func (r *Repository) DeleteApp(ctx context.Context, clientID string) error {
+	return r.db.WithContext(ctx).
+		Where("id = ?", clientID).
+		Delete(&siteModel.OAuthClient{}).Error
 }
 
 const (

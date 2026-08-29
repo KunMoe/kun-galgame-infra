@@ -46,6 +46,11 @@ export const DEV_APP_REVIEW_COLORS: Record<
 export const isAppUnderReview = (status: string): boolean =>
   status === 'pending' || status === 'declined'
 
+// Mirrors apperr.ErrValidationFailed in apps/api/pkg/errors/codes.go: the
+// envelope code for a request the API understood and refused. Its message is
+// English prose, so the portal branches on the code and writes its own Chinese.
+export const API_CODE_VALIDATION_FAILED = 7
+
 export const DEV_DISABLED_HINT = '该功能当前已由平台关闭'
 
 export const MAX_APPS_PER_ACCOUNT = 5

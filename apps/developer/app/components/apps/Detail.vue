@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  API_CODE_VALIDATION_FAILED,
   DEV_APP_REVIEW_COLORS,
   DEV_APP_REVIEW_LABELS,
   DEV_CAP_APP_MANAGE,
@@ -136,8 +137,8 @@ const askRevoke = (key: DevKey) => {
     body: `吊销「${key.name}」后立即生效且不可撤销，使用该密钥的所有请求将被拒绝。确认继续？`,
     danger: true,
     run: async () => {
-      const res = await api.delete(
-        `/dev/apps/${clientId.value}/keys/${key.id}`
+      const res = await api.post(
+        `/dev/apps/${clientId.value}/keys/${key.id}/revoke`
       )
       if (res.code === 0) {
         useKunMessage('密钥已吊销', 'success')
@@ -145,6 +146,44 @@ const askRevoke = (key: DevKey) => {
         refreshApp()
       } else {
         useKunMessage(res.message || '吊销失败', 'error')
+      }
+    }
+  })
+}
+
+interface KeyDeleteFailure {
+  message: string
+  refresh?: boolean
+}
+
+const deleteKeyFailure = (
+  key: DevKey,
+  res: { code: number; message: string }
+): KeyDeleteFailure => {
+  if (key.last_used_at) {
+    return { message: '该密钥已产生调用记录，只能吊销，不能删除' }
+  }
+  if (!key.revoked_at) return { message: '请先吊销该密钥，再执行删除' }
+  if (res.code === API_CODE_VALIDATION_FAILED) {
+    return { message: '该密钥当前不可删除，已为你刷新列表', refresh: true }
+  }
+  return { message: res.message || '删除失败' }
+}
+
+const askDeleteKey = (key: DevKey) => {
+  askConfirm({
+    title: '删除密钥',
+    body: `将「${key.name}」的记录从列表中彻底删除。它已被吊销且从未产生过调用，删除后不可恢复。`,
+    danger: true,
+    run: async () => {
+      const res = await api.delete(`/dev/apps/${clientId.value}/keys/${key.id}`)
+      if (res.code === 0) {
+        useKunMessage('密钥已删除', 'success')
+        refreshKeys()
+      } else {
+        const failure = deleteKeyFailure(key, res)
+        if (failure.refresh) refreshKeys()
+        useKunMessage(failure.message, 'error')
       }
     }
   })
@@ -167,18 +206,29 @@ const resubmit = async () => {
   }
 }
 
-const askDeactivate = () => {
+const deleteAction = computed(() => {
+  const withdraw = reviewStatus.value === 'pending'
+  const label = withdraw ? '撤回申请' : '删除应用'
+  return {
+    label,
+    verb: withdraw ? '撤回' : '删除',
+    done: withdraw ? '申请已撤回' : '应用已删除'
+  }
+})
+
+const askDeleteApp = () => {
+  const { label, verb, done } = deleteAction.value
   askConfirm({
-    title: '停用应用',
-    body: '停用后该应用退出开放 API 平台，其所有密钥将立即失效。确认继续？',
+    title: label,
+    body: `${verb}后，该应用的所有密钥立即吊销，应用从你的列表中消失，占用的名额也随之归还，可用来创建新的应用。此操作你无法自行撤销，请确认后再继续。`,
     danger: true,
     run: async () => {
       const res = await api.delete(`/dev/apps/${clientId.value}`)
       if (res.code === 0) {
-        useKunMessage('应用已停用', 'success')
+        useKunMessage(done, 'success')
         navigateTo('/dashboard')
       } else {
-        useKunMessage(res.message || '停用失败', 'error')
+        useKunMessage(res.message || `${verb}失败`, 'error')
       }
     }
   })
@@ -202,7 +252,7 @@ const askDeactivate = () => {
 
     <KunCard v-if="!app" content-class="p-10">
       <p class="text-center text-default-400">
-        未找到该应用（可能已停用或不存在）。
+        未找到该应用（可能已删除或不存在）。
       </p>
     </KunCard>
 
@@ -266,15 +316,14 @@ const askDeactivate = () => {
               编辑
             </KunButton>
             <KunButton
-              v-if="!underReview"
               color="danger"
               variant="flat"
               size="sm"
               :disabled="manageDisabled"
-              @click="askDeactivate"
+              @click="askDeleteApp"
             >
-              <KunIcon name="lucide:power-off" class="mr-1 size-4" />
-              停用
+              <KunIcon name="lucide:trash-2" class="mr-1 size-4" />
+              {{ deleteAction.label }}
             </KunButton>
           </div>
         </div>
@@ -295,7 +344,7 @@ const askDeactivate = () => {
           v-else-if="manageDisabled"
           class="mt-3 rounded-lg bg-default-100 p-3 text-sm text-default-500"
         >
-          {{ DEV_DISABLED_HINT }}：应用的编辑与停用暂由平台代为处理。
+          {{ DEV_DISABLED_HINT }}：应用的编辑与删除暂由平台代为处理。
         </p>
 
         <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -358,6 +407,7 @@ const askDeactivate = () => {
         :rotate-disabled="mintDisabled"
         @rotate="askRotate"
         @revoke="askRevoke"
+        @delete="askDeleteKey"
       />
 
       <div>

@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { DEV_MINTABLE_SCOPES } from '~/constants/devapi'
+import {
+  API_CODE_VALIDATION_FAILED,
+  DEV_DEFAULT_SCOPES,
+  DEV_MINTABLE_SCOPES,
+} from '~/constants/devapi'
 import type { DevKeyMinted } from '~~/shared/types/devapi'
 
 const props = defineProps<{ clientId: string }>()
@@ -10,7 +14,7 @@ const api = useApi()
 
 const name = ref('')
 const test = ref(false)
-const scopes = ref<string[]>([...DEV_MINTABLE_SCOPES])
+const scopes = ref<string[]>([...DEV_DEFAULT_SCOPES])
 const error = ref('')
 const isLoading = ref(false)
 
@@ -18,7 +22,7 @@ watch(open, (v) => {
   if (!v) return
   name.value = ''
   test.value = false
-  scopes.value = [...DEV_MINTABLE_SCOPES]
+  scopes.value = [...DEV_DEFAULT_SCOPES]
   error.value = ''
 })
 
@@ -51,6 +55,10 @@ const handleSubmit = async () => {
     )
     if (res.code === 0 && res.data) {
       emit('minted', res.data)
+    } else if (res.code === API_CODE_VALIDATION_FAILED) {
+      // The empty name is caught above, so an archived application is the only
+      // refusal the server can still answer this dialog with.
+      error.value = '该应用已归档，请先重新启用再铸造密钥'
     } else {
       error.value = res.message || '生成失败'
     }
@@ -75,7 +83,7 @@ const handleSubmit = async () => {
       <div>
         <span class="mb-1 block text-sm font-medium text-default-500">
           Scope（权限范围）
-          <span class="text-xs text-default-400">— 默认全选公开只读 scope</span>
+          <span class="text-xs text-default-400">— 默认只勾选 catalog:read，其余按需自行勾选</span>
         </span>
         <div class="flex flex-wrap gap-2">
           <KunCheckBox
