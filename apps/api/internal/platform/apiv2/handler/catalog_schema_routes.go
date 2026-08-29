@@ -23,7 +23,7 @@ func registerCatalogSchemas(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/schemas/{object}",
 		Summary:            "Editable-field schema for one family",
-		Description:        "Unauthenticated metadata: include tokens, FULL_SET, and editing-engine fields. Actor capabilities are not evaluated. Unknown object is 404 NOT_FOUND. schemas/release sets creation_disabled.",
+		Description:        "Unauthenticated metadata: include tokens, FULL_SET, and editing-engine fields. include/full_set describe the family's DETAIL face and list_include/list_full_set its collection face, which is narrower on work. Actor capabilities are not evaluated. Unknown object is 404 NOT_FOUND. schemas/release sets creation_disabled.",
 		Tags:               []string{"catalog"},
 		Errors:             collectionErrors(http.StatusNotFound, http.StatusServiceUnavailable),
 		SkipValidateParams: true,

@@ -42,7 +42,7 @@ func (c *Catalog) ListCalendar(ctx context.Context, q collect.Query, p calendarP
 		return repr.CalendarList{}, werr
 	}
 	f := catsvc.CalendarFilter{
-		NSFW: q.NSFW, Include: calendarWorksInclude(q.Include),
+		NSFW: q.NSFW, Include: listWorksInclude(q.Include),
 		DisplayLimits: limits, OLang: calendarOLang(p.OLang),
 	}
 	meta := &repr.CalendarMeta{Today: time.Now().In(calendarJST).Format("2006-01-02")}
@@ -184,17 +184,4 @@ func calendarWindow(month, year, precision, status string, now time.Time) (calen
 	return calendarWin{bucket: catsvc.CalendarBucket{
 		Kind: catsvc.CalendarMonthBucket, Year: t.Year(), Month: int(t.Month()),
 	}}, nil
-}
-
-func calendarWorksInclude(tokens []string) catsvc.WorksListInclude {
-	var raw []string
-	for _, t := range tokens {
-		switch t {
-		case "companies":
-			raw = append(raw, "labels")
-		case "intros", "ratings", "covers", "refs":
-			raw = append(raw, t)
-		}
-	}
-	return catsvc.ParseWorksListInclude(strings.Join(raw, ","))
 }

@@ -5,8 +5,10 @@ type ObjectSchema struct {
 	Object           string        `json:"object" enum:"object_schema" doc:"Type discriminant. Always object_schema."`
 	TargetObject     string        `json:"target_object" enum:"work,company,character,release,tag,engine,series" doc:"Family this schema describes."`
 	EntityType       string        `json:"entity_type" enum:"catalog.work,catalog.label,catalog.character,catalog.release,catalog.tag,catalog.engine,catalog.series" doc:"Editing-engine type this family writes as."`
-	Include          []string      `json:"include" doc:"include= tokens for this family. Empty array, never null. FULL_SET is a subset."`
-	FullSet          []string      `json:"full_set" doc:"Tokens view=full expands. A subset of include. Empty array, never null."`
+	Include          []string      `json:"include" doc:"include= tokens the family's DETAIL face takes. Empty array, never null. full_set is a subset."`
+	FullSet          []string      `json:"full_set" doc:"Tokens view=full expands on the detail face. A subset of include. Empty array, never null."`
+	ListInclude      []string      `json:"list_include" doc:"include= tokens the family's COLLECTION face takes, which is not always the detail vocabulary: a list hydrates in batch, so blocks whose only shape is per-record stay on the detail face and on the sub-resources. Empty array, never null."`
+	ListFullSet      []string      `json:"list_full_set" doc:"Tokens view=full expands on the collection face. A subset of list_include. Empty array, never null."`
 	CreationDisabled bool          `json:"creation_disabled" doc:"true when new rows of this family cannot be created. Always true on release."`
 	Fields           []SchemaField `json:"fields" doc:"Editable fields. Empty array, never null. Actor capabilities are not evaluated."`
 }

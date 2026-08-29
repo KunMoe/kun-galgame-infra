@@ -9,6 +9,10 @@ import (
 	"api/internal/platform/catalog/model"
 )
 
+// The works list has no spoiler= axis, so its tags block is cut at the same
+// default ceiling the works detail applies when the caller sends none.
+const listSpoilerCeiling int16 = 0
+
 type WorksListInclude struct {
 	Names   bool
 	Intros  bool
@@ -16,10 +20,12 @@ type WorksListInclude struct {
 	Ratings bool
 	Covers  bool
 	Refs    bool
+	Tags    bool
+	Credits bool
 }
 
 func (i WorksListInclude) any() bool {
-	return i.Names || i.Intros || i.Labels || i.Ratings || i.Covers || i.Refs
+	return i.Names || i.Intros || i.Labels || i.Ratings || i.Covers || i.Refs || i.Tags || i.Credits
 }
 
 // intersect is the "fields acts AFTER include" rule: a block is loaded only
@@ -33,6 +39,8 @@ func (i WorksListInclude) intersect(sel PublicFields) WorksListInclude {
 		Ratings: i.Ratings && sel.Wants("ratings"),
 		Covers:  i.Covers && sel.Wants("covers"),
 		Refs:    i.Refs && sel.Wants("refs"),
+		Tags:    i.Tags && sel.Wants("tags"),
+		Credits: i.Credits && sel.Wants("credits"),
 	}
 }
 
@@ -52,6 +60,10 @@ func ParseWorksListInclude(raw string) WorksListInclude {
 			inc.Covers = true
 		case "refs":
 			inc.Refs = true
+		case "tags":
+			inc.Tags = true
+		case "credits":
+			inc.Credits = true
 		}
 	}
 	return inc
@@ -134,6 +146,53 @@ func (s *PublicService) attachWorkListBlocks(
 		for i, r := range rows {
 			items[i].Refs = refs[r.ID]
 		}
+	}
+	// The list block is cut at the default spoiler ceiling, the same way the
+	// characters list cuts traits: the works list has no spoiler= axis, and the
+	// caller who needs a wider ceiling reads works/{id} or works/{id}/tags.
+	if inc.Tags {
+		tags, err := s.read.loadWorkTags(ctx, subjects, listSpoilerCeiling)
+		if err != nil {
+			return err
+		}
+		for i, r := range rows {
+			items[i].Tags = s.publicWorkTags(tags[r.ID], listSpoilerCeiling)
+		}
+	}
+	if inc.Credits {
+		if err := s.attachWorkListCredits(ctx, items, rows, ids); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *PublicService) attachWorkListCredits(
+	ctx context.Context, items []dto.PublicWorkListItem, rows []workListSourceRow, ids []int64,
+) error {
+	byWork, err := s.read.workCreditsFor(ctx, ids)
+	if err != nil {
+		return err
+	}
+	var nameIDs []int64
+	for _, id := range ids {
+		for _, r := range byWork[id] {
+			nameIDs = append(nameIDs, r.CreditNameID)
+		}
+	}
+	nameLoc, err := s.localizedFor(ctx, creditNameAliasSource, nameIDs)
+	if err != nil {
+		return err
+	}
+	for i, r := range rows {
+		groups := s.publicCreditGroups(byWork[r.ID])
+		for gi := range groups {
+			for ci := range groups[gi].Credits {
+				c := &groups[gi].Credits[ci]
+				c.Localized = locOrEmpty(nameLoc[c.ID])
+			}
+		}
+		items[i].Credits = groups
 	}
 	return nil
 }

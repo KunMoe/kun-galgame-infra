@@ -296,6 +296,22 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 	}
 	fx.Work = w.ID
 
+	// The fixture's only work-title rows. include=titles is the one list token
+	// whose effect is elected fields rather than a block, so with no title row
+	// nothing could tell the arm firing from the arm missing — which is how the
+	// calendar shipped without it while the works list had it.
+	liveWorkLatin := "Raibu Waaku"
+	for _, title := range []*model.CatalogWorkTitle{
+		{WorkID: w.ID, Lang: "ja", Title: "Live Work", Latin: &liveWorkLatin,
+			Kind: model.WorkTitleKindOfficial, Provenance: model.WorkTitleProvenanceSource},
+		{WorkID: w.ID, Lang: "zh-Hans", Title: "现场作品",
+			Kind: model.WorkTitleKindOfficial, Provenance: model.WorkTitleProvenanceSource},
+	} {
+		if err := db.Create(title).Error; err != nil {
+			return fx, err
+		}
+	}
+
 	pending := &model.CatalogWork{
 		MediumID: 1, OLang: "ja", DisplayName: "Pending Work",
 		ContentRating: model.ContentRatingAllAges, Status: model.WorkStatusLive,

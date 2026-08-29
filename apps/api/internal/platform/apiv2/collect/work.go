@@ -11,6 +11,32 @@ var WorkFullSet = []string{
 	"releases", "ratings", "relations", "engines", "series", "links",
 }
 
+// WorkListInclude is the works LIST vocabulary, and it is deliberately not
+// WorkInclude. The list and the detail shared one Spec, so the list declared
+// all eighteen detail tokens, validated them, and then answered four blocks:
+// include=tags,credits was a 200 with no tags and no credits, ten more tokens
+// did nothing at all, and view=full unioned twelve tokens to emit four. A
+// consumer probed for a 400 first, got none, and shipped a per-work detail read
+// on its hottest page to recover what the list had accepted an ask for.
+//
+// titles and covers are narrower here than on the detail face, and that is the
+// contract rather than a gap: titles elects latin/localized, covers elects the
+// two cover slots that carry the sexual grading of the base cover. Both are
+// load-bearing for consumers in exactly that shape — emitting the detail face's
+// full titles[] and covers[] arrays on a 100-work batch would be a payload
+// regression, not a fix. The unbounded per-work galleries stay on
+// works/{id}/covers and the other sub-resources.
+var WorkListInclude = []string{
+	"titles", "refs", "intros", "covers", "companies", "ratings", "tags", "credits",
+}
+
+// credits is out of the list FullSet for the reason it is out of WorkFullSet:
+// it is an explicit ask, not part of "everything". Every other list-capable
+// token rides view=full.
+var WorkListFullSet = []string{
+	"titles", "refs", "intros", "covers", "companies", "ratings", "tags",
+}
+
 var WorkBasicFields = []string{
 	"object", "id", "medium", "display_name", "latin", "localized", "olang",
 	"content_rating", "release_date", "release_date_precision", "release_status",
@@ -39,6 +65,18 @@ func WorkSpec() Spec {
 		Sort:    WorkSort,
 		Include: WorkInclude,
 		FullSet: WorkFullSet,
+		Fields:  fields,
+		Facets:  WorkFacets,
+	}
+}
+
+func WorkListSpec() Spec {
+	fields := append([]string{}, WorkBasicFields...)
+	fields = append(fields, WorkListInclude...)
+	return Spec{
+		Sort:    WorkSort,
+		Include: WorkListInclude,
+		FullSet: WorkListFullSet,
 		Fields:  fields,
 		Facets:  WorkFacets,
 	}
@@ -276,13 +314,23 @@ func SearchSpec() Spec {
 
 func CalendarSpec() Spec {
 	fields := append([]string{}, WorkBasicFields...)
-	fields = append(fields, WorkInclude...)
+	fields = append(fields, WorkListInclude...)
 	return Spec{
 		Sort:    []string{"id"},
-		Include: WorkInclude,
-		FullSet: WorkFullSet,
+		Include: WorkListInclude,
+		FullSet: WorkListFullSet,
 		Fields:  fields,
 	}
+}
+
+// ObjectListSpec answers the vocabulary of the object's COLLECTION face, which
+// is the one a caller building a list request needs. Only work has a narrower
+// list face; for every other object the list and the detail share a Spec.
+func ObjectListSpec(object string) (Spec, bool) {
+	if object == "work" {
+		return WorkListSpec(), true
+	}
+	return ObjectSpec(object)
 }
 
 func ObjectSpec(object string) (Spec, bool) {
