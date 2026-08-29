@@ -61,7 +61,16 @@ chmod 600 env.tmp
 # exists only in that process and never in argv on this host. Parallel query is
 # disabled per session: the postgres container runs with the 64MB docker-default
 # /dev/shm and the pair detector is a self-join over every live work title.
-DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$KUN_PG_PASSWORD}"; CAT="host=127.0.0.1 port=5432 user=$U password=$P dbname=${KUN_CATALOG_PG_DATABASE:-kun_catalog} sslmode=disable options='"'"'-c max_parallel_workers_per_gather=0'"'"'"'
+#
+# work_mem / hash_mem_multiplier / jit are forced down because parallel-off
+# alone was not enough: on 2026-08-29 the first prod census ran under prod's
+# work_mem=64MB x hash_mem_multiplier=2 and the planner kept the whole pair
+# query in memory — the backend grew to 6.4GB anon RSS, the kernel OOM-killed
+# it and postgres went through crash recovery (a ~1.3s full-platform DB
+# outage). Dev never showed this because its work_mem=4MB made the identical
+# query spill ~5GB to temp files instead. These GUCs pin the disk-spill plan;
+# do not remove them to make the watch faster.
+DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$KUN_PG_PASSWORD}"; CAT="host=127.0.0.1 port=5432 user=$U password=$P dbname=${KUN_CATALOG_PG_DATABASE:-kun_catalog} sslmode=disable options='"'"'-c max_parallel_workers_per_gather=0 -c work_mem=8MB -c hash_mem_multiplier=1 -c jit=off'"'"'"'
 
 rc=0
 docker run --rm --network "container:$PG" --env-file "$BASE/env.tmp" "$IMG" \
