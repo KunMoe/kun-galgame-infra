@@ -360,15 +360,18 @@ func TestWorkDetailCoversCarryImageMeta(t *testing.T) {
 	}
 }
 
-// moyu renders every work title out of the include=names block, so the six
-// token spellings are a contract in their own right: rename one and it renders
-// empty titles site-wide, with no error raised on either side.
+// moyu renders every work title out of the include=names block, so the token
+// spellings are a contract in their own right: rename one and it renders empty
+// titles site-wide, with no error raised on either side.
 func TestParseWorksListIncludeTokenSpellings(t *testing.T) {
-	want := WorksListInclude{Names: true, Intros: true, Labels: true, Ratings: true, Covers: true, Refs: true}
-	if inc := ParseWorksListInclude("names,intros,labels,ratings,covers,refs"); inc != want {
+	want := WorksListInclude{
+		Names: true, Intros: true, Labels: true, Ratings: true, Covers: true,
+		Refs: true, Tags: true, Credits: true,
+	}
+	if inc := ParseWorksListInclude("names,intros,labels,ratings,covers,refs,tags,credits"); inc != want {
 		t.Fatalf("include selector = %+v, want every token set: %+v", inc, want)
 	}
-	for _, tok := range []string{"names", "intros", "labels", "ratings", "covers", "refs"} {
+	for _, tok := range []string{"names", "intros", "labels", "ratings", "covers", "refs", "tags", "credits"} {
 		if !ParseWorksListInclude(tok).any() {
 			t.Fatalf("token %q selected nothing", tok)
 		}

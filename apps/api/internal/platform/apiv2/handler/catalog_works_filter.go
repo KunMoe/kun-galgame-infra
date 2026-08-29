@@ -371,6 +371,10 @@ func listWorksInclude(tokens []string) catsvc.WorksListInclude {
 			inc.Covers = true
 		case "refs":
 			inc.Refs = true
+		case "tags":
+			inc.Tags = true
+		case "credits":
+			inc.Credits = true
 		}
 	}
 	return inc

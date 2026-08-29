@@ -1223,6 +1223,7 @@ func (s *ReadService) CharacterByID(ctx context.Context, characterID int64, maxS
 }
 
 type CreditRow struct {
+	WorkID       int64
 	RoleID       int64
 	RoleKey      string
 	RoleNameCN   string
@@ -1240,6 +1241,20 @@ type CreditRow struct {
 	Identity     string
 }
 
+func (s *ReadService) WorkCredits(ctx context.Context, workID int64) ([]CreditRow, error) {
+	byWork, err := s.workCreditsFor(ctx, []int64{workID})
+	if err != nil {
+		return nil, err
+	}
+	return byWork[workID], nil
+}
+
+// workCreditsFor is the only place the credits read is spelled. The suppression
+// predicate, the curated-lane ordering and the identity projection all live in
+// it, so the works list hydrates credits by widening this query rather than
+// growing a second copy that would drift away from the D9/D24 rules the detail
+// face enforces.
+//
 // The last two ORDER BY terms are the tiebreak, and they are not decoration:
 // uq_catalog_credit is (work_id, credit_name_id, role_id,
 // COALESCE(character_id, 0)), so one voice actor on three characters of one work
@@ -1247,10 +1262,14 @@ type CreditRow struct {
 // OFFSET, and an unstable sort there duplicates or drops rows at a page
 // boundary. COLLATE "C" pins src.key against the database's collation, which is
 // not part of this contract.
-func (s *ReadService) WorkCredits(ctx context.Context, workID int64) ([]CreditRow, error) {
+func (s *ReadService) workCreditsFor(ctx context.Context, workIDs []int64) (map[int64][]CreditRow, error) {
+	out := make(map[int64][]CreditRow, len(workIDs))
+	if len(workIDs) == 0 {
+		return out, nil
+	}
 	var rows []CreditRow
-	err := s.db.WithContext(ctx).Raw(`SELECT
-		c.role_id, ro.key AS role_key, ro.name_cn AS role_name_cn, ro.name_ja AS role_name_ja,
+	if err := s.db.WithContext(ctx).Raw(`SELECT
+		c.work_id, c.role_id, ro.key AS role_key, ro.name_cn AS role_name_cn, ro.name_ja AS role_name_ja,
 		cn.id AS credit_name_id, cn.name, cn.lang, cn.latin,
 		c.character_id, ch.display_name AS character_nm,
 		c.label_id, la.display_name AS label_nm, c.note, src.key AS source_key,
@@ -1261,9 +1280,14 @@ func (s *ReadService) WorkCredits(ctx context.Context, workID int64) ([]CreditRo
 		LEFT JOIN catalog_character ch ON ch.id = c.character_id
 		LEFT JOIN catalog_label la ON la.id = c.label_id
 		LEFT JOIN catalog_source src ON src.id = c.source_id
-		WHERE c.work_id = ? AND `+editspec.NotSuppressedCreditSQL("c")+`
-		ORDER BY c.role_id ASC, `+editspec.HumanLaneFirstNoProvenanceSQL("c.source_id")+
+		WHERE c.work_id IN ? AND `+editspec.NotSuppressedCreditSQL("c")+`
+		ORDER BY c.work_id ASC, c.role_id ASC, `+editspec.HumanLaneFirstNoProvenanceSQL("c.source_id")+
 		`, src.key COLLATE "C" ASC NULLS LAST, cn.id ASC, COALESCE(c.character_id, 0) ASC, c.id ASC`,
-		workID).Scan(&rows).Error
-	return rows, err
+		workIDs).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		out[r.WorkID] = append(out[r.WorkID], r)
+	}
+	return out, nil
 }

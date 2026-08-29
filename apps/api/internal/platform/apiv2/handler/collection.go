@@ -118,7 +118,7 @@ func registerCollections(api huma.API, works WorksFunc, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/works",
 		Summary:            "List catalog works",
-		Description:        "Keyset-paginated work collection. q= switches to search (sort defaults to relevance). company_id=/tag_id=/series_id= filter the live registry when q= is absent. Requires an application key. view/include/fields/ids/refs/facets follow the v2 collection contract.",
+		Description:        "Keyset-paginated work collection. q= switches to search (sort defaults to relevance). company_id=/tag_id=/series_id= filter the live registry when q= is absent. Requires an application key. view/include/fields/ids/refs/facets follow the v2 collection contract. include=titles,refs,intros,covers,companies,ratings,tags,credits fills on every lane; view=full is all of them except credits, which is an explicit ask. On a collection lane titles elects latin/localized and covers elects the two cover slots that grade the base cover — the full titles[] and covers[] arrays, and relations/releases/popularity/playtimes/series/platforms/screenshots/characters/engines/links, are per-record blocks and live on /v2/catalog/works/{id} and its sub-resources; asking for one here is 400 UNKNOWN_INCLUDE.",
 		Tags:               []string{"catalog"},
 		Errors:             collectionErrors(http.StatusUnauthorized, http.StatusForbidden, http.StatusServiceUnavailable),
 		SkipValidateParams: true,
@@ -164,7 +164,7 @@ func listWorks(src WorksFunc, cat *Catalog) func(context.Context, *listWorksInpu
 			Cursor: in.Cursor, Limit: in.Limit, View: in.View, Include: in.Include,
 			Fields: in.Fields, IDs: in.IDs, Refs: in.Refs, IncludeTotal: in.IncludeTotal,
 			Facets: in.Facets, Sort: in.Sort, NSFW: in.NSFW,
-		}), collect.WorkSpec())
+		}), collect.WorkListSpec())
 		if err != nil {
 			return nil, withIdent(ctx, err)
 		}

@@ -23,6 +23,7 @@ func (c *Catalog) GetSchema(_ context.Context, object string) (repr.ObjectSchema
 		return repr.ObjectSchema{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog schemas are not bound.")
 	}
 	read, _ := collect.ObjectSpec(object)
+	list, _ := collect.ObjectListSpec(object)
 	fields := make([]repr.SchemaField, 0, len(spec.Fields))
 	for i := range spec.Fields {
 		f := spec.Fields[i]
@@ -48,6 +49,8 @@ func (c *Catalog) GetSchema(_ context.Context, object string) (repr.ObjectSchema
 		EntityType:       entityType,
 		Include:          copyStrings(read.Include),
 		FullSet:          copyStrings(read.FullSet),
+		ListInclude:      copyStrings(list.Include),
+		ListFullSet:      copyStrings(list.FullSet),
 		CreationDisabled: object == "release",
 		Fields:           fields,
 	}, nil

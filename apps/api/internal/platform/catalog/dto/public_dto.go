@@ -481,14 +481,16 @@ type PublicWorkListItem struct {
 	Updated       string           `json:"updated"`
 	ViaLabel      *PublicLabelVia  `json:"via_label,omitempty"`
 
-	Latin     string                         `json:"latin,omitempty" doc:"include=names only: romanisation of display_name, from the title row display_name was taken from"`
-	Localized map[string]PublicLocalizedName `json:"localized,omitempty" doc:"include=names only, and absent (never {}) when this work has no localized title — the block is include-gated exactly like names, so its absence means \"not requested or none\", not \"none\". SPARSE by design — render localized[yourLocale] ?? display_name ?? latin"`
+	Latin     string                         `json:"latin,omitempty" doc:"include=titles only: romanisation of display_name, from the title row display_name was taken from"`
+	Localized map[string]PublicLocalizedName `json:"localized,omitempty" doc:"include=titles only, and absent (never {}) when this work has no localized title — the block is include-gated exactly like titles, so its absence means \"not requested or none\", not \"none\". SPARSE by design — render localized[yourLocale] ?? display_name ?? latin"`
 
 	Intros  []PublicIntro         `json:"intros,omitempty" doc:"include=intros only: one intro per language, same shape and election as the work-detail intros block"`
 	Labels  []PublicWorkLabel     `json:"labels,omitempty"`
 	Ratings []PublicRating        `json:"ratings,omitempty"`
 	Covers  *PublicWorkCoverSlots `json:"covers,omitempty"`
 	Refs    []PublicCatalogRef    `json:"refs,omitempty"`
+	Tags    []PublicTag           `json:"tags,omitempty" doc:"include=tags only: same shape and election as the work-detail tags block, cut at the default spoiler ceiling"`
+	Credits []PublicCreditGroup   `json:"credits,omitempty" doc:"include=credits only: same groups, ordering and suppression as the work-detail credits block"`
 }
 
 type PublicCoverSlot struct {
