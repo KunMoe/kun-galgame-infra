@@ -41,7 +41,7 @@ Date: 2026-08-24, GA declared 2026-08-25 (stage 9); news write face added 2026-0
 
 9. **Moderation queues and `/v2/me/proposals` are keyset-paginated** on event/proposal id (`cur_` + over-fetch).
 
-10. **Works list `include=` hydrates the list-capable subset** (`titles`, `intros`, `companies`, `ratings`, `covers` slots, `refs`). Other FULL_SET tokens stay on detail / sub-resources. Facets on the SQL browse path return empty buckets; named facet counts come from Meili. **Amended 2026-08-27:** this entry used to read "SQL `include_total` is omitted (search path returns Meili `total`)". The SQL lane now honors `include_total` with an exact `count(*)` over the same predicate set the page query uses, so `/v2/catalog/works` publishes `total` on both lanes. The old behavior was never defensible as a deviation: `include_total` was parsed and validated on the SQL lane (a bogus value 400s) and the published envelope doc on `List.total` says "Present only when `include_total=true`. Same visibility gate as items." — which contradicted a lane that silently never published it, while every other registry list did. It also hard-blocked the forum's flip, whose pagination is `Math.ceil(total/limit)` and read `null` as zero pages. The COUNT is **flag-gated**, unlike the taxonomy lanes' unconditional count, because the works predicate set is `EXISTS`-subquery heavy (label rollup, tag maps, series, engine, platform, release windows); it follows the `ReleaseFeedMeta` / `CalendarMeta` precedent instead. It is computed from the filter predicates **before** the cursor predicate is appended, so paging does not shrink it. The all-miss `ids=`/`refs=` batch now publishes `total: 0` like every other entity lane rather than dropping the key.
+10. **Works list `include=` hydrates the list-capable subset** (`titles`, `intros`, `companies`, `ratings`, `covers` slots, `refs`). Other FULL_SET tokens stay on detail / sub-resources. Facets on the SQL browse path return empty buckets; named facet counts come from Meili. **Amended 2026-08-27:** this entry used to read "SQL `include_total` is omitted (search path returns Meili `total`)". The SQL lane now honors `include_total` with an exact `count(*)` over the same predicate set the page query uses, so `/v2/catalog/works` publishes `total` on both lanes. The old behavior was never defensible as a deviation: `include_total` was parsed and validated on the SQL lane (a bogus value 400s) and the published envelope doc on `List.total` says "Present only when `include_total=true`. Same visibility gate as items." — which contradicted a lane that silently never published it, while every other registry list did. It also hard-blocked the forum's flip, whose pagination is `Math.ceil(total/limit)` and read `null` as zero pages. The COUNT is **flag-gated**, unlike the taxonomy lanes' unconditional count, because the works predicate set is `EXISTS`-subquery heavy (label rollup, tag maps, series, engine, platform, release windows); it follows the `ReleaseFeedMeta` / `CalendarMeta` precedent instead. It is computed from the filter predicates **before** the cursor predicate is appended, so paging does not shrink it. The all-miss `ids=`/`refs=` batch now publishes `total: 0` like every other entity lane rather than dropping the key. **Amended again 2026-08-28 (deviation 100):** the parenthesised subset in this entry's first sentence was never what the code did — `workFromListItem` emitted four blocks, not six, and the list declared all eighteen detail tokens rather than the six named here. The list vocabulary is now `collect.WorkListInclude` and is eight tokens; what `titles` and `covers` mean on a collection lane is stated in 100 rather than implied here.
 
 11. **`release_status=` is not bound** on `GET /v2/catalog/works`. It is in 05 §6.1; v1 list did not have it either. Calendar remains the status filter.
 
@@ -295,6 +295,22 @@ The first two are the same defect shape in a different env var. They are deliber
     Neither existing sibling fits, which is why this took a third spec rather than a one-word swap. `PublicProposalSpec` is the public transparency face and publishes no `patch`. `ProposalSpec` is the **detail** spec — `proposalInclude` uses it for `GET /v2/{me,moderation}/proposals/{id}` — and advertises `include=patch,amendments`, which these list lanes build with `proposalFrom` and never populate; adopting it would have traded one accept-and-ignore for two. It is also not `NoBatch`, so it would have opened a batch lane neither lane implements. `collect.ProposalListSpec` is therefore the proposal field vocabulary, an empty include set, the single `filed_desc` sort the shared `proposalQuery` builder actually applies, and `NoBatch` — so the refusal set the batch guard names is byte-identical before and after, which is asserted rather than assumed. No consumer sends `fields=` to these faces (positive control: the consumers that do send `fields=` send it to `/v2/catalog/works`, and every `fields`/`Fields` hit on the proposal faces is a response-body key, not a query parameter).
 
     **Left alone deliberately: `internal/platform/trust/**` is not gofmt-clean on `main`** — nine files, all pre-existing (verified against `HEAD`), all unrelated alignment. No gate runs gofmt, so this is invisible to CI; sweeping nine files in another track's area risks a conflict for no gain, and a whole-tree `gofmt -w` inside a test wave is exactly the unreviewable diff this file exists to prevent.
+
+100. **The works list declared the detail face's whole include vocabulary and hydrated four blocks** (2026-08-28). `collect.WorkSpec()` was parsed by both `GET /v2/catalog/works` and `GET /v2/catalog/works/{id}`, so the list validated all eighteen tokens and `workFromListItem` answered four (`intros`, `companies`, `ratings`, `refs`). `include=tags,credits` was a **200 with neither block and no error**; ten tokens — `relations`, `releases`, `popularity`, `playtimes`, `series`, `platforms`, `screenshots`, `characters`, `engines`, `links` — did nothing at all; and `view=full`, which unions a twelve-token FULL_SET, emitted the same four. The published document said only "Unknown token is 400 UNKNOWN_INCLUDE", whose natural reading is that a known token is honoured, and deviation 10 lived in this file. A downstream consumer probed for a 400, got none, read this file, and shipped a per-work detail read behind concurrency 8 and a six-hour cache on its busiest page to recover what the list had accepted an ask for — an N+1 on the hottest page in the product, caused by the contract rather than by their code.
+
+    The fix is split by what each token actually costs. `tags` and `credits` are **hydrated**: `loadWorkTags` was already batch-shaped (a subject slice in, a map out, two queries regardless of page size) and needed only an arm, and `WorkCredits` is widened into `workCreditsFor(ctx, []int64)` with the single-work path calling it with one id — a second batch copy would have grown a second implementation of the D9 identity projection and the D24/roster suppression predicate, which is the "third code copy" trap this repo has paid for before. Measured on `kun_catalog` before writing either: tags per work average 14.8 at the default spoiler ceiling, p99 88, max 261; credits average 6.0, p99 64, max 340 — so a 24-row browse page costs roughly 350 tag rows and 150 credit rows, and no truncation is needed or added. The other ten tokens are **refused**: `collect.WorkListSpec()` gives the collection its own `Include`/`FullSet`, so they answer the same `400 UNKNOWN_INCLUDE` any unknown token gets, through the existing check, and `view=full` on a list now means the full set that lane can serve.
+
+    `titles` and `covers` stay narrower on a collection lane, and that is the contract rather than a remaining gap: `titles` elects `latin`/`localized` and `covers` elects the two cover slots — which is what puts the `sexual` grading on the base `cover`, load-bearing for letmoe's SFW gate. Both are on live consumer hot paths in exactly that shape (`WorkLoader.Brief` sends `include=titles,covers` on a 100-id batch; patch sends `titles,covers,refs,companies`; the forum sends `titles,covers,companies`), so emitting the detail face's full `titles[]` and `covers[]` arrays there would be a payload regression on every one of them, not a fix. The unbounded per-work galleries keep their sub-resources.
+
+    `credits` is in `WorkListInclude` but **not** in `WorkListFullSet`, for the same reason it is not in `WorkFullSet` on the detail face: it is an explicit ask, not part of "everything".
+
+    **What changes for a caller.** Additive: `include=tags` and `include=credits` now answer blocks, and `view=full` additionally carries `tags`. Refusing: the ten detail-only tokens 400 instead of returning 200 and nothing. No data a working request received before stops arriving — a token that produced nothing now says so. The three sibling repos were checked before the narrowing rather than after: the forum's list constants are `names,covers,labels` and `names,covers,refs` (renamed to `titles,covers,companies` / `titles,covers,refs` in `v2CatalogQuery`), patch sends `titles,covers,refs,companies`, letmoe sends `titles,covers` and `refs,covers`, and the forum's eighteen-token string is `v2CatalogDetailInclude["works"]`, which `v2DetailEntity` applies only to a two-segment path. None of them sends a refused token to a collection.
+
+    The guards are `TestLiveWorksListHydratesTagsAndCredits` (list, `ids=` batch and detail must publish byte-identical blocks, and the blocks must be absent when not asked for), `TestLiveWorksListCreditsMatchTheSubResource`, `TestLiveWorksListRefusesDetailOnlyIncludes` (each of the ten is refused on both collections and still accepted on the detail face) and `TestLiveWorksListViewFullIsTheListFullSet`. At the service layer `TestWorksListCreditsAreTheDetailRowsBatched` pins that batching changes nothing but the round-trip count, including that one work's suppressed row cannot land in another's slice.
+
+101. **The calendar had its own include mapper, and it never learned `titles`** (2026-08-28). `/v2/catalog/calendar` shares `workFromListItem` and `enrichWorkListItems` with the works list but translated tokens through `calendarWorksInclude`, which handled `companies`, `intros`, `ratings`, `covers` and `refs` and silently dropped `titles` — so `include=titles` on the calendar answered 200 with no `latin` and no `localized{}`, the two fields every card renders a Chinese name from, while the same token on the works list filled them. Two mappers for one shape is the defect; the calendar now calls `listWorksInclude` and `CalendarSpec` carries the same `WorkListInclude`/`WorkListFullSet` as the works list. The guard is `TestLiveCalendarHonoursTheListVocabulary`, which compares the calendar against the works list token by token over `WorkListInclude` rather than against fixture literals — one work must read the same through either collection, and both reads are taken together so an unrelated edit cannot decide it.
+
+102. **`GET /v2/catalog/schemas/{object}` published only the detail vocabulary** (2026-08-28). The schema face is where a machine consumer discovers `include=`, and it answered `collect.ObjectSpec(object)` for both halves — which for `work` is now the detail face's eighteen tokens. Left alone, deviation 100 would have made this face hand a generator the tokens the collection refuses. `list_include` and `list_full_set` are added beside `include`/`full_set`; for every family but `work` the two pairs are equal, because those lists and details share a Spec, and `TestLiveWorkSchemaPublishesBothVocabularies` asserts both the equality and the one inequality.
 
 ## Stage 6 write
 
@@ -687,5 +703,44 @@ now derived from the document and guarded, each with a named exclusion list
 carrying reasons: the live-read sweep (deviation 93), the collection-binding set
 (94) and the batch-lane contract (90). The pattern is the one the repo doctrine
 asks for — the list is the contract, and what is deliberately out of it says why.
+
+**Zero migrations.**
+
+## Wave — the works list answers what it accepts (2026-08-28)
+
+Deviations 100, 101 and 102. One defect in three places: the collection faces
+of the work family declared the **detail** face's include vocabulary. The works
+list validated eighteen tokens and served four, the calendar translated through
+a second mapper that had never learned `titles`, and the schema face published
+the detail list as if it were the only one.
+
+This is the same class the five preceding waves were written against — a
+parameter declared, parsed, validated and then answered by nothing — and it is
+the first one a consumer paid a production cost for rather than reporting from a
+reading. Moyu's browse page carries a per-work detail read behind concurrency 8
+and a six-hour in-process cache, on the site's busiest page, because
+`include=tags,credits` answered 200 with neither block. That read becomes one
+request on the deploy that carries this.
+
+**Two halves, deliberately unequal.** `tags` and `credits` are hydrated, because
+both are batch reads and the page cost was measured before either was written
+(tags average 14.8 rows per work at the default ceiling, credits 6.0). The ten
+tokens a list cannot serve in batch are refused through the collection's own
+`Spec`, so they answer the existing `400 UNKNOWN_INCLUDE` instead of 200 and
+silence. `titles` and `covers` keep their narrower collection meanings, which
+three live consumers depend on in exactly that shape and which are now written
+into the operation description instead of into this file only.
+
+**Spec is 2.3.0.** Additive: two response properties on `object_schema`
+(`list_include`, `list_full_set`), longer descriptions on `listCatalogWorks`,
+`listCatalogCalendar` and `getCatalogSchema`. Zero new operations (88 stays 88),
+zero request-schema changes. `oasdiff` 1.21.0 reports "no breaking changes"
+against `origin/main`.
+
+**One behaviour change a caller can see beyond the additions:** the ten
+detail-only tokens now 400 on `/v2/catalog/works` and `/v2/catalog/calendar`.
+The three sibling repos were enumerated before the narrowing, not after, and
+none of them sends one; the eighteen-token string in the forum is its
+`v2CatalogDetailInclude["works"]`, applied only to two-segment detail paths.
 
 **Zero migrations.**

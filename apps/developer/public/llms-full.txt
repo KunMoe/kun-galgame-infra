@@ -173,7 +173,7 @@ curl "https://api.nextmoe.dev/v2/vocabularies/value"
 
 Release calendar
 
-One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. content_limit= gates on the editorial display axis and olang= on the original language (absent = ja plus zh). meta carries today plus, on the dated month window, min_month/max_month/has_prev/has_next for month navigation. Requires an application key. ids= is not accepted.
+One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. content_limit= gates on the editorial display axis and olang= on the original language (absent = ja plus zh). meta carries today plus, on the dated month window, min_month/max_month/has_prev/has_next for month navigation. Requires an application key. ids= is not accepted. include=titles,refs,intros,covers,companies,ratings,tags,credits fills on this lane; view=full is all of them except credits, which is an explicit ask. On a collection lane titles elects latin/localized and covers elects the two cover slots that grade the base cover — the full titles[] and covers[] arrays, and relations/releases/popularity/playtimes/series/platforms/screenshots/characters/engines/links, are per-record blocks and live on /v2/catalog/works/{id} and its sub-resources; asking for one here is 400 UNKNOWN_INCLUDE.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -814,7 +814,7 @@ curl "https://api.nextmoe.dev/v2/catalog/revisions/value" \
 
 Editable-field schema for one family
 
-Unauthenticated metadata: include tokens, FULL_SET, and editing-engine fields. Actor capabilities are not evaluated. Unknown object is 404 NOT_FOUND. schemas/release sets creation_disabled.
+Unauthenticated metadata: include tokens, FULL_SET, and editing-engine fields. include/full_set describe the family's DETAIL face and list_include/list_full_set its collection face, which is narrower on work. Actor capabilities are not evaluated. Unknown object is 404 NOT_FOUND. schemas/release sets creation_disabled.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：无需凭据
@@ -1037,7 +1037,7 @@ curl "https://api.nextmoe.dev/v2/catalog/traits/value" \
 
 List catalog works
 
-Keyset-paginated work collection. q= switches to search (sort defaults to relevance). company_id=/tag_id=/series_id= filter the live registry when q= is absent. Requires an application key. view/include/fields/ids/refs/facets follow the v2 collection contract.
+Keyset-paginated work collection. q= switches to search (sort defaults to relevance). company_id=/tag_id=/series_id= filter the live registry when q= is absent. Requires an application key. view/include/fields/ids/refs/facets follow the v2 collection contract. include=titles,refs,intros,covers,companies,ratings,tags,credits fills on every lane; view=full is all of them except credits, which is an explicit ask. On a collection lane titles elects latin/localized and covers elects the two cover slots that grade the base cover — the full titles[] and covers[] arrays, and relations/releases/popularity/playtimes/series/platforms/screenshots/characters/engines/links, are per-record blocks and live on /v2/catalog/works/{id} and its sub-resources; asking for one here is 400 UNKNOWN_INCLUDE.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…

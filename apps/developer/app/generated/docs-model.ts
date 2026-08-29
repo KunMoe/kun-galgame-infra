@@ -2590,7 +2590,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/calendar",
               "summary": "Release calendar",
-              "description": "One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. content_limit= gates on the editorial display axis and olang= on the original language (absent = ja plus zh). meta carries today plus, on the dated month window, min_month/max_month/has_prev/has_next for month navigation. Requires an application key. ids= is not accepted.",
+              "description": "One collection. month=/year= pick a window; precision= and status= select among the dated month, year-only, and undated views that were three v1 routes. content_limit= gates on the editorial display axis and olang= on the original language (absent = ja plus zh). meta carries today plus, on the dated month window, min_month/max_month/has_prev/has_next for month navigation. Requires an application key. ids= is not accepted. include=titles,refs,intros,covers,companies,ratings,tags,credits fills on this lane; view=full is all of them except credits, which is an explicit ask. On a collection lane titles elects latin/localized and covers elects the two cover slots that grade the base cover — the full titles[] and covers[] arrays, and relations/releases/popularity/playtimes/series/platforms/screenshots/characters/engines/links, are per-record blocks and live on /v2/catalog/works/{id} and its sub-resources; asking for one here is 400 UNKNOWN_INCLUDE.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -33845,7 +33845,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/schemas/{object}",
               "summary": "Editable-field schema for one family",
-              "description": "Unauthenticated metadata: include tokens, FULL_SET, and editing-engine fields. Actor capabilities are not evaluated. Unknown object is 404 NOT_FOUND. schemas/release sets creation_disabled.",
+              "description": "Unauthenticated metadata: include tokens, FULL_SET, and editing-engine fields. include/full_set describe the family's DETAIL face and list_include/list_full_set its collection face, which is narrower on work. Actor capabilities are not evaluated. Unknown object is 404 NOT_FOUND. schemas/release sets creation_disabled.",
               "scope": "",
               "auth": {
                 "kind": "none",
@@ -33967,7 +33967,7 @@ export const docsModel: DocsModel = {
                       {
                         "name": "full_set",
                         "required": true,
-                        "doc": "Tokens view=full expands. A subset of include. Empty array, never null.",
+                        "doc": "Tokens view=full expands on the detail face. A subset of include. Empty array, never null.",
                         "type": "array",
                         "itemsOf": {
                           "type": "string"
@@ -33976,7 +33976,25 @@ export const docsModel: DocsModel = {
                       {
                         "name": "include",
                         "required": true,
-                        "doc": "include= tokens for this family. Empty array, never null. FULL_SET is a subset.",
+                        "doc": "include= tokens the family's DETAIL face takes. Empty array, never null. full_set is a subset.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "name": "list_full_set",
+                        "required": true,
+                        "doc": "Tokens view=full expands on the collection face. A subset of list_include. Empty array, never null.",
+                        "type": "array",
+                        "itemsOf": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "name": "list_include",
+                        "required": true,
+                        "doc": "include= tokens the family's COLLECTION face takes, which is not always the detail vocabulary: a list hydrates in batch, so blocks whose only shape is per-record stay on the detail face and on the sub-resources. Empty array, never null.",
                         "type": "array",
                         "itemsOf": {
                           "type": "string"
@@ -41817,7 +41835,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/works",
               "summary": "List catalog works",
-              "description": "Keyset-paginated work collection. q= switches to search (sort defaults to relevance). company_id=/tag_id=/series_id= filter the live registry when q= is absent. Requires an application key. view/include/fields/ids/refs/facets follow the v2 collection contract.",
+              "description": "Keyset-paginated work collection. q= switches to search (sort defaults to relevance). company_id=/tag_id=/series_id= filter the live registry when q= is absent. Requires an application key. view/include/fields/ids/refs/facets follow the v2 collection contract. include=titles,refs,intros,covers,companies,ratings,tags,credits fills on every lane; view=full is all of them except credits, which is an explicit ask. On a collection lane titles elects latin/localized and covers elects the two cover slots that grade the base cover — the full titles[] and covers[] arrays, and relations/releases/popularity/playtimes/series/platforms/screenshots/characters/engines/links, are per-record blocks and live on /v2/catalog/works/{id} and its sub-resources; asking for one here is 400 UNKNOWN_INCLUDE.",
               "scope": "catalog:read",
               "params": [
                 {
