@@ -34,6 +34,7 @@ LOCKED=1
 # lock never stamps for work it did not do.
 on_exit() {
   rc=$?
+  if [ -n "${GUARD_PID:-}" ]; then kill "$GUARD_PID" 2>/dev/null || true; fi
   if [ -f env.tmp ]; then shred -u env.tmp; fi
   if [ "$rc" -eq 0 ] && [ "${LOCKED:-0}" = 1 ]; then
     date -u '+%F %T' > "$BASE/state/last-success"
@@ -72,9 +73,54 @@ chmod 600 env.tmp
 # do not remove them to make the watch faster.
 DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$KUN_PG_PASSWORD}"; CAT="host=127.0.0.1 port=5432 user=$U password=$P dbname=${KUN_CATALOG_PG_DATABASE:-kun_catalog} sslmode=disable options='"'"'-c max_parallel_workers_per_gather=0 -c work_mem=8MB -c hash_mem_multiplier=1 -c jit=off'"'"'"'
 
-rc=0
-docker run --rm --network "container:$PG" --env-file "$BASE/env.tmp" "$IMG" \
-  sh -c "$DSNSH"'; work-dedup -mode watch -fail-on-new -dsn "$CAT"' || rc=$?
+# Yield guard, from the 2026-08-29 lock convoy (same day as the OOM above):
+# the census holds an ACCESS SHARE on the work tables for ~1h, a deploy's
+# migrate-catalog queued its ACCESS EXCLUSIVE behind it, and catalog-1
+# (compose depends_on the migrate) sat in Created — the public catalog face
+# was down until a human killed the census. ACCESS SHARE conflicts only with
+# ACCESS EXCLUSIVE, so any backend queued behind the census IS a migration:
+# cancel our own query and retry once after the migration clears. The RSS cap
+# backstops the OOM in case an image or planner drift ever un-pins the
+# disk-spill plan on an unattended Monday run (no retry there — it would just
+# blow up again).
+(
+  set +eu
+  while :; do
+    sleep 30
+    PID=$(docker exec "$PG" psql -U postgres -d kun_catalog -Atc \
+      "select pid from pg_stat_activity where state='active' and query like '%WITH lw AS%' and pid <> pg_backend_pid() limit 1" 2>/dev/null)
+    [ -n "$PID" ] || continue
+    BLOCKED=$(docker exec "$PG" psql -U postgres -Atc \
+      "select count(*) from pg_stat_activity where $PID = any(pg_blocking_pids(pid))" 2>/dev/null)
+    RSS=$(docker exec "$PG" sh -c "awk '/VmRSS/{print \$2}' /proc/$PID/status" 2>/dev/null)
+    if [ -n "$BLOCKED" ] && [ "$BLOCKED" -gt 0 ] 2>/dev/null; then
+      echo "yield: $BLOCKED backend(s) queued behind census pid $PID - cancelling"
+      : > state/yielded
+      docker exec "$PG" psql -U postgres -Atc "select pg_cancel_backend($PID)" >/dev/null 2>&1
+    elif [ -n "$RSS" ] && [ "$RSS" -gt 2500000 ] 2>/dev/null; then
+      echo "census backend $PID rss ${RSS}kB over 2500000kB - cancelling"
+      docker exec "$PG" psql -U postgres -Atc "select pg_cancel_backend($PID)" >/dev/null 2>&1
+    fi
+  done
+) &
+GUARD_PID=$!
+
+attempt=1
+while :; do
+  rm -f state/yielded
+  rc=0
+  docker run --rm --network "container:$PG" --env-file "$BASE/env.tmp" "$IMG" \
+    sh -c "$DSNSH"'; work-dedup -mode watch -fail-on-new -dsn "$CAT"' || rc=$?
+  if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ] && [ -f state/yielded ] && [ "$attempt" -eq 1 ]; then
+    echo "census yielded to a migration; retrying once"
+    attempt=2
+    sleep 60
+    continue
+  fi
+  break
+done
+kill "$GUARD_PID" 2>/dev/null || true
+GUARD_PID=
 case "$rc" in
   0) echo "no new undecided duplicate pairs" ;;
   3) echo "=== new undecided duplicate pairs - sending alert ==="
