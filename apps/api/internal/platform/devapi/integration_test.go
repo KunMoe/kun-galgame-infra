@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	authModel "api/internal/platform/auth/model"
 	siteModel "api/internal/platform/site/model"
+	storeModel "api/internal/platform/store/model"
 	"api/internal/testsupport/dbtest"
 
 	"gorm.io/datatypes"
@@ -57,7 +59,16 @@ func provision(db *gorm.DB) error {
 	if err := AddUsagePathColumn(db); err != nil {
 		return err
 	}
-	models := []any{&siteModel.Site{}, &siteModel.OAuthClient{}}
+	// sessions / authorization_codes / the two store link tables are not devapi
+	// models, but AdminService.DeleteApp counts rows in them before it removes
+	// an oauth_clients row. Without them here the guard could only ever be
+	// tested against tables that do not exist, which is the shape of a passing
+	// test that proves nothing.
+	models := []any{
+		&siteModel.Site{}, &siteModel.OAuthClient{},
+		&authModel.Session{}, &authModel.AuthorizationCode{},
+		&storeModel.PurchaseLink{}, &storeModel.CouponLink{},
+	}
 	models = append(models, Models()...)
 	return db.AutoMigrate(models...)
 }

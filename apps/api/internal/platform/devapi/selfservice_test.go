@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"gorm.io/gorm"
 )
 
 func newSelfService(t *testing.T) (*SelfServiceService, *AdminService, *Repository, *memStore) {
@@ -140,31 +142,59 @@ func TestSelfServiceKeyOwnerGuard(t *testing.T) {
 	}
 }
 
-func TestSelfServiceDeactivateCascade(t *testing.T) {
+func TestSelfServiceArchiveCascade(t *testing.T) {
 	cleanupSelf(t)
-	svc, _, repo, _ := newSelfService(t)
+	svc, admin, repo, _ := newSelfService(t)
 	ctx := context.Background()
 	const owner = uint(1)
 
 	app, _ := svc.CreateApp(ctx, owner, "doomed", "", nil)
-	_, p1, _ := svc.MintKey(ctx, owner, app.ID, MintKeyInput{Name: "k1"})
-	_, p2, _ := svc.MintKey(ctx, owner, app.ID, MintKeyInput{Name: "k2"})
+	used, p1, _ := svc.MintKey(ctx, owner, app.ID, MintKeyInput{Name: "k1"})
+	unused, p2, _ := svc.MintKey(ctx, owner, app.ID, MintKeyInput{Name: "k2"})
+	giveKeyHistory(t, repo, used.ID)
+	eligible := true
+	if _, err := admin.UpdateAppConfig(ctx, app.ID, AppConfig{StoreSettlementEligible: &eligible}); err != nil {
+		t.Fatalf("enrol on the settlement roster: %v", err)
+	}
 
-	if err := svc.DeactivateApp(ctx, owner, app.ID); err != nil {
-		t.Fatalf("deactivate: %v", err)
+	if err := svc.ArchiveApp(ctx, owner, app.ID); err != nil {
+		t.Fatalf("archive: %v", err)
 	}
 	if c, _ := repo.ResolveByHash(ctx, HashKey(p1), time.Now()); c != nil {
-		t.Errorf("k1 must not resolve after deactivate")
+		t.Errorf("k1 must not resolve after archive")
 	}
 	if c, _ := repo.ResolveByHash(ctx, HashKey(p2), time.Now()); c != nil {
-		t.Errorf("k2 must not resolve after deactivate")
+		t.Errorf("k2 must not resolve after archive")
+	}
+	if _, err := repo.GetKey(ctx, used.ID); err != nil {
+		t.Errorf("the key that served a request = %v, want its row kept", err)
+	}
+	if _, err := repo.GetKey(ctx, unused.ID); !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Errorf("the key that never served a request = %v, want its row deleted", err)
 	}
 	reloaded, err := repo.GetApp(ctx, app.ID)
 	if err != nil {
 		t.Fatalf("reload: %v", err)
 	}
 	if reloaded.DevEnabled {
-		t.Errorf("app must be dev_enabled=false after deactivate")
+		t.Errorf("app must be dev_enabled=false after archive")
+	}
+	if reloaded.DevArchivedAt == nil {
+		t.Errorf("app must carry dev_archived_at after archive")
+	}
+	if reloaded.StoreSettlementEligible {
+		t.Errorf("archive must take the app off the settlement roster")
+	}
+
+	mine, err := svc.ListApps(ctx, owner)
+	if err != nil {
+		t.Fatalf("owner list: %v", err)
+	}
+	if len(mine) != 0 {
+		t.Errorf("owner list = %d apps, want the archived one gone", len(mine))
+	}
+	if _, err := repo.GetAppByOwner(ctx, app.ID, owner); !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Errorf("owner-scoped get of an archived app = %v, want gorm.ErrRecordNotFound", err)
 	}
 }
 

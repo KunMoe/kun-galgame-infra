@@ -81,6 +81,19 @@ type OAuthClient struct {
 	DevReviewStatus string `gorm:"size:20;not null" json:"dev_review_status"`
 	DevReviewNote   string `gorm:"type:text" json:"dev_review_note,omitempty"`
 
+	// Set when the owner deletes the application from the portal. The row and
+	// every reference to it survive — sessions, authorization codes, store
+	// links, usage history and the client_id itself all outlive the owner's
+	// decision — but an archived application leaves the owner's list AND their
+	// five-slot count, which a plain dev_enabled=false never did.
+	DevArchivedAt *time.Time `json:"dev_archived_at,omitempty"`
+
+	// Whether this application takes a share of the monthly DLsite coupon pool.
+	// Minting store links is self-service; being paid out of a fixed pool that
+	// every added participant dilutes is not, so the roster is an operator
+	// decision recorded here rather than "whoever holds store:read".
+	StoreSettlementEligible bool `gorm:"not null;default:false" json:"store_settlement_eligible"`
+
 	CatalogSite string `gorm:"size:64" json:"catalog_site,omitempty"`
 
 	Site *Site `gorm:"foreignKey:SiteID" json:"site,omitempty"`
@@ -92,6 +105,24 @@ func (OAuthClient) TableName() string {
 
 func (c *OAuthClient) IsActive() bool {
 	return true
+}
+
+func (c *OAuthClient) HasAnyRedirectURI() bool {
+	var uris []string
+	if err := json.Unmarshal(c.RedirectURIs, &uris); err != nil {
+		return false
+	}
+	return len(uris) > 0
+}
+
+// CanSignInUsers answers whether this client was ever configured to complete an
+// authorization-code flow — not whether a session exists now. Sessions and
+// authorization codes are hard-deleted once they expire, so their absence says
+// nothing about what the client once did; this configuration is written at
+// creation and never cleaned up. The devapi delete guard and the console's
+// application view both read it, and they must read the same one.
+func (c *OAuthClient) CanSignInUsers() bool {
+	return c.IsPublic || len(c.AllowedGrants()) > 0 || c.HasAnyRedirectURI()
 }
 
 func (c *OAuthClient) HasRedirectURI(uri string) bool {

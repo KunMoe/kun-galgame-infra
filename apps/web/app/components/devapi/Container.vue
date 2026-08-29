@@ -143,7 +143,10 @@ const emptyHint = computed(() =>
               >
                 {{ devAppReviewLabel(app.review_status) }}
               </KunChip>
-              <KunChip v-if="!app.dev_enabled" color="default" variant="flat" size="sm">
+              <KunChip v-if="app.archived_at" color="warning" variant="flat" size="sm">
+                已归档
+              </KunChip>
+              <KunChip v-else-if="!app.dev_enabled" color="default" variant="flat" size="sm">
                 未启用
               </KunChip>
             </div>

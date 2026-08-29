@@ -4,6 +4,7 @@ import {
   DEV_KEY_STATE_COLORS,
   DEV_KEY_STATE_LABELS,
   DEV_KEY_STATE_TABS,
+  devKeyDeleteMessage,
 } from '~/constants/devapi'
 import type {
   DevAdminKey,
@@ -105,8 +106,8 @@ const askRevoke = (key: DevAdminKey) => {
     body: `吊销「${key.app_name}」的「${key.name}」后立即生效且不可撤销。确认继续？`,
     danger: true,
     run: async () => {
-      const res = await api.delete(
-        `/admin/devapi/apps/${key.client_id}/keys/${key.id}`
+      const res = await api.post(
+        `/admin/devapi/apps/${key.client_id}/keys/${key.id}/revoke`
       )
       if (res.code === 0) {
         useKunMessage('密钥已吊销', 'success')
@@ -114,6 +115,28 @@ const askRevoke = (key: DevAdminKey) => {
       } else {
         useKunMessage(res.message || '吊销失败', 'error')
       }
+    },
+  }
+}
+
+const isDeletable = (key: DevAdminKey) => !!key.revoked_at && !key.last_used_at
+
+const askDelete = (key: DevAdminKey) => {
+  confirmOpen.value = true
+  confirmDialog.value = {
+    title: '删除密钥',
+    body: `删除会抹掉「${key.app_name}」的「${key.name}」这条密钥记录本身，不可恢复。只有已吊销且从未被使用过的密钥能删；服务过请求的密钥只能吊销，删不掉。确认继续？`,
+    danger: true,
+    run: async () => {
+      const res = await api.delete(
+        `/admin/devapi/apps/${key.client_id}/keys/${key.id}`
+      )
+      if (res.code === 0) {
+        useKunMessage('密钥已删除', 'success')
+      } else {
+        useKunMessage(devKeyDeleteMessage(key, res.code, res.message), 'error')
+      }
+      refresh()
     },
   }
 }
@@ -230,6 +253,16 @@ const askRevoke = (key: DevAdminKey) => {
             >
               <KunIcon name="lucide:ban" class="mr-1 size-4" />
               吊销
+            </KunButton>
+            <KunButton
+              v-if="isDeletable(k)"
+              color="danger"
+              size="sm"
+              :disabled="busy"
+              @click="askDelete(k)"
+            >
+              <KunIcon name="lucide:trash-2" class="mr-1 size-4" />
+              删除
             </KunButton>
           </div>
         </div>

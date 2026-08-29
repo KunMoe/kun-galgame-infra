@@ -184,8 +184,8 @@ func TestPolicyDisabledGatesSelfService(t *testing.T) {
 	if _, err := svc.UpdateApp(ctx, owner, app.ID, &name, nil, nil); err != ErrCapabilityDisabled {
 		t.Errorf("update under app.manage=disabled = %v, want ErrCapabilityDisabled", err)
 	}
-	if err := svc.DeactivateApp(ctx, owner, app.ID); err != ErrCapabilityDisabled {
-		t.Errorf("deactivate under app.manage=disabled = %v, want ErrCapabilityDisabled", err)
+	if err := svc.ArchiveApp(ctx, owner, app.ID); err != ErrCapabilityDisabled {
+		t.Errorf("archive under app.manage=disabled = %v, want ErrCapabilityDisabled", err)
 	}
 
 	if err := admin.SetPolicy(ctx, CapabilityAppCreate, PolicyDisabled, actor); err != nil {

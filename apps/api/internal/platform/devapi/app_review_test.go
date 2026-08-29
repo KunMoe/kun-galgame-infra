@@ -54,9 +54,6 @@ func TestAppApprovalFlow(t *testing.T) {
 	if _, _, err := svc.MintKey(ctx, owner, filed.ID, MintKeyInput{Name: "too early"}); err != ErrAppNotApproved {
 		t.Errorf("mint on a pending app = %v, want ErrAppNotApproved", err)
 	}
-	if err := svc.DeactivateApp(ctx, owner, filed.ID); err != ErrAppNotApproved {
-		t.Errorf("deactivate a pending app = %v, want ErrAppNotApproved", err)
-	}
 	if _, err := svc.ResubmitApp(ctx, owner, filed.ID); err != ErrAppNotDeclined {
 		t.Errorf("resubmit a pending app = %v, want ErrAppNotDeclined", err)
 	}
@@ -130,7 +127,8 @@ func TestAppApprovalFlow(t *testing.T) {
 	}
 
 	// Pending and declined rows count against the 5-app cap, or a declined
-	// applicant could file forever.
+	// applicant could file forever. Archiving is what releases a slot —
+	// see TestArchiveReleasesTheAppSlot.
 	n, err := repo.CountAppsByOwner(ctx, owner)
 	if err != nil {
 		t.Fatalf("count apps: %v", err)
@@ -168,8 +166,8 @@ func TestAppReviewLegacyBlankStatusMints(t *testing.T) {
 	if _, _, err := svc.MintKey(ctx, owner, legacy.ID, MintKeyInput{Name: "legacy key"}); err != nil {
 		t.Fatalf("mint on a blank-status app = %v, want it to go through", err)
 	}
-	if err := svc.DeactivateApp(ctx, owner, legacy.ID); err != nil {
-		t.Fatalf("deactivate a blank-status app = %v, want it to go through", err)
+	if err := svc.ArchiveApp(ctx, owner, legacy.ID); err != nil {
+		t.Fatalf("archive a blank-status app = %v, want it to go through", err)
 	}
 }
 
@@ -202,7 +200,7 @@ func TestAdminEnableAlsoApproves(t *testing.T) {
 func TestAdminListAppsByStatus(t *testing.T) {
 	cleanupSelf(t)
 	cleanupPolicies(t)
-	svc, admin, _, _ := newSelfService(t)
+	svc, admin, repo, _ := newSelfService(t)
 	ctx := context.Background()
 	const owner, reviewer = uint(1), uint(9)
 
@@ -210,10 +208,23 @@ func TestAdminListAppsByStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create live: %v", err)
 	}
-	if err := svc.DeactivateApp(ctx, owner, live.ID); err != nil {
-		t.Fatalf("deactivate: %v", err)
+	disabled := false
+	if _, err := admin.UpdateAppConfig(ctx, live.ID, AppConfig{DevEnabled: &disabled}); err != nil {
+		t.Fatalf("disable: %v", err)
 	}
 	kept, _ := svc.CreateApp(ctx, owner, "kept", "", nil)
+	gone, _ := svc.CreateApp(ctx, owner, "gone", "", nil)
+	// ArchiveApp deletes a row with no history outright, and a row that no
+	// longer exists cannot be in the archived bucket. A minted key is not
+	// enough — it gets deleted too — so the key has to have SERVED something.
+	goneKey, _, err := svc.MintKey(ctx, owner, gone.ID, MintKeyInput{Name: "k"})
+	if err != nil {
+		t.Fatalf("mint on the app to archive: %v", err)
+	}
+	giveKeyHistory(t, repo, goneKey.ID)
+	if err := svc.ArchiveApp(ctx, owner, gone.ID); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
 
 	approvalMode(t, admin)
 	pending, _ := svc.CreateApp(ctx, owner, "pending", "", nil)
@@ -228,7 +239,8 @@ func TestAdminListAppsByStatus(t *testing.T) {
 	// match) run earlier in the suite and land in the disabled and all buckets.
 	// So compare only the four rows this test made.
 	labels := map[string]string{
-		live.ID: "live", kept.ID: "kept", pending.ID: "pending", rejected.ID: "rejected",
+		live.ID: "live", kept.ID: "kept", pending.ID: "pending",
+		rejected.ID: "rejected", gone.ID: "gone",
 	}
 	mine := func(t *testing.T, filter string) map[string]bool {
 		t.Helper()
@@ -253,7 +265,8 @@ func TestAdminListAppsByStatus(t *testing.T) {
 		{AppFilterPending, []string{"pending"}},
 		{AppFilterDeclined, []string{"rejected"}},
 		{AppFilterDisabled, []string{"live"}},
-		{AppFilterAll, []string{"live", "kept", "pending", "rejected"}},
+		{AppFilterArchived, []string{"gone"}},
+		{AppFilterAll, []string{"live", "kept", "pending", "rejected", "gone"}},
 	}
 	for _, tc := range cases {
 		got := mine(t, tc.filter)
@@ -398,9 +411,6 @@ func TestSelfServiceReviewHTTPStatuses(t *testing.T) {
 	base := "/dev/apps/" + filed.ID
 	if code, _ := do(t, "POST", base+"/keys", `{"name":"k"}`); code != fiber.StatusConflict {
 		t.Errorf("mint on a pending app = %d, want 409", code)
-	}
-	if code, _ := do(t, "DELETE", base, ""); code != fiber.StatusConflict {
-		t.Errorf("deactivate a pending app = %d, want 409", code)
 	}
 	if code, _ := do(t, "POST", base+"/resubmit", ""); code != fiber.StatusConflict {
 		t.Errorf("resubmit a pending app = %d, want 409", code)

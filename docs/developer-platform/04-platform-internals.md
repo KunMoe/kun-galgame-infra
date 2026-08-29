@@ -32,9 +32,25 @@ DevReviewStatus string `gorm:"size:20;not null" json:"dev_review_status"`
 // 用 text 而非 varchar(n):2000 个汉字装不进按字符计的短 varchar 的直觉里
 // 反复出错,text 让长度只由服务端那一个 rune 判据说了算。
 DevReviewNote   string `gorm:"type:text" json:"dev_review_note,omitempty"`
+
+// --- 应用生命周期 + 结算名册(2026-08-29,见 02 §3.11)---
+// DevArchivedAt: owner 在门户删除应用的时刻。**不是软删的 deleted_at**——行、
+// client_id 与它的每一条引用(session / 授权码 / 短链 / 计量历史)全部留下,变
+// 的只是它离开 owner 的世界:三个 owner 域查询一律带 dev_archived_at IS NULL,
+// 于是它从列表消失、per-app 路由 404,**并且不再计入 5-app 上限**——这正是本
+// 波的理由,此前一个被拒的申请永久占着一格且自助面交不回来。
+DevArchivedAt *time.Time `json:"dev_archived_at,omitempty"`
+
+// StoreSettlementEligible: 是否参与每月 DLsite 优惠券池的分账。铸店铺短链是
+// 自助的(store:read 在 selfServiceScopes 里),但池是定额的、每多一个参与者
+// 都稀释其余人,所以「分不分钱」是运营写在这一列上的名册,不是「谁手里有
+// store:read」。存量行全部回填 false,含已持有该 scope 的九个应用。
+StoreSettlementEligible bool `gorm:"not null;default:false" json:"store_settlement_eligible"`
 ```
 > scope 直接复用既有 `AllowedScopes` + `CheckScope`,不另起字段。
-> 两列由 `devapi.AddOAuthClientDevColumns` 的 raw SQL 加(`ADD COLUMN … NOT NULL DEFAULT 'approved'` 完成回填后 `DROP DEFAULT`),与既有 `dev_*` 列同一模式、同一函数,**必须在 AutoMigrate 之前跑**。
+> 以上各列由 `devapi.AddOAuthClientDevColumns` 的 raw SQL 加(`ADD COLUMN … NOT NULL DEFAULT 'approved'` 完成回填后 `DROP DEFAULT`),与既有 `dev_*` 列同一模式、同一函数,**必须在 AutoMigrate 之前跑**。
+> **`store_settlement_eligible` 是这条模式的例外,DEFAULT 刻意留着**:`false` 是 Go 零值,GORM 因此在**每一条 INSERT 里都省掉这一列**,`DROP DEFAULT` 之后 NOT NULL 会直接拒掉整行。(同样保留 DEFAULT 的还有 `dev_nsfw_allowed`,理由不同——Go 侧的字段已经没了。)`dev_archived_at` 可空,存量行回填 `NULL`。
+> 模型上的 `gorm:"default:false"` 标签与那条保留的 SQL DEFAULT **必须成对**:带 default 标签的零值字段正是 GORM 从 INSERT 里省掉的那一种,省掉之后接住这一列的就只剩库里的 DEFAULT。§5.4「不用 GORM `default:` 标签」管的是另一类列——那里的列需要写得进零值。运营改这一位走 `UpdateAppFields` 的 map,map 里的 `false` 照常写得进去。
 
 ### 5.2 新表 `developer_api_keys`
 
@@ -56,6 +72,8 @@ type DeveloperAPIKey struct {
 func (DeveloperAPIKey) TableName() string { return "developer_api_keys" }
 ```
 有效性:`active = RevokedAt IS NULL AND (ExpiresAt IS NULL OR ExpiresAt > now())`。
+
+> **删行(2026-08-29)**:这张表的行现在删得掉,但只删**已吊销且从未服务过任何请求**的(`RevokedAt` 非空、`LastUsedAt` 为空、且 `developer_api_usage` 里没有它的 `key_id`),否则 **409**;两个条件对 owner 与运营**逐字相同**。`developer_api_usage.key_id` 背后**没有外键**,删掉一把用过的钥匙就把计量历史变成指向虚空的行。`LastUsedAt` 是这道判据里**耐久的那一半**——usage 行会被 [§5.3](#53-新表-developer_api_usage用量落盘按日聚合) 的留存作业修剪掉,那个时间戳不会。**owner 删除应用时同一道判据会扫一遍这张表**:没有用量的钥匙行随应用一起删,有用量的留下(归档后的应用对自助面不可见,留一把 owner 再也够不到的没用过的钥匙等于造一个只有运营清得掉的孤儿)。语义与端点见 [02 §3.11](./02-public-api.md)。
 
 ### 5.3 新表 `developer_api_usage`(用量落盘,按日聚合)
 

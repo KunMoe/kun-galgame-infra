@@ -37,9 +37,10 @@ func DropScopeApplications(db *gorm.DB) error {
 // the later AutoMigrate call creates the table with every column already
 // present. For an existing table, the NOT NULL intent columns are added WITH a
 // temporary DEFAULT so existing rows backfill, then the DEFAULT is dropped so
-// the GORM zero-value INSERT trap can't reintroduce a silent default. The one
-// exception is dev_nsfw_allowed, which keeps its DEFAULT because the Go model
-// no longer writes it — see the note at that statement.
+// the GORM zero-value INSERT trap can't reintroduce a silent default. Two
+// columns keep their DEFAULT because the Go model never writes them explicitly
+// — dev_nsfw_allowed (the field is gone) and store_settlement_eligible (false
+// is the zero value, so GORM omits it) — see the notes at those statements.
 // owner_user_id is nullable (third-party app owner; NULL for first-party site
 // clients) and gets a plain index.
 //
@@ -85,6 +86,22 @@ func AddOAuthClientDevColumns(db *gorm.DB) error {
 		`ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS dev_review_status varchar(20) NOT NULL DEFAULT 'approved'`,
 		`ALTER TABLE oauth_clients ALTER COLUMN dev_review_status DROP DEFAULT`,
 		`ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS dev_review_note text`,
+
+		// 2026-08-29, the application lifecycle. dev_archived_at is nullable and
+		// every existing row backfills to NULL — nothing was archived before the
+		// column existed, and reading "created before the feature" as "deleted"
+		// would empty every developer's application list.
+		`ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS dev_archived_at timestamptz`,
+
+		// 2026-08-29, the settlement roster. NOT NULL DEFAULT false and the
+		// DEFAULT is KEPT (unlike the dev_* columns above): false is Go's zero
+		// value, so GORM omits the column from every INSERT and a NOT NULL
+		// column with no default would reject the row. Existing rows backfill to
+		// false on purpose — nine applications already hold store:read, and
+		// backfilling them to true would silently enrol whoever happened to tick
+		// the box before the roster existed.
+		`ALTER TABLE oauth_clients ADD COLUMN IF NOT EXISTS store_settlement_eligible boolean NOT NULL DEFAULT false`,
+		`ALTER TABLE oauth_clients ALTER COLUMN store_settlement_eligible SET DEFAULT false`,
 	}
 	for _, s := range stmts {
 		if err := db.Exec(s).Error; err != nil {

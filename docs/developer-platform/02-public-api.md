@@ -580,7 +580,7 @@ Content-Type: application/json
 | scope | `catalog:read` | **无。**`playtime:read` / `playtime:write` 不再判定。任何已开通用户登录的应用,用它签出的用户令牌即可读写该用户自己的时长。这两个 scope 仍可出现在同意页(旧授权 URL 不 400),但缺它们不再 403 |
 | 限流 | key 级配额 | **每 (client, user) 每分钟 120 次**,超出 429;Redis 不可用时**fail-open** |
 
-- **令牌必须绑 client 不是形式主义**:记录按 `(user, work, client)` 三元组落行,`client_id` 是主键的一部分。没有它就没有「这条是哪个 App 报的」,读面的跨 App 折叠也就无从谈起——所以无 client 绑定的令牌(例如站内直接登录换来的那种)在本面一律 403,而不是悄悄写进一个空 client。
+- **令牌必须绑 client 不是形式主义**:记录按 `(user, work, client)` 三元组落行,`client_id` 是主键的一部分。没有它就没有「这条是哪个 App 报的」,读面的跨 App 折叠也就无从谈起——所以无 client 绑定的令牌(例如站内直接登录换来的那种)在本面一律 403,而不是悄悄写进一个空 client。**这条三元组也是「能签用户的应用永远删不掉」的根据**:`catalog_user_playtimes` 在 `kun_catalog`,主库那边的删除守卫结构上够不到它,只能改判能力,见 [§3.11](#311-应用生命周期归档删除与结算名册2026-08-29)。
 - **一个用户写不到别人**:五条 op 没有一条接受「目标用户」参数。
 
 **数据语义**
@@ -636,12 +636,12 @@ Content-Type: application/json
 | capability | 允许的 mode | 默认 | 管什么 |
 |---|---|---|---|
 | `app.create` | `self_service` / `approval` / `disabled` | `self_service` | 自助创建应用 |
-| `app.manage` | `self_service` / `disabled` | `self_service` | 自助编辑(`PATCH /dev/apps/:id`)与停用(`DELETE /dev/apps/:id`) |
+| `app.manage` | `self_service` / `disabled` | `self_service` | 自助编辑(`PATCH /dev/apps/:id`)与删除(`DELETE /dev/apps/:id`——归档或真删两臂,见 [§3.11](#311-应用生命周期归档删除与结算名册2026-08-29)) |
 | `key.mint` | `self_service` / `disabled` | `self_service` | 自助铸造与轮换密钥 |
 
 > 曾有第四行 `scope.apply`(提交授权制 scope 申请),随授权制一档于 2026-08-25 退役,见 §3.9。生产 `devapi_policy_overrides` 从未有过这一行,所以退役不需要清理数据。
 
-**吊销永不入闸**:`DELETE /dev/apps/:id/keys/:id` 是止损动作,任何策略都关不掉它。§3.9 的 scope 判据同样**刻意不进矩阵**——它已有自己的机制与测试钉,两处真源必漂移。
+**吊销永不入闸**:`POST /dev/apps/:id/keys/:id/revoke` 是止损动作,任何策略都关不掉它。**2026-08-29 换了路由**:这个动作原先写作 `DELETE /dev/apps/:id/keys/:id`,现在那条 DELETE 真的删行(见 [§3.11](#311-应用生命周期归档删除与结算名册2026-08-29)),吊销移到显式的 `revoke` 子路径;换的只是 URL,「止损动作不受任何策略约束」这条判据一字未动。§3.9 的 scope 判据同样**刻意不进矩阵**——它已有自己的机制与测试钉,两处真源必漂移。
 
 **`app.create=approval` 的状态机**(`oauth_clients.dev_review_status`,值域 `approved` / `pending` / `declined`;`dev_review_note` 存拒绝理由,rune 计数上限 2000,`devapi.maxAppReviewNoteLen`):
 
@@ -651,13 +651,21 @@ Content-Type: application/json
 pending ──admin approve──> approved + dev_enabled=true（清空 note）
         └─admin decline──> declined + dev_enabled=false + note（理由必填）
 declined ──owner resubmit──> pending（清空 note;可先 PATCH 改名再提交）
+
+任何态 ──owner DELETE / admin archive──> archived（dev_archived_at 非空 + dev_enabled=false
+                                        + store_settlement_eligible=false;
+                                        零引用且不具备登录能力的壳走另一臂:直接删行,见 §3.11）
+archived ──admin PATCH dev_enabled=true──> approved + dev_enabled=true（清空 note 与 archived_at）
+archived ──admin DELETE──> 行消失（须零引用 + 从不具备登录能力,否则 409;见 §3.11）
 ```
+
+**归档与审核状态正交**:归档**不写** `dev_review_status`,一个被拒的应用归档后仍是 `declined`。所以「已归档」不是状态机的第四个值,而是压在这三个值之上的第二根轴——查询里它是 `dev_archived_at IS NULL` 这个谓词,不是某个 status 字面量。
 
 - **只有 pending 可审**,对非 pending 调 approve/decline → **409**。
 - **pending / declined 不能铸 key** → **409**(不是 403:这是状态冲突,不是权限问题)。判据写成 `status ∈ {pending, declined}` 而**不是** `status != 'approved'`——OAuth 控制台建的一方 client 不认识这两列,写进去的是空串,**空串刻意 fail-open**。
-- **pending / declined 不能停用** → **409**(pending 从未启用无可停,declined 本就 inert);门户对这两态隐藏「停用」。
+- ~~**pending / declined 不能停用** → **409**(pending 从未启用无可停,declined 本就 inert);门户对这两态隐藏「停用」。~~ **2026-08-29 翻案**:这条拒绝是为了不让「等待审核」悄悄变成「没有了」,但它与「上限计入 pending / declined」那条**合起来是个死锁**——被拒的申请永久占着五格之一,而自助面没有任何交回它的动作,**五次被拒 = 这个账号从此进不来平台**。现在这两态一律可删(删除即归档或真删,见 [§3.11](#311-应用生命周期归档删除与结算名册2026-08-29)),门户对它们**不再隐藏删除**。原先要防的东西由「归档是单向的、复活只有运营做得到」承接。
 - **管理台 `PATCH /admin/devapi/apps/:id` 置 `dev_enabled=true` 时同时写 `approved`**——否则控制台放行的应用仍停在 pending,其 owner 在一个活着的应用上被拒铸 key。
-- **5-app 上限把 pending / declined 一并计入**(`CountAppsByOwner` 本就不按状态过滤),否则被拒者可以无限刷申请。
+- **5-app 上限把 pending / declined 一并计入**(`CountAppsByOwner` 本就不按状态过滤),否则被拒者可以无限刷申请。**2026-08-29 补**:计入的只有**未归档**的行——owner 域那三个查询(`ListAppsByOwner` / `GetAppByOwner` / `CountAppsByOwner`)一律带 `dev_archived_at IS NULL`,所以删除应用现在真的能把格子交回来。这也是本波存在的理由,见 [§3.11](#311-应用生命周期归档删除与结算名册2026-08-29)。
 - 凭据中间件**不读** `dev_review_status`:`dev_enabled` 仍是唯一 auth 位。
 
 **自助端点**(`/api/v1/dev/*`):
@@ -666,14 +674,22 @@ declined ──owner resubmit──> pending（清空 note;可先 PATCH 改名�
 |---|---|
 | `GET /api/v1/dev/policies` | 四 capability 的生效 mode map(`{"app.create":"approval", …}`),门户据此渲染禁用态与提示 |
 | `POST /api/v1/dev/apps/:client_id/resubmit` | 仅 `declined` 可用 → 打回 `pending` 并清空 note;非 declined → **409** |
+| `DELETE /api/v1/dev/apps/:client_id` | 删除应用(2026-08-29 由「停用」改写):吊销全部活钥匙 → 清掉其中没有用量的钥匙行 → **零引用即真删行、否则归档**,两臂见 §3.11;**开过 `user_login` 的应用永远走归档臂**;pending / declined 同样可删;受 `app.manage` 闸 |
+| `POST /api/v1/dev/apps/:cid/keys/:id/revoke` | 吊销密钥(2026-08-29 从 `DELETE …/keys/:id` 迁来);**永不入策略矩阵** |
+| `DELETE /api/v1/dev/apps/:cid/keys/:id` | 删除密钥行;未吊销 → **409**,曾服务过请求 → **409**,见 §3.11 |
 
 **管理端点**(`/api/v1/admin/devapi/*`):
 
 | 端点 | 权限 | 说明 |
 |---|---|---|
-| `GET /admin/devapi/apps?status=` | `devapi.manage` | `enabled`(缺省,兼容旧行为)/ `pending` / `declined` / `disabled` / `all`;列表项带 owner、`review_status`、`review_note`、`created_at` |
+| `GET /admin/devapi/apps?status=` | `devapi.manage` | `enabled`(缺省,兼容旧行为)/ `pending` / `declined` / `disabled` / **`archived`(2026-08-29 新增)** / `all`;**除 `all` 与 `archived` 外每个过滤器都排除已归档行**——owner 删掉的应用不是待审、不是「停用待决」、更不是活应用,留在工作标签页里只会往运营队列塞没人等的行。列表项带 owner、`review_status`、`review_note`、**`archived_at`**(未归档时整键缺席)、**`store_settlement_eligible`**、`created_at` |
+| `PATCH /admin/devapi/apps/:client_id` | `devapi.manage` | body 全可选:`owner_user_id` / `dev_enabled` / `dev_tier` / `dev_rate_per_min` / `dev_quota_daily` / **`store_settlement_eligible`**(2026-08-29 新增,见 §3.11)。**`dev_enabled=true` 同时写 `approved` 并清空 `dev_archived_at`——这是平台上唯一的解归档动作**:一个被放回服务的应用必须重新出现在 owner 的列表里,否则他持有一个自己看不见的活应用 |
 | `POST /admin/devapi/apps/:client_id/approve` | `devapi.manage` | 仅 pending,否则 **409** |
 | `POST /admin/devapi/apps/:client_id/decline` | `devapi.manage` | body `{reason}` 必填(**rune** 计数 ≤2000),否则 **400**;仅 pending,否则 **409** |
+| `POST /admin/devapi/apps/:client_id/archive` | `devapi.manage` | 运营侧归档:吊销全部活钥匙 + `dev_enabled=false` + 盖 `dev_archived_at` + 清 `store_settlement_eligible`。**它永不删行**(与门户 DELETE 的差别),且是下一行的前置 |
+| `DELETE /admin/devapi/apps/:client_id` | `devapi.manage` | **硬删 `oauth_clients` 行**——全平台唯一会删这张表的运营动作。未归档 → **409**;`client_id` 还有任何引用 → **409**;**曾具备用户登录能力的 client 一律 409**(只归档不删)。守卫为何要这么宽、为什么第七个条件判的是能力而不是行数,见 §3.11 |
+| `POST /admin/devapi/apps/:cid/keys/:id/revoke` | `devapi.manage` | 吊销密钥(2026-08-29 从 `DELETE …/keys/:id` 迁来,与自助面同一次换路由) |
+| `DELETE /admin/devapi/apps/:cid/keys/:id` | `devapi.manage` | 删除密钥行;两道 409 与自助面**逐字相同**——那是审计完整性,不是权限,见 §3.11 |
 | `GET /admin/devapi/keys` | `devapi.manage` | 跨全部应用的密钥清单(仅元数据)。`client_id=` / `state=active\|revoked\|expired\|all` / `page` / `limit`(≤200,缺省 50)→ `{items, total, page, limit}`。**无编辑端点**:行动作复用既有 per-app rotate / revoke |
 | `GET /admin/devapi/policies` | `devapi.manage` | 注册表(labels / modes / default)+ 生效 mode + `editable`(调用者是否持 `devapi.policy_manage`) |
 | `PUT /admin/devapi/policies/:capability` | **`devapi.policy_manage`** | body `{mode}`,upsert 一行;未知 capability 或该 capability 不允许的 mode → **400** |
@@ -682,6 +698,57 @@ declined ──owner resubmit──> pending（清空 note;可先 PATCH 改名�
 **capability 被关闭时**,对应自助端点返回 **403**(`ErrCapabilityDisabled`),文案说明该功能当前由平台关闭。**非 owner 仍先吃 404**:策略错误绝不能变成「别人有没有这个应用」的存在性预言机。
 
 > **迁移**:本节新增一张表 `devapi_policy_overrides` + `oauth_clients` 两列,主库迁移**不随部署自动执行**——须手工 `go run ./cmd/migrate`(库 `kun_galgame_infra`)。
+
+### 3.11 应用生命周期:归档、删除与结算名册(2026-08-29)
+
+到本节前,平台**没有「删掉一个应用」这个动作**。`DELETE /dev/apps/:id` 叫停用,做的是 `dev_enabled=false`,而 `CountAppsByOwner` 不看 `dev_enabled` 也不看审核状态——被停用的、被拒的、还在排队的行**永久占着五格之一**,自助面没有任何把格子交回来的办法。§3.10 那两条规则(「pending / declined 不能停用」+「上限一并计入」)单看各自都成立,合起来是个死锁:**五次被拒 = 这个账号从此进不来平台**,而它一次也没做错什么。本节把停用换成删除。
+
+`oauth_clients` 为此加两列:
+
+| 列 | 类型 | 是什么 |
+|---|---|---|
+| `dev_archived_at` | `timestamptz NULL` | owner 在门户删除应用的时刻。**它不是软删的 `deleted_at`**——行还在、`client_id` 还在解析、每一条引用都还活着,变的只是「它不再属于 owner 的世界」 |
+| `store_settlement_eligible` | `boolean NOT NULL DEFAULT false` | 这个应用是否参与每月 DLsite 优惠券池的分账,见下文「结算名册」 |
+
+**归档做什么**:吊销该应用**全部**未吊销的钥匙 → `dev_enabled=false` → 盖 `dev_archived_at` → 清 `store_settlement_eligible`。**没有任何东西被删**:sessions、authorization codes、短链、计量历史与 `client_id` 本身全部原地留下——owner 的决定管的是「这个应用还是不是我的」,管不到已经发生过的事。
+
+**归档让应用离开 owner 的世界(这是本波的要害)**:`ListAppsByOwner` / `GetAppByOwner` / `CountAppsByOwner` 三个 owner 域查询一律带 `dev_archived_at IS NULL`。于是已归档的应用在门户列表里消失、每一条 per-app 路由回 **404**、并且**不再计入 5-app 上限**。因为每一个自助操作都经 `GetAppByOwner` 解析,这道谓词同时也是「不可能在自己已删除的应用上铸钥匙」的那道门。**pending / declined 现在也能删**——§3.10 那条 `ErrAppNotApproved` 拒绝已翻案,理由见该节。**归档是单向的**:自助面没有解归档,复活只有运营的 `PATCH dev_enabled=true` 做得到(见 §3.10 管理端点表)。
+
+**门户 `DELETE /dev/apps/:client_id` 有两臂,同一个动词**,顺序是:吊销全部活钥匙 → **删掉其中从未服务过任何请求的钥匙行** → 查一次引用(判据与下文运营侧硬删**同一个**),
+
+- **零引用的壳 → 直接删行**,不留归档记录;
+- **还有任何引用 → 归档**。
+
+**中间那步不是顺手**:钥匙行本身就是一条引用,不清掉它「铸过一次就永远删不掉」。而 owner 之后**再也够不到这些钥匙**——已归档的应用对 `GetAppByOwner` 不可见,于是「建 → 铸 → 一次没调 → 删」会留下一行归档 + 一把只有运营清得掉的孤儿钥匙。删的判据与手工删钥匙**逐字相同**(见下表),`ErrKeyHasHistory` 在这里读作「这一把留下」而不是失败:**任何还被 usage 行指着的钥匙都活下来,并且把应用的行一起留下**。
+
+真删那一臂也不是顺手做的方便:归档会把格子还给 owner,于是「建 → 删 → 再建」变成一个对 `oauth_clients` **无上限写行的循环**——而这恰恰是旧的「五格占死」在结构上排除掉的东西,本波若不补这一臂就是拆掉了唯一那道限。删掉那个从未被引用的壳把循环闭上,并且**复用运营硬删的同一道守卫**——门户这条路上消失的行,恰好是运营本来就被允许删的那一行。(两面只差在前置:运营侧要求**先归档**,门户侧的 DELETE 调用**本身**就是那个刻意动作。)
+
+**密钥的 `DELETE` 现在真的是删,两道 409 守着**:
+
+| 条件 | 结果 |
+|---|---|
+| 尚未吊销 | **409** ——删一把还活着的钥匙等于一次不留记录的吊销 |
+| `last_used_at` 非空,或 `developer_api_usage` 里有它的 `key_id` | **409** ——`developer_api_usage` 背后**没有外键**,删掉钥匙行就把计量历史变成指向虚空的行 |
+
+`last_used_at` 是这道判据里**耐久的那一半**:usage 行会被 `DeveloperUsageRetentionDays` 修剪掉,那个时间戳不会。**运营与 owner 拿到完全相同的两个 409**——这是关于审计链的完整性约束,不是权限问题,所以没有「管理员可以强删」这一档。
+
+**吊销因此换到 `POST …/keys/:id/revoke`**(自助面与管理面同一次换路由,见 §3.10)。**两面的部署顺序可以任意**,而且正是这道守卫让它成立:一个还在用旧路由的前端把 DELETE 发过来,打到的是一把**没有吊销过**的活钥匙 → 409,而不是静默地把一份活凭证连同它的记录一起删掉。
+
+**运营侧的硬删,以及守卫为什么这么宽**:`DELETE /admin/devapi/apps/:client_id` 要求应用**已归档**,且 `client_id` 在 `developer_api_keys` / `developer_api_usage` / `store_purchase_links` / `store_coupon_links` / `sessions` / `authorization_codes` 六张表里**零行**、`site_id IS NULL`,**并且这个 client 从来不具备签用户进来的能力**(下一段)。理由是 **`oauth_clients` 是一张双职表**——它既是开发者应用表,又是 OAuth 登录 client 表——而上面这些列**没有一个是外键**:Postgres 会痛快地接受任何 DELETE,然后留下一批仍在对着一个不存在的 client 验签的活 session、一批还在计点击而结算分母再也归因不到的短链、以及一段记在空白名下的计量。**「先归档」是守卫的一部分,不是礼貌**:一个 session 恰好全部过期的登录 client,长得和一个没用过的空壳**一模一样**,只有一次刻意的归档能把两者分开。
+
+**第七个条件:能签用户的应用永远删不掉(只归档)**。判据不是「现在有没有登录」,而是**这个 client 有没有登录配置**——`is_public`、`grants` 非空、或有任何 `redirect_uris` 之一成立即算。两条理由缺一不可,外加一笔认下来的代价:
+
+- **前六个条件里的 `sessions` / `authorization_codes` 会自己归零**:`internal/app/cleanup.go` 每小时**真删**(两张表都没有软删列)过期的 session 与授权码。所以那两个计数说的是「此刻有没有人登着」,**从来不是「这个 client 曾经做过什么」**——一个几年前签过几千个用户、如今 session 全过期的 client,在前六个条件下与一个空壳一模一样。而登录配置写在创建时、**没有任何清理作业碰它**,是手边唯一耐久的答案。
+- **它必须耐久,是因为损害落在另一个库里**:`catalog_user_playtimes.client_id` 在 **`kun_catalog`**,记录按 `(user, work, client)` 三元组落行(§3.8);而只有能给用户签令牌的 client 才可能在那里有行。平台侧这道守卫**结构上够不到那个库**,不可能靠数行来判——所以它改判**能力**:凡是能登录的,一律不删。
+- **刻意接受的残留**:一个开了 `user_login` 的应用,建完立刻删,留下的是**一行归档**而不是什么都不剩。这是「永不制造孤儿 playtime 行」的价钱,认了。**门户默认建出来的是纯 API 应用**(不传 `user_login` → `is_public=false`、`grants=[]`、`redirect_uris=[]`,见 [05 §9.2](./05-developer-portal.md)),不受这条影响;而 `user_login` 一旦开过就**关不掉**(`PATCH` 的 `user_login` 是整体替换且至少要一个回调 URI),所以这一位一经点亮就是终身的。
+
+**结算名册(`store_settlement_eligible`)**:铸店铺短链**仍是自助**——`store:read` 自 2026-08-26 起就在 `selfServiceScopes` 里,门户直接勾(§3.9)。但每月的优惠券池是**定额**的,按**去重点击**的份额分(`store_link_daily_stats.uniques`,即结算用的那个数,不是 `total`),**每多一个参与者都稀释其余所有人**;于是「能不能铸链」和「分不分钱」从本波起是两个决定,后者是运营在这一列上写下的名册,而不是「谁手里有 `store:read`」。
+
+- **存量行全部回填 `false`,包括已经持有 `store:read` 的那九个应用**。回填成 `true` 等于把「名册存在之前恰好勾过那个框的人」静默地招进了分账名单。
+- 归档/删除**顺手清掉这一位**:短链会永远计下去,而一份定额池的份额不该继续累给一个已经被 owner 撤下的应用。
+- **今天还没有任何结算查询读这一列**:首次结算是 2026-09,读它的那一波在后面。列现在就落,是因为**这个名册决定一旦晚于点击数据的累积就失效了**——到那时再定名册,定的是「已经分过的钱该怎么算」。
+
+> **迁移**:本节的两列由 `devapi.AddOAuthClientDevColumns` 加,主库迁移**不随部署自动执行**——须手工 `go run ./cmd/migrate`(库 `kun_galgame_infra`)。`dev_archived_at` 可空,存量行全部回填 `NULL`(把「建在功能之前」读成「已删除」会清空每个开发者的应用列表)。`store_settlement_eligible` **保留 SQL DEFAULT** 而不像其余 `dev_*` 列那样 `DROP DEFAULT`:`false` 是 Go 零值,GORM 因此在**每一条 INSERT 里都省掉这一列**,一个没有 default 的 NOT NULL 列会直接拒掉整行。
 
 ---
 
