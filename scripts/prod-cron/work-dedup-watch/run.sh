@@ -11,11 +11,7 @@
 #      would make the deadman report a working job as dead every week.
 #   *  the detector broke            -> [FAIL] alert, no stamp
 #
-# Not yet registered in scripts/prod-cron/README.md or lib/watchdog.conf (both
-# outside this wave's owned paths). Add, in the same shape as the other weekly
-# jobs:
-#   crontab (root):  20 4 * * 1 /root/work-dedup-watch/run.sh
-#   watchdog.conf:   work-dedup-watch  /root/work-dedup-watch/state/last-success  192
+# crontab (root): 20 4 * * 1 /root/work-dedup-watch/run.sh
 #
 # Runs from the infra-tools image resolved below; nothing is staged on this
 # host. Canonical copy: scripts/prod-cron/work-dedup-watch/run.sh in
