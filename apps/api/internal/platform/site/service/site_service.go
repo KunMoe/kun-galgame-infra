@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
+	"api/internal/platform/devapi"
 	"api/internal/platform/site/model"
 	"api/internal/platform/site/repository"
 )
@@ -13,12 +14,16 @@ import (
 type SiteService struct {
 	siteRepo        *repository.SiteRepository
 	oauthClientRepo *repository.OAuthClientRepository
+	devRepo         *devapi.Repository
 }
 
-func NewSiteService(siteRepo *repository.SiteRepository, oauthClientRepo *repository.OAuthClientRepository) *SiteService {
+// devRepo is required rather than optional so that no wiring can produce a
+// SiteService whose DeleteOAuthClient silently drops the guard again.
+func NewSiteService(siteRepo *repository.SiteRepository, oauthClientRepo *repository.OAuthClientRepository, devRepo *devapi.Repository) *SiteService {
 	return &SiteService{
 		siteRepo:        siteRepo,
 		oauthClientRepo: oauthClientRepo,
+		devRepo:         devRepo,
 	}
 }
 
@@ -216,6 +221,13 @@ func marshalStringList(list []string) []byte {
 }
 
 func (s *SiteService) DeleteOAuthClient(ctx context.Context, clientID string) error {
+	client, err := s.oauthClientRepo.FindByClientID(ctx, clientID)
+	if err != nil {
+		return err
+	}
+	if err := s.devRepo.EnsureDeletable(ctx, client); err != nil {
+		return err
+	}
 	return s.oauthClientRepo.Delete(ctx, clientID)
 }
 

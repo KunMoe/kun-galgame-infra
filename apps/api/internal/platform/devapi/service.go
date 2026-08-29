@@ -276,20 +276,16 @@ func (s *AdminService) ArchiveApp(ctx context.Context, clientID string) (*siteMo
 // a gap. Archived-first is part of the guard rather than a courtesy: a login
 // client whose sessions have all expired presents exactly like an unused shell,
 // and only a deliberate archive distinguishes them.
+//
+// The rule itself lives in Repository.EnsureDeletable because this is not the
+// only door into it.
 func (s *AdminService) DeleteApp(ctx context.Context, clientID string) error {
 	app, err := s.repo.GetApp(ctx, clientID)
 	if err != nil {
 		return err
 	}
-	if app.DevArchivedAt == nil {
-		return ErrAppNotArchived
-	}
-	refs, err := s.repo.AppReferences(ctx, clientID)
-	if err != nil {
+	if err := s.repo.EnsureDeletable(ctx, app); err != nil {
 		return err
-	}
-	if !refs.Empty() {
-		return ErrAppHasReferences
 	}
 	if err := s.repo.DeleteApp(ctx, clientID); err != nil {
 		return err

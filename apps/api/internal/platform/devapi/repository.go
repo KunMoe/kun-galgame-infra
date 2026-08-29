@@ -279,6 +279,32 @@ func (r *Repository) AppReferences(ctx context.Context, clientID string) (AppRef
 	return out, nil
 }
 
+// EnsureDeletable is the whole rule for dropping an oauth_clients row, and both
+// doors that can drop one go through it. The developer console was never the
+// only door: DELETE /api/v1/oauth/clients/:id on the site console shipped with
+// no guard at all, so an operator could remove a developer's application — keys,
+// metered usage, short links and all — through a route that had never heard of
+// any of them.
+//
+// Archive-first only binds an application that has an owner. A plain OAuth
+// login client has no archive step to perform — nothing in either console can
+// set dev_archived_at on it — so demanding one would make the site console's
+// delete refuse everything with advice nobody can act on. Its protection is the
+// reference rule below, which a login client never passes anyway.
+func (r *Repository) EnsureDeletable(ctx context.Context, app *siteModel.OAuthClient) error {
+	if app.OwnerUserID != nil && app.DevArchivedAt == nil {
+		return ErrAppNotArchived
+	}
+	refs, err := r.AppReferences(ctx, app.ID)
+	if err != nil {
+		return err
+	}
+	if !refs.Empty() {
+		return ErrAppHasReferences
+	}
+	return nil
+}
+
 func (r *Repository) DeleteApp(ctx context.Context, clientID string) error {
 	return r.db.WithContext(ctx).
 		Where("id = ?", clientID).

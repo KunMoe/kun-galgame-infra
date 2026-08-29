@@ -24,4 +24,4 @@
 | 路径 | 鉴权 | Handler | 状态 | 备注 |
 |---|---|---|---|---|
 | `DELETE /api/v1/sites/:id` | admin | `siteH.Delete` | 已修 | #16 站点下有客户端时返回可读 400(预检) 而非 FK 500 |
-| `DELETE /api/v1/oauth/clients/:id` | admin | `siteH.DeleteClient` | 已审计 | |
+| `DELETE /api/v1/oauth/clients/:id` | admin | `siteH.DeleteClient` | 已修 | 2026-08-29:此前**无任何守卫**地物理删行,绕过开发者平台那七个条件;现与 `DELETE /admin/devapi/apps/:client_id` 共用 `devapi.Repository.EnsureDeletable`,被引用/能签用户/未归档的开发者应用一律 409。见 [开发者平台 02 §3.11](../../developer-platform/02-public-api.md) |

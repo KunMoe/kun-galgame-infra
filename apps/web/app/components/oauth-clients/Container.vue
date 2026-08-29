@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { oauthClientDeleteMessage } from '~/constants/oauth-client'
+
 const api = useApi()
 
 const { data: clientsData, status, refresh: refreshClients, error } =
@@ -57,7 +59,7 @@ const handleDelete = async (clientId: string) => {
     useKunMessage('客户端已删除', 'success')
     refreshClients()
   } else {
-    useKunMessage(response.message || '删除失败', 'error')
+    useKunMessage(oauthClientDeleteMessage(response.code, response.message), 'error')
   }
 }
 </script>

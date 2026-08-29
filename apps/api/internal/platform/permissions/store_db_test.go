@@ -40,8 +40,15 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "FAIL: migrate: %v\n", err)
 		os.Exit(1)
 	}
+	// IF NOT EXISTS means this stub loses to the real users table whenever a
+	// neighbouring suite in the same database has already AutoMigrated
+	// auth/model.User — and that table's email is NOT NULL with no default, so a
+	// seed insert naming only (id, name) fails. -p 1 ./... makes that the normal
+	// case, not the exception; the columns here and the inserts below have to
+	// work against either shape.
 	if err := db.Exec(`CREATE TABLE IF NOT EXISTS users (
-		id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL DEFAULT '')`).Error; err != nil {
+		id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL DEFAULT '',
+		email TEXT NOT NULL DEFAULT '')`).Error; err != nil {
 		fmt.Fprintf(os.Stderr, "FAIL: create users stub: %v\n", err)
 		os.Exit(1)
 	}
@@ -63,7 +70,8 @@ func TestStoreGrantRevokeAndAudit(t *testing.T) {
 	ctx := context.Background()
 	store := permissions.NewStore(testDB)
 
-	if err := testDB.Exec(`INSERT INTO users (id, name) VALUES (7, 'kun')`).Error; err != nil {
+	if err := testDB.Exec(
+		`INSERT INTO users (id, name, email) VALUES (7, 'kun', 'kun@example.invalid')`).Error; err != nil {
 		t.Fatalf("seed actor: %v", err)
 	}
 

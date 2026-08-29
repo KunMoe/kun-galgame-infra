@@ -742,6 +742,8 @@ archived ──admin DELETE──> 行消失（须零引用 + 从不具备登录
 - **它必须耐久,是因为损害落在另一个库里**:`catalog_user_playtimes.client_id` 在 **`kun_catalog`**,记录按 `(user, work, client)` 三元组落行(§3.8);而只有能给用户签令牌的 client 才可能在那里有行。平台侧这道守卫**结构上够不到那个库**,不可能靠数行来判——所以它改判**能力**:凡是能登录的,一律不删。
 - **刻意接受的残留**:一个开了 `user_login` 的应用,建完立刻删,留下的是**一行归档**而不是什么都不剩。这是「永不制造孤儿 playtime 行」的价钱,认了。**门户默认建出来的是纯 API 应用**(不传 `user_login` → `is_public=false`、`grants=[]`、`redirect_uris=[]`,见 [05 §9.2](./05-developer-portal.md)),不受这条影响;而 `user_login` 一旦开过就**关不掉**(`PATCH` 的 `user_login` 是整体替换且至少要一个回调 URI),所以这一位一经点亮就是终身的。
 
+**第二道门:站点管理台的 `DELETE /api/v1/oauth/clients/:id`**。这条路由比开发者平台老,删的是同一张 `oauth_clients`,而它**从来没有任何守卫**——`SiteService.DeleteOAuthClient` 直接把行删了。于是上面那七个条件对第三方全部成立、对握着站点管理台的运营者本人一条都不成立:一个开发者的应用连同它的钥匙、计量与短链,可以从一条压根没听说过这些东西的路由上消失。判据现已收进 `devapi.Repository.EnsureDeletable`,两道门调的是**同一个函数**,`NewSiteService` 因此多一个**必填**参数——没有哪种接线能再造出一个悄悄丢掉守卫的 `SiteService`。两处只差一条:**「先归档」只约束有 owner 的行**。一个纯 OAuth 登录 client 没有归档这个动作(两个管理台都没有地方能给它盖 `dev_archived_at`),要求它先归档等于用一句没人执行得了的建议拒绝掉一切;它的保护是引用规则本身——登录 client 本来就永远过不了第七条。两种拒绝都回 **409**(信封 `code=7`),文案分别指向「先去开发者控制台归档」与「它还被引用着 / 能签用户」。
+
 **结算名册(`store_settlement_eligible`)**:铸店铺短链**仍是自助**——`store:read` 自 2026-08-26 起就在 `selfServiceScopes` 里,门户直接勾(§3.9)。但每月的优惠券池是**定额**的,按**去重点击**的份额分(`store_link_daily_stats.uniques`,即结算用的那个数,不是 `total`),**每多一个参与者都稀释其余所有人**;于是「能不能铸链」和「分不分钱」从本波起是两个决定,后者是运营在这一列上写下的名册,而不是「谁手里有 `store:read`」。
 
 - **存量行全部回填 `false`,包括已经持有 `store:read` 的那九个应用**。回填成 `true` 等于把「名册存在之前恰好勾过那个框的人」静默地招进了分账名单。
