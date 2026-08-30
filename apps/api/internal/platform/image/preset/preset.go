@@ -51,6 +51,8 @@ func (c *Config) Get(name string) (Preset, bool) {
 	return p, ok
 }
 
+// Load reads configs/image_presets.yaml. New presets are YAML-only plus an
+// oauth_clients.image_allowed_presets grant; this package does not name them.
 func Load(path string) (*Config, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
