@@ -195,6 +195,30 @@ presets:
       - image/png
       - image/webp
 
+  # Galgame sticker / emoji-pack frames. Square-ish expression crops; `inside`
+  # keeps ahoge and full character (same reason as character_figure — cover
+  # would clip). `320` is the pack-grid card; `128` is the home-row preview.
+  # Uploaded under site_key "sticker"; that client's image_allowed_presets MUST
+  # list `sticker` or every upload is 403'd.
+  sticker:
+    variants:
+      - name: "320"
+        width: 320
+        height: 320
+        fit: inside
+        format: webp
+        quality: 80
+      - name: "128"
+        width: 128
+        height: 128
+        fit: inside
+        format: webp
+        quality: 80
+    allowed_mime:
+      - image/jpeg
+      - image/png
+      - image/webp
+
   # Topic / inline post images. Main image only; no extra variants.
   topic:
     variants: []
