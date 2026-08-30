@@ -261,6 +261,16 @@ services:
       # with every other developer. Empty => both jobs soft-skip.
       KUN_YMGAL_CLIENT_ID: ${KUN_YMGAL_CLIENT_ID:-}
       KUN_YMGAL_CLIENT_SECRET: ${KUN_YMGAL_CLIENT_SECRET:-}
+      # store-stats-sync runs in THIS container's scheduler, not catalog's. The
+      # 08-26/08-29 catalog fixes put the shortlink vars only in the catalog
+      # block, so this job soft-skipped hourly and store_link_daily_stats sat
+      # empty while the shortener counted 3.3k real clicks (2026-08-30). The
+      # first configured run backfills from the earliest mint day, so nothing
+      # is lost — but every service that reads a store var needs it listed in
+      # ITS OWN block. Base URL literal for the same reason as catalog's: only
+      # the `shortlink-api` alias serves the S2S face.
+      KUN_STORE_SHORTLINK_BASE_URL: http://shortlink-api:7845
+      KUN_STORE_SHORTLINK_API_KEY: ${KUN_STORE_SHORTLINK_API_KEY:-}
       # Where the news-moderate job reaches Tier0 and the AI adviser. Both are
       # spelled out because the AI client's built-in default is 127.0.0.1:9284,
       # which resolves to this container itself rather than the ai service.
