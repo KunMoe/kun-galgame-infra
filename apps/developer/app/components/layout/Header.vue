@@ -42,10 +42,6 @@ const colorModeOptions = [
 const setColorMode = (mode: string) => {
   colorMode.preference = mode
 }
-
-const handleLogout = async () => {
-  await auth.logout()
-}
 </script>
 
 <template>
@@ -127,26 +123,7 @@ const handleLogout = async () => {
           </div>
         </KunPopover>
 
-        <KunPopover v-if="auth.isLoggedIn.value" position="bottom-end">
-          <template #trigger>
-            <KunButton variant="flat" size="sm">
-              <KunIcon name="lucide:circle-user-round" class="mr-1 size-4" />
-              <span class="hidden max-w-24 truncate sm:inline">
-                {{ auth.user.value?.name }}
-              </span>
-            </KunButton>
-          </template>
-          <div class="w-44 py-1">
-            <button
-              class="text-danger hover:bg-danger-50 flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors"
-              @click="handleLogout"
-            >
-              <KunIcon name="lucide:log-out" class="size-4" />
-              <span>退出登录</span>
-            </button>
-          </div>
-        </KunPopover>
-
+        <LayoutAccountMenu v-if="auth.isLoggedIn.value" />
         <KunButton v-else color="primary" size="sm" @click="openLogin()">
           登录
         </KunButton>

@@ -40,3 +40,11 @@ export const isDashboardRoute = (path: string) =>
       (m) => m !== '/docs' && (path === m || path.startsWith(`${m}/`))
     )
   )
+
+export const ACCOUNT_NAV = [
+  { to: '/docs/v2', label: '端点参考', icon: 'lucide:list' },
+  { to: '/docs/mcp', label: '配置 MCP', icon: 'lucide:plug' },
+  { to: '/usage', label: '我的用量', icon: 'lucide:chart-column' },
+  { to: '/dashboard', label: '我的应用', icon: 'lucide:boxes' },
+  { to: '/store', label: '分销链接', icon: 'lucide:shopping-bag' }
+] as const
