@@ -3,9 +3,9 @@
 // inlined), and a clean Markdown twin for every /docs route, served at
 // `<route>.md`. The "复制页面" control and AI tools fetch those twins.
 //
-// Called by sync-specs.mjs from the SAME DocsModel the reference pages render,
-// so the Markdown cannot drift from the page: there is no second description of
-// an operation to keep in sync.
+// Called by sync-specs.mjs from the SAME English DocsModel the reference pages
+// start from. The HTML overlay (i18n/docs-zh.json) is display-only; these
+// Markdown twins stay English so agents keep the contract language.
 //
 // Output must be byte-identical for identical input — no timestamps, no
 // randomness, no Date.now(). The CI drift gate diffs the committed files.
@@ -154,16 +154,18 @@ const buildLlmsTxt = (model) => {
     ''
   )
   lines.push(`- ${SITE_URL}/index.md — 平台总览`)
-  lines.push(`- ${SITE_URL}/docs.md — 文档首页（别名 ${SITE_URL}/docs/index.md）`)
+  lines.push(
+    `- ${SITE_URL}/docs.md — 文档首页（别名 ${SITE_URL}/docs/index.md）`
+  )
   for (const face of model.faces) {
     lines.push(`- ${SITE_URL}/docs/${face.key}.md — ${face.name}`)
   }
   lines.push(`- ${SITE_URL}/docs/mcp.md — AI / MCP 接入`)
+  lines.push(`- ${SITE_URL}/docs/<face>/<operationId>.md — 单个端点`, '')
   lines.push(
-    `- ${SITE_URL}/docs/<face>/<operationId>.md — 单个端点`,
+    `全量参考（每个端点的参数与 curl）见 ${SITE_URL}/llms-full.txt。`,
     ''
   )
-  lines.push(`全量参考（每个端点的参数与 curl）见 ${SITE_URL}/llms-full.txt。`, '')
   return lines.join('\n')
 }
 
@@ -255,7 +257,12 @@ const buildPages = (model) => {
         `${faceOperations(face).length} 个端点，${face.auth.display}`
     )
   }
-  docsIndex.push('', ...specSection(model), ...authSection(), ...pageFooter('/docs'))
+  docsIndex.push(
+    '',
+    ...specSection(model),
+    ...authSection(),
+    ...pageFooter('/docs')
+  )
   pages.set('/docs', docsIndex)
 
   for (const face of model.faces) {

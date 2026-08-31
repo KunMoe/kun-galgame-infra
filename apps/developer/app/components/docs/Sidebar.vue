@@ -4,6 +4,7 @@ import type { DocsOperation } from '~~/shared/types/docs'
 
 const route = useRoute()
 const { faces } = useDocs()
+const { t } = useDocsI18n()
 
 const query = ref('')
 const mobileOpen = ref(false)
@@ -14,7 +15,9 @@ const activeFaceKey = computed(
 const activeFace = computed(
   () => faces.find((f) => f.key === activeFaceKey.value) ?? faces[0]!
 )
-const activeOpId = computed(() => route.params.operationId as string | undefined)
+const activeOpId = computed(
+  () => route.params.operationId as string | undefined
+)
 
 const matches = (op: DocsOperation): boolean => {
   const q = query.value.trim().toLowerCase()
@@ -22,7 +25,8 @@ const matches = (op: DocsOperation): boolean => {
   return (
     op.path.toLowerCase().includes(q) ||
     op.id.toLowerCase().includes(q) ||
-    op.summary.toLowerCase().includes(q)
+    op.summary.toLowerCase().includes(q) ||
+    t(op.summary).toLowerCase().includes(q)
   )
 }
 
@@ -44,39 +48,50 @@ watch(
 
 <template>
   <aside
-    class="lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:w-64 lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-default-200"
+    class="lg:border-default-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:w-64 lg:shrink-0 lg:overflow-y-auto lg:border-r"
   >
     <button
       type="button"
-      class="flex w-full items-center justify-between gap-2 border-b border-default-200 py-3 text-sm font-semibold text-foreground lg:hidden"
+      class="border-default-200 text-foreground flex w-full items-center justify-between gap-2 border-b py-3 text-sm font-semibold lg:hidden"
       :aria-expanded="mobileOpen"
       @click="mobileOpen = !mobileOpen"
     >
       <span class="flex items-center gap-2">
-        <KunIcon name="lucide:list" class="size-4 text-default-400" />
+        <KunIcon name="lucide:list" class="text-default-400 size-4" />
         API 目录
       </span>
       <KunIcon
         :name="mobileOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-        class="size-4 text-default-400"
+        class="text-default-400 size-4"
       />
     </button>
 
     <div
-      :class="cn('space-y-4 py-4 lg:pr-3', mobileOpen ? 'block' : 'hidden lg:block')"
+      :class="
+        cn('space-y-4 py-4 lg:pr-3', mobileOpen ? 'block' : 'hidden lg:block')
+      "
     >
       <div class="mb-3 space-y-1 text-xs">
-        <NuxtLink to="/docs/design" class="block text-default-400 hover:text-foreground">
+        <NuxtLink
+          to="/docs/design"
+          class="text-default-400 hover:text-foreground block"
+        >
           设计原则
         </NuxtLink>
-        <NuxtLink to="/docs/vocabularies" class="block text-default-400 hover:text-foreground">
+        <NuxtLink
+          to="/docs/vocabularies"
+          class="text-default-400 hover:text-foreground block"
+        >
           词表
         </NuxtLink>
-        <NuxtLink to="/problems" class="block text-default-400 hover:text-foreground">
+        <NuxtLink
+          to="/problems"
+          class="text-default-400 hover:text-foreground block"
+        >
           Problem types
         </NuxtLink>
       </div>
-      <div class="grid grid-cols-2 gap-1 rounded-lg bg-default-100 p-1">
+      <div class="bg-default-100 grid grid-cols-2 gap-1 rounded-lg p-1">
         <NuxtLink
           v-for="f in faces"
           :key="f.key"
@@ -97,14 +112,14 @@ watch(
       <div class="relative">
         <KunIcon
           name="lucide:search"
-          class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-default-300"
+          class="text-default-300 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
         />
         <input
           v-model="query"
           type="text"
           aria-label="过滤端点"
           placeholder="过滤端点…"
-          class="w-full rounded-lg border border-default-200 bg-content1 py-2 pr-3 pl-9 text-sm text-foreground placeholder:text-default-300 focus:border-primary focus:outline-none"
+          class="border-default-200 bg-content1 text-foreground placeholder:text-default-300 focus:border-primary w-full rounded-lg border py-2 pr-3 pl-9 text-sm focus:outline-none"
         />
       </div>
 
@@ -112,7 +127,7 @@ watch(
         <div v-for="group in visibleGroups" :key="group.key" class="space-y-1">
           <p
             v-if="showGroupHeaders"
-            class="px-2 text-xs font-semibold tracking-wide text-default-400"
+            class="text-default-400 px-2 text-xs font-semibold tracking-wide"
           >
             {{ group.label }}
           </p>
@@ -137,7 +152,7 @@ watch(
         </div>
       </nav>
 
-      <p v-else class="px-2 text-sm text-default-400">
+      <p v-else class="text-default-400 px-2 text-sm">
         没有匹配「{{ query }}」的端点
       </p>
     </div>

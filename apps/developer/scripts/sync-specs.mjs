@@ -12,6 +12,10 @@
  * else, so a spec change cannot refresh the reference pages while leaving the
  * Markdown twins describing the old contract.
  *
+ * The HTML /docs pages render a Chinese overlay of this English model
+ * (i18n/docs-zh.json, asserted below). The Markdown twins stay English so
+ * agents keep the contract language they were trained on.
+ *
  * The generated files are committed (same pattern as app/assets/kun-icons.ts):
  * derived build artifacts, never hand-edited. Re-run after the specs change:
  *   pnpm --filter developer sync:specs
@@ -40,6 +44,7 @@ import {
   V2_SPEC
 } from './faces.mjs'
 import { writeLlmArtifacts } from './gen-llms.mjs'
+import { assertDocZhCatalog } from './docs-i18n.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUTPUT = join(__dirname, '..', 'app/generated/docs-model.ts')
@@ -59,7 +64,11 @@ const buildNode = (schema, { name, required, schemas, seen }) => {
   if (schema.$ref) {
     const rn = refName(schema.$ref)
     if (seen.has(rn)) {
-      return { ...(name !== undefined && { name }), type: rn, ...(required && { required }) }
+      return {
+        ...(name !== undefined && { name }),
+        type: rn,
+        ...(required && { required })
+      }
     }
     const resolved = schemas[rn]
     if (!resolved) throw new Error(`unresolved $ref: ${schema.$ref}`)
@@ -129,8 +138,13 @@ const sampleValue = (schema, { schemas, seen }) => {
         }
         return obj
       }
-      if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-        return { key: sampleValue(schema.additionalProperties, { schemas, seen }) }
+      if (
+        schema.additionalProperties &&
+        typeof schema.additionalProperties === 'object'
+      ) {
+        return {
+          key: sampleValue(schema.additionalProperties, { schemas, seen })
+        }
       }
       return {}
     }
@@ -177,7 +191,8 @@ const buildParams = (rawParams = []) => {
       type: primary || 'string'
     }
     if (s.format) param.format = s.format
-    if (p.description || s.description) param.doc = p.description || s.description
+    if (p.description || s.description)
+      param.doc = p.description || s.description
     if (s.enum) param.enum = s.enum
     return param
   })
@@ -192,7 +207,8 @@ const jsonContent = (content) =>
 
 const authForPath = (faceDef, path) => {
   if (faceDef.key !== 'v2') return faceDef.auth
-  if (path.startsWith('/v2/me/') || path.startsWith('/v2/moderation/')) return USER_TOKEN_AUTH
+  if (path.startsWith('/v2/me/') || path.startsWith('/v2/moderation/'))
+    return USER_TOKEN_AUTH
   if (
     path.startsWith('/v2/problems') ||
     path.startsWith('/v2/vocabularies') ||
@@ -205,7 +221,12 @@ const authForPath = (faceDef, path) => {
   return faceDef.auth
 }
 
-const buildOperation = (method, path, op, { schemas, scope, auth, faceAuth }) => {
+const buildOperation = (
+  method,
+  path,
+  op,
+  { schemas, scope, auth, faceAuth }
+) => {
   const params = buildParams(op.parameters)
 
   let requestBody
@@ -251,7 +272,11 @@ const METHODS = ['get', 'post', 'put', 'patch', 'delete']
 const opKey = (method, path) => `${method.toUpperCase()} ${path}`
 
 const autoGroupDefs = (faceDef, spec) => {
-  const defs = faceDef.autoGroups.map((g) => ({ key: g.key, label: g.label, ops: [] }))
+  const defs = faceDef.autoGroups.map((g) => ({
+    key: g.key,
+    label: g.label,
+    ops: []
+  }))
   for (const [path, item] of Object.entries(spec.paths || {})) {
     if (!path.startsWith(faceDef.prefix)) continue
     for (const method of METHODS) {
@@ -293,7 +318,10 @@ const buildFace = (faceDef, specs) => {
       }
       placed.add(key)
       const auth = authForPath(faceDef, path)
-      const scopeFn = faceDef.scope.length >= 2 ? faceDef.scope(method, path) : faceDef.scope(method)
+      const scopeFn =
+        faceDef.scope.length >= 2
+          ? faceDef.scope(method, path)
+          : faceDef.scope(method)
       buckets.get(group.key).push(
         buildOperation(method, path, op, {
           schemas,
@@ -329,7 +357,11 @@ const buildFace = (faceDef, specs) => {
       label: g.label,
       operations: buckets
         .get(g.key)
-        .sort((a, b) => g.ops.indexOf(opKey(a.method, a.path)) - g.ops.indexOf(opKey(b.method, b.path)))
+        .sort(
+          (a, b) =>
+            g.ops.indexOf(opKey(a.method, a.path)) -
+            g.ops.indexOf(opKey(b.method, b.path))
+        )
     }))
   }
 }
@@ -343,8 +375,7 @@ for (const faceDef of FACES) {
 
 const model = { faces: FACES.map((f) => buildFace(f, specs)) }
 
-const faceOpCount = (f) =>
-  f.groups.reduce((m, g) => m + g.operations.length, 0)
+const faceOpCount = (f) => f.groups.reduce((m, g) => m + g.operations.length, 0)
 
 for (const face of model.faces) {
   const want = EXPECTED_OPERATION_COUNTS[face.key]
@@ -375,6 +406,8 @@ for (const file of [V2_SPEC]) {
 }
 
 const opCount = model.faces.reduce((n, f) => n + faceOpCount(f), 0)
+
+assertDocZhCatalog(model)
 
 const out = `/**
  * Auto-generated by scripts/sync-specs.mjs — do not edit by hand.

@@ -16,8 +16,11 @@ name: docs-model
 # Since 2026-08-18 the same script also writes the LLM-facing artifacts into
 # apps/developer/public (llms.txt, llms-full.txt, a Markdown twin per docs
 # route). They are covered by the same diff on purpose: an agent reading
-# /docs/catalog.md must not be told a different contract from the one the page
-# renders, and only a drift gate over BOTH outputs can promise that.
+# /docs/v2.md must not be told a different *contract* from the one the page
+# renders. The HTML pages overlay Chinese (i18n/docs-zh.json) onto that same
+# English model; the Markdown twins stay English. The overlay is asserted
+# inside sync-specs.mjs, so a new description without a translation fails
+# this job the same way a stale docs-model.ts does.
 #
 # Sibling gate: openapi-types.yml does the same for the spec -> TS arm in
 # apps/web. This one is the spec -> portal-docs-model arm.
@@ -33,8 +36,10 @@ on:
       # this gate and the drift landed on whoever next touched a listed path.
       - "docs/catalog/v2-openapi.yaml"
       - "apps/developer/scripts/sync-specs.mjs"
+      - "apps/developer/scripts/docs-i18n.mjs"
       - "apps/developer/scripts/faces.mjs"
       - "apps/developer/scripts/gen-llms.mjs"
+      - "apps/developer/i18n/docs-zh.json"
       - "apps/developer/shared/brand.mjs"
       - "apps/developer/shared/mcp-tools.mjs"
       # The generated half of the MCP roster. shared/mcp-tools.mjs only adds the

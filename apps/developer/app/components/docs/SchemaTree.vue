@@ -6,6 +6,7 @@ const props = withDefaults(
   defineProps<{ node: DocsSchemaNode; depth?: number }>(),
   { depth: 0 }
 )
+const { t } = useDocsI18n()
 
 const elementLabel = (el?: DocsSchemaNode): string => {
   if (!el) return 'any'
@@ -58,7 +59,7 @@ const toggle = (i: number) => {
         <button
           v-if="row.container"
           type="button"
-          class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded text-default-400 transition-colors hover:text-primary"
+          class="text-default-400 hover:text-primary mt-0.5 flex size-4 shrink-0 items-center justify-center rounded transition-colors"
           :aria-expanded="open[i]"
           :aria-label="open[i] ? '折叠' : '展开'"
           @click="toggle(i)"
@@ -72,43 +73,48 @@ const toggle = (i: number) => {
 
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <code class="font-mono text-sm font-medium text-foreground">
+            <code class="text-foreground font-mono text-sm font-medium">
               {{ row.field.name }}
             </code>
-            <code class="font-mono text-xs text-default-400">{{ row.type }}</code>
+            <code class="text-default-400 font-mono text-xs">{{
+              row.type
+            }}</code>
             <span
               v-if="row.field.format"
-              class="rounded bg-default-100 px-1 py-px font-mono text-[0.625rem] text-default-500"
+              class="bg-default-100 text-default-500 rounded px-1 py-px font-mono text-[0.625rem]"
             >
               {{ row.field.format }}
             </span>
             <span
               v-if="row.field.required"
-              class="text-[0.625rem] font-semibold uppercase tracking-wide text-danger-600"
+              class="text-danger-600 text-[0.625rem] font-semibold tracking-wide uppercase"
             >
-              required
+              必填
             </span>
             <span
               v-if="row.field.nullable"
-              class="text-[0.625rem] font-medium uppercase tracking-wide text-default-300"
+              class="text-default-300 text-[0.625rem] font-medium tracking-wide uppercase"
             >
-              nullable
+              可空
             </span>
           </div>
 
           <p
             v-if="row.field.doc"
-            class="mt-0.5 text-sm leading-relaxed text-default-500"
+            class="text-default-500 mt-0.5 text-sm leading-relaxed"
           >
-            {{ row.field.doc }}
+            {{ t(row.field.doc) }}
           </p>
 
-          <div v-if="row.field.enum" class="mt-1 flex flex-wrap items-center gap-1">
-            <span class="text-xs text-default-400">枚举</span>
+          <div
+            v-if="row.field.enum"
+            class="mt-1 flex flex-wrap items-center gap-1"
+          >
+            <span class="text-default-400 text-xs">枚举</span>
             <code
               v-for="v in row.field.enum"
               :key="v"
-              class="rounded bg-default-100 px-1.5 py-px font-mono text-xs text-default-600"
+              class="bg-default-100 text-default-600 rounded px-1.5 py-px font-mono text-xs"
             >
               {{ v }}
             </code>
@@ -119,7 +125,7 @@ const toggle = (i: number) => {
             :node="row.container"
             :depth="depth + 1"
             :class="
-              cn('mt-1 border-l border-default-200 pl-3', depth > 4 && 'pl-2')
+              cn('border-default-200 mt-1 border-l pl-3', depth > 4 && 'pl-2')
             "
           />
         </div>
