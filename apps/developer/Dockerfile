@@ -10,6 +10,11 @@
 # its only backend base (NUXT_OAUTH_API_BASE) is SERVER-side and read at RUNTIME
 # by the /api/** Nitro relay. The bundled public specs (app/generated/specs.ts)
 # are committed, so no docs/ copy or build-time sync is needed.
+#
+# Do NOT add `sync:specs` to the build script: this stage copies apps/developer
+# only, and that script reads docs/catalog/v2-openapi.yaml from the REPO ROOT.
+# It runs in `dev` and in the docs-model CI gate, which is what keeps
+# app/generated (docs model + compiled guides) from going stale.
 ARG NODE_VERSION=24
 
 FROM node:${NODE_VERSION}-trixie-slim AS base

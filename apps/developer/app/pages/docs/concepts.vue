@@ -3,5 +3,5 @@ definePageMeta({ layout: 'docs' })
 </script>
 
 <template>
-  <DocsGuide slug="design" />
+  <DocsGuide slug="concepts" />
 </template>

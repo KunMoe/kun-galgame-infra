@@ -3,5 +3,5 @@ definePageMeta({ layout: 'docs' })
 </script>
 
 <template>
-  <DocsExampleContainer />
+  <DocsGuide slug="example" />
 </template>

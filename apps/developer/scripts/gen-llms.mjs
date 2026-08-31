@@ -133,7 +133,16 @@ const specSection = (model) => {
   return lines
 }
 
-const buildLlmsTxt = (model) => {
+const guideIndexSection = (guides) => {
+  const lines = ['## 指南（概念与集成）', '']
+  for (const g of guides) {
+    lines.push(`- [${g.title}](${SITE_URL}${g.route}.md) — ${g.description}`)
+  }
+  lines.push('')
+  return lines
+}
+
+const buildLlmsTxt = (model, guides) => {
   const lines = [...header('NextMoe 开放 API')]
   lines.push(...aiGuideSection())
   lines.push(...sourceSection())
@@ -148,6 +157,7 @@ const buildLlmsTxt = (model) => {
   }
   lines.push('')
   lines.push(...specSection(model))
+  lines.push(...guideIndexSection(guides))
   lines.push('## 页面 Markdown 索引', '')
   lines.push(
     '每个文档页都有一份干净的 Markdown 孪生，路径规则是在路由后加 `.md`：',
@@ -161,6 +171,9 @@ const buildLlmsTxt = (model) => {
     lines.push(`- ${SITE_URL}/docs/${face.key}.md — ${face.name}`)
   }
   lines.push(`- ${SITE_URL}/docs/mcp.md — AI / MCP 接入`)
+  for (const g of guides) {
+    lines.push(`- ${SITE_URL}${g.route}.md — ${g.title}`)
+  }
   lines.push(`- ${SITE_URL}/docs/<face>/<operationId>.md — 单个端点`, '')
   lines.push(
     `全量参考（每个端点的参数与 curl）见 ${SITE_URL}/llms-full.txt。`,
@@ -169,7 +182,7 @@ const buildLlmsTxt = (model) => {
   return lines.join('\n')
 }
 
-const buildLlmsFull = (model) => {
+const buildLlmsFull = (model, guides) => {
   const lines = [...header('NextMoe 开放 API —— 面向 LLM 的全量文档')]
   lines.push(
     `本文件内联全部 ${model.faces.reduce((n, f) => n + faceOperations(f).length, 0)} 个端点。` +
@@ -180,6 +193,9 @@ const buildLlmsFull = (model) => {
   lines.push(...sourceSection())
   lines.push(...authSection())
   lines.push(...specSection(model))
+  for (const guide of guides) {
+    lines.push('---', '', guide.markdown.replace(/^#\s+/, '# '), '')
+  }
   for (const face of model.faces) {
     lines.push('---', '', `# ${face.name}`, '')
     lines.push(`- 路径前缀：\`${face.prefix}\``)
@@ -227,7 +243,17 @@ const pageFooter = (route) => [
   ''
 ]
 
-const buildPages = (model) => {
+// A guide twin is its own Markdown source, minus the H1 that header() already
+// emits. No second rendering path: the page HTML and this file come from the
+// same string, so they cannot disagree.
+const guideSection = (guide) => [
+  ...header(guide.title),
+  guide.markdown.replace(/^#\s+.*\n+/, ''),
+  '',
+  ...pageFooter(guide.route)
+]
+
+const buildPages = (model, guides) => {
   const pages = new Map()
 
   pages.set('/', [
@@ -308,20 +334,22 @@ const buildPages = (model) => {
     ...pageFooter('/docs/mcp')
   ])
 
+  for (const guide of guides) pages.set(guide.route, guideSection(guide))
+
   return pages
 }
 
-export const writeLlmArtifacts = (model, publicDir) => {
+export const writeLlmArtifacts = (model, guides, publicDir) => {
   const write = (relative, content) => {
     const out = join(publicDir, relative)
     mkdirSync(dirname(out), { recursive: true })
     writeFileSync(out, content.endsWith('\n') ? content : `${content}\n`)
   }
 
-  write('llms.txt', buildLlmsTxt(model))
-  write('llms-full.txt', buildLlmsFull(model))
+  write('llms.txt', buildLlmsTxt(model, guides))
+  write('llms-full.txt', buildLlmsFull(model, guides))
 
-  const pages = buildPages(model)
+  const pages = buildPages(model, guides)
   for (const [route, lines] of pages) {
     write(mdPath(route).slice(1), lines.join('\n'))
   }

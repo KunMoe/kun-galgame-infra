@@ -1,22 +1,20 @@
 <script setup lang="ts">
 import { cn } from '@kungal/ui-core'
+import { guideNav } from '~/generated/guides-nav'
+import { DOCS_REFERENCE_NAV } from '~/constants/docs'
 import type { DocsOperation } from '~~/shared/types/docs'
 
 const route = useRoute()
-const { faces } = useDocs()
+const { faces, faceOperationCount } = useDocs()
 const { t } = useDocsI18n()
 
 const query = ref('')
 const mobileOpen = ref(false)
 
-const activeFaceKey = computed(
-  () => (route.params.face as string) || faces[0]!.key
-)
-const activeFace = computed(
-  () => faces.find((f) => f.key === activeFaceKey.value) ?? faces[0]!
-)
-const activeOpId = computed(
-  () => route.params.operationId as string | undefined
+const referenceFace = faces[0]!
+const referenceCount = faceOperationCount(referenceFace)
+const onReference = computed(() =>
+  route.path.startsWith(`/docs/${referenceFace.key}`)
 )
 
 const matches = (op: DocsOperation): boolean => {
@@ -31,12 +29,15 @@ const matches = (op: DocsOperation): boolean => {
 }
 
 const visibleGroups = computed(() =>
-  activeFace.value.groups
+  referenceFace.groups
     .map((g) => ({ ...g, operations: g.operations.filter(matches) }))
     .filter((g) => g.operations.length > 0)
 )
-const showGroupHeaders = computed(() => activeFace.value.groups.length > 1)
-const hasResults = computed(() => visibleGroups.value.length > 0)
+const activeOpId = computed(
+  () => route.params.operationId as string | undefined
+)
+
+const isActive = (to: string) => route.path === to
 
 watch(
   () => route.fullPath,
@@ -44,11 +45,19 @@ watch(
     mobileOpen.value = false
   }
 )
+
+const linkClass = (to: string) =>
+  cn(
+    'block rounded-lg px-2 py-1.5 text-sm transition-colors',
+    isActive(to)
+      ? 'bg-primary-50 font-medium text-primary'
+      : 'text-default-500 hover:bg-default-100 hover:text-foreground'
+  )
 </script>
 
 <template>
   <aside
-    class="lg:border-default-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:w-64 lg:shrink-0 lg:overflow-y-auto lg:border-r"
+    class="lg:border-default-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-r"
   >
     <button
       type="button"
@@ -58,7 +67,7 @@ watch(
     >
       <span class="flex items-center gap-2">
         <KunIcon name="lucide:list" class="text-default-400 size-4" />
-        API 目录
+        文档目录
       </span>
       <KunIcon
         :name="mobileOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'"
@@ -66,95 +75,108 @@ watch(
       />
     </button>
 
-    <div
+    <nav
       :class="
-        cn('space-y-4 py-4 lg:pr-3', mobileOpen ? 'block' : 'hidden lg:block')
+        cn('space-y-6 py-4 lg:pr-3', mobileOpen ? 'block' : 'hidden lg:block')
       "
     >
-      <div class="mb-3 space-y-1 text-xs">
+      <NuxtLink to="/docs" :class="linkClass('/docs')">
+        <span class="flex items-center gap-2">
+          <KunIcon name="lucide:compass" class="size-4" />
+          概览
+        </span>
+      </NuxtLink>
+
+      <div v-for="section in guideNav" :key="section.key" class="space-y-1">
+        <p class="text-default-400 px-2 text-xs font-semibold tracking-wide">
+          {{ section.label }}
+        </p>
         <NuxtLink
-          to="/docs/design"
-          class="text-default-400 hover:text-foreground block"
+          v-for="link in section.links"
+          :key="link.to"
+          :to="link.to"
+          :class="linkClass(link.to)"
         >
-          设计原则
-        </NuxtLink>
-        <NuxtLink
-          to="/docs/vocabularies"
-          class="text-default-400 hover:text-foreground block"
-        >
-          词表
-        </NuxtLink>
-        <NuxtLink
-          to="/problems"
-          class="text-default-400 hover:text-foreground block"
-        >
-          Problem types
+          {{ link.label }}
         </NuxtLink>
       </div>
-      <div class="bg-default-100 grid grid-cols-2 gap-1 rounded-lg p-1">
+
+      <div class="space-y-1">
+        <p class="text-default-400 px-2 text-xs font-semibold tracking-wide">
+          参考
+        </p>
         <NuxtLink
-          v-for="f in faces"
-          :key="f.key"
-          :to="`/docs/${f.key}`"
+          :to="`/docs/${referenceFace.key}`"
           :class="
             cn(
-              'rounded-md px-2 py-1.5 text-center text-sm font-medium transition-colors',
-              f.key === activeFaceKey
-                ? 'bg-content1 text-foreground shadow-sm'
-                : 'text-default-500 hover:text-foreground'
+              'flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors',
+              onReference
+                ? 'bg-primary-50 text-primary font-medium'
+                : 'text-default-500 hover:bg-default-100 hover:text-foreground'
             )
           "
         >
-          {{ f.label }}
+          <span>端点参考</span>
+          <span
+            class="bg-default-100 text-default-500 rounded-full px-1.5 text-xs"
+          >
+            {{ referenceCount }}
+          </span>
+        </NuxtLink>
+
+        <div v-if="onReference" class="space-y-3 pt-1 pl-2">
+          <div class="relative">
+            <KunIcon
+              name="lucide:search"
+              class="text-default-300 pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2"
+            />
+            <input
+              v-model="query"
+              type="text"
+              aria-label="过滤端点"
+              placeholder="过滤端点…"
+              class="border-default-200 bg-content1 text-foreground placeholder:text-default-300 focus:border-primary w-full rounded-lg border py-1.5 pr-2 pl-8 text-xs focus:outline-none"
+            />
+          </div>
+
+          <div
+            v-for="group in visibleGroups"
+            :key="group.key"
+            class="space-y-0.5"
+          >
+            <p class="text-default-400 px-1 text-xs">{{ group.label }}</p>
+            <NuxtLink
+              v-for="op in group.operations"
+              :key="op.id"
+              :to="`/docs/${referenceFace.key}/${op.id}`"
+              :class="
+                cn(
+                  'flex items-center gap-2 rounded-lg px-1.5 py-1 transition-colors',
+                  activeOpId === op.id
+                    ? 'bg-primary-50 text-primary'
+                    : 'text-default-500 hover:bg-default-100 hover:text-foreground'
+                )
+              "
+            >
+              <DocsMethodBadge :method="op.method" size="sm" />
+              <code class="truncate font-mono text-xs">{{ op.path }}</code>
+            </NuxtLink>
+          </div>
+
+          <p v-if="!visibleGroups.length" class="text-default-400 px-1 text-xs">
+            没有匹配「{{ query }}」的端点
+          </p>
+        </div>
+
+        <NuxtLink
+          v-for="link in DOCS_REFERENCE_NAV"
+          :key="link.to"
+          :to="link.to"
+          :class="linkClass(link.to)"
+        >
+          {{ link.label }}
         </NuxtLink>
       </div>
-
-      <div class="relative">
-        <KunIcon
-          name="lucide:search"
-          class="text-default-300 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-        />
-        <input
-          v-model="query"
-          type="text"
-          aria-label="过滤端点"
-          placeholder="过滤端点…"
-          class="border-default-200 bg-content1 text-foreground placeholder:text-default-300 focus:border-primary w-full rounded-lg border py-2 pr-3 pl-9 text-sm focus:outline-none"
-        />
-      </div>
-
-      <nav v-if="hasResults" class="space-y-4">
-        <div v-for="group in visibleGroups" :key="group.key" class="space-y-1">
-          <p
-            v-if="showGroupHeaders"
-            class="text-default-400 px-2 text-xs font-semibold tracking-wide"
-          >
-            {{ group.label }}
-          </p>
-          <ul class="space-y-0.5">
-            <li v-for="op in group.operations" :key="op.id">
-              <NuxtLink
-                :to="`/docs/${activeFace.key}/${op.id}`"
-                :class="
-                  cn(
-                    'flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors',
-                    activeOpId === op.id
-                      ? 'bg-primary-50 text-primary'
-                      : 'text-default-500 hover:bg-default-100 hover:text-foreground'
-                  )
-                "
-              >
-                <DocsMethodBadge :method="op.method" size="sm" />
-                <code class="truncate font-mono text-xs">{{ op.path }}</code>
-              </NuxtLink>
-            </li>
-          </ul>
-        </div>
-      </nav>
-
-      <p v-else class="text-default-400 px-2 text-sm">
-        没有匹配「{{ query }}」的端点
-      </p>
-    </div>
+    </nav>
   </aside>
 </template>

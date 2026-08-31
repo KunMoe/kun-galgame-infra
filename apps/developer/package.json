@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev",
+    "dev": "node scripts/sync-specs.mjs && nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "typecheck": "nuxt typecheck",
@@ -34,10 +34,14 @@
     "@iconify-json/lucide": "^1.2.111",
     "@nuxtjs/color-mode": "^4.0.0",
     "@pinia/nuxt": "^0.11.3",
+    "@shikijs/markdown-it": "^4.4.3",
     "eslint": "^10.0.3",
+    "gray-matter": "^4.0.3",
+    "markdown-it": "^15.0.1",
     "pinia-plugin-persistedstate": "4.7.1",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
+    "shiki": "^4.4.3",
     "vite": "^8.0.0",
     "yaml": "^2.9.0"
   }

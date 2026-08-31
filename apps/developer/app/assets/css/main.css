@@ -26,3 +26,165 @@ html {
     overflow-y: scroll;
   }
 }
+
+/*
+ * Prose for the hand-written guides. The HTML comes from
+ * scripts/build-guides.mjs (markdown-it + Shiki), so it is plain semantic tags
+ * with no utility classes — everything it needs is styled here.
+ */
+.kun-prose {
+  line-height: 1.75;
+  color: var(--color-default-600);
+}
+.kun-prose h1,
+.kun-prose h2,
+.kun-prose h3,
+.kun-prose h4 {
+  color: var(--color-foreground);
+  font-weight: 700;
+  scroll-margin-top: 5rem;
+}
+.kun-prose h1 {
+  font-size: 1.875rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+}
+.kun-prose h2 {
+  font-size: 1.375rem;
+  margin: 2.5rem 0 0.875rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-default-200);
+}
+.kun-prose h3 {
+  font-size: 1.125rem;
+  margin: 1.75rem 0 0.625rem;
+}
+.kun-prose p,
+.kun-prose ul,
+.kun-prose ol,
+.kun-prose blockquote {
+  margin: 0.875rem 0;
+}
+.kun-prose ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+.kun-prose ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+}
+.kun-prose li {
+  margin: 0.35rem 0;
+}
+.kun-prose strong {
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+.kun-prose a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.kun-prose code:not(pre code) {
+  background: var(--color-default-100);
+  color: var(--color-foreground);
+  border-radius: var(--radius-kun-sm, 0.25rem);
+  padding: 0.1em 0.4em;
+  font-size: 0.85em;
+}
+.kun-prose pre {
+  margin: 1rem 0;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  border: 1px solid var(--color-default-200);
+  border-radius: var(--radius-kun-md, 0.5rem);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+
+/* Emitted by the alerts rule in build-guides.mjs from `> [!NOTE]` and friends. */
+.kun-prose blockquote {
+  border-left: 3px solid var(--color-default-300);
+  padding-left: 1rem;
+  color: var(--color-default-500);
+}
+.kun-prose .kun-alert {
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-radius: var(--radius-kun-md, 0.5rem);
+  padding: 0.875rem 1rem;
+}
+.kun-prose .kun-alert > :first-child {
+  margin-top: 0;
+}
+.kun-prose .kun-alert > :last-child {
+  margin-bottom: 0;
+}
+.kun-prose .kun-alert-info {
+  border-left-color: var(--color-info-400);
+  background: var(--color-info-50);
+  color: var(--color-info-700);
+}
+.kun-prose .kun-alert-primary {
+  border-left-color: var(--color-primary-400);
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+}
+.kun-prose .kun-alert-success {
+  border-left-color: var(--color-success-400);
+  background: var(--color-success-50);
+  color: var(--color-success-700);
+}
+.kun-prose .kun-alert-warning {
+  border-left-color: var(--color-warning-400);
+  background: var(--color-warning-50);
+  color: var(--color-warning-700);
+}
+.kun-prose .kun-alert-danger {
+  border-left-color: var(--color-danger-400);
+  background: var(--color-danger-50);
+  color: var(--color-danger-700);
+}
+.kun-prose .kun-alert code:not(pre code) {
+  background: color-mix(in oklab, currentColor 12%, transparent);
+  color: inherit;
+}
+.kun-prose .kun-alert strong {
+  color: inherit;
+}
+
+/* Wrapper emitted by the table_open rule: wide tables scroll inside the column. */
+.kun-prose .kun-table-wrap {
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  border: 1px solid var(--color-default-200);
+  border-radius: var(--radius-kun-md, 0.5rem);
+}
+.kun-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.kun-prose th,
+.kun-prose td {
+  border-bottom: 1px solid var(--color-default-200);
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+  vertical-align: top;
+}
+.kun-prose tbody tr:last-child td {
+  border-bottom: 0;
+}
+.kun-prose th {
+  background: var(--color-default-100);
+  color: var(--color-foreground);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Shiki dual theme: light inline by default, dark variables under the dark class. */
+.kun-dark-mode .kun-prose .shiki,
+.kun-dark-mode .kun-prose .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}

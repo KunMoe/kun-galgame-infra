@@ -43,6 +43,24 @@
 
 游玩时长与编辑提案两个用户面不提供公开 spec 文件，以本站 Markdown 参考为准。
 
+## 指南（概念与集成）
+
+- [快速上手](https://developer.nextmoe.dev/docs/quickstart.md) — 五分钟接入 NextMoe 开放 API v2：创建应用、铸造密钥、发出第一个请求、读懂响应。
+- [鉴权与凭据](https://developer.nextmoe.dev/docs/authentication.md) — NextMoe API v2 的两种凭据：应用密钥 nmk_ 与用户 OAuth 访问令牌，各自覆盖哪些路径前缀、怎么获取、失败时返回什么。
+- [数据模型](https://developer.nextmoe.dev/docs/concepts.md) — NextMoe 目录的领域模型：六源对齐与出处、实体族与它们之间的边、外部 id 反查、合并与重定向、内容分级与认领。
+- [API 设计原则](https://developer.nextmoe.dev/docs/design.md) — NextMoe 开放 API v2 的设计公理、对调用方的稳定性承诺、客户端必须遵守的三条契约，以及我们承诺不会做的事。
+- [请求与响应](https://developer.nextmoe.dev/docs/conventions.md) — NextMoe API v2 的通用线格式：无信封、object 判别符、字符串 id、时间格式、null 语义、参数解析规则与请求关联头。
+- [集合与分页](https://developer.nextmoe.dev/docs/pagination.md) — NextMoe API v2 的集合契约：list 信封、cur_ 游标、limit 上限、include_total、sort 与 facets，以及正确的翻页循环写法。
+- [字段裁剪与批量读](https://developer.nextmoe.dev/docs/shaping.md) — view / include / fields 三档如何叠加，以及 ids= 与 refs= 批量车道怎么一次读 100 条、怎么读 missing。
+- [错误处理](https://developer.nextmoe.dev/docs/errors.md) — NextMoe API v2 的 RFC 9457 problem+json 错误契约：字段含义、顶层 code 与字段级 reason 两层注册表、分支顺序与重试策略。
+- [限流与配额](https://developer.nextmoe.dev/docs/rate-limits.md) — NextMoe API v2 的限流模型：分档速率与日配额、计数身份怎么定、RateLimit 响应头怎么读、429 之后该怎么退避。
+- [缓存与条件请求](https://developer.nextmoe.dev/docs/caching.md) — NextMoe API v2 的缓存契约：ETag 与 If-None-Match、Cache-Control 的两类声明、为什么大多数面不可共享缓存，以及写操作的 If-Match 与 Idempotency-Key。
+- [版本与演进](https://developer.nextmoe.dev/docs/versioning.md) — NextMoe API v2 的稳定性承诺：什么算破坏性变更、加法演进如何被 CI 守住、退役怎么通知，以及 v1 的退役现状。
+- [全链走查](https://developer.nextmoe.dev/docs/example.md) — 用两个真实系列走通 NextMoe 公开 API v2 全链：标题搜索 → 详情按 include 取块 → 系列/厂牌深链 → 外部 id 反查。
+- [增量镜像目录](https://developer.nextmoe.dev/docs/mirror.md) — 用 /v2/catalog/changes 把 NextMoe 目录镜像进本地库的完整配方：冷启动、稳态轮询、gone 的处理、合并重指与本地谓词写法。
+- [接入用户数据](https://developer.nextmoe.dev/docs/user-data.md) — 用 OAuth 用户访问令牌接入 NextMoe 的用户面：游玩时长、认领、编辑提案、封面投票、资讯投稿，以及审核队列。
+- [生产最佳实践](https://developer.nextmoe.dev/docs/best-practices.md) — 把 NextMoe API 接进生产环境前该检查的事：密钥保管、客户端契约、请求数、错误处理、缓存与监控。
+
 ## 页面 Markdown 索引
 
 每个文档页都有一份干净的 Markdown 孪生，路径规则是在路由后加 `.md`：
@@ -51,6 +69,21 @@
 - https://developer.nextmoe.dev/docs.md — 文档首页（别名 https://developer.nextmoe.dev/docs/index.md）
 - https://developer.nextmoe.dev/docs/v2.md — Public API v2
 - https://developer.nextmoe.dev/docs/mcp.md — AI / MCP 接入
+- https://developer.nextmoe.dev/docs/quickstart.md — 快速上手
+- https://developer.nextmoe.dev/docs/authentication.md — 鉴权与凭据
+- https://developer.nextmoe.dev/docs/concepts.md — 数据模型
+- https://developer.nextmoe.dev/docs/design.md — API 设计原则
+- https://developer.nextmoe.dev/docs/conventions.md — 请求与响应
+- https://developer.nextmoe.dev/docs/pagination.md — 集合与分页
+- https://developer.nextmoe.dev/docs/shaping.md — 字段裁剪与批量读
+- https://developer.nextmoe.dev/docs/errors.md — 错误处理
+- https://developer.nextmoe.dev/docs/rate-limits.md — 限流与配额
+- https://developer.nextmoe.dev/docs/caching.md — 缓存与条件请求
+- https://developer.nextmoe.dev/docs/versioning.md — 版本与演进
+- https://developer.nextmoe.dev/docs/example.md — 全链走查
+- https://developer.nextmoe.dev/docs/mirror.md — 增量镜像目录
+- https://developer.nextmoe.dev/docs/user-data.md — 接入用户数据
+- https://developer.nextmoe.dev/docs/best-practices.md — 生产最佳实践
 - https://developer.nextmoe.dev/docs/<face>/<operationId>.md — 单个端点
 
 全量参考（每个端点的参数与 curl）见 https://developer.nextmoe.dev/llms-full.txt。

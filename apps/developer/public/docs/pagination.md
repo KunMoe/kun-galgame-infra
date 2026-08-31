@@ -1,0 +1,87 @@
+# 集合与分页
+
+> NextMoe·未萌 开放 API —— ACGN 数据，以此为准。同一部作品在六个源各有一个页面，NextMoe 把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上答案取自哪个源。
+
+- Base URL：https://api.nextmoe.dev
+- 文档：https://developer.nextmoe.dev/docs
+- MCP 端点：https://mcp.nextmoe.dev/mcp
+- 调用与编辑都完全免费，没有付费档位，只有一层防滥用的限流。
+
+**署名**：目前阶段使用 NextMoe·未萌 API，可以将 API 的名字标记为『鲲 Galgame 论坛』（如果你使用 Galgame 数据）或『LetMoe·一启萌』（如果你使用同人游戏数据）。
+
+整个 API 只有一种分页：keyset 游标。所有集合共用同一个信封、同一套参数、同一条「翻到头了」的判据。
+
+## list 信封
+
+```json
+{
+  "object": "list",
+  "items": [ … ],
+  "next_cursor": "cur_…",     // 末页省略
+  "total": 12345,             // 只在 include_total=true 时出现
+  "facets": { … },            // 只在 facets= 请求时出现
+  "missing": ["…"]            // 只在 ids= / refs= 批量车道出现
+}
+```
+
+`object` 和 `items` 恒在。`items` 是空数组时就是 `[]`，永远不会是 `null`。
+
+## 游标
+
+- `next_cursor` 是**不透明串**，以 `cur_` 开头。原样回传即可，不要解析、不要构造、不要基于它做算术。
+- **末页直接不出现这个键。** 没有 `next_cursor: null`，也没有 `has_more`——两个真值来源必然会不同步。
+- 不要用 `items.length === limit` 判断还有没有下一页：满页末页必然说谎。
+- 游标是 keyset 而不是 offset，所以深翻页不会越翻越慢，也不会因为中途有新行插入而重复或漏行。
+
+正确的翻页循环长这样：
+
+```javascript
+let cursor
+do {
+  const url = new URL('https://api.nextmoe.dev/v2/catalog/works')
+  url.searchParams.set('limit', '100')
+  if (cursor) url.searchParams.set('cursor', cursor)
+
+  const page = await fetch(url, {
+    headers: { Authorization: `Bearer ${key}` }
+  }).then((r) => r.json())
+
+  for (const work of page.items) handle(work)
+  cursor = page.next_cursor // 末页是 undefined，循环自然结束
+} while (cursor)
+```
+
+## limit
+
+- 范围 1–100，默认 20。
+- `limit=101` 是 `400 LIMIT_TOO_LARGE`，**不会**被截断成 100。静默截断会让你以为自己拿到了全部。
+
+## total 默认不发
+
+要精确总数就传 `include_total=true`。它默认关闭是有代价考量的：带过滤条件的精确 `COUNT` 是对同一批数据的第二次全扫，最先在压力下超时，而且它和你刚拿到的那一页天然不一致（两次查询之间数据会变）。
+
+做「共 N 页」的分页器请三思——这个 API 的分页是游标式的，页码本来就没有稳定含义。做「加载更多」会更贴合。
+
+## sort
+
+每个集合声明自己的一套封闭 `sort` 键，未知值是 `400 UNKNOWN_SORT`。排序一律带 tie-breaker——平局顺序不会由存储内部决定，所以重建索引不会打乱翻页。
+
+以作品集合为例，它接受 `id`（默认）、`updated`、`relevance`、`released_desc`、`released_asc`、`popularity`。带 `q=` 做标题搜索时会切到搜索索引，此时只有 `relevance`、`released_desc`、`released_asc`、`popularity` 有意义。
+
+## facets
+
+`facets=` 请求分面计数，结果放在 `facets` 里，未知的分面名是 `400 UNKNOWN_FACET`。作品集合支持 `tag_id`、`company_id`、`olang`、`content_rating`、`medium`、`platform`。
+
+```http
+GET /v2/catalog/works?facets=content_rating,medium&limit=1
+```
+
+## 批量车道
+
+`ids=` / `refs=` 是**另一条车道**：一次最多 100 个，没有分页，`next_cursor` 不会出现。请求了但不可见的 id 原样回在 `missing[]` 里，而不是让整个请求 404。详见 [字段裁剪与批量读](/docs/shaping)。
+
+> [!NOTE]
+> 需要把整个目录同步下来时，不要靠翻 `/v2/catalog/works` 硬扫——用 [`/v2/catalog/changes` 镜像信道](/docs/mirror)，它按更新时间升序枚举整个人口，冷启动一次翻完，之后只要增量。
+
+---
+本页来源 · NextMoe 开发者平台 · https://developer.nextmoe.dev/docs/pagination

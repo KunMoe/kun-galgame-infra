@@ -22,6 +22,11 @@ name: docs-model
 # inside sync-specs.mjs, so a new description without a translation fails
 # this job the same way a stale docs-model.ts does.
 #
+# Since 2026-08-31 it also compiles the hand-written guides (apps/developer/docs
+# /*.md -> app/generated/guides/*.json) through the same entry point, and each
+# guide's Markdown twin in public/ is the same source file the HTML came from.
+# One run, one truth: a guide edit that skipped the regen fails the diff here.
+#
 # Sibling gate: openapi-types.yml does the same for the spec -> TS arm in
 # apps/web. This one is the spec -> portal-docs-model arm.
 #
@@ -39,6 +44,11 @@ on:
       - "apps/developer/scripts/docs-i18n.mjs"
       - "apps/developer/scripts/faces.mjs"
       - "apps/developer/scripts/gen-llms.mjs"
+      # The hand-written guides: their Markdown sources, the compiler that turns
+      # them into pre-highlighted HTML, and the file that orders them.
+      - "apps/developer/docs/**/*.md"
+      - "apps/developer/scripts/build-guides.mjs"
+      - "apps/developer/scripts/guides.mjs"
       - "apps/developer/i18n/docs-zh.json"
       - "apps/developer/shared/brand.mjs"
       - "apps/developer/shared/mcp-tools.mjs"
@@ -47,6 +57,8 @@ on:
       # without any listed source file changing.
       - "apps/developer/app/generated/mcp-tools.mjs"
       - "apps/developer/app/generated/docs-model.ts"
+      - "apps/developer/app/generated/guides-nav.ts"
+      - "apps/developer/app/generated/guides/**"
       - "apps/developer/public/llms.txt"
       - "apps/developer/public/llms-full.txt"
       - "apps/developer/public/**/*.md"
@@ -68,9 +80,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # The script needs exactly one dependency (`yaml`) out of the developer
-      # workspace, so install that project only. --ignore-scripts skips the
-      # `nuxt prepare` postinstall: nothing here builds the app.
+      # The script needs `yaml` plus the Markdown toolchain the guide compiler
+      # uses (markdown-it, shiki, gray-matter) out of the developer workspace,
+      # so install that project only. --ignore-scripts skips the `nuxt prepare`
+      # postinstall: nothing here builds the app.
       - name: Install the developer workspace
         run: pnpm install --filter developer --frozen-lockfile --ignore-scripts
       # Run the script by path rather than `pnpm -F developer sync:specs`: bare
