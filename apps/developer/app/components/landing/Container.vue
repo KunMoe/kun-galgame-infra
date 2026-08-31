@@ -85,60 +85,127 @@ const curlSample = `curl https://api.nextmoe.dev/v2/catalog/works/1 \\
 </script>
 
 <template>
-  <div class="space-y-16 md:space-y-24">
+  <div>
     <section
-      class="grid items-center gap-10 pt-2 md:pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-16"
+      class="border-default-200 bg-content1 relative isolate overflow-hidden border-b"
     >
-      <div class="text-center lg:text-left">
-        <div
-          class="border-default-200 bg-content1 text-default-500 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium"
-        >
-          <span class="bg-success size-2 rounded-full" />
-          公开 API · 六源对齐 · 免费调用
-        </div>
+      <div class="kun-hero-glow pointer-events-none absolute inset-0 -z-10" />
 
-        <h1
-          class="text-foreground mt-7 text-5xl leading-[1.05] font-bold tracking-tight md:text-6xl lg:text-7xl"
-        >
-          ACGN 数据，<br />
-          以此为准
-        </h1>
-        <p
-          class="text-primary mt-5 font-mono text-sm tracking-wide lg:text-base"
-        >
-          One canon. Every source reconciled.
-        </p>
-        <p
-          class="text-default-500 mx-auto mt-6 max-w-xl text-base leading-relaxed lg:mx-0 lg:text-lg"
-        >
-          同一部作品在六个上游各有一个页面，写的还常常不一样。NextMoe
-          把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上这个答案取自哪个源。
-        </p>
-
+      <div
+        class="mx-auto grid max-w-7xl items-end px-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:gap-12"
+      >
         <div
-          class="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start"
+          class="pt-14 pb-10 text-center lg:self-center lg:py-24 lg:text-left"
         >
-          <KunButton
-            v-if="auth.isLoggedIn.value"
-            color="primary"
-            size="lg"
-            @click="navigateTo('/dashboard')"
+          <div
+            class="border-default-200 bg-background text-default-500 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium"
           >
-            进入控制台
-            <KunIcon name="lucide:arrow-right" class="ml-1 size-4" />
-          </KunButton>
-          <KunButton v-else color="primary" size="lg" @click="openLogin()">
-            登录开始
-            <KunIcon name="lucide:arrow-right" class="ml-1 size-4" />
-          </KunButton>
-          <KunButton variant="flat" size="lg" @click="navigateTo('/docs')">
-            <KunIcon name="lucide:book-open" class="mr-1 size-4" />
-            查看 API 文档
-          </KunButton>
+            <span class="bg-success size-2 rounded-full" />
+            公开 API · 六源对齐 · 免费调用
+          </div>
+
+          <h1
+            class="text-foreground mt-7 text-[2.75rem] leading-[1.06] font-bold tracking-tight sm:text-6xl lg:text-7xl xl:text-[5rem]"
+          >
+            ACGN 数据，<br />
+            以此为准
+          </h1>
+          <p
+            class="text-primary mt-5 font-mono text-sm tracking-wide lg:text-base"
+          >
+            One canon. Every source reconciled.
+          </p>
+          <p
+            class="text-default-500 mx-auto mt-6 max-w-xl text-base leading-relaxed lg:mx-0 lg:text-lg"
+          >
+            同一部作品在六个上游各有一个页面，写的还常常不一样。NextMoe
+            把它们对齐成一条记录，逐字段给出裁定后的标准答案，并附上这个答案取自哪个源。
+          </p>
+
+          <div
+            class="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start"
+          >
+            <KunButton
+              v-if="auth.isLoggedIn.value"
+              color="primary"
+              size="lg"
+              @click="navigateTo('/dashboard')"
+            >
+              进入控制台
+              <KunIcon name="lucide:arrow-right" class="ml-1 size-4" />
+            </KunButton>
+            <KunButton v-else color="primary" size="lg" @click="openLogin()">
+              登录开始
+              <KunIcon name="lucide:arrow-right" class="ml-1 size-4" />
+            </KunButton>
+            <KunButton variant="flat" size="lg" @click="navigateTo('/docs')">
+              <KunIcon name="lucide:book-open" class="mr-1 size-4" />
+              查看 API 文档
+            </KunButton>
+          </div>
+        </div>
+
+        <!--
+          self-end with no bottom padding on purpose: the asset is cropped to
+          her silhouette, so her feet land exactly on the section's bottom
+          border and she stands on the page instead of floating in a box.
+        -->
+        <div class="flex justify-center self-end lg:justify-end">
+          <img
+            src="/koi.webp"
+            alt="NextMoe 看板娘 恋（Koi）向你伸出手"
+            width="706"
+            height="1538"
+            fetchpriority="high"
+            class="kun-koi block h-[20rem] w-auto object-contain sm:h-[26rem] lg:h-[38rem] xl:h-[44rem]"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section v-if="metrics.length" class="border-default-200 border-b">
+      <div
+        class="mx-auto grid max-w-7xl grid-cols-2 gap-y-8 px-4 py-12 md:grid-cols-5 md:px-6"
+      >
+        <div
+          v-for="metric in metrics"
+          :key="metric.label"
+          class="text-center last:col-span-2 md:text-left md:last:col-span-1"
+        >
+          <p
+            class="text-foreground text-3xl font-bold tracking-tight tabular-nums md:text-4xl"
+          >
+            {{ metric.value }}
+          </p>
+          <p class="text-default-400 mt-1.5 text-xs">{{ metric.label }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-20">
+      <div
+        class="grid gap-8 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:items-center lg:gap-14"
+      >
+        <div>
+          <h2 class="text-foreground text-2xl font-bold tracking-tight">
+            一条命令就能验完
+          </h2>
+          <p class="text-default-500 mt-3 text-sm leading-relaxed">
+            登录后自助铸一把
+            <code class="text-default-600 font-mono text-xs">nmk_live_</code>
+            密钥，不需要申请，也没有付费档位。
+          </p>
+          <NuxtLink
+            to="/docs/quickstart"
+            class="text-primary mt-4 inline-flex items-center gap-1 text-sm font-medium hover:underline"
+          >
+            快速开始
+            <KunIcon name="lucide:arrow-right" class="size-4" />
+          </NuxtLink>
         </div>
 
         <div
-          class="border-default-200 bg-content1 mx-auto mt-9 max-w-xl overflow-hidden rounded-xl border lg:mx-0"
+          class="border-default-200 bg-content1 overflow-hidden rounded-xl border"
         >
           <div
             class="border-default-200 flex items-center gap-2 border-b px-4 py-2.5"
@@ -156,54 +223,17 @@ const curlSample = `curl https://api.nextmoe.dev/v2/catalog/works/1 \\
             />
           </div>
           <pre
-            class="text-default-600 overflow-x-auto px-4 py-3.5 text-left font-mono text-xs leading-relaxed"
+            class="text-default-600 overflow-x-auto px-4 py-4 text-left font-mono text-xs leading-relaxed sm:text-sm"
           ><code>{{ curlSample }}</code></pre>
         </div>
       </div>
 
-      <div class="flex justify-center lg:justify-end">
-        <div class="relative flex flex-col items-center">
-          <div
-            class="bg-primary-50 pointer-events-none absolute bottom-10 aspect-square w-[118%] rounded-full"
-          />
-          <img
-            src="/koi.webp"
-            alt="NextMoe 看板娘 恋（Koi）向你伸出手"
-            width="941"
-            height="1672"
-            fetchpriority="high"
-            class="relative h-[22rem] w-auto object-contain md:h-[26rem] lg:h-[32rem]"
-          />
-          <p class="text-default-300 relative mt-1 self-end font-mono text-xs">
-            恋 / Koi
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section v-if="metrics.length">
-      <div
-        class="border-default-200 bg-default-200 grid grid-cols-2 gap-px border-y md:grid-cols-5"
-      >
-        <div
-          v-for="metric in metrics"
-          :key="metric.label"
-          class="bg-background px-4 py-8 text-center last:col-span-2 md:last:col-span-1"
-        >
-          <p
-            class="text-foreground text-3xl font-bold tracking-tight md:text-4xl"
-          >
-            {{ metric.value }}
-          </p>
-          <p class="text-default-400 mt-1.5 text-xs">{{ metric.label }}</p>
-        </div>
-      </div>
-      <p class="text-default-400 mt-4 text-center text-xs">
-        实时取自
+      <p v-if="metrics.length" class="text-default-400 mt-10 text-xs">
+        上方数字实时取自
         <code class="text-default-500 font-mono">/v2/catalog/stats</code>
-        <template v-if="galgameCount">
-          ，其中 Galgame {{ galgameCount }} 部
-        </template>
+        <template v-if="galgameCount"
+          >，其中 Galgame {{ galgameCount }} 部</template
+        >
         。这个端点本身不需要任何凭据。
       </p>
     </section>

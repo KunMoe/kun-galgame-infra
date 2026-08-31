@@ -1,0 +1,340 @@
+{
+  "vocabularies": {
+    "medium": {
+      "label": "媒介",
+      "summary": "一条作品记录属于哪一类媒介。它决定作品出现在哪些浏览与筛选里。"
+    },
+    "content_rating": {
+      "label": "内容分级",
+      "summary": "作品或 release 的年龄分级。与下面的 sexual / violence 两轴分开记录：分级是结论，两轴是依据。"
+    },
+    "sexual": {
+      "label": "性描写程度",
+      "summary": "性相关描写的强度。独立于 content_rating，便于调用方自己定线。"
+    },
+    "violence": {
+      "label": "暴力程度",
+      "summary": "暴力描写的强度。独立于 content_rating，便于调用方自己定线。"
+    },
+    "spoiler": {
+      "label": "剧透等级",
+      "summary": "一条标注、标签或关联本身的剧透强度，用来决定默认折不折叠。"
+    },
+    "gender": {
+      "label": "性别",
+      "summary": "角色或现实人物记录的性别。没有记录时字段是 null，不是某个成员。"
+    },
+    "blood_type": {
+      "label": "血型",
+      "summary": "角色的血型。ACGN 设定资料里的常见字段。"
+    },
+    "release_status": {
+      "label": "发售状态",
+      "summary": "一个 release 处在发售流程的哪一步。"
+    },
+    "claim_state": {
+      "label": "认领状态",
+      "summary": "一条认领（claim）当前的状态，也是它的生命周期机。"
+    },
+    "content_limit": {
+      "label": "内容尺度开关",
+      "summary": "调用方声明自己这一次能承接到哪一档内容，服务端据此裁剪返回。"
+    },
+    "tier": {
+      "label": "标签层级",
+      "summary": "一个标签在词表里的地位，决定它是否进默认列表。"
+    },
+    "title_kind": {
+      "label": "标题类型",
+      "summary": "一条标题是官方名、别名还是简称。"
+    },
+    "alias_kind": {
+      "label": "别名类型",
+      "summary": "一条实体别名是译名还是拼写变体。"
+    },
+    "roster_role": {
+      "label": "出演分量",
+      "summary": "一个角色在这部作品里的出场分量。"
+    },
+    "attribution_role": {
+      "label": "参与身份",
+      "summary": "一家公司以什么身份参与这部作品。同一家公司可以在同一部作品上有多个身份。"
+    },
+    "company_kind": {
+      "label": "公司类型",
+      "summary": "一个厂牌 / 公司实体本身是什么类型的组织。"
+    },
+    "tag_kind": {
+      "label": "标签种类",
+      "summary": "一个标签描述的是作品内容本身，还是它的元信息。"
+    },
+    "release_kind": {
+      "label": "版本类型",
+      "summary": "一个 release 是什么形态的版本。"
+    },
+    "member_kind": {
+      "label": "系列成员类型",
+      "summary": "一部作品在它所属系列里的位置。"
+    },
+    "problem_domain": {
+      "label": "错误域",
+      "summary": "错误码归属的域，也是 type URI 里的那一段。"
+    },
+    "sources": {
+      "label": "数据源",
+      "summary": "一条事实或一个外部 id 取自哪里。开放词表：我们会继续接新的源。"
+    },
+    "relation_types": {
+      "label": "关联类型",
+      "summary": "两个实体之间的关系。标了「对称关系」的，反向也成立。开放词表。"
+    }
+  },
+  "strings": {
+    "Galgame": "Galgame",
+    "A galgame / visual novel work.": "Galgame / 视觉小说作品。",
+    "Manga": "漫画",
+    "A manga work.": "漫画作品。",
+    "Novel": "小说",
+    "A light novel or other prose work.": "轻小说或其他文字作品。",
+    "Anime": "动画",
+    "An anime work.": "动画作品。",
+    "ASMR": "ASMR",
+    "An ASMR work.": "ASMR 作品。",
+    "Doujin game": "同人游戏",
+    "A doujin game that is not classified as galgame.": "不归类为 galgame 的同人游戏。",
+    "Music": "音乐",
+    "A music work.": "音乐作品。",
+
+    "All ages": "全年龄",
+    "Rated suitable for all ages.": "面向全年龄。",
+    "Sensitive": "敏感",
+    "Sexual or violent content below the r18 line.": "有性或暴力内容，但没到 r18 那条线。",
+    "R18": "R18",
+    "Adult-only content.": "仅限成人。",
+
+    "Safe": "无",
+    "No sexual depiction.": "没有性描写。",
+    "Suggestive": "暗示",
+    "Suggestive sexual depiction.": "带性暗示的描写。",
+    "Explicit": "露骨",
+    "Explicit sexual depiction.": "露骨的性描写。",
+
+    "Tame": "无",
+    "No violent depiction.": "没有暴力描写。",
+    "Violent": "暴力",
+    "Violent depiction short of brutality.": "有暴力描写，但没到残虐的程度。",
+    "Brutal": "残虐",
+    "Brutal violent depiction.": "残虐的暴力描写。",
+
+    "None": "无",
+    "Not a spoiler.": "不算剧透。",
+    "Minor": "轻微",
+    "Minor spoiler.": "轻微剧透。",
+    "Major": "重大",
+    "Major spoiler.": "重大剧透。",
+
+    "Male": "男",
+    "Male.": "男性。",
+    "Female": "女",
+    "Female.": "女性。",
+    "Other": "其他",
+    "Recorded as other. Absence of a record is null, not a value.": "明确记为其他。没有记录时是 null，不是这个值。",
+
+    "A": "A",
+    "Blood type A.": "A 型血。",
+    "B": "B",
+    "Blood type B.": "B 型血。",
+    "AB": "AB",
+    "Blood type AB.": "AB 型血。",
+    "O": "O",
+    "Blood type O.": "O 型血。",
+
+    "Released": "已发售",
+    "The release has shipped.": "这个 release 已经发售。",
+    "Dated": "已定档",
+    "A date is known and the release has not shipped.": "已知发售日期，但还没发售。",
+    "Announced": "已公布",
+    "Announced without a usable date.": "已公布，但还没有可用的日期。",
+    "Cancelled": "已取消",
+    "Cancelled.": "已取消。",
+    "Unknown": "未知",
+    "We have not determined the status.": "我们还没有裁定它的状态。",
+
+    "Live": "生效中",
+    "The claim is live.": "这条认领已经生效。",
+    "Draft": "草稿",
+    "The claim is a draft.": "这条认领还是草稿。",
+    "Pending": "待审核",
+    "The claim is waiting for review.": "这条认领正在等待审核。",
+    "Declined": "已驳回",
+    "The claim was declined.": "这条认领被驳回了。",
+    "Hidden": "隐藏",
+    "The claim is hidden.": "这条认领已被隐藏。",
+
+    "SFW": "SFW",
+    "Safe to render in an SFW context.": "可以在 SFW 场景里直接展示。",
+    "NSFW": "NSFW",
+    "Not safe to render in an SFW context.": "不适合在 SFW 场景里展示。",
+
+    "Core": "核心",
+    "Core vocabulary tag.": "核心词表里的标签。",
+    "Longtail": "长尾",
+    "Long-tail tag.": "长尾标签。",
+    "Hidden from default listings.": "默认列表里不展示。",
+
+    "Official": "官方名",
+    "Official title.": "官方标题。",
+    "Alias": "别名",
+    "Alternate title.": "别名标题。",
+    "Abbreviation": "简称",
+    "Abbreviated title. search_hint is internal and is not in this vocabulary.": "标题简称。search_hint 是内部用的，不在这个词表里。",
+
+    "Translation": "译名",
+    "A translated name.": "翻译过来的名字。",
+    "Spelling variant": "拼写变体",
+    "A spelling variant. search_hint is internal and is not in this vocabulary.": "同一个名字的拼写变体。search_hint 是内部用的，不在这个词表里。",
+
+    "roster_role/Main": "主要",
+    "The roster role was not recorded.": "没有记录这个角色的出场分量。",
+    "A main character.": "主要角色。",
+    "Secondary": "次要",
+    "A secondary character.": "次要角色。",
+    "Appears": "出场",
+    "A character who appears.": "有出场的角色。",
+
+    "Circle": "社团",
+    "Circle / doujin group attribution.": "以社团 / 同人团体的身份参与。",
+    "attribution_role/Publisher": "发行",
+    "Publisher attribution.": "以发行方的身份参与。",
+    "Developer": "开发",
+    "Developer attribution.": "以开发方的身份参与。",
+    "Brand": "厂牌",
+    "Brand attribution.": "以厂牌的身份参与。",
+
+    "Game brand": "游戏厂牌",
+    "A game brand.": "游戏厂牌。",
+    "Bunko": "文库",
+    "A bunko / imprint.": "文库 / 出版分支。",
+    "company_kind/Publisher": "出版社",
+    "A publisher.": "出版社。",
+    "Anime studio": "动画公司",
+    "An anime studio.": "动画制作公司。",
+    "Doujin circle": "同人社团",
+    "A doujin circle.": "同人社团。",
+    "Group": "团体",
+    "A group.": "泛指的团体。",
+
+    "Content": "内容",
+    "A content tag.": "描述作品内容本身的标签。",
+    "Meta": "元信息",
+    "A meta tag.": "描述元信息的标签。",
+
+    "Default": "默认",
+    "The default / unspecified edition.": "默认 / 未指明的版本。",
+    "Digital": "数字版",
+    "A digital edition.": "数字版。",
+    "Physical": "实体版",
+    "A physical edition.": "实体版。",
+    "Trial": "体验版",
+    "A trial / demo edition.": "体验版 / 试玩版。",
+    "Patch": "补丁",
+    "A patch, including fan translations.": "补丁，含民间汉化与翻译补丁。",
+
+    "member_kind/Main": "本篇",
+    "The series-member role was not recorded.": "没有记录它在系列里的位置。",
+    "The main entry of the series.": "系列的本篇。",
+    "Fandisc": "Fandisc",
+    "A fandisc.": "Fandisc（本篇之后的追加作）。",
+    "Side story": "外传",
+    "A side story.": "外传。",
+    "Collection": "合集",
+    "A collection / omnibus.": "合集 / 复刻合并版。",
+
+    "Platform": "平台通用",
+    "Errors any face may emit.": "任何一个面都可能抛出的错误。",
+    "Catalog": "目录数据",
+    "Catalog-face errors.": "目录面的错误。",
+    "Me": "用户面",
+    "User-facing /v2/me errors.": "/v2/me 用户面的错误。",
+    "Moderation": "审核面",
+    "Moderation-face errors.": "审核面的错误。",
+    "News": "资讯面",
+    "News-face errors. Both codes come from the source-row-as-grant model on /v2/me/news.": "资讯面的错误。两个码都出自 /v2/me/news 的「来源行即授权」模型。",
+    "Store": "商店面",
+    "Store-face errors from the purchase-link minter.": "商店面的错误，来自购买链接铸造器。",
+
+    "User": "用户",
+    "Manual curation, not an import source.": "人工整理，不是一个导入源。",
+    "VNDB": "VNDB",
+    "The VNDB catalog.": "VNDB 数据库。",
+    "Bangumi": "Bangumi",
+    "The Bangumi catalog.": "Bangumi 番组计划。",
+    "DLsite": "DLsite",
+    "DLsite storefront identities.": "DLsite 商店页身份。",
+    "ErogameScape": "ErogameScape",
+    "ErogameScape.": "ErogameScape（エロゲー批評空間）。",
+    "AniList": "AniList",
+    "AniList.": "AniList。",
+    "MyAnimeList": "MyAnimeList",
+    "MyAnimeList.": "MyAnimeList。",
+    "Steam": "Steam",
+    "Steam storefront.": "Steam 商店。",
+    "Official site": "官网",
+    "A publisher or brand official site.": "发行方或厂牌的官方网站。",
+    "Twitter / X": "Twitter / X",
+    "A Twitter / X identity.": "Twitter / X 账号。",
+    "Pixiv": "Pixiv",
+    "Pixiv.": "Pixiv。",
+    "Curated": "人工整理",
+    "First-party curated / human lane.": "一方人工整理的车道。",
+    "Upscale": "超分",
+    "First-party AI-upscaled cover derivation.": "一方 AI 超分得到的封面派生图。",
+    "Ci-en": "Ci-en",
+    "Ci-en creator-support platform.": "Ci-en 创作者支持平台。",
+    "DMM": "DMM",
+    "DMM storefront.": "DMM 商店。",
+    "Web": "网页",
+    "A generic web page. external_id is the full URL.": "泛指的网页。external_id 就是完整 URL。",
+    "Getchu": "Getchu",
+    "Getchu.com retailer pages.": "Getchu.com 的商品页。",
+    "Derived": "推导",
+    "First-party machine inference over catalog facts.": "一方在目录事实之上做机器推导得到的。",
+    "NextMoe": "NextMoe",
+    "First-party measurements aggregated from our users.": "一方从自己用户那里聚合出来的测量值。",
+    "HowLongToBeat": "HowLongToBeat",
+    "HowLongToBeat playtime and rating aggregates.": "HowLongToBeat 的时长与评分聚合。",
+
+    "Adaptation of": "改编自对方",
+    "This work is an adaptation of the other.": "这部作品改编自另一部。",
+    "Sequel of": "对方的续作",
+    "This work is a sequel of the other.": "这部作品是另一部的续作。",
+    "Side story of": "对方的外传",
+    "This work is a side story of the other.": "这部作品是另一部的外传。",
+    "Fandisc of": "对方的 Fandisc",
+    "This work is a fandisc of the other.": "这部作品是另一部的 Fandisc。",
+    "Collects": "收录对方",
+    "This work collects the other.": "这部作品收录了另一部。",
+    "Remake of": "对方的重制",
+    "This work is a remake of the other.": "这部作品是另一部的重制版。",
+    "Same series": "同系列",
+    "The two works belong to the same series. Symmetric.": "两部作品属于同一系列。对称关系。",
+    "Same setting": "同一世界观",
+    "The two works share a setting. Symmetric.": "两部作品共用同一世界观。对称关系。",
+    "Crossover with": "与对方联动",
+    "The two works crossover. Symmetric.": "两部作品之间是联动。对称关系。",
+    "Shares character": "与对方共用角色",
+    "The two works share a character. Symmetric.": "两部作品共用同一个角色。对称关系。",
+    "Alternative setting": "同角色不同世界观",
+    "The two works share characters in a different setting. Symmetric.": "两部作品用同一批角色，但世界观不同。对称关系。",
+    "Alternative version": "同作的另一版本",
+    "The two works are alternative versions. Symmetric.": "两部作品互为不同版本。对称关系。",
+    "Imprint of": "对方旗下的文库 / 品牌",
+    "This company is an imprint of the other.": "这家公司是另一家旗下的文库 / 品牌。",
+    "Renamed from": "由对方更名而来",
+    "This company was renamed from the other.": "这家公司由另一家更名而来。",
+    "Subsidiary of": "对方的子公司",
+    "This company is a subsidiary of the other.": "这家公司是另一家的子公司。",
+    "Member of": "对方的成员",
+    "This company is a member of the other.": "这家公司是另一家的成员。"
+  }
+}

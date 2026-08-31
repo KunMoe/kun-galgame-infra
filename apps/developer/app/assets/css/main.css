@@ -28,6 +28,33 @@ html {
 }
 
 /*
+ * The landing hero's one decorative surface. This is the only gradient in the
+ * app and it is deliberate: the mascot artwork is white line art on a white
+ * dress, so against a flat surface she has no ground to stand on, and against
+ * the dark-mode background she is a hard white cutout. A soft primary-tinted
+ * pool gives her a place to sit in both modes. Sized in percentages of the
+ * section so it tracks the artwork column at every breakpoint.
+ */
+.kun-hero-glow {
+  background: radial-gradient(
+    52% 72% at 77% 60%,
+    color-mix(in oklab, var(--color-primary) 12%, transparent) 0%,
+    transparent 74%
+  );
+}
+
+/*
+ * Dark mode: the art is near-pure white (#fff line art, white cape, white
+ * dress) and --background is oklch(0.1448) — rendered raw that is a ~19:1
+ * luminance step across a 44rem-tall figure, which reads as glare rather than
+ * as an illustration. Toning the asset itself, not the surface behind it, is
+ * what fixes it; the light mode keeps the artwork untouched.
+ */
+.kun-dark-mode .kun-koi {
+  filter: brightness(0.84) saturate(1.08);
+}
+
+/*
  * Prose for the hand-written guides. The HTML comes from
  * scripts/build-guides.mjs (markdown-it + Shiki), so it is plain semantic tags
  * with no utility classes — everything it needs is styled here.

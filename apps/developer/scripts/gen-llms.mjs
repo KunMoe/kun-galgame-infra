@@ -142,7 +142,7 @@ const guideIndexSection = (guides) => {
   return lines
 }
 
-const buildLlmsTxt = (model, guides, problems) => {
+const buildLlmsTxt = (model, guides, problems, vocabularies) => {
   const lines = [...header('NextMoe 开放 API')]
   lines.push(...aiGuideSection())
   lines.push(...sourceSection())
@@ -178,7 +178,11 @@ const buildLlmsTxt = (model, guides, problems) => {
   lines.push(
     `- ${SITE_URL}/problems.md — 全部 ${problems.length} 个错误码（RFC 9457 problem types）`
   )
-  lines.push(`- ${SITE_URL}/problems/<domain>/<kebab-code>.md — 单个错误码`, '')
+  lines.push(`- ${SITE_URL}/problems/<domain>/<kebab-code>.md — 单个错误码`)
+  lines.push(
+    `- ${SITE_URL}/docs/vocabularies.md — 全部 ${vocabularies.length} 个词表的成员`
+  )
+  lines.push(`- ${SITE_URL}/docs/vocabularies/<name>.md — 单个词表`, '')
   lines.push(
     `全量参考（每个端点的参数与 curl）见 ${SITE_URL}/llms-full.txt。`,
     ''
@@ -186,7 +190,7 @@ const buildLlmsTxt = (model, guides, problems) => {
   return lines.join('\n')
 }
 
-const buildLlmsFull = (model, guides, problems) => {
+const buildLlmsFull = (model, guides, problems, vocabularies) => {
   const lines = [...header('NextMoe 开放 API —— 面向 LLM 的全量文档')]
   lines.push(
     `本文件内联全部 ${model.faces.reduce((n, f) => n + faceOperations(f).length, 0)} 个端点。` +
@@ -202,6 +206,8 @@ const buildLlmsFull = (model, guides, problems) => {
   }
   lines.push('---', '', '# Problem types', '')
   lines.push(...problemRegistry(problems))
+  lines.push('---', '', '# Vocabularies', '')
+  lines.push(...vocabularyRegistry(vocabularies))
   for (const face of model.faces) {
     lines.push('---', '', `# ${face.name}`, '')
     lines.push(`- 路径前缀：\`${face.prefix}\``)
@@ -277,6 +283,42 @@ const problemRegistry = (problems, heading = '##') => {
   return lines
 }
 
+// /docs/vocabularies is the discovery face the design guide points an agent at
+// for any enum it does not recognise, and it had no Markdown twin — the 复制页面
+// control on those two routes fetched a 404 while every other docs route
+// answered. English, like the rest of the twins: these display names are what
+// GET /v2/vocabularies itself returns.
+const vocabularyTable = (vocab) => [
+  '| value | display_name | description |',
+  '| --- | --- | --- |',
+  ...vocab.values.map(
+    (v) =>
+      `| \`${v.value}\` | ${v.display_name} | ${v.description.replace(/\|/g, '\\|')} |`
+  ),
+  ''
+]
+
+const vocabularyRegistry = (vocabularies, heading = '##') => {
+  const lines = [
+    `${heading} 词表（共 ${vocabularies.length} 个）`,
+    '',
+    '封闭词表（`closed`）不加不减成员就是它的承诺——你的 `switch` 可以没有 `default`。' +
+      '开放词表相反：提前告诉你会有新值，客户端必须容忍没见过的取值。' +
+      `运行时以 \`${API_HOST}/v2/vocabularies\` 为准，它比任何文档都新，且不需要凭据。`,
+    ''
+  ]
+  for (const vocab of vocabularies) {
+    lines.push(
+      `${heading}# \`${vocab.name}\``,
+      '',
+      `${vocab.closed ? 'Closed' : 'Open'} · ${vocab.values.length} tokens`,
+      '',
+      ...vocabularyTable(vocab)
+    )
+  }
+  return lines
+}
+
 const pageFooter = (route) => [
   '---',
   `本页来源 · NextMoe 开发者平台 · ${SITE_URL}${route}`,
@@ -293,7 +335,7 @@ const guideSection = (guide) => [
   ...pageFooter(guide.route)
 ]
 
-const buildPages = (model, guides, problems) => {
+const buildPages = (model, guides, problems, vocabularies) => {
   const pages = new Map()
 
   pages.set('/', [
@@ -401,20 +443,45 @@ const buildPages = (model, guides, problems) => {
     ])
   }
 
+  pages.set('/docs/vocabularies', [
+    ...header('Vocabularies'),
+    ...vocabularyRegistry(vocabularies),
+    ...pageFooter('/docs/vocabularies')
+  ])
+  for (const vocab of vocabularies) {
+    const route = `/docs/vocabularies/${vocab.name}`
+    pages.set(route, [
+      ...header(`${vocab.name} · vocabulary`),
+      `${vocab.closed ? 'Closed' : 'Open'} 词表，${vocab.values.length} 个成员。`,
+      '',
+      ...vocabularyTable(vocab),
+      `全部词表见 ${SITE_URL}/docs/vocabularies.md，` +
+        `运行时以 ${API_HOST}/v2/vocabularies 为准。`,
+      '',
+      ...pageFooter(route)
+    ])
+  }
+
   return pages
 }
 
-export const writeLlmArtifacts = (model, guides, problems, publicDir) => {
+export const writeLlmArtifacts = (
+  model,
+  guides,
+  problems,
+  vocabularies,
+  publicDir
+) => {
   const write = (relative, content) => {
     const out = join(publicDir, relative)
     mkdirSync(dirname(out), { recursive: true })
     writeFileSync(out, content.endsWith('\n') ? content : `${content}\n`)
   }
 
-  write('llms.txt', buildLlmsTxt(model, guides, problems))
-  write('llms-full.txt', buildLlmsFull(model, guides, problems))
+  write('llms.txt', buildLlmsTxt(model, guides, problems, vocabularies))
+  write('llms-full.txt', buildLlmsFull(model, guides, problems, vocabularies))
 
-  const pages = buildPages(model, guides, problems)
+  const pages = buildPages(model, guides, problems, vocabularies)
   for (const [route, lines] of pages) {
     write(mdPath(route).slice(1), lines.join('\n'))
   }

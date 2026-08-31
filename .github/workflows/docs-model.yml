@@ -27,9 +27,11 @@ name: docs-model
 # guide's Markdown twin in public/ is the same source file the HTML came from.
 # One run, one truth: a guide edit that skipped the regen fails the diff here.
 #
-# The same run writes the Chinese twin of the RFC 9457 problem registry
-# (app/generated/problems.ts, Go-generated and English, + i18n/problems-zh.json)
-# and an English Markdown twin per /problems route. A new problem code with no
+# The same run writes the Chinese twins of the two Go-generated registries —
+# RFC 9457 problems (app/generated/problems.ts + i18n/problems-zh.json) and the
+# /v2/vocabularies members (app/generated/vocabularies.ts +
+# i18n/vocabularies-zh.json) — plus an English Markdown twin per /problems and
+# /docs/vocabularies route. A new problem code or vocabulary member with no
 # translation therefore fails this job rather than shipping an English string
 # into a Chinese page.
 #
@@ -62,6 +64,11 @@ on:
       - "apps/developer/i18n/problems-zh.json"
       - "apps/developer/app/generated/problems.ts"
       - "apps/developer/app/generated/problems-zh.ts"
+      # Same arrangement for the /v2/vocabularies registry.
+      - "apps/developer/scripts/vocabularies-i18n.mjs"
+      - "apps/developer/i18n/vocabularies-zh.json"
+      - "apps/developer/app/generated/vocabularies.ts"
+      - "apps/developer/app/generated/vocabularies-zh.ts"
       - "apps/developer/shared/brand.mjs"
       - "apps/developer/shared/mcp-tools.mjs"
       # The generated half of the MCP roster. shared/mcp-tools.mjs only adds the
