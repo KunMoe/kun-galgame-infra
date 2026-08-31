@@ -266,7 +266,7 @@ const firstCall = `curl "https://api.nextmoe.dev/v2/catalog/works?limit=3" \\
             </li>
             <li>
               <NuxtLink to="/problems" class="text-primary hover:underline">
-                Problem types
+                错误码
               </NuxtLink>
               —— 每个错误 <code class="font-mono text-xs">type</code> URI
               都解析到这里。

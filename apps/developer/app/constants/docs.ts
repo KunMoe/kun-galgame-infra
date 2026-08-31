@@ -27,7 +27,7 @@ export const docsFaceLabel = (face: string): string =>
 // app/generated/guides-nav.ts, ordered by scripts/guides.mjs.
 export const DOCS_REFERENCE_NAV = [
   { to: '/docs/vocabularies', label: '词表' },
-  { to: '/problems', label: 'Problem types' },
+  { to: '/problems', label: '错误码' },
   { to: '/docs/mcp', label: 'AI / MCP 接入' }
 ] as const
 

@@ -99,7 +99,7 @@ X-Request-ID: req_01JBQ7X4M2K9P3W5T8ZVN6HRDC
 
 每个 `type` URI 都能在本站打开，写着它的状态码、含义和触发条件。
 
-- [Problem types](/problems) — 按域分组的全部错误码，以及每个码的解释。
+- [错误码](/problems) — 按域分组的全部错误码，中英对照，每个码一页。
 - [限流与配额](/docs/rate-limits) — 429 的两种成因，以及正确的退避方式。
 
 ---

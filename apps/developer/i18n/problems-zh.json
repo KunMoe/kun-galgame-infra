@@ -1,0 +1,134 @@
+{
+  "domains": {
+    "platform": "平台通用",
+    "catalog": "目录数据",
+    "me": "用户面",
+    "moderation": "审核面",
+    "news": "资讯面",
+    "store": "商店面"
+  },
+  "strings": {
+    "Malformed body": "请求体格式错误",
+    "Request body is not valid JSON, or is not a valid instance of the declared media type.": "请求体不是合法 JSON，或不是所声明媒体类型的合法实例。",
+
+    "Invalid parameter": "参数不合法",
+    "A parameter is syntactically wrong: a boolean that is not true/false, an integer that is not an integer, a date that is not YYYY-MM-DD.": "某个参数的写法不对：布尔值不是 true/false，整数不是整数，日期不是 YYYY-MM-DD。",
+
+    "Unknown enum value": "未知的枚举值",
+    "A closed vocabulary received an unknown token at parse time.": "一个封闭词表在解析时收到了它不认识的 token。",
+
+    "Mutually exclusive parameters": "参数互斥",
+    "Two parameters that cannot appear together were both sent.": "两个不能同时出现的参数被一起发了过来。",
+
+    "Limit too large": "limit 超出上限",
+    "limit is greater than 100. The value is not clamped.": "limit 大于 100。这个值不会被悄悄截到上限，而是直接报错。",
+
+    "Too many ids": "id 数量过多",
+    "ids= or refs= named more than 100 items.": "ids= 或 refs= 一次点名了超过 100 项。",
+
+    "Invalid cursor": "游标不合法",
+    "The cursor cannot be parsed or is no longer valid.": "游标无法解析，或已经失效。",
+
+    "Unknown include": "未知的 include token",
+    "include= received a token that is not in that collection's vocabulary.": "include= 收到了不在该集合词表里的 token。",
+
+    "Unknown field": "未知的字段名",
+    "fields= received a top-level key that does not exist.": "fields= 收到了一个不存在的顶层键。",
+
+    "Unknown sort": "未知的排序键",
+    "sort= received a key this collection has not declared.": "sort= 收到了该集合没有声明过的排序键。",
+
+    "Unknown facet": "未知的 facet 名",
+    "facets= received a name this collection does not support.": "facets= 收到了该集合不支持的名字。",
+
+    "Missing credential": "缺少凭据",
+    "The request has no Authorization header.": "请求没有带 Authorization 头。",
+
+    "Invalid credential": "凭据无效",
+    "A credential was sent but it is invalid, expired, or revoked.": "带了凭据，但它无效、已过期，或已被吊销。",
+
+    "Scope required": "缺少所需 scope",
+    "The credential is valid but lacks the scope this operation needs.": "凭据本身有效，但缺少这个操作所需的 scope。",
+
+    "First party only": "仅限一方客户端",
+    "This operation is only available to first-party clients.": "这个操作只对一方客户端开放。",
+
+    "Not found": "未找到",
+    "Nothing visible exists at this URL.": "这个 URL 上没有你能看到的东西。",
+
+    "Method not allowed": "方法不被允许",
+    "The path exists but this method does not.": "路径存在，但它不支持这个方法。",
+
+    "Idempotency key reused": "幂等键被复用",
+    "The same Idempotency-Key was sent with a different request body.": "同一个 Idempotency-Key 配了不一样的请求体。",
+
+    "Gone": "已永久退役",
+    "This URL existed and has been permanently retired.": "这个 URL 曾经存在，现已永久退役。",
+
+    "Precondition failed": "前置条件不满足",
+    "If-Match did not match the current representation.": "If-Match 与当前表示不匹配。",
+
+    "Unsupported media type": "不支持的媒体类型",
+    "The request body media type is not supported.": "不支持这种请求体媒体类型。",
+
+    "Validation failed": "校验失败",
+    "The request is syntactically valid but semantically not. errors[] is present and non-empty.": "请求的写法没问题，但语义上不成立。errors[] 一定存在且非空。",
+
+    "Precondition required": "缺少前置条件",
+    "This operation requires If-Match and none was sent.": "这个操作要求带 If-Match，但请求里没有。",
+
+    "Rate limited": "触发速率限制",
+    "The short-window rate limit was exceeded. Retry-After is in seconds.": "超出了短窗口的速率限制。Retry-After 的单位是秒。",
+
+    "Quota exceeded": "配额耗尽",
+    "The daily quota is exhausted. Retry-After is until the next window.": "当天的配额已经用完。Retry-After 给到下一个窗口开始为止。",
+
+    "Internal error": "服务端内部错误",
+    "A bug on our side, including the output of panic recovery.": "我们这边的 bug，包括 panic 恢复之后的输出。",
+
+    "Service unavailable": "服务暂不可用",
+    "A dependency is unavailable. The request may be retried.": "某个依赖不可用。这个请求可以重试。",
+
+    "Entity merged": "实体已被合并",
+    "The entity was merged into another. object and current_id are present, and Link rel=canonical is sent.": "该实体已被合并进另一个实体。响应里带 object 与 current_id，同时回一个 Link rel=canonical。",
+
+    "User identity required": "需要用户身份",
+    "An application key was used for an operation that needs a user token.": "这个操作需要用户令牌，却用了应用密钥。",
+
+    "Site not bound": "客户端未绑定站点",
+    "The client behind the token is not bound to a catalog site.": "令牌背后的客户端没有绑定到任何 catalog 站点。",
+
+    "Release creation disabled": "不支持新建 release",
+    "The proposal tried to create a release. This is a product constraint, not a defect.": "提案试图新建一个 release。这是产品约束，不是缺陷。",
+
+    "Already exists": "已存在",
+    "The same subject already has a live record for this target.": "同一主体对这个目标已经有一条在用的记录。",
+
+    "Invalid state transition": "非法的状态流转",
+    "The current state does not allow this transition. detail names the current state and the legal targets.": "当前状态不允许这样流转。detail 会给出当前状态和合法的目标状态。",
+
+    "Claim not owned": "认领不归你所有",
+    "The claim has an owner and it is another user. Only the owner may publish, submit, or withdraw it; an unowned claim is adopted by its first claimant.": "这条认领已经有主，而且不是你。只有归属者能发布、提交或撤回它；无主的认领会被第一个认领者接管。",
+
+    "Permission required": "缺少所需权限",
+    "The token lacks the permission this decision needs.": "令牌缺少作出这个裁决所需的权限。",
+
+    "Tenant mismatch": "站点不匹配",
+    "The target does not belong to the caller's catalog site.": "目标不属于调用方所在的 catalog 站点。",
+
+    "Decision already made": "已经裁决过",
+    "This item has already been decided. detail names who decided and when.": "这一项已经被裁决过。detail 会给出是谁、在什么时候裁决的。",
+
+    "Source not yours": "该来源不属于你",
+    "The named news source is not bound to this user. A source that does not exist is not distinguished, so source names cannot be enumerated.": "点名的资讯来源没有绑定到这个用户。来源不存在的情况不与之区分，因此无法靠试探把有哪些来源枚举出来。",
+
+    "Source inactive": "来源已停用",
+    "The news source is bound correctly but has been deactivated. detail names who to ask to restore it.": "资讯来源绑定没问题，但已被停用。detail 会给出该找谁恢复。",
+
+    "Store quota exceeded": "购买链接配额耗尽",
+    "The application has minted the maximum number of purchase links.": "这个应用铸造的购买链接已经达到上限。",
+
+    "Store link unavailable": "无法签发购买链接",
+    "The link shortener is unavailable; no link was issued — there is deliberately no fallback to a bare affiliate URL.": "短链服务不可用，没有签发任何链接——这里有意不回退到裸的联盟 URL。"
+  }
+}

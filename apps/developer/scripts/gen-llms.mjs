@@ -142,7 +142,7 @@ const guideIndexSection = (guides) => {
   return lines
 }
 
-const buildLlmsTxt = (model, guides) => {
+const buildLlmsTxt = (model, guides, problems) => {
   const lines = [...header('NextMoe 开放 API')]
   lines.push(...aiGuideSection())
   lines.push(...sourceSection())
@@ -174,7 +174,11 @@ const buildLlmsTxt = (model, guides) => {
   for (const g of guides) {
     lines.push(`- ${SITE_URL}${g.route}.md — ${g.title}`)
   }
-  lines.push(`- ${SITE_URL}/docs/<face>/<operationId>.md — 单个端点`, '')
+  lines.push(`- ${SITE_URL}/docs/<face>/<operationId>.md — 单个端点`)
+  lines.push(
+    `- ${SITE_URL}/problems.md — 全部 ${problems.length} 个错误码（RFC 9457 problem types）`
+  )
+  lines.push(`- ${SITE_URL}/problems/<domain>/<kebab-code>.md — 单个错误码`, '')
   lines.push(
     `全量参考（每个端点的参数与 curl）见 ${SITE_URL}/llms-full.txt。`,
     ''
@@ -182,7 +186,7 @@ const buildLlmsTxt = (model, guides) => {
   return lines.join('\n')
 }
 
-const buildLlmsFull = (model, guides) => {
+const buildLlmsFull = (model, guides, problems) => {
   const lines = [...header('NextMoe 开放 API —— 面向 LLM 的全量文档')]
   lines.push(
     `本文件内联全部 ${model.faces.reduce((n, f) => n + faceOperations(f).length, 0)} 个端点。` +
@@ -196,6 +200,8 @@ const buildLlmsFull = (model, guides) => {
   for (const guide of guides) {
     lines.push('---', '', guide.markdown.replace(/^#\s+/, '# '), '')
   }
+  lines.push('---', '', '# Problem types', '')
+  lines.push(...problemRegistry(problems))
   for (const face of model.faces) {
     lines.push('---', '', `# ${face.name}`, '')
     lines.push(`- 路径前缀：\`${face.prefix}\``)
@@ -237,6 +243,40 @@ const mcpSection = () => {
   return lines
 }
 
+// Every v2 error carries a `type` URI that resolves to /problems/{domain}/{kebab}
+// on this site, so those pages are on an agent's path by construction — they had
+// no Markdown twin, and the HTML renders a Chinese overlay. These twins keep the
+// registry readable in the contract language at the same URL + `.md`.
+const problemRegistry = (problems, heading = '##') => {
+  const byDomain = new Map()
+  for (const p of problems) {
+    const rows = byDomain.get(p.domain) ?? []
+    rows.push(p)
+    byDomain.set(p.domain, rows)
+  }
+  const lines = [
+    `${heading} 错误码注册表（顶层 \`code\`，共 ${problems.length} 个）`,
+    '',
+    '`code` 是封闭注册表里的稳定标识；`errors[].reason` 是另一套互不重叠的字段级词表。' +
+      '认不得的 `code` 一律按 `status` 兜底——我们会往注册表里加新成员。',
+    ''
+  ]
+  for (const [domain, rows] of byDomain) {
+    lines.push(
+      `${heading}# ${domain}`,
+      '',
+      '| code | HTTP | title | description |',
+      '| --- | --- | --- | --- |',
+      ...rows.map(
+        (p) =>
+          `| \`${p.code}\` | ${p.status} | ${p.title} | ${p.description.replace(/\|/g, '\\|')} |`
+      ),
+      ''
+    )
+  }
+  return lines
+}
+
 const pageFooter = (route) => [
   '---',
   `本页来源 · NextMoe 开发者平台 · ${SITE_URL}${route}`,
@@ -253,7 +293,7 @@ const guideSection = (guide) => [
   ...pageFooter(guide.route)
 ]
 
-const buildPages = (model, guides) => {
+const buildPages = (model, guides, problems) => {
   const pages = new Map()
 
   pages.set('/', [
@@ -336,20 +376,45 @@ const buildPages = (model, guides) => {
 
   for (const guide of guides) pages.set(guide.route, guideSection(guide))
 
+  pages.set('/problems', [
+    ...header('Problem types'),
+    ...problemRegistry(problems),
+    ...pageFooter('/problems')
+  ])
+  for (const p of problems) {
+    const route = `/problems/${p.domain}/${p.kebab}`
+    pages.set(route, [
+      ...header(`${p.code} · Problem type`),
+      `## ${p.title}`,
+      '',
+      p.description,
+      '',
+      `- \`code\`：\`${p.code}\``,
+      `- HTTP：${p.status}`,
+      `- 域：${p.domain}`,
+      `- \`type\`：${p.type}`,
+      '',
+      `错误体的字段与分支顺序见 ${SITE_URL}/docs/errors.md，` +
+        `全部错误码见 ${SITE_URL}/problems.md。`,
+      '',
+      ...pageFooter(route)
+    ])
+  }
+
   return pages
 }
 
-export const writeLlmArtifacts = (model, guides, publicDir) => {
+export const writeLlmArtifacts = (model, guides, problems, publicDir) => {
   const write = (relative, content) => {
     const out = join(publicDir, relative)
     mkdirSync(dirname(out), { recursive: true })
     writeFileSync(out, content.endsWith('\n') ? content : `${content}\n`)
   }
 
-  write('llms.txt', buildLlmsTxt(model, guides))
-  write('llms-full.txt', buildLlmsFull(model, guides))
+  write('llms.txt', buildLlmsTxt(model, guides, problems))
+  write('llms-full.txt', buildLlmsFull(model, guides, problems))
 
-  const pages = buildPages(model, guides)
+  const pages = buildPages(model, guides, problems)
   for (const [route, lines] of pages) {
     write(mdPath(route).slice(1), lines.join('\n'))
   }

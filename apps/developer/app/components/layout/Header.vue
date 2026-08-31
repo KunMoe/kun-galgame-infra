@@ -31,18 +31,20 @@ const handleLogout = async () => {
 
 <template>
   <header
-    class="sticky top-0 z-30 border-b border-default-200 bg-background/85 backdrop-blur-md"
+    class="border-default-200 bg-background/85 sticky top-0 z-30 border-b backdrop-blur-md"
   >
     <div
       class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6"
     >
       <NuxtLink to="/" class="flex min-w-0 shrink-0 items-center gap-2">
-        <div
-          class="flex size-8 items-center justify-center rounded-lg bg-primary text-white"
-        >
-          <KunIcon name="lucide:boxes" class="size-5" />
-        </div>
-        <span class="truncate text-base font-bold text-foreground">
+        <img
+          src="/favicon.webp"
+          alt="NextMoe"
+          width="256"
+          height="256"
+          class="border-default-200 bg-content1 size-8 shrink-0 rounded-lg border object-cover"
+        />
+        <span class="text-foreground truncate text-base font-bold">
           NextMoe 开发者平台
         </span>
       </NuxtLink>
@@ -103,13 +105,13 @@ const handleLogout = async () => {
           <div class="w-44 py-1">
             <NuxtLink
               to="/dashboard"
-              class="flex w-full items-center gap-3 px-3 py-2 text-sm text-default-500 transition-colors hover:bg-default-100 hover:text-foreground md:hidden"
+              class="text-default-500 hover:bg-default-100 hover:text-foreground flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors md:hidden"
             >
               <KunIcon name="lucide:layout-dashboard" class="size-4" />
               <span>控制台</span>
             </NuxtLink>
             <button
-              class="flex w-full items-center gap-3 px-3 py-2 text-sm text-danger transition-colors hover:bg-danger-50"
+              class="text-danger hover:bg-danger-50 flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors"
               @click="handleLogout"
             >
               <KunIcon name="lucide:log-out" class="size-4" />

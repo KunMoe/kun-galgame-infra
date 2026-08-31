@@ -9,6 +9,22 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      // Hex twins of --background in @kungal/ui-tokens (oklch 0.968 .004 286.33
+      // / 0.1448 0 0). A UA reads theme-color before any CSS, so it cannot be a
+      // token reference; drifting from the token shows up as a mobile browser
+      // chrome that does not match the page it frames.
+      meta: [
+        {
+          name: 'theme-color',
+          media: '(prefers-color-scheme: light)',
+          content: '#f4f4f7'
+        },
+        {
+          name: 'theme-color',
+          media: '(prefers-color-scheme: dark)',
+          content: '#0a0a0a'
+        }
+      ],
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
         {
@@ -23,8 +39,18 @@ export default defineNuxtConfig({
           sizes: '16x16',
           href: '/favicon-16x16.png'
         },
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
-        { rel: 'alternate', type: 'text/plain', href: '/llms.txt', title: 'llms.txt' },
+        {
+          rel: 'apple-touch-icon',
+          sizes: '180x180',
+          href: '/apple-touch-icon.png'
+        },
+        { rel: 'manifest', href: '/site.webmanifest' },
+        {
+          rel: 'alternate',
+          type: 'text/plain',
+          href: '/llms.txt',
+          title: 'llms.txt'
+        },
         {
           rel: 'alternate',
           type: 'text/plain',
@@ -86,7 +112,8 @@ export default defineNuxtConfig({
 
     oauthClientSecret: process.env.NUXT_OAUTH_CLIENT_SECRET || '',
 
-    nextmoeApiBase: process.env.NUXT_NEXTMOE_API_BASE || 'https://api.nextmoe.dev',
+    nextmoeApiBase:
+      process.env.NUXT_NEXTMOE_API_BASE || 'https://api.nextmoe.dev',
 
     public: {
       oauthAuthorizeBase:
