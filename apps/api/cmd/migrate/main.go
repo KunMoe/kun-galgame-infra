@@ -191,7 +191,7 @@ func runPlatform(cfg *config.Config, args []string) {
 	}
 
 	// Create initial data if needed
-	if err := seedInitialData(gormDB); err != nil {
+	if err := seedInitialData(gormDB, cfg.Server.Env); err != nil {
 		slog.Error("failed to seed initial data", "error", err)
 		os.Exit(1)
 	}

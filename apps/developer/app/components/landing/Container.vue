@@ -14,10 +14,6 @@ useSeoMeta({
   ogImage: '/android-chrome-512x512.png'
 })
 
-// The portal holds no catalog key of its own, and api.nextmoe.dev's CORS
-// allowlist does not carry developer.nextmoe.dev — a browser fetch straight at
-// the absolute URL is blocked on every client-side navigation to this page.
-// Same-origin relay instead, the pattern /explore already uses.
 interface V2Stats {
   object?: string
   works?: number
@@ -145,17 +141,12 @@ const curlSample = `curl https://api.nextmoe.dev/v2/catalog/works/1 \\
           </div>
         </div>
 
-        <!--
-          self-end with no bottom padding on purpose: the asset is cropped to
-          her silhouette, so her feet land exactly on the section's bottom
-          border and she stands on the page instead of floating in a box.
-        -->
         <div class="flex justify-center self-end lg:justify-end">
           <img
             src="/koi.webp"
             alt="NextMoe 看板娘 恋（Koi）向你伸出手"
-            width="706"
-            height="1538"
+            width="608"
+            height="1080"
             fetchpriority="high"
             class="kun-koi block h-[20rem] w-auto object-contain sm:h-[26rem] lg:h-[38rem] xl:h-[44rem]"
           />

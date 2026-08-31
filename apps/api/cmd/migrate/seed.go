@@ -9,7 +9,7 @@ import (
 )
 
 // seedInitialData creates initial required data
-func seedInitialData(db *gorm.DB) error {
+func seedInitialData(db *gorm.DB, env string) error {
 	// Sites — mirrors the production deployment (snapshot 2026-05). Idempotent:
 	// the per-domain WHERE-First check skips rows that already exist, so re-
 	// running migrate after admin manually edits site metadata via UI does
@@ -20,6 +20,13 @@ func seedInitialData(db *gorm.DB) error {
 	// client manually through the OAuth admin UI after sites are seeded;
 	// the UI's "create client" path generates a fresh secret and shows
 	// it once (consumer-side `.env` then pastes it in).
+	//
+	// Exception: the local developer-portal SSO client. The portal is
+	// SSO-only. refresh-dev-db restores the prod snapshot, whose portal
+	// client only accepts https://developer.nextmoe.dev/auth/callback, so
+	// GET /oauth/authorize for `devportal-dev` answers 无效的客户端.
+	// The secret is the public `dev-secret-<client_id>` contract. Development
+	// only — production already has its own client.
 	//
 	// To add a new first-party site:
 	//   1. Append to this slice (and update the prod DB by re-running migrate).
@@ -171,5 +178,45 @@ func seedInitialData(db *gorm.DB) error {
 		slog.Info("Backfilled oauth_clients.moemoepoint_awarder for awarder clients", "rows", res.RowsAffected)
 	}
 
+	if env == "development" {
+		if err := seedDevPortalClient(db); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func seedDevPortalClient(db *gorm.DB) error {
+	secret := siteModel.HashOAuthClientSecret("dev-secret-devportal-dev")
+	res := db.Exec(`
+		INSERT INTO oauth_clients
+		  (id, name, secret, redirect_uris, grants, is_public, auto_consent,
+		   refresh_token_ttl_seconds, allowed_scopes,
+		   image_enabled, catalog_site,
+		   dev_enabled, dev_tier, dev_rate_per_min, dev_quota_daily,
+		   dev_review_status)
+		VALUES
+		  ('devportal-dev', 'NextMoe 开发者平台 (dev)', ?,
+		   '["http://127.0.0.1:9430/auth/callback"]'::jsonb,
+		   '["authorization_code","refresh_token"]'::jsonb,
+		   false, true, 7776000, '["openid","profile","email"]'::jsonb,
+		   false, '',
+		   false, '', 0, 0,
+		   'approved')
+		ON CONFLICT (id) DO UPDATE SET
+		  secret = EXCLUDED.secret,
+		  redirect_uris = EXCLUDED.redirect_uris,
+		  grants = EXCLUDED.grants,
+		  auto_consent = EXCLUDED.auto_consent,
+		  allowed_scopes = EXCLUDED.allowed_scopes
+	`, secret)
+	if res.Error != nil {
+		slog.Error("failed to seed oauth_clients.devportal-dev", "error", res.Error)
+		return res.Error
+	}
+	if res.RowsAffected > 0 {
+		slog.Info("Seeded oauth_clients.devportal-dev")
+	}
 	return nil
 }

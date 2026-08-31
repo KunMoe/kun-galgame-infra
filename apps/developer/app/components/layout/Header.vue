@@ -1,10 +1,34 @@
 <script setup lang="ts">
+import { cn } from '@kungal/ui-core'
 import { SITE_NAV } from '~/constants/nav'
 
 const auth = useAuth()
 const route = useRoute()
 const colorMode = useColorMode()
 const { open: openLogin } = useLoginModal()
+
+const scrolled = ref(false)
+
+const syncScrolled = () => {
+  scrolled.value = window.scrollY > 0
+}
+
+onMounted(() => {
+  syncScrolled()
+  window.addEventListener('scroll', syncScrolled, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', syncScrolled)
+})
+
+watch(
+  () => route.fullPath,
+  async () => {
+    await nextTick()
+    if (import.meta.client) syncScrolled()
+  }
+)
 
 const isActive = (to: string) =>
   to === '/' ? route.path === '/' : route.path.startsWith(to)
@@ -26,7 +50,14 @@ const handleLogout = async () => {
 
 <template>
   <header
-    class="border-default-200 bg-background/85 sticky top-0 z-30 border-b backdrop-blur-md"
+    :class="
+      cn(
+        'sticky top-0 z-30 border-b transition-[background-color,border-color,backdrop-filter] duration-200',
+        scrolled
+          ? 'border-default-200 bg-background/85 backdrop-blur-md'
+          : 'border-transparent bg-transparent'
+      )
+    "
   >
     <div
       class="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 md:gap-4 md:px-6"

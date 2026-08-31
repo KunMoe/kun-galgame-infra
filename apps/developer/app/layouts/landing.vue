@@ -10,7 +10,9 @@ await callOnce('auth:user', async () => {
 
 <template>
   <div class="bg-background flex min-h-screen flex-col">
-    <LayoutHeader />
+    <div class="bg-content1">
+      <LayoutHeader />
+    </div>
 
     <!--
       No max-width and no padding on <main>, unlike the default layout: the

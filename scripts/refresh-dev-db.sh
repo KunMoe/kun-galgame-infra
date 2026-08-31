@@ -202,8 +202,43 @@ do_core() {
   if [[ -f "$dl/manifest.txt" ]]; then
     echo ">> manifest summary:"; grep -E '^# (--- summary|[a-z])' "$dl/manifest.txt" | sed 's/^# /   /'
   fi
-  if in_list "kun_galgame_infra" "${sel[@]}"; then credential_card; fi
+  if in_list "kun_galgame_infra" "${sel[@]}"; then
+    seed_devportal_client
+    credential_card
+  fi
   finish
+}
+
+# The portal is SSO-only. refresh restores the prod oauth_clients set, whose
+# NextMoe 开发者平台 row only accepts https://developer.nextmoe.dev/auth/callback.
+# Without this upsert, local :9430 authorize answers 无效的客户端.
+seed_devportal_client() {
+  local db="kun_galgame_infra${DEVDB_SUFFIX}"
+  local hash
+  hash=$(printf %s 'dev-secret-devportal-dev' | sha256sum | cut -d' ' -f1)
+  lpsql -d "$db" -v ON_ERROR_STOP=1 <<SQL
+INSERT INTO oauth_clients
+  (id, name, secret, redirect_uris, grants, is_public, auto_consent,
+   refresh_token_ttl_seconds, allowed_scopes,
+   image_enabled, catalog_site,
+   dev_enabled, dev_tier, dev_rate_per_min, dev_quota_daily,
+   dev_review_status)
+VALUES
+  ('devportal-dev', 'NextMoe 开发者平台 (dev)', 'sha256:$hash',
+   '["http://127.0.0.1:9430/auth/callback"]'::jsonb,
+   '["authorization_code","refresh_token"]'::jsonb,
+   false, true, 7776000, '["openid","profile","email"]'::jsonb,
+   false, '',
+   false, '', 0, 0,
+   'approved')
+ON CONFLICT (id) DO UPDATE SET
+  secret = EXCLUDED.secret,
+  redirect_uris = EXCLUDED.redirect_uris,
+  grants = EXCLUDED.grants,
+  auto_consent = EXCLUDED.auto_consent,
+  allowed_scopes = EXCLUDED.allowed_scopes;
+SQL
+  echo "   re-seeded oauth_clients.devportal-dev (SSO for :9430)"
 }
 
 # credential_card prints the dev credential contract every time kun_galgame_infra
@@ -222,6 +257,7 @@ credential_card() {
   lpsql -Atc "SELECT id, name FROM oauth_clients ORDER BY site_id NULLS LAST, name" -d "$db" 2>/dev/null \
     | awk -F'|' '{printf "     %-34s dev-secret-%s  (%s)\n", $1, $1, $2}' \
     || echo "     (could not list oauth_clients — query $db manually)"
+  echo "   re-seeded:     oauth_clients.devportal-dev (portal SSO on :9430)"
   echo "   hand-seeded dev-only rows (e.g. letmoe-dev) were WIPED by this refresh — re-seed"
   echo "   them per docs/dev-environment.md if a repo depends on one."
 }

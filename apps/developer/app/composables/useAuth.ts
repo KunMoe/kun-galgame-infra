@@ -1,4 +1,4 @@
-import type { LoginResponse, User } from '~~/shared/types/dev'
+import type { User } from '~~/shared/types/dev'
 
 export const useAuth = () => {
   const api = useApi()
@@ -27,19 +27,6 @@ export const useAuth = () => {
     authMode.value = null
     userStore.clearUser()
     refreshTransient.value = false // a stale banner must not outlive the session
-  }
-
-  const login = async (account: string, password: string) => {
-    const response = await api.post<LoginResponse>('/auth/login', {
-      account,
-      password
-    })
-    if (response.code === 0 && response.data) {
-      setAccessToken(response.data.access_token)
-      userStore.setUser(response.data.user)
-      authMode.value = 'password'
-    }
-    return response
   }
 
   const logout = async () => {
@@ -79,7 +66,6 @@ export const useAuth = () => {
     user: computed(() => userStore.user),
     isLoggedIn: computed(() => userStore.isLoggedIn),
     setAccessToken,
-    login,
     logout,
     fetchUser,
     refreshAccessToken

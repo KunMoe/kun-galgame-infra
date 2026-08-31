@@ -101,7 +101,4 @@ export interface User {
   created_at: string
 }
 
-export interface LoginResponse {
-  user: User
-  access_token: string
-}
+
