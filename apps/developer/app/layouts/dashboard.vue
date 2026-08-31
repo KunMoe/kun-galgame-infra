@@ -1,35 +1,10 @@
 <script setup lang="ts">
+import { DASHBOARD_NAV } from '~/constants/nav'
+
 const auth = useAuth()
 const route = useRoute()
 
-const navItems = [
-  {
-    to: '/dashboard',
-    label: '我的应用',
-    icon: 'lucide:boxes',
-    match: ['/dashboard', '/apps']
-  },
-  {
-    to: '/usage',
-    label: '用量',
-    icon: 'lucide:chart-column',
-    match: ['/usage']
-  },
-  {
-    to: '/store',
-    label: '分销链接',
-    icon: 'lucide:shopping-bag',
-    match: ['/store']
-  },
-  {
-    to: '/docs',
-    label: 'API 文档',
-    icon: 'lucide:book-open',
-    match: ['/docs']
-  }
-]
-
-const isActive = (item: (typeof navItems)[number]) =>
+const isActive = (item: (typeof DASHBOARD_NAV)[number]) =>
   item.match.some((m) => route.path === m || route.path.startsWith(`${m}/`))
 
 const handleLogout = async () => {
@@ -38,7 +13,7 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-background">
+  <div class="bg-background flex min-h-screen flex-col">
     <LayoutHeader />
     <div
       class="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 md:px-6 lg:flex-row lg:gap-8"
@@ -47,13 +22,13 @@ const handleLogout = async () => {
         <div class="lg:sticky lg:top-24 lg:space-y-6">
           <div>
             <p
-              class="px-3 text-xs font-semibold uppercase tracking-wider text-default-400"
+              class="text-default-400 px-3 text-xs font-semibold tracking-wider uppercase"
             >
               控制台
             </p>
             <nav class="mt-2 space-y-1">
               <NuxtLink
-                v-for="item in navItems"
+                v-for="item in DASHBOARD_NAV"
                 :key="item.to"
                 :to="item.to"
                 class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
@@ -71,7 +46,7 @@ const handleLogout = async () => {
 
           <div
             v-if="auth.user.value"
-            class="rounded-xl border border-default-200 bg-content1 p-3"
+            class="border-default-200 bg-content1 rounded-xl border p-3"
           >
             <div class="flex items-center gap-3">
               <KunAvatar
@@ -84,16 +59,16 @@ const handleLogout = async () => {
                 :is-navigation="false"
               />
               <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-foreground">
+                <p class="text-foreground truncate text-sm font-semibold">
                   {{ auth.user.value.name }}
                 </p>
-                <p class="truncate text-xs text-default-400">
+                <p class="text-default-400 truncate text-xs">
                   {{ auth.user.value.email }}
                 </p>
               </div>
             </div>
             <button
-              class="mt-3 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-danger transition-colors hover:bg-danger-50"
+              class="text-danger hover:bg-danger-50 mt-3 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors"
               @click="handleLogout"
             >
               <KunIcon name="lucide:log-out" class="size-4" />

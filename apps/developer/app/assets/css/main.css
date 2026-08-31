@@ -28,6 +28,21 @@ html {
 }
 
 /*
+ * Inline code carries the only unbreakable words on this site — media types,
+ * nmk_live_…, openapi.json URLs — and with the default `normal` they push out of
+ * whatever holds them instead of wrapping: a paragraph on /docs/mcp overflowed
+ * its column, and a two-column guide table computed a 433px min-content inside a
+ * 343px article, squeezing the other column to two characters a line. `anywhere`
+ * rather than `break-word` on purpose — only `anywhere` lowers the min-content
+ * contribution, and that is what lets the table shrink to the column. It still
+ * breaks only when the line cannot fit, so wide screens are unchanged. `pre` is
+ * excluded: a code block scrolls, it does not wrap.
+ */
+code:not(pre code) {
+  overflow-wrap: anywhere;
+}
+
+/*
  * The landing hero's one decorative surface. This is the only gradient in the
  * app and it is deliberate: the mascot artwork is white line art on a white
  * dress, so against a flat surface she has no ground to stand on, and against

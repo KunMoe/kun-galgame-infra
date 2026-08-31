@@ -1,15 +1,10 @@
 <script setup lang="ts">
+import { SITE_NAV } from '~/constants/nav'
+
 const auth = useAuth()
 const route = useRoute()
 const colorMode = useColorMode()
 const { open: openLogin } = useLoginModal()
-
-const navLinks = [
-  { to: '/', label: '首页' },
-  { to: '/docs', label: 'API 文档' },
-  { to: '/explore', label: '数据浏览' },
-  { to: '/dashboard', label: '控制台' }
-]
 
 const isActive = (to: string) =>
   to === '/' ? route.path === '/' : route.path.startsWith(to)
@@ -34,8 +29,10 @@ const handleLogout = async () => {
     class="border-default-200 bg-background/85 sticky top-0 z-30 border-b backdrop-blur-md"
   >
     <div
-      class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6"
+      class="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 md:gap-4 md:px-6"
     >
+      <LayoutMobileNav />
+
       <NuxtLink to="/" class="flex min-w-0 shrink-0 items-center gap-2">
         <img
           src="/favicon.webp"
@@ -44,14 +41,16 @@ const handleLogout = async () => {
           height="256"
           class="border-default-200 bg-content1 size-8 shrink-0 rounded-lg border object-cover"
         />
-        <span class="text-foreground truncate text-base font-bold">
+        <span
+          class="text-foreground hidden truncate text-base font-bold sm:inline"
+        >
           NextMoe 开发者平台
         </span>
       </NuxtLink>
 
-      <nav class="hidden items-center gap-1 md:flex">
+      <nav class="hidden items-center gap-1 lg:flex">
         <NuxtLink
-          v-for="link in navLinks"
+          v-for="link in SITE_NAV"
           :key="link.to"
           :to="link.to"
           class="rounded-lg px-3 py-2 text-sm font-medium transition-colors"
@@ -65,7 +64,9 @@ const handleLogout = async () => {
         </NuxtLink>
       </nav>
 
-      <div class="flex shrink-0 items-center gap-2">
+      <div class="ml-auto flex shrink-0 items-center gap-2">
+        <LayoutSearch />
+
         <KunPopover position="bottom-end">
           <template #trigger>
             <KunButton
@@ -99,17 +100,12 @@ const handleLogout = async () => {
           <template #trigger>
             <KunButton variant="flat" size="sm">
               <KunIcon name="lucide:circle-user-round" class="mr-1 size-4" />
-              <span class="max-w-24 truncate">{{ auth.user.value?.name }}</span>
+              <span class="hidden max-w-24 truncate sm:inline">
+                {{ auth.user.value?.name }}
+              </span>
             </KunButton>
           </template>
           <div class="w-44 py-1">
-            <NuxtLink
-              to="/dashboard"
-              class="text-default-500 hover:bg-default-100 hover:text-foreground flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors md:hidden"
-            >
-              <KunIcon name="lucide:layout-dashboard" class="size-4" />
-              <span>控制台</span>
-            </NuxtLink>
             <button
               class="text-danger hover:bg-danger-50 flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors"
               @click="handleLogout"

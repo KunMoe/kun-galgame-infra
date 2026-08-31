@@ -92,7 +92,7 @@ const curlSample = `curl https://api.nextmoe.dev/v2/catalog/works/1 \\
       <div class="kun-hero-glow pointer-events-none absolute inset-0 -z-10" />
 
       <div
-        class="mx-auto grid max-w-7xl items-end px-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:gap-12"
+        class="mx-auto grid max-w-7xl items-end px-4 py-12 md:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:gap-12"
       >
         <div
           class="pt-14 pb-10 text-center lg:self-center lg:py-24 lg:text-left"
@@ -105,7 +105,7 @@ const curlSample = `curl https://api.nextmoe.dev/v2/catalog/works/1 \\
           </div>
 
           <h1
-            class="text-foreground mt-7 text-[2.75rem] leading-[1.06] font-bold tracking-tight sm:text-6xl lg:text-7xl xl:text-[5rem]"
+            class="text-foreground mt-7 text-[2.75rem] leading-[1.06] font-bold tracking-tight sm:text-6xl xl:text-7xl 2xl:text-[5rem]"
           >
             ACGN 数据，<br />
             以此为准

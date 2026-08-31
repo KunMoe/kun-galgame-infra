@@ -52,6 +52,10 @@ on:
       - "apps/developer/scripts/docs-i18n.mjs"
       - "apps/developer/scripts/faces.mjs"
       - "apps/developer/scripts/gen-llms.mjs"
+      # The ⌘K palette's haystack: built from every other artifact this job
+      # produces, so it drifts whenever any of them moves.
+      - "apps/developer/scripts/search-index.mjs"
+      - "apps/developer/app/generated/search-index.ts"
       # The hand-written guides: their Markdown sources, the compiler that turns
       # them into pre-highlighted HTML, and the file that orders them.
       - "apps/developer/docs/**/*.md"
