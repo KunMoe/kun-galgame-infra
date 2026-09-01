@@ -122,6 +122,7 @@ type AIOmniConfig struct {
 	Model              string
 	EscalateThreshold  float32
 	NegativeSampleRate float64
+	ForceEscalate      string
 }
 
 type TrustServiceConfig struct {
@@ -589,6 +590,7 @@ func Load() (*Config, error) {
 		Model:              getEnv("KUN_AI_OMNI_MODEL", "omni-moderation-latest"),
 		EscalateThreshold:  float32(omniEscalate),
 		NegativeSampleRate: omniSampleRate,
+		ForceEscalate:      getEnv("KUN_AI_FORCE_ESCALATE", ""),
 	}
 
 	cfg.AIClient = AIClientConfig{

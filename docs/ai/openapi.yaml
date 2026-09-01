@@ -54,6 +54,9 @@ components:
           description: optional author global id (attribution/repeat-offender signal); NOT the tenant — the tenant is derived from the client binding
           format: int64
           type: integer
+        subject_kind:
+          description: optional product-side content kind (e.g. forum_topic); with the tenant site it selects forced Tier2 escalation for configured (site,kind) pairs
+          type: string
         text:
           description: the UGC text to scan
           type: string

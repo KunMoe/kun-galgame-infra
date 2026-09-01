@@ -14,7 +14,7 @@ import (
 
 type ScanGateway interface {
 	Configured() bool
-	Moderate(ctx context.Context, text string, authorID *int64) (GatewayVerdict, error)
+	Moderate(ctx context.Context, text, subjectKind string, authorID *int64) (GatewayVerdict, error)
 }
 
 type GatewayVerdict struct {
@@ -48,8 +48,9 @@ func (c *AIGatewayClient) Configured() bool {
 }
 
 type moderateReq struct {
-	Text     string `json:"text"`
-	AuthorID *int64 `json:"author_id,omitempty"`
+	Text        string `json:"text"`
+	SubjectKind string `json:"subject_kind,omitempty"`
+	AuthorID    *int64 `json:"author_id,omitempty"`
 }
 
 type moderateEnvelope struct {
@@ -65,8 +66,8 @@ type moderateEnvelope struct {
 	} `json:"data"`
 }
 
-func (c *AIGatewayClient) Moderate(ctx context.Context, text string, authorID *int64) (GatewayVerdict, error) {
-	raw, err := json.Marshal(moderateReq{Text: text, AuthorID: authorID})
+func (c *AIGatewayClient) Moderate(ctx context.Context, text, subjectKind string, authorID *int64) (GatewayVerdict, error) {
+	raw, err := json.Marshal(moderateReq{Text: text, SubjectKind: subjectKind, AuthorID: authorID})
 	if err != nil {
 		return GatewayVerdict{}, err
 	}
