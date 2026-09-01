@@ -1,0 +1,4943 @@
+[
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "clannad"
+                }
+              }
+            },
+            {
+              "prefix": {
+                "titles_pinyin": {
+                  "boost": 12,
+                  "value": "clannad"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "CLANNAD",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "CLANNAD",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "CLANNAD",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "CLANNAD"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "CLANNAD"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "CLANNAD"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "latin title",
+    "q": "CLANNAD",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "千恋"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "千恋",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "千恋",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "千恋",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "千恋"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "千恋"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "千恋"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "千恋"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "zh abbreviation of senren banka",
+    "q": "千恋",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "色仕掛け学園思春期男子誘惑作戦"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "色仕掛け学園～思春期男子誘惑作戦～",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "色仕掛け学園～思春期男子誘惑作戦～",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "色仕掛け学園～思春期男子誘惑作戦～",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "色仕掛け学園～思春期男子誘惑作戦～"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "色仕掛け学園～思春期男子誘惑作戦～"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "色仕掛け学園～思春期男子誘惑作戦～"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "色仕掛け学園～思春期男子誘惑作戦～"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "色仕掛け学園思春期男子誘惑作戦"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 13,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "色"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "仕"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "掛"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "学"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "園"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "思"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "春"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "期"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "男"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "子"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "誘"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "惑"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "作"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "戦"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "full ja title with wave dash",
+    "q": "色仕掛け学園～思春期男子誘惑作戦～",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "地獄学園"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "地獄学園",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "地獄学園",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "地獄学園",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "地獄学園"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "地獄学園"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "地獄学園"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "地獄学園"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "地獄学園"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "地"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "獄"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "学"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "園"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "kanji span from the middle of a title",
+    "q": "地獄学園",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "アヘ顔アクメ中毒人体改造で狂ってイク私を見ないで"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "アヘ顔アクメ中毒  人体改造で狂ってイク私を見ないで",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "アヘ顔アクメ中毒  人体改造で狂ってイク私を見ないで",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "アヘ顔アクメ中毒  人体改造で狂ってイク私を見ないで",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "アヘ顔アクメ中毒  人体改造で狂ってイク私を見ないで"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "アヘ顔アクメ中毒  人体改造で狂ってイク私を見ないで"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "アヘ顔アクメ中毒  人体改造で狂ってイク私を見ないで"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "アヘ顔アクメ中毒  人体改造で狂ってイク私を見ないで"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "アヘ顔アクメ中毒人体改造で狂ってイク私を見ないで"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 9,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "顔"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "中"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "毒"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "人"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "体"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "改"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "造"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "狂"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "私"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "見"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "fullwidth dash subtitle must not negate",
+    "q": "アヘ顔アクメ中毒 －人体改造で狂ってイク私を見ないで－",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "crazychanエルピスの鎖"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "CRAZY CHA!N  エルピスの鎖",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "CRAZY CHA!N  エルピスの鎖",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "CRAZY CHA!N  エルピスの鎖",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "CRAZY CHA!N  エルピスの鎖"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "CRAZY CHA!N  エルピスの鎖"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "CRAZY CHA!N  エルピスの鎖"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "CRAZY CHA!N  エルピスの鎖"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "crazychanエルピスの鎖"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "ascii hyphen subtitle must not negate",
+    "q": "CRAZY CHA!N -エルピスの鎖-",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "装甲恶鬼村正"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "装甲恶鬼村正",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "装甲恶鬼村正",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "装甲恶鬼村正",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "装甲恶鬼村正"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "装甲恶鬼村正"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "装甲恶鬼村正"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "装甲恶鬼村正"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "装甲恶鬼村正"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 5,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "装"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "甲"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "恶"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "鬼"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "村"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "正"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "zh title of muramasa",
+    "q": "装甲恶鬼村正",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "ココロネ"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "ココロネ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "ココロネ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "ココロネ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "ココロネ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "ココロネ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "ココロネ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "ココロネ"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "ココロネ"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "left half of fullwidth-equals title (PR #12)",
+    "q": "ココロネ",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "白昼夢の青写真"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "白昼夢の青写真",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "白昼夢の青写真",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "白昼夢の青写真",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "白昼夢の青写真"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "白昼夢の青写真"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "白昼夢の青写真"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "白昼夢の青写真"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "白昼夢の青写真"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 5,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "白"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "昼"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "夢"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "青"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "写"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "真"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "full kana title",
+    "q": "白昼夢の青写真",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "夏"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "夏",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "夏",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "夏",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "夏"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "夏"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "夏"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "夏"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "short CJK character",
+    "q": "夏",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "match_all": {}
+      },
+      "size": 8,
+      "sort": [
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "empty q popularity listing",
+    "q": "",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "遠野秋葉"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "遠野秋葉",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "遠野秋葉",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "遠野秋葉",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "遠野秋葉"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "遠野秋葉"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "遠野秋葉"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "遠野秋葉"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": true,
+    "index": "catalog_characters",
+    "limit": 8,
+    "name": "ja character full name",
+    "q": "遠野秋葉",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "秋叶"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "秋叶",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "秋叶",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "秋叶",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "秋叶"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "秋叶"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "秋叶"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "秋叶"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": true,
+    "index": "catalog_characters",
+    "limit": 8,
+    "name": "zh simplified character query (known weak under cmn pin)",
+    "q": "秋叶",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "麻枝准"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "麻枝准",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "麻枝准",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "麻枝准",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "麻枝准"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "麻枝准"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "麻枝准"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "麻枝准"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": true,
+    "index": "catalog_credit_names",
+    "limit": 8,
+    "name": "zh credit name",
+    "q": "麻枝准",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "key"
+                }
+              }
+            },
+            {
+              "prefix": {
+                "titles_pinyin": {
+                  "boost": 12,
+                  "value": "key"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "Key",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "Key",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "Key",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "Key"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "Key"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "Key"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": true,
+    "index": "catalog_labels",
+    "limit": 8,
+    "name": "latin company",
+    "q": "Key",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "校园"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "校园",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "校园",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "校园",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "校园"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "校园"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "校园"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "校园"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": true,
+    "index": "catalog_tags",
+    "limit": 8,
+    "name": "zh tag",
+    "q": "校园",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "千原万神"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "千原万神",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "千原万神",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "千原万神",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "千原万神"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "千原万神"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "千原万神"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "千原万神"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "千原万神"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "千"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "原"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "万"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "神"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "mondegreen 千原万神 -> 千恋万花",
+    "q": "千原万神",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "千恋万神"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "千恋万神",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "千恋万神",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "千恋万神",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "千恋万神"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "千恋万神"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "千恋万神"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "千恋万神"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "千恋万神"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "千"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "恋"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "万"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "神"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "near-mondegreen 千恋万神 -> 千恋万花",
+    "q": "千恋万神",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "千变万化"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "千变万化",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "千变万化",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "千变万化",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "千变万化"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "千变万化"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "千变万化"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "千变万化"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "千变万化"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "千"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "变"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "万"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "化"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "simplified idiom 千变万化 -> 千恋万花",
+    "q": "千变万化",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "美少女万花镜"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "美少女万花镜",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "美少女万花镜",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "美少女万花镜",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "美少女万花镜"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "美少女万花镜"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "美少女万花镜"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "美少女万花镜"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "美少女万花镜"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 5,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "美"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "少"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "女"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "万"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "花"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "镜"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "花 vs 华 美少女万花镜",
+    "q": "美少女万花镜",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "命运石门"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "命运石门",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "命运石门",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "命运石门",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "命运石门"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "命运石门"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "命运石门"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "命运石门"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "命运石门"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "命"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "运"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "石"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "门"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "missing 之 命运石门",
+    "q": "命运石门",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "魔女夜宴"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "魔女夜宴",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "魔女夜宴",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "魔女夜宴",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "魔女夜宴"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "魔女夜宴"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "魔女夜宴"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "魔女夜宴"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "魔女夜宴"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "魔"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "女"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "夜"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "宴"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "missing 的 魔女夜宴",
+    "q": "魔女夜宴",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "樱花之诗"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "樱花之诗",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "樱花之诗",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "樱花之诗",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "樱花之诗"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "樱花之诗"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "樱花之诗"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "樱花之诗"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "樱花之诗"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "樱"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "花"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "之"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "诗"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "extra 花 樱花之诗",
+    "q": "樱花之诗",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "近月少女礼仪"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "近月少女礼仪",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "近月少女礼仪",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "近月少女礼仪",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "近月少女礼仪"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "近月少女礼仪"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "近月少女礼仪"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "近月少女礼仪"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "近月少女礼仪"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 5,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "近"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "月"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "少"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "女"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "礼"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "仪"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "missing 的 近月少女礼仪",
+    "q": "近月少女礼仪",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "苍蓝彼方"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "苍蓝彼方",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "苍蓝彼方",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "苍蓝彼方",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "苍蓝彼方"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "苍蓝彼方"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "苍蓝彼方"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "苍蓝彼方"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "苍蓝彼方"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "苍"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "蓝"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "彼"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "方"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "near-title 苍蓝彼方",
+    "q": "苍蓝彼方",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "村正恶鬼"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "村正恶鬼",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "村正恶鬼",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "村正恶鬼",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "村正恶鬼"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "村正恶鬼"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "村正恶鬼"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "村正恶鬼"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "村正恶鬼"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "村"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "正"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "恶"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "鬼"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "word order 村正恶鬼",
+    "q": "村正恶鬼",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "朝武芳乃"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "朝武芳乃",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "朝武芳乃",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "朝武芳乃",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "朝武芳乃"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "朝武芳乃"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "朝武芳乃"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "朝武芳乃"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "朝武芳乃"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "朝"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "武"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "芳"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "乃"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "heroine in intro 朝武芳乃",
+    "q": "朝武芳乃",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "苍彼"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "苍彼",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "苍彼",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "苍彼",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "苍彼"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "苍彼"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "苍彼"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "苍彼"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "community abbr 苍彼 (alias)",
+    "q": "苍彼",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "近月"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "近月",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "近月",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "近月",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "近月"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "近月"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "近月"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "近月"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "community abbr 近月 (in zh title)",
+    "q": "近月",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "石头门"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "石头门",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "石头门",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "石头门",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "石头门"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "石头门"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "石头门"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "石头门"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "石头门"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 3,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "石"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "头"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "门"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "community abbr 石头门 (alias)",
+    "q": "石头门",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "シュタゲ"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "シュタゲ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "シュタゲ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "シュタゲ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "シュタゲ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "シュタゲ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "シュタゲ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "シュタゲ"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "シュタゲ"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "ja nickname シュタゲ",
+    "q": "シュタゲ",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "senren"
+                }
+              }
+            },
+            {
+              "prefix": {
+                "titles_pinyin": {
+                  "boost": 12,
+                  "value": "senren"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "senren",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "senren",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "senren",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "senren"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "senren"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "senren"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "romaji senren",
+    "q": "senren",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "jinyue"
+                }
+              }
+            },
+            {
+              "prefix": {
+                "titles_pinyin": {
+                  "boost": 12,
+                  "value": "jinyue"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "jinyue",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "jinyue",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "jinyue",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "jinyue"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "jinyue"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "jinyue"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "pinyin jinyue -> 近月",
+    "q": "jinyue",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "九九九"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "九九九",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "九九九",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "九九九",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "九九九"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "九九九"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "九九九"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "九九九"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "九九九"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "series abbr 九九九",
+    "q": "九九九",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "match_all": {}
+      },
+      "size": 8,
+      "sort": [
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "empty works query",
+    "q": "",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "clannad"
+                }
+              }
+            },
+            {
+              "prefix": {
+                "titles_pinyin": {
+                  "boost": 12,
+                  "value": "clannad"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "CLANNAD",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "CLANNAD",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "CLANNAD",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "CLANNAD"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "CLANNAD"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "CLANNAD"
+                }
+              }
+            },
+            {
+              "match": {
+                "intro_ja": {
+                  "boost": 0.6,
+                  "operator": "and",
+                  "query": "CLANNAD"
+                }
+              }
+            },
+            {
+              "match": {
+                "intro_zh": {
+                  "boost": 0.6,
+                  "operator": "and",
+                  "query": "CLANNAD"
+                }
+              }
+            },
+            {
+              "match": {
+                "intro_other": {
+                  "boost": 0.4,
+                  "operator": "and",
+                  "query": "CLANNAD"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "search_intro on",
+    "q": "CLANNAD",
+    "search_intro": true
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "千恋万花"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "千恋＊万花",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "千恋＊万花",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "千恋＊万花",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "千恋＊万花"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "千恋＊万花"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "千恋＊万花"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "千恋＊万花"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "千恋万花"
+                }
+              }
+            },
+            {
+              "bool": {
+                "boost": 1.5,
+                "minimum_should_match": 4,
+                "should": [
+                  {
+                    "term": {
+                      "titles_ngram": "千"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "恋"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "万"
+                    }
+                  },
+                  {
+                    "term": {
+                      "titles_ngram": "花"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "asterisk stripped",
+    "q": "千恋＊万花",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "fatestaynight"
+                }
+              }
+            },
+            {
+              "prefix": {
+                "titles_pinyin": {
+                  "boost": 12,
+                  "value": "fatestaynight"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "Fate/stay night",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "Fate/stay night",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "Fate/stay night",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "Fate/stay night"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "Fate/stay night"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "Fate/stay night"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "slash top-up",
+    "q": "Fate/stay night",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "ジュエリーハーツアカデミア"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "ジュエリーハーツアカデミア",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "ジュエリーハーツアカデミア",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "ジュエリーハーツアカデミア",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "ジュエリーハーツアカデミア"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "ジュエリーハーツアカデミア"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "ジュエリーハーツアカデミア"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "ジュエリーハーツアカデミア"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "ジュエリーハーツアカデミア"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "missing nakaguro",
+    "q": "ジュエリーハーツアカデミア",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "遠野秋葉"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "遠野秋葉",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "遠野秋葉",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "遠野秋葉",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "遠野秋葉"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "遠野秋葉"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "遠野秋葉"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "遠野秋葉"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": true,
+    "index": "catalog_characters",
+    "limit": 8,
+    "name": "entity precision only",
+    "q": "遠野秋葉",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "aokana"
+                }
+              }
+            },
+            {
+              "prefix": {
+                "titles_pinyin": {
+                  "boost": 12,
+                  "value": "aokana"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "aokana",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "aokana",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "aokana",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "aokana"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "aokana"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "aokana"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": true,
+    "index": "catalog_credit_names",
+    "limit": 8,
+    "name": "latin entity",
+    "q": "aokana",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "ｋｅｙ"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "Ｋｅｙ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "Ｋｅｙ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "Ｋｅｙ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "Ｋｅｙ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "Ｋｅｙ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "Ｋｅｙ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "Ｋｅｙ"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": true,
+    "index": "catalog_labels",
+    "limit": 8,
+    "name": "fullwidth latin not latin-only",
+    "q": "Ｋｅｙ",
+    "search_intro": false
+  },
+  {
+    "body": {
+      "query": {
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [
+            {
+              "term": {
+                "titles_kw": {
+                  "boost": 14,
+                  "value": "ｄ．ｃ．ダカーポ"
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_ja": {
+                  "boost": 6,
+                  "query": "Ｄ．Ｃ． ダ・カーポ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles_zh": {
+                  "boost": 6,
+                  "query": "Ｄ．Ｃ． ダ・カーポ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase": {
+                "titles": {
+                  "boost": 5,
+                  "query": "Ｄ．Ｃ． ダ・カーポ",
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ja": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "Ｄ．Ｃ． ダ・カーポ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_zh": {
+                  "boost": 4,
+                  "operator": "and",
+                  "query": "Ｄ．Ｃ． ダ・カーポ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "Ｄ．Ｃ． ダ・カーポ"
+                }
+              }
+            },
+            {
+              "match": {
+                "titles_ngram": {
+                  "boost": 3,
+                  "operator": "and",
+                  "query": "Ｄ．Ｃ． ダ・カーポ"
+                }
+              }
+            },
+            {
+              "fuzzy": {
+                "titles_kw": {
+                  "boost": 8,
+                  "fuzziness": 2,
+                  "max_expansions": 80,
+                  "value": "ｄ．ｃ．ダカーポ"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "size": 8,
+      "sort": [
+        "_score",
+        {
+          "popularity": {
+            "order": "desc"
+          }
+        }
+      ],
+      "track_total_hits": true
+    },
+    "entity": false,
+    "index": "catalog_works",
+    "limit": 8,
+    "name": "fullwidth operator sanitize",
+    "q": "Ｄ．Ｃ．－ダ・カーポ－",
+    "search_intro": false
+  }
+]
