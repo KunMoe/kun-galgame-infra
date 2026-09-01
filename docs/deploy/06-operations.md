@@ -28,7 +28,7 @@ docker compose build oauth && docker compose up -d oauth
 # 下游同理(kungal 记得带 -f override)
 ```
 - 升级 Go/Nuxt 服务**不需要**动数据库。换基础镜像(trixie / node24 等)也只是重建无状态容器,数据卷不受影响。
-- 升级**有状态**镜像(Postgres/Meili 大版本)**不能**直接改 tag 重建——数据卷格式不兼容会导致新版起不来(Meili 会崩溃循环,见 [07-troubleshooting.md](./07-troubleshooting.md) I2)。
+- 升级**有状态**镜像(Postgres 大版本)**不能**直接改 tag 重建——数据卷格式不兼容会导致新版起不来。
 
 ### Postgres 大版本升级(需迁移,勿直接换 tag)
 当前在 `postgres:18-alpine`(已于 **2026-06 由 16 升级**)。大版本升级实测步骤(dump/restore,最稳):
@@ -48,25 +48,13 @@ docker stop pg18r && docker rm pg18r                    # 卷已填好(临时容
 docker compose up -d postgres   # 等 healthy
 # 备选:pgautoupgrade 镜像原地升级(进阶,先备份)
 ```
-Redis(`redis:8-alpine`)/MinIO(已锁 RELEASE)向前兼容旧数据,直接换 tag 重建即可。Meili 见下条。
-
-### Meilisearch 大版本升级(清卷 + 重建索引)
-Meili 索引是**派生数据**(从 `kun_galgame_wiki` 生成),跨版本不兼容旧卷,最简单:清卷换 tag,再 `reindex-search` 重建。
-```bash
-docker compose rm -sf meili && docker volume rm kun-galgame-infra_meili
-# compose 改成 getmeili/meilisearch:v1.45(本仓已改)后:
-docker compose up -d meili
-# 重建索引(从宿主跑,env 指向 docker 的 pg/meili 宿主端口):
-cd apps/api && KUN_PG_HOST=localhost KUN_PG_PORT=15000 KUN_PG_PASSWORD=<pw> \
-  KUN_MEILISEARCH_HOST=http://localhost:15004 KUN_MEILISEARCH_API_KEY=<key> \
-  go run ./cmd/reindex-search        # 2026-06 v1.20→v1.45 即此法,4-5s 重建 6w+ 文档
-```
+Redis(`redis:8-alpine`)/MinIO(已锁 RELEASE)向前兼容旧数据,直接换 tag 重建即可。OpenSearch 索引是派生数据,换引擎镜像后 `go run ./cmd/reindex-catalog` 重建即可。
 
 ## 备份 / 恢复
 
 > **完整的备份/还原详解**(手动/自动/异地、各类还原场景、PITR)见 [14-backup-restore.md](./14-backup-restore.md)。下面是速记。
 
-数据全在 infra 的 4 个命名卷:`kun-galgame-infra_{pg,redis,minio,meili}`。
+数据全在 infra 的命名卷:`kun-galgame-infra_{pg,redis,minio,opensearch}`。
 
 ```bash
 # Postgres 逻辑备份(所有库)
@@ -85,7 +73,7 @@ docker run --rm -v kun-galgame-infra_minio:/data -v "$PWD:/b" alpine \
 
 恢复:`psql < dump.sql` 进对应库;卷级则 `tar x` 回空卷后再起服务。
 - Redis 是缓存/会话,**可不备份**(丢了重新登录即可)。
-- Meili 索引可由 `cmd/reindex-search` 从 Postgres 重建,**不必备份**。
+- OpenSearch 索引可由 `cmd/reindex-catalog` 从 Postgres 重建,**不必备份**。
 
 ## 迁移 / 一次性任务
 
@@ -105,7 +93,7 @@ infra `oauth` 进程内置 job 调度器(启动日志可见 `jobs: scheduler sta
 ## 扩缩容
 
 - 无状态 api/web 可水平扩:`docker compose up -d --scale galgame=2`(前面要有反代做负载均衡;infra 的 job 调度用 PG advisory lock 做单飞,多副本安全)。
-- 有状态(pg/redis/minio/meili)单实例;要高可用需各自的集群方案,超出本机范围。
+- 有状态(pg/redis/minio/opensearch)单实例;要高可用需各自的集群方案,超出本机范围。
 
 ## 资源 / 清理
 

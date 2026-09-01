@@ -84,11 +84,9 @@ func main() {
 		slog.Error("search indexer", "error", err)
 		os.Exit(1)
 	}
-	if engineName == catalogSearch.EngineOpenSearch {
-		if err := searcher.Health(context.Background()); err != nil {
-			slog.Error("opensearch unhealthy", "error", err)
-			os.Exit(1)
-		}
+	if err := searcher.Health(context.Background()); err != nil {
+		slog.Error("opensearch unhealthy", "engine", engineName, "error", err)
+		os.Exit(1)
 	}
 
 	application.Fiber.Use(middleware.RequestID())

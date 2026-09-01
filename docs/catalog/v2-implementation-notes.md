@@ -8,7 +8,7 @@ Date: 2026-08-24, GA declared 2026-08-25 (stage 9); news write face added 2026-0
 
 - Protocol, problems, vocabularies, collection contract, repr types, CI gates G1–G16.
 - Catalog read: works (list/detail/12 subs), companies+graph, tags, series, engines, releases, characters, credit-names, persons, traits, search, calendar, changes, redirects, stats, schemas/{object}, news.
-- `GET /v2/catalog/works` binds 05 §6.1 filters (`q=`, `company_id=`, `tag_id=`, `series_id=`, `engine_id=`, `olang=`, dates, claim/content axes). `q=` / search sorts / `facets=` use the search engine (`WorksSearch`; `KUN_SEARCH_ENGINE` selects Meilisearch (default) or OpenSearch — production runs OpenSearch since 2026-09-01); other filter combinations use the live registry (`WorksList`). `sort=relevance` requires `q=`.
+- `GET /v2/catalog/works` binds 05 §6.1 filters (`q=`, `company_id=`, `tag_id=`, `series_id=`, `engine_id=`, `olang=`, dates, claim/content axes). `q=` / search sorts / `facets=` use the search engine (`WorksSearch`; OpenSearch is the search engine since 2026-09-01, Meilisearch retired 2026-09-02); other filter combinations use the live registry (`WorksList`). `sort=relevance` requires `q=`.
 - `GET /v2/catalog/characters/{id}/appearances` is the character reverse-lookup collection (roster_role, spoiler, voices). Company reverse lookup is `works?company_id=`. Staff reverse lookup stays `credit-names/{id}/credits`.
 - Character `view=full` carries D30 attributes (`gender`, `birthday` as `MM-DD`, measurements, `blood_type` as `a|b|ab|o`, `instance_of_id`). `description` / `extra` / `field_provenance` stay out, as D30.
 - `/v2/me/playtimes` GET/PUT/DELETE and POST 207 batch; `/v2/me/cover-votes` GET/PUT/DELETE.
@@ -369,7 +369,7 @@ News write specifics:
 - Live DB: `handler/live_*_test.go` (requires track `TEST_DATABASE_DSN`). One 200 GET per bound read, write happy paths, then a spec walk against the live app.
 - News write: `handler/live_news_test.go` over HTTP (source grant 403/422, POST→pending with `Location`/`ETag`/`no-store`, field-level 422, `Idempotency-Key` replay, pending edit, 428/412/200 on withdrawal, rejected terminal, cross-publisher 404) and `news/service/submission_test.go` at the service layer, which drives the **real** `newsmoderate.Runner` to prove a text edit re-enters the machine queue and a metadata edit does not.
 
-Search 200 paths need Meilisearch — the live suites bind it via `MEILISEARCH_TEST_HOST` (production runs OpenSearch via `KUN_SEARCH_ENGINE` since 2026-09-01; the OS engine has its own suite gated on `KUN_OPENSEARCH_TEST_HOST`); with it unbound those ops return declared 503. The news tables are created in the same track database by `newsmigrate.Run`, so the news read and write faces are bound in the live tests.
+Search 200 paths need OpenSearch — the live suites bind it via `KUN_OPENSEARCH_TEST_HOST` (OpenSearch is the search engine since 2026-09-01; Meilisearch retired 2026-09-02); with it unbound those ops return declared 503. The news tables are created in the same track database by `newsmigrate.Run`, so the news read and write faces are bound in the live tests.
 
 When a test database is assigned, run:
 

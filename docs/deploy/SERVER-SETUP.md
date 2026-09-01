@@ -174,7 +174,7 @@ sudo ufw status verbose
 > - **`<PORT>` SSH / 80 / 443**(+ 初装临时的 `3000`)。
 > - **邮件不需要任何入站规则**:本项目发信走**外部 SMTP 中继**(mxroute `tuesday.mxrouting.net:587`),是**出站**连接 —— ufw 默认放行出站即可,源站不收信、不跑邮件服务,**不开 25/465/587/993/143**。
 >   - 唯一相关的是**出站**:个别 VPS 默认封**出站 25**(反垃圾),但本项目用 **587(submission)**,基本不受影响;若发信失败先确认出站 587 没被运营商挡。
-> - **数据库 / Redis / oauth / image / galgame / meilisearch / minio 全是容器内网通信**(prod compose 用 `expose` 不发布宿主端口),**无需任何入站规则**;临时要从笔记本连库就走 **SSH 隧道**(`ssh -L`),别长期开 pg 端口。
+> - **数据库 / Redis / oauth / image / galgame / opensearch / minio 全是容器内网通信**(prod compose 用 `expose` 不发布宿主端口),**无需任何入站规则**;临时要从笔记本连库就走 **SSH 隧道**(`ssh -L`),别长期开 pg 端口。
 
 ## 5. fail2ban(挡 SSH 爆破)
 

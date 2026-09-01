@@ -159,7 +159,7 @@ func (f WorksSearchFilter) worksFilter(docID string) spec.WorksFilter {
 		r := model.ContentRatingR18
 		wf.ContentRatingNot = &r
 	}
-	// The browse lane's ban exclusion, in Meili: a banned work must not come
+	// The browse lane's ban exclusion: a banned work must not come
 	// back through q= either, and it did while claim_state= was absent.
 	if !slices.Contains(f.ClaimStates, model.ClaimStateKeyHidden) {
 		wf.ClaimStateNot = model.ClaimStateKeyHidden

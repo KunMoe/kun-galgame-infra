@@ -116,7 +116,7 @@ var liveReadsNotSwept = map[string]string{
 	"/v2/me/proposals/{id}":                 "same: no proposal id to address",
 	"/v2/moderation/proposals/{id}":         "same: no proposal id to address",
 	"/v2/me/playtimes/{work_id}":            "404 until a playtime is written, which is TestLiveWrites200's job",
-	"/v2/catalog/search":                    "the live env binds no Meilisearch, so this face is 503 here",
+	"/v2/catalog/search":                    "the live env binds no OpenSearch, so this face is 503 here",
 	"/v2/store/purchase-links/{product_id}": "the live env binds no store service",
 	"/v2/store/stats":                       "the live env binds no store service",
 }

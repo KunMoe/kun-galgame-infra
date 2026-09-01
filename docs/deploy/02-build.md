@@ -55,7 +55,7 @@ docker compose build           # 与 moyu 一致;build 不依赖网络,infra 未
 | Postgres | `postgres:18-alpine` | **已升级 16→18**(2026-06,dump/restore;pg18 的 VOLUME 从 `/var/lib/postgresql/data` 改到 `/var/lib/postgresql`,挂载点已同步,见 [06-operations.md](./06-operations.md)) |
 | Redis | `redis:8-alpine` | 已是最新大版本(`8-alpine` 自动取 8.8.x);向前兼容旧数据(本就是缓存/会话) |
 | MinIO | `minio/minio:RELEASE.2025-09-07T16-13-09Z` | 已锁版本(原先是 `latest`)。注:MinIO 官方社区镜像已停更/归档(~2026-04),生产图床走 Cloudflare R2,影响小 |
-| Meilisearch | `getmeili/meilisearch:v1.45` | **已升级 v1.20→v1.45**(2026-06,清卷 + `reindex-search` 重建索引;跨版本不兼容详见 [07-troubleshooting.md](./07-troubleshooting.md) I2) |
+| OpenSearch | `ghcr.io/next-moe/infra-opensearch:2.19.6` | catalog 搜索(icu/kuromoji/pinyin);索引派生自 Postgres,`reindex-catalog` 可重建 |
 
 > Debian:bookworm(12)→**trixie(13,2025-08 起为 stable)**。bookworm 仍受支持到 2028,但 trixie 是当前稳定版,新部署用它更合适。换基镜后镜像需重建并替换无状态容器(有状态卷不受影响)。
 

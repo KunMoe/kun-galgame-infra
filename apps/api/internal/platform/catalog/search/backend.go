@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"api/internal/infrastructure/search"
 	"api/internal/platform/catalog/search/spec"
 	"api/pkg/config"
 )
@@ -24,31 +23,12 @@ type Engine interface {
 
 type Indexer struct{ engine Engine }
 
-func NewIndexer(client *search.Client) *Indexer {
-	return &Indexer{engine: &meiliEngine{client: client}}
-}
-
 func NewIndexerFromConfig(cfg *config.Config) (*Indexer, string, error) {
-	name := cfg.SearchEngine
-	if name == "" {
-		name = EngineMeilisearch
+	client, err := newOpenSearchClient(cfg)
+	if err != nil {
+		return nil, "", err
 	}
-	switch name {
-	case EngineMeilisearch:
-		client, err := search.NewClient(cfg.Meilisearch)
-		if err != nil {
-			return nil, "", err
-		}
-		return NewIndexer(client), name, nil
-	case EngineOpenSearch:
-		client, err := newOpenSearchClient(cfg)
-		if err != nil {
-			return nil, "", err
-		}
-		return NewOpenSearchIndexer(client), name, nil
-	default:
-		return nil, "", fmt.Errorf("unknown search engine %q", name)
-	}
+	return NewOpenSearchIndexer(client), EngineOpenSearch, nil
 }
 
 func (i *Indexer) EnsureIndexes(ctx context.Context) error {

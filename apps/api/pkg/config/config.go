@@ -25,8 +25,6 @@ type Config struct {
 	Auth                    AuthConfig
 	OIDC                    OIDCConfig
 	Mail                    MailConfig
-	SearchEngine            string
-	Meilisearch             MeilisearchConfig
 	OpenSearch              OpenSearchConfig
 	ImageService            ImageServiceConfig
 	ImageS3                 S3Config
@@ -207,12 +205,6 @@ type S3Config struct {
 	SecretAccessKey string
 	Bucket          string
 	UsePathStyle    bool
-}
-
-type MeilisearchConfig struct {
-	Host        string
-	APIKey      string
-	IndexPrefix string
 }
 
 type OpenSearchConfig struct {
@@ -420,13 +412,6 @@ func Load() (*Config, error) {
 		Port:     mailPort,
 		Account:  getEnv("KUN_VISUAL_NOVEL_EMAIL_ACCOUNT", ""),
 		Password: getEnv("KUN_VISUAL_NOVEL_EMAIL_PASSWORD", ""),
-	}
-
-	cfg.SearchEngine = getEnv("KUN_SEARCH_ENGINE", "meilisearch")
-	cfg.Meilisearch = MeilisearchConfig{
-		Host:        getEnv("KUN_MEILISEARCH_HOST", "http://127.0.0.1:7700"),
-		APIKey:      getEnv("KUN_MEILISEARCH_API_KEY", ""),
-		IndexPrefix: getEnv("KUN_MEILISEARCH_INDEX_PREFIX", ""),
 	}
 
 	cfg.OpenSearch = OpenSearchConfig{

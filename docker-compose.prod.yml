@@ -10,11 +10,11 @@
 #      secrets + deploy-specifics come from **Dokploy's Environment panel** via `${VAR}`.
 #
 # Set these in the infra app's Dokploy **Environment**:
-#   POSTGRES_PASSWORD  JWT_SECRET  MEILI_MASTER_KEY  MINIO_ROOT_USER  MINIO_ROOT_PASSWORD
+#   POSTGRES_PASSWORD  JWT_SECRET  MINIO_ROOT_USER  MINIO_ROOT_PASSWORD
 #   KUN_IMAGE_S3_ENDPOINT  KUN_IMAGE_S3_ACCESS_KEY  KUN_IMAGE_S3_SECRET_KEY   (R2/MinIO)
 #   KUN_VISUAL_NOVEL_EMAIL_PASSWORD                                          (SMTP, 可选)
-# Within infra, oauth/image/galgame all read the SAME ${JWT_SECRET}/${POSTGRES_PASSWORD}/
-# ${MEILI_MASTER_KEY} → intra-app consistency is automatic.
+# Within infra, oauth/image/galgame all read the SAME ${JWT_SECRET}/${POSTGRES_PASSWORD}
+# → intra-app consistency is automatic.
 #
 #   docker compose -f docker-compose.prod.yml pull
 #   docker compose -f docker-compose.prod.yml up -d
@@ -100,9 +100,6 @@ x-infra-env: &infra-env
   # B2 and set the two vars in Dokploy when convenient.
   KUN_ARTIFACT_S3_CLEANUP_ACCESS_KEY: ${KUN_ARTIFACT_S3_CLEANUP_ACCESS_KEY:-}
   KUN_ARTIFACT_S3_CLEANUP_SECRET_KEY: ${KUN_ARTIFACT_S3_CLEANUP_SECRET_KEY:-}
-  # Meilisearch — galgame uses; key MUST == meili MEILI_MASTER_KEY (same ${VAR})
-  KUN_MEILISEARCH_HOST: http://meili:7700
-  KUN_MEILISEARCH_API_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in Dokploy Environment}
   # Mail — oauth uses; PASSWORD is the only secret
   KUN_VISUAL_NOVEL_EMAIL_FROM: 鲲 Galgame OAuth
   KUN_VISUAL_NOVEL_EMAIL_HOST: tuesday.mxrouting.net
@@ -201,24 +198,9 @@ services:
     # Prod usually serves images from Cloudflare R2; this MinIO is only needed when
     # self-hosting blobs. Safe to leave running unused.
 
-  meili:
-    image: getmeili/meilisearch:v1.45
-    environment:
-      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in Dokploy (≥16 bytes — MEILI_ENV=production 强制)}
-      MEILI_NO_ANALYTICS: "true"
-      MEILI_ENV: production
-    volumes: ["meili:/meili_data"]
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:7700/health"]
-      <<: *svc-health
-    networks:
-      default:
-        aliases: [meilisearch] # kungal connects by the name `meilisearch`
-    restart: unless-stopped
-
-  # Catalog search engine the migration is cutting over to (refs/plans/
-  # 15-opensearch; image = docker/opensearch/Dockerfile, OS + icu/kuromoji/
-  # pinyin analysis plugins). Security plugin stays disabled BECAUSE the port
+  # Catalog search engine (OpenSearch since 2026-09-01; Meilisearch retired
+  # 2026-09-02). Image = docker/opensearch/Dockerfile, OS + icu/kuromoji/
+  # pinyin analysis plugins. Security plugin stays disabled BECAUSE the port
   # never leaves the project-scoped `search` network below — do not attach this
   # service to the shared dokploy-network, that is the whole isolation model.
   opensearch:
@@ -463,12 +445,6 @@ services:
       KUN_CATALOG_IMAGE_CLIENT_ID: ${KUN_CATALOG_IMAGE_CLIENT_ID:-}
       KUN_CATALOG_IMAGE_CLIENT_SECRET: ${KUN_CATALOG_IMAGE_CLIENT_SECRET:-}
       KUN_CATALOG_IMAGE_CLIENT_BASE_URL: http://image:9278
-      # Search engine dial (refs/plans/15-opensearch). Cutover = fill OS via
-      # reindex-catalog, then set KUN_SEARCH_ENGINE=opensearch in the Dokploy
-      # panel and redeploy; Meili stays up as the rollback target until the
-      # deletion wave. The var MUST stay interpolated here — a panel-only var
-      # never reaches the container (learned on the store wave, twice).
-      KUN_SEARCH_ENGINE: ${KUN_SEARCH_ENGINE:-meilisearch}
       KUN_OPENSEARCH_HOST: http://opensearch:9200
       # The /v1/news face reads kun_news from this same process (a second DB
       # connection, no second container). An unreachable kun_news degrades that
@@ -600,7 +576,7 @@ services:
       traefik.http.services.infra-catalog-pub.loadbalancer.server.port: "9281"
     depends_on:
       postgres: { condition: service_healthy }
-      meili: { condition: service_healthy } # catalog search
+      opensearch: { condition: service_healthy } # catalog search
       migrate: { condition: service_completed_successfully }         # reads oauth_clients from kun_galgame_infra
       # migrate-catalog owns the catalog schema this process serves (it also
       # carried the galgame wiki family until wave 161 retired it). This gate is
@@ -926,7 +902,6 @@ volumes:
   pg:
   redis:
   minio:
-  meili:
   opensearch:
 
 networks:

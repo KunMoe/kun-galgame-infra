@@ -11,7 +11,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// setupPublicCatalog needs Postgres, Redis and Meilisearch, so this mounts the
+// setupPublicCatalog needs Postgres, Redis and OpenSearch, so this mounts the
 // real v2 route table under a stand-in for the usage recorder rather than
 // calling it: the recorder is a prefix Use that reads c.Route().Path AFTER
 // c.Next() returns, and what it must get back is the registered PATTERN. A

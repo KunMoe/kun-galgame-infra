@@ -3,7 +3,7 @@
 ## 主机
 
 - **Docker Engine** + **Docker Compose v2**(`docker compose`,非旧版 `docker-compose`)。本测试机:Docker 29.5 / Compose 5.1。
-- 约 **8GB 磁盘**(镜像 + 数据卷)、**4GB+ 内存**(Postgres + Meili + 5 个 Node SSR 进程)。
+- 约 **8GB 磁盘**(镜像 + 数据卷)、**4GB+ 内存**(Postgres + OpenSearch + 5 个 Node SSR 进程)。
 - Linux x86_64。**构建架构必须与运行架构一致**(amd64 或 arm64 全程统一)——Nuxt 的 sharp 是预编译原生二进制。本文全程 linux-x64。
 
 ## 构建网络

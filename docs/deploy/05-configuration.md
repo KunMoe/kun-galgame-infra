@@ -1,6 +1,6 @@
 # 5 · 配置参考
 
-每个服务读 12-factor 环境变量:**本地 dev** 走 `env_file`(`docker/*.env`),**生产** 走 `docker-compose.prod.yml` 内联的 `environment:` + Dokploy 面板的 `${VAR}`(见 [15-environment §15.8](./15-environment.md));前端 public 走 build args / `NUXT_PUBLIC_*`。下面按服务列关键项的**值**,**主机名一律用容器服务名**(`postgres`/`redis`/`oauth`/`galgame`/`image`/`minio`/`meilisearch`)。
+每个服务读 12-factor 环境变量:**本地 dev** 走 `env_file`(`docker/*.env`),**生产** 走 `docker-compose.prod.yml` 内联的 `environment:` + Dokploy 面板的 `${VAR}`(见 [15-environment §15.8](./15-environment.md));前端 public 走 build args / `NUXT_PUBLIC_*`。下面按服务列关键项的**值**,**主机名一律用容器服务名**(`postgres`/`redis`/`oauth`/`galgame`/`image`/`minio`/`opensearch`)。
 
 ## 跨服务共享值(测试)
 
@@ -9,7 +9,6 @@
 | Postgres 密码 | `191007` | 全部(连同一 pg) |
 | JWT 签名密钥 | `kun-docker-test-jwt-secret-change-me-please` | infra oauth 签发、各下游验签 |
 | MinIO 凭据 | `minioadmin` / `minioadmin` | infra image、(下游图床经 image 服务) |
-| Meili master key | `kun_docker_test_meili_master_key_change_me` | infra galgame、kungal |
 
 > **JWT 密钥只需 infra 三服务一致**:oauth 用它 HS256 签发 access_token,image/galgame 用同一密钥**本地验签**——三者不一致 → image/galgame 401。下游 kungal/moyu **不本地验签**(走 `/oauth/userinfo` 网络校验),无需与 infra 共用:kungal 的 `JWT_SECRET` 只签自己的会话,moyu 没有 `JWT_SECRET`。详见 [15-environment.md §15.3](./15-environment.md)。
 
@@ -31,7 +30,7 @@
 
 ## infra · galgame 面(由 catalog 服务承载,W3/W5)
 
-`KUN_CATALOG_PORT=9281`、`KUN_GALGAME_PG_DATABASE`(生产 `kun_catalog`,本地 dev `kun_galgame_wiki`)、`KUN_MEILISEARCH_HOST=http://meili:7700`、`KUN_MEILISEARCH_API_KEY=`(共享 master key)。独立 galgame 服务(:9280)已退休。
+`KUN_CATALOG_PORT=9281`、`KUN_GALGAME_PG_DATABASE`(生产 `kun_catalog`,本地 dev `kun_galgame_wiki`)、`KUN_OPENSEARCH_HOST=http://opensearch:9200`(生产;本地 dev `http://127.0.0.1:9200`)。独立 galgame 服务(:9280)已退休。OpenSearch 是唯一搜索引擎(自 2026-09-01;Meilisearch 于 2026-09-02 退役)。
 
 ## moyu · api(`kun-galgame-patch/docker/api.env`)
 
@@ -46,15 +45,13 @@
 
 ## kungal · api(`kun-galgame-forum/docker/api.env`)
 
-kungal 仓库**自带的 api.env 是本地默认值**(密码 `kungal_dev_pw`、`meilisearch`、空 OAuth)。接 infra(生产则用 Dokploy Environment)必须改成:
+kungal 仓库**自带的 api.env 是本地默认值**(密码 `kungal_dev_pw`、空 OAuth)。接 infra(生产则用 Dokploy Environment)必须改成:
 
 | 变量 | 仓库默认 | **接 infra 改为** |
 |---|---|---|
 | `KUN_DATABASE_URL` 密码 | `kungal_dev_pw` | **`191007`** |
 | `OAUTH_CLIENT_ID` / `_SECRET` | 空 | **`kungal-web` / (注册时明文)** ——空则 `requireEnv` 启动失败 |
 | `JWT_SECRET` | 空 | **(共享密钥)** |
-| `MEILISEARCH_KEY` | 空 | **(共享 master key)** ——否则被 meili 403 |
-| `MEILISEARCH_URL` | `http://meilisearch:7700` | 不用改(infra 的 meili 已加 `meilisearch` 网络别名) |
 
 `OAUTH_REDIRECT_URI` 改成 web 的 host 回调:`http://localhost:15013/auth/callback`。
 
@@ -76,7 +73,7 @@ NUXT_PUBLIC_IMAGE_CDN_BASE=...
 - `POSTGRES_PASSWORD`(及所有 `KUN_DATABASE_URL` / `KUN_PG_PASSWORD`)——别再用 `191007`。
 - `JWT_SECRET`(三仓同步换)。
 - 每个 OAuth client 的 secret(注册时重新生成,哈希入库)。
-- MinIO `MINIO_ROOT_USER`/`PASSWORD`、Meili `MEILI_MASTER_KEY`。
+- MinIO `MINIO_ROOT_USER`/`PASSWORD`。
 - 各 S3/B2 access key、SMTP 密码。
 
 生产应改用 `docker secret` 或外部 vault,而非明文 `env_file`。`docker/*.env` 已被 `.dockerignore` + `.gitignore` 挡在镜像与仓库之外。

@@ -48,7 +48,7 @@ CI 按各仓**现有 Dockerfile**(参数化)构建以下镜像并推到 `ghcr.io
 | `moyu-migrate` | patch-next | `docker/go.Dockerfile` | `CMD=migrate` | —(一次性) |
 | `moyu-tools` | patch-next | `docker/tools.Dockerfile` | —(打包全部 `cmd/*`) | —(一次性) |
 
-> 基础设施 `postgres`/`redis`/`minio`/`meili` 用上游官方镜像,不进 CI。
+> 基础设施 `postgres`/`redis`/`minio` 用上游官方镜像,不进 CI。OpenSearch 用本仓 `docker/opensearch` 构建的 `infra-opensearch` 镜像。
 >
 > **`*-tools` 镜像**:把该仓 `apps/api/cmd/*` 的**每个**二进制打进一个镜像(infra 用 cgo+libwebp 编,
 > 下游纯 Go)。`migrate`(及其 `catalog` 等目标)只够空库起服务;完整数据 cutover([03-bootstrap §B](./03-bootstrap.md))

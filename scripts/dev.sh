@@ -2,7 +2,7 @@
 # One-command local dev for this repo. Two halves, one command:
 #
 #   1. PLATFORM BASE (docker-compose.dev.yml, default profile) — redis / minio /
-#      meili / mailpit / the read-through image proxy / and the migrations an
+#      opensearch / mailpit / the read-through image proxy / and the migrations an
 #      infra session actually needs, from ONE prebuilt GHCR image
 #      (infra-migrate, invoked once per target DB). Brought up once, then LEFT
 #      RUNNING.
@@ -46,7 +46,7 @@ FULL=0
 # regardless. So: if a port is already answering, scale that compose service to
 # zero and use what's already there. (This is why the dev compose does not
 # start-gate on redis.)
-declare -A SHAREABLE=([redis]=6379 [meili]=7700 [mailpit]=1025)
+declare -A SHAREABLE=([redis]=6379 [mailpit]=1025)
 port_busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null && exec 3>&-; }
 
 SCALE_ARGS=()

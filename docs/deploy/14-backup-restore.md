@@ -1,6 +1,6 @@
 # 14 · 数据库备份与还原
 
-> 本生态的**真数据全在 infra 的一套 Postgres(5 个库)**。Redis/MinIO/Meili 多为缓存或派生数据(见 §6)。本篇详解 Postgres 的备份与还原:手动、自动、异地、各类还原场景与演练。
+> 本生态的**真数据全在 infra 的一套 Postgres(5 个库)**。Redis/MinIO/OpenSearch 多为缓存或派生数据(见 §6)。本篇详解 Postgres 的备份与还原:手动、自动、异地、各类还原场景与演练。
 > [06-operations.md](./06-operations.md) 有速记;本篇是其展开。
 
 ## 0. 先搞清楚:备份什么
@@ -10,7 +10,7 @@
 | **Postgres**(5 库) | 用户 / galgame / wiki / 图片元数据 / 论坛 / 补丁 —— **核心真数据** | **必须**,本篇重点 |
 | Redis | 会话 / 缓存 / 限流 / 验证码 | 可选(多为临时,丢了重登/重发即可),已开 AOF |
 | MinIO | 图片 blob | 可选:生产走 **Cloudflare R2**(自带冗余);自托管才需备份桶 |
-| Meilisearch | 搜索索引 | 不必:**派生自 Postgres**,`reindex-search` 可重建,不必备份 |
+| OpenSearch | 搜索索引 | 不必:**派生自 Postgres**,`reindex-catalog` 可重建,不必备份 |
 
 **5 个库**:`kun_galgame_infra`(oauth/用户)、`kun_galgame_wiki`、`kun_images`、`kungalgame`(论坛)、`kungalgame_patch`(补丁)。
 
@@ -117,7 +117,7 @@ docker exec -i "$PG" pg_restore -U postgres -d kun_galgame_wiki -t galgame < kun
 plain SQL 备份(`.sql`)则:`gunzip -c x.sql.gz | docker exec -i "$PG" psql -U postgres -d <db>`。
 
 ### 4.4 还原到新服务器(迁移)
-新机装 Docker + 起 infra 基础设施(`up -d postgres ...`)→ 拷备份过去 → 按 §4.1(全量)或逐库 §4.2 还原 → 起全部服务 → `go run ./cmd/reindex-search` 重建 meili 索引。
+新机装 Docker + 起 infra 基础设施(`up -d postgres ...`)→ 拷备份过去 → 按 §4.1(全量)或逐库 §4.2 还原 → 起全部服务 → `go run ./cmd/reindex-catalog` 重建 OpenSearch 索引。
 
 ### 4.5 验证还原(务必)
 ```bash
@@ -133,7 +133,7 @@ docker exec "$PG" psql -U postgres -tAc "select datname from pg_database where d
 
 - **Redis**:已开 AOF(`--appendonly yes`),数据在 `kun-galgame-infra_redis` 卷。要备份:`docker exec <redis> redis-cli BGSAVE` 后拷 `/data` 里的 `dump.rdb`/AOF,或直接卷快照。多为缓存/会话,丢失影响小。
 - **MinIO**:生产用 **R2**(自带多副本,无需自备);自托管才需 `mc mirror local/kun-images r2/kun-images-backup` 镜像桶。
-- **Meilisearch**:**不用备份**,派生自 Postgres,还原后 `go run ./cmd/reindex-search` 重建即可。
+- **OpenSearch**:**不用备份**,派生自 Postgres,还原后 `go run ./cmd/reindex-catalog` 重建即可。
 
 ## 7. 速查
 

@@ -2,61 +2,16 @@ package service
 
 import (
 	"context"
-	"strings"
+	"net/http"
 	"testing"
 	"time"
 
-	infrasearch "api/internal/infrastructure/search"
+	"api/internal/infrastructure/opensearch"
 	"api/internal/platform/catalog/model"
 	catsearch "api/internal/platform/catalog/search"
 	"api/internal/testsupport/dbtest"
 	"api/pkg/config"
 )
-
-func TestWorksSearchFilterCompilation(t *testing.T) {
-	claimed, r18 := true, model.ContentRatingR18
-	f := WorksSearchFilter{
-		ContentRating: &r18, Claimed: &claimed,
-		TagIDs: []int64{7}, LabelID: 8, EngineID: 9, SeriesID: 10,
-		ReleasedAfter: 20200101, ReleasedBefore: 20241231,
-		NSFW: true,
-	}
-	got := catsearch.MeiliFilter(f.worksFilter(""))
-	for _, want := range []string{
-		"content_rating = 2", "claimed = true",
-		"tag_ids = 7", "label_ids = 8", "engine_ids = 9", "series_ids = 10",
-		"released_ord >= 20200101", "released_ord <= 20241231",
-		"(olang = 'ja' OR olang STARTS WITH 'zh')",
-	} {
-		if !strings.Contains(got, want) {
-			t.Fatalf("filter %q missing clause %q", got, want)
-		}
-	}
-	if strings.Contains(got, "content_rating != 2") {
-		t.Fatalf("nsfw=true must not exclude r18: %q", got)
-	}
-
-	if sfw := catsearch.MeiliFilter((WorksSearchFilter{}).worksFilter("")); !strings.Contains(sfw, "content_rating != 2") {
-		t.Fatalf("sfw filter %q must exclude r18 inside Meilisearch", sfw)
-	}
-
-	if all := catsearch.MeiliFilter((WorksSearchFilter{OLang: PublicOLang{All: true}}).worksFilter("")); strings.Contains(all, "olang") {
-		t.Fatalf("olang=all must emit no olang clause: %q", all)
-	}
-	explicit := catsearch.MeiliFilter((WorksSearchFilter{OLang: PublicOLang{Values: []string{"en", "ko'x"}}}).worksFilter(""))
-	if !strings.Contains(explicit, `olang IN ['en', 'ko\'x']`) {
-		t.Fatalf("explicit olang clause = %q", explicit)
-	}
-
-	pinned := catsearch.MeiliFilter((WorksSearchFilter{TagIDs: []int64{3}}).worksFilter("w42"))
-	if !strings.Contains(pinned, "id = 'w42'") || !strings.Contains(pinned, "tag_ids = 3") {
-		t.Fatalf("pinned filter = %q, want the doc id AND the caller's filters", pinned)
-	}
-
-	if catsearch.MeiliFilter((WorksSearchFilter{}).worksFilter("")) == "" {
-		t.Fatal("the default filter must never be empty")
-	}
-}
 
 func TestWorksSearchClosedVocabularies(t *testing.T) {
 	for _, tok := range WorksSearchSortTokens {
@@ -157,47 +112,32 @@ func TestNormalizeVNDBID(t *testing.T) {
 var worksSearchTestPrefix = dbtest.SearchIndexPrefix("svc")
 
 func sweepWorksSearchIndexes() {
-	host, apiKey := dbtest.SearchHost()
+	host := dbtest.SearchHost()
 	if host == "" {
 		return
 	}
-	client, err := infrasearch.NewClient(config.MeilisearchConfig{
-		Host: host, APIKey: apiKey, IndexPrefix: worksSearchTestPrefix,
+	client, err := opensearch.NewClient(config.OpenSearchConfig{
+		Host: host, IndexPrefix: worksSearchTestPrefix,
 	})
 	if err != nil {
 		return
 	}
-	dbtest.SweepSearchIndexes(client.Svc(), worksSearchTestPrefix)
+	dbtest.SweepSearchIndexes(client, worksSearchTestPrefix)
 }
 
 func worksSearchIndexer(t *testing.T) *catsearch.Indexer {
 	t.Helper()
-	host, apiKey := dbtest.SearchHost()
-	if host == "" {
-		dbtest.SkipSearch(t, "MEILISEARCH_TEST_HOST unset")
-	}
-	client, err := infrasearch.NewClient(config.MeilisearchConfig{
-		Host: host, APIKey: apiKey, IndexPrefix: worksSearchTestPrefix,
-	})
-	if err != nil {
-		dbtest.SkipSearch(t, "meilisearch client: %v", err)
-	}
-	if err := client.Health(); err != nil {
-		dbtest.SkipSearch(t, "meilisearch unreachable: %v", err)
-	}
-	idx := catsearch.NewIndexer(client)
-	if err := idx.EnsureIndexes(context.Background()); err != nil {
+	client := dbtest.OpenSearchClient(t, worksSearchTestPrefix)
+	idx := catsearch.NewOpenSearchIndexer(client)
+	ctx := context.Background()
+	if err := idx.EnsureIndexes(ctx); err != nil {
 		t.Fatalf("ensure indexes: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = client.Svc().DeleteIndex(client.IndexUID(catsearch.IndexWorks))
+		_ = client.Do(context.Background(), http.MethodDelete, "/"+client.IndexName(catsearch.IndexWorks), nil, nil)
 	})
-	task, err := client.Index(catsearch.IndexWorks).DeleteAllDocuments(nil)
-	if err != nil {
-		t.Fatalf("clear works index: %v", err)
-	}
-	if _, err := client.Svc().WaitForTask(task.TaskUID, 20*time.Millisecond); err != nil {
-		t.Fatalf("wait clear: %v", err)
+	if err := idx.RecreateIndex(ctx, catsearch.IndexWorks); err != nil {
+		t.Fatalf("recreate works index: %v", err)
 	}
 	return idx
 }
@@ -210,6 +150,9 @@ func indexWorks(t *testing.T, idx *catsearch.Indexer, docs []catsearch.WorkDocIn
 	}
 	if err := idx.UpsertBatch(context.Background(), catsearch.IndexWorks, built); err != nil {
 		t.Fatalf("upsert works docs: %v", err)
+	}
+	if err := idx.Refresh(context.Background(), catsearch.IndexWorks); err != nil {
+		t.Fatalf("refresh works index: %v", err)
 	}
 	waitIndexed(t, idx, len(docs))
 }

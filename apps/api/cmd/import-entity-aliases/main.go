@@ -60,7 +60,7 @@ func main() {
 	}
 
 	if *apply && runA {
-		fmt.Fprintln(os.Stdout, "note: run `go run ./cmd/reindex-catalog` to project the new search hints into Meilisearch.")
+		fmt.Fprintln(os.Stdout, "note: run `go run ./cmd/reindex-catalog` to project the new search hints into OpenSearch.")
 	} else if !*apply {
 		fmt.Fprintln(os.Stdout, "DRY-RUN — nothing written; re-run with --run.")
 	}

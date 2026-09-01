@@ -189,7 +189,7 @@ func TestLiveUnknownFacetIs400OnEveryListFace(t *testing.T) {
 }
 
 // WorksSearchFilter has no Site and no Platform member, so both were accepted
-// and dropped on the way to Meilisearch — and facets= alone is enough to switch
+// and dropped on the way to the search engine — and facets= alone is enough to switch
 // the collection to search, which is how all three consumers reach that lane.
 func TestLiveSearchRefusesTheFiltersItCannotApply(t *testing.T) {
 	env := liveCatalog(t)

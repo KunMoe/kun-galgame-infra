@@ -1,64 +1,82 @@
 package dbtest
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/meilisearch/meilisearch-go"
+	"api/internal/infrastructure/opensearch"
+	"api/pkg/config"
 )
 
-// RequireSearchEnv is REQUIRE_DB_TESTS for Meilisearch. It exists because the
-// works-search suite skipped in full while catalog/service still printed `ok`,
-// and the W4 wave shipped a filter that returned zero hits for every query.
+// RequireSearchEnv is REQUIRE_DB_TESTS for the live search engine. It exists
+// because the works-search suite skipped in full while catalog/service still
+// printed `ok`, and the W4 wave shipped a filter that returned zero hits for
+// every query.
 const RequireSearchEnv = "REQUIRE_SEARCH_TESTS"
 
-func SearchHost() (host, apiKey string) {
-	return os.Getenv("MEILISEARCH_TEST_HOST"), os.Getenv("MEILISEARCH_TEST_API_KEY")
+const openSearchTestHostEnv = "KUN_OPENSEARCH_TEST_HOST"
+
+func SearchHost() string {
+	return os.Getenv(openSearchTestHostEnv)
 }
 
 // SearchIndexPrefix names indexes for one test binary and no other. The two
 // search suites used the fixed prefixes "test_" and "test_svc_" against one
-// local Meilisearch, so two sessions running the suite at once shared every
-// index — and each test's cleanup DeleteIndex took the other run's corpus out
-// from under it mid-assertion. Pair it with SweepSearchIndexes: unique names
+// local engine, so two sessions running the suite at once shared every
+// index — and each test's cleanup pulled the other run's corpus out from
+// under it mid-assertion. Pair it with SweepSearchIndexes: unique names
 // with no sweep only trades the collision for a pile of dead indexes.
 func SearchIndexPrefix(suite string) string {
 	return fmt.Sprintf("test_%s_%d_%d_", suite, os.Getpid(), time.Now().UnixNano()%1_000_000)
 }
 
-func SweepSearchIndexes(svc meilisearch.ServiceManager, prefix string) {
-	if svc == nil || prefix == "" {
+func OpenSearchClient(t *testing.T, prefix string) *opensearch.Client {
+	t.Helper()
+	host := SearchHost()
+	if host == "" {
+		SkipSearch(t, "%s unset", openSearchTestHostEnv)
+	}
+	client, err := opensearch.NewClient(config.OpenSearchConfig{Host: host, IndexPrefix: prefix})
+	if err != nil {
+		SkipSearch(t, "opensearch client: %v", err)
+	}
+	if err := client.Health(t.Context()); err != nil {
+		SkipSearch(t, "opensearch unreachable: %v", err)
+	}
+	return client
+}
+
+func SweepSearchIndexes(client *opensearch.Client, prefix string) {
+	if client == nil || prefix == "" {
 		return
 	}
-	list, err := svc.ListIndexes(&meilisearch.IndexesQuery{Limit: 1000})
-	if err != nil || list == nil {
+	var rows []struct {
+		Index string `json:"index"`
+	}
+	if err := client.Do(context.Background(), http.MethodGet, "/_cat/indices?format=json", nil, &rows); err != nil {
 		return
 	}
-	// DeleteIndex only enqueues; the process exited before the tasks ran and a
-	// measured sweep left two of its own five indexes behind.
-	for _, idx := range list.Results {
-		if idx == nil || !strings.HasPrefix(idx.UID, prefix) {
+	for _, row := range rows {
+		if row.Index == "" || !strings.HasPrefix(row.Index, prefix) {
 			continue
 		}
-		task, err := svc.DeleteIndex(idx.UID)
-		if err != nil || task == nil {
-			continue
-		}
-		_, _ = svc.WaitForTask(task.TaskUID, 20*time.Millisecond)
+		_ = client.Do(context.Background(), http.MethodDelete, "/"+row.Index, nil, nil)
 	}
 }
 
 // SkipSearch skips a search-backed test, or fails it when the run was supposed
-// to reach Meilisearch. Every reason a search test declines to run — no host,
+// to reach OpenSearch. Every reason a search test declines to run — no host,
 // an unusable client, an unreachable server — must come through here.
 func SkipSearch(t *testing.T, format string, args ...any) {
 	t.Helper()
 	reason := fmt.Sprintf(format, args...)
 	if os.Getenv(RequireSearchEnv) != "" {
-		t.Fatalf("%s is set but Meilisearch is unusable: %s", RequireSearchEnv, reason)
+		t.Fatalf("%s is set but OpenSearch is unusable: %s", RequireSearchEnv, reason)
 	}
 	t.Skipf("%s — search-backed test not run (set %s=1 to make this a failure)", reason, RequireSearchEnv)
 }
@@ -67,7 +85,7 @@ func SkipSearch(t *testing.T, format string, args ...any) {
 func SkipSearchMain(suite, format string, args ...any) {
 	reason := fmt.Sprintf(format, args...)
 	if os.Getenv(RequireSearchEnv) != "" {
-		fmt.Fprintf(os.Stderr, "FAIL: %s is set but %s cannot reach Meilisearch: %s\n",
+		fmt.Fprintf(os.Stderr, "FAIL: %s is set but %s cannot reach OpenSearch: %s\n",
 			RequireSearchEnv, suite, reason)
 		os.Exit(2)
 	}

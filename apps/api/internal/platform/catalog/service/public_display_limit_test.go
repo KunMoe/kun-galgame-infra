@@ -18,7 +18,6 @@
 package service
 
 import (
-	"strings"
 	"testing"
 
 	"api/internal/platform/catalog/model"
@@ -383,36 +382,6 @@ func TestDisplayLimitVocabularyIsClosed(t *testing.T) {
 	for _, bad := range []string{"", "all", "SFW", "NSFW", "r18", "safe", "true"} {
 		if IsDisplayLimit(bad) {
 			t.Fatalf("%q must NOT be a legal content_limit token", bad)
-		}
-	}
-}
-
-func TestDisplayLimitFilterCompilation(t *testing.T) {
-	if got := catsearch.MeiliFilter((WorksSearchFilter{}).worksFilter("")); strings.Contains(got, "content_limit") {
-		t.Fatalf("no content_limit param must emit no clause: %q", got)
-	}
-
-	one := catsearch.MeiliFilter(WorksSearchFilter{DisplayLimits: []string{model.DisplayLimitKeySFW}}.worksFilter(""))
-	if !strings.Contains(one, "(content_limit = 'sfw')") {
-		t.Fatalf("single content_limit clause = %q", one)
-	}
-	if !strings.Contains(one, "content_rating != 2") {
-		t.Fatalf("content_limit must not replace the other clauses: %q", one)
-	}
-
-	both := catsearch.MeiliFilter(WorksSearchFilter{
-		DisplayLimits: []string{model.DisplayLimitKeySFW, model.DisplayLimitKeyNSFW},
-	}.worksFilter(""))
-	if !strings.Contains(both, "(content_limit = 'sfw' OR content_limit = 'nsfw')") {
-		t.Fatalf("multi content_limit clause = %q", both)
-	}
-	all := catsearch.MeiliFilter(WorksSearchFilter{
-		DisplayLimits: []string{model.DisplayLimitKeySFW},
-		ClaimStates:   []string{model.ClaimStateKeyLive},
-	}.worksFilter(""))
-	for _, want := range []string{"content_rating != 2", "(claim_state = 'live')", "(content_limit = 'sfw')"} {
-		if !strings.Contains(all, want) {
-			t.Fatalf("three-gate expression %q is missing %q", all, want)
 		}
 	}
 }

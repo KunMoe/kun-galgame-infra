@@ -19,7 +19,6 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kolesa-team/go-webp v1.0.5
 	github.com/matthewhartstonge/argon2 v1.4.6
-	github.com/meilisearch/meilisearch-go v0.36.2
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/prometheus/client_golang v1.23.2

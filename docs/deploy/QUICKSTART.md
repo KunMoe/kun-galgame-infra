@@ -59,15 +59,15 @@ git push        # → GitHub Actions 自动 build 并推 ghcr.io/next-moe/*(:lat
 
 三仓 `docker-compose.prod.yml` 已把**非密钥/域名写死在 `environment:`**,**密钥用 `${VAR}` 从各应用的 Dokploy Environment 面板取**——所以**不用放任何 `docker/*.env`**,每个应用面板只填这几个密钥(**务必轮换所有测试值**):
 
-- **infra 面板**:`POSTGRES_PASSWORD`、`JWT_SECRET`、`MEILI_MASTER_KEY`、`MINIO_ROOT_USER`、`MINIO_ROOT_PASSWORD`、`KUN_IMAGE_S3_ENDPOINT`/`_ACCESS_KEY`/`_SECRET_KEY`(R2)、(可选 `KUN_VISUAL_NOVEL_EMAIL_PASSWORD`)
-- **kungal 面板**:`POSTGRES_PASSWORD`(=infra)、`OAUTH_CLIENT_SECRET`(§6 拿到后填)、`JWT_SECRET`(kungal 自己的)、`MEILI_MASTER_KEY`(=infra)、(可选 B2/MAIL/image client)
+- **infra 面板**:`POSTGRES_PASSWORD`、`JWT_SECRET`、`MINIO_ROOT_USER`、`MINIO_ROOT_PASSWORD`、`KUN_IMAGE_S3_ENDPOINT`/`_ACCESS_KEY`/`_SECRET_KEY`(R2)、(可选 `KUN_VISUAL_NOVEL_EMAIL_PASSWORD`)
+- **kungal 面板**:`POSTGRES_PASSWORD`(=infra)、`OAUTH_CLIENT_SECRET`(§6 拿到后填)、`JWT_SECRET`(kungal 自己的)、(可选 B2/MAIL/image client)
 - **moyu 面板**:`POSTGRES_PASSWORD`(=infra)、`OAUTH_CLIENT_SECRET`、`KUN_VISUAL_NOVEL_S3_STORAGE_ACCESS_KEY_ID`/`_SECRET_ACCESS_KEY`(B2)、(可选 MAIL)
 
 > 真实 https 域名、OAuth client_id、服务名 base、CDN 域、CORS 都已是 prod compose 里的字面值;改前端域名改对应 web 服务的 `NUXT_PUBLIC_*`。infra 前端域名烤在 CI(build.yml)。逐项见 [15-environment §15.8](./15-environment.md) 与 [17-go-live-checklist.md](./17-go-live-checklist.md)。
 
 ## 6. 部署顺序 + 建库 + 注册 OAuth client
 
-1. **先部署 infra**,等 `postgres`/`redis`/`minio`/`meili` healthy。
+1. **先部署 infra**,等 `postgres`/`redis`/`minio`/`opensearch` healthy。
 2. 在 infra 应用的 **Terminal** 跑首启迁移:
    ```bash
    docker compose -f docker-compose.prod.yml run --rm migrate           # kun_galgame_infra:表 + 站点/角色种子

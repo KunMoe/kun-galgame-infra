@@ -279,7 +279,7 @@ func TestProposalListFieldVocabulary(t *testing.T) {
 
 // The refusal is real in production and unreachable here: catalog_search.go
 // answers 503 for an unbound service before it reaches feedNoBatch, and the
-// live fixture binds no Meilisearch.
+// live fixture binds no OpenSearch.
 var batchUnobservable = map[string]string{
 	"/v2/catalog/search": "feedNoBatch(\"search\") sits behind the unbound-service 503 in this fixture",
 }

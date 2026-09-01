@@ -140,7 +140,7 @@ B 波删掉的四件(**均为 breaking,逐条声明在 `public-openapi-breaking-
 ### 2.6 `GET /catalog/search/entities?q=&type=&locale=&limit=` — 实体搜索(只读)
 
 - `type` ∈ `names|characters|labels`(单选;非法 → Huma enum 校验 422);
-- **`locale` ∈ `zh|ja|en` → 服务端决定引擎侧含义**(Meilisearch 引擎下映射查询语言 `zh→cmn`/`ja→jpn`/`en→默认管线`;OpenSearch 引擎(生产自 2026-09-01)下语言处理在索引期按字段分析器完成,不落任何每查询参数;不变量 2 不变:消费者只传粗粒度 UI locale,**绝不透传任意引擎参数**);
+- **`locale` ∈ `zh|ja|en` → 服务端决定引擎侧含义**(OpenSearch 是唯一搜索引擎,自 2026-09-01;Meilisearch 于 2026-09-02 退役。语言处理在索引期按字段分析器完成,不落任何每查询参数;`LocalesForUI` 仍把粗粒度 UI locale 收进查询合同,引擎丢弃它。不变量 2 不变:消费者只传粗粒度 UI locale,**绝不透传任意引擎参数**);
 - `limit` cap 20;空 `q` → 按 popularity 返回热门。
 - 响应条目:id(前缀 n/c/b)· entity_type · name(分桶取非空)· latin · sources · popularity · kind(label)· person_id(名义,缺省=孤儿)· **`logo_hash`(仅 label,wave 170:厂牌 logo 在图床的内容哈希,与作品封面 `image_hash` 同币种,消费端据此拼 CDN URL;缺省=该 label 无 logo)**。**该哈希不在搜索索引里**——命中页的 label id 回 Postgres 单查一次补水(索引设置与文档一概不动)。
 

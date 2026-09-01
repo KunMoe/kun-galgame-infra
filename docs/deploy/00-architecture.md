@@ -14,7 +14,7 @@
 
 ```
             ┌─────────────────── 共享基础设施(infra compose 定义一次)───────────────────┐
-            │   postgres:18    redis:8    minio(S3)    meilisearch(别名)             │
+            │   postgres:18    redis:8    minio(S3)    opensearch                    │
             └──────────────────────────────────────────────────────────────────────────┘
                  ▲ 同一 docker 网络:kun-galgame-infra_default(所有容器都在上面)
    ┌─────────────┼───────────────────────────┬───────────────────────────┐
@@ -31,7 +31,7 @@
 - `http://oauth:9277/api/v1` —— OAuth 令牌、用户信息、moemoepoint 账本(s2s Basic Auth)
 - `http://catalog:9281/api` —— galgame-wiki 数据(W3 起由 catalog 服务承载;独立 galgame 服务/9280 已退休)
 - `http://image:9278` —— 图床上传 / 引用
-- `postgres:5432` / `redis:6379` / `meilisearch:7700` / `minio:9000`
+- `postgres:5432` / `redis:6379` / `opensearch:9200` / `minio:9000`
 
 ## 端口表(host : 容器)
 
@@ -47,7 +47,7 @@
 | infra postgres | 5432 | **15000** | `pg_isready` |
 | infra redis | 6379 | **15001** | `redis-cli ping` |
 | infra minio | 9000 / 9001 | **15002 / 15003** | 控制台 15003 |
-| infra meili | 7700 | **15004** | — |
+| infra opensearch | 9200 | —(search 网络,不发布宿主端口) | `_cluster/health` |
 | moyu api | 5214 | **15010** | `/healthz` |
 | moyu web | 3000 | **15011** | `/` |
 | kungal api | 2334 | **15012** | `/healthz` |
