@@ -51,3 +51,9 @@ func (c *totalsCache) put(key string, v int64) {
 	}
 	c.entries[key] = totalsEntry{val: v, exp: c.now().Add(totalsTTL)}
 }
+
+func (c *totalsCache) flush() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries = make(map[string]totalsEntry)
+}
