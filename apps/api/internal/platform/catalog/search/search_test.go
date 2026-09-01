@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"api/internal/infrastructure/search"
+	"api/internal/platform/catalog/search/spec"
 	"api/internal/testsupport/dbtest"
 	"api/pkg/config"
 
@@ -38,7 +39,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestEnsureIndexesMatchesMatrix(t *testing.T) {
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	t.Cleanup(func() {
 		for _, uid := range []string{IndexCreditNames, IndexCharacters, IndexLabels, IndexWorks, IndexTags} {
 			_, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(uid))
@@ -99,7 +100,7 @@ func indexOf(s []string, v string) int {
 }
 
 func TestWorksNSFWFilter(t *testing.T) {
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	t.Cleanup(func() {
 		_, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexWorks))
 	})
@@ -119,17 +120,17 @@ func TestWorksNSFWFilter(t *testing.T) {
 	idx := NewIndexer(testClient)
 	ctx := t.Context()
 
-	res, err := idx.SearchEntities(ctx, IndexWorks, "いろとりどり", []string{"jpn"}, 20, "content_rating != 2")
+	res, err := idx.SearchEntities(ctx, IndexWorks, spec.EntityQuery{Q: "いろとりどり", Locales: []string{"jpn"}, Limit: 20, ContentRatingNot: &r18})
 	require.NoError(t, err)
 	assert.Len(t, res.Hits, 0, "r18 filtered")
-	res, err = idx.SearchEntities(ctx, IndexWorks, "五彩斑斓", []string{"cmn"}, 20, "")
+	res, err = idx.SearchEntities(ctx, IndexWorks, spec.EntityQuery{Q: "五彩斑斓", Locales: []string{"cmn"}, Limit: 20})
 	require.NoError(t, err)
 	if assert.Len(t, res.Hits, 1) {
 		assert.Equal(t, "w1", res.Hits[0].ID)
 		require.NotNil(t, res.Hits[0].ContentRating)
 		assert.EqualValues(t, 2, *res.Hits[0].ContentRating)
 	}
-	res, err = idx.SearchEntities(ctx, IndexWorks, "", nil, 20, "content_rating != 2")
+	res, err = idx.SearchEntities(ctx, IndexWorks, spec.EntityQuery{Q: "", Limit: 20, ContentRatingNot: &r18})
 	require.NoError(t, err)
 	if assert.Len(t, res.Hits, 1) {
 		assert.Equal(t, "w2", res.Hits[0].ID)
@@ -137,7 +138,7 @@ func TestWorksNSFWFilter(t *testing.T) {
 }
 
 func TestLabelAliasIsSearchable(t *testing.T) {
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	t.Cleanup(func() {
 		_, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexLabels))
 	})
@@ -157,7 +158,7 @@ func TestLabelAliasIsSearchable(t *testing.T) {
 
 	idx := NewIndexer(testClient)
 	for _, q := range []string{"Yuzusoft", "yuzusoft", "柚子社", "ゆずソフト"} {
-		res, err := idx.SearchEntities(t.Context(), IndexLabels, q, nil, 20, "")
+		res, err := idx.SearchEntities(t.Context(), IndexLabels, spec.EntityQuery{Q: q, Limit: 20})
 		require.NoError(t, err, q)
 		if assert.Len(t, res.Hits, 1, "query %q found nothing", q) {
 			assert.Equal(t, "b5147", res.Hits[0].ID, q)
@@ -166,7 +167,7 @@ func TestLabelAliasIsSearchable(t *testing.T) {
 }
 
 func TestDeleteBatchRemovesTombstones(t *testing.T) {
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	t.Cleanup(func() {
 		_, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexLabels))
 	})
@@ -183,13 +184,13 @@ func TestDeleteBatchRemovesTombstones(t *testing.T) {
 
 	idx := NewIndexer(testClient)
 	ctx := t.Context()
-	res, err := idx.SearchEntities(ctx, IndexLabels, "ゆずソフト", []string{"jpn"}, 20, "")
+	res, err := idx.SearchEntities(ctx, IndexLabels, spec.EntityQuery{Q: "ゆずソフト", Locales: []string{"jpn"}, Limit: 20})
 	require.NoError(t, err)
 	require.Len(t, res.Hits, 2, "both are indexed before the purge")
 
 	require.NoError(t, idx.DeleteBatch(ctx, IndexLabels, []string{"b96"}))
 	require.Eventually(t, func() bool {
-		res, err := idx.SearchEntities(ctx, IndexLabels, "ゆずソフト", []string{"jpn"}, 20, "")
+		res, err := idx.SearchEntities(ctx, IndexLabels, spec.EntityQuery{Q: "ゆずソフト", Locales: []string{"jpn"}, Limit: 20})
 		return err == nil && len(res.Hits) == 1 && res.Hits[0].ID == "b5147"
 	}, 10*time.Second, 100*time.Millisecond, "the merged label is gone, the survivor stays")
 

@@ -17,8 +17,24 @@ import (
 func int16ptr(v int16) *int16 { return &v }
 func boolptr(v bool) *bool    { return &v }
 
+func defaultOLangClause() any {
+	return map[string]any{
+		"bool": map[string]any{
+			"should": []any{
+				map[string]any{"term": map[string]any{"olang": "ja"}},
+				map[string]any{"prefix": map[string]any{"olang": "zh"}},
+			},
+			"minimum_should_match": 1,
+		},
+	}
+}
+
 func TestFilterClausesEmpty(t *testing.T) {
-	require.Nil(t, filterClauses(spec.WorksFilter{}))
+	require.Equal(t, canonJSON(t, []any{defaultOLangClause()}), canonJSON(t, filterClauses(spec.WorksFilter{})))
+}
+
+func TestFilterClausesOLangAll(t *testing.T) {
+	require.Nil(t, filterClauses(spec.WorksFilter{OLang: spec.OLang{All: true}}))
 }
 
 func TestFilterClausesOrder(t *testing.T) {
@@ -36,7 +52,7 @@ func TestFilterClausesOrder(t *testing.T) {
 		SeriesID:         6,
 		ReleasedAfter:    100,
 		ReleasedBefore:   200,
-		OLangs:           []string{"ja", "zh"},
+		OLang:            spec.OLang{Values: []string{"ja", "zh"}},
 	})
 	want := []any{
 		map[string]any{"term": map[string]any{"id": "w15"}},
@@ -58,21 +74,21 @@ func TestFilterClausesOrder(t *testing.T) {
 }
 
 func TestFilterClausesMergedRange(t *testing.T) {
-	onlyAfter := filterClauses(spec.WorksFilter{ReleasedAfter: 10})
+	onlyAfter := filterClauses(spec.WorksFilter{ReleasedAfter: 10, OLang: spec.OLang{All: true}})
 	require.Equal(t, canonJSON(t, []any{
 		map[string]any{"range": map[string]any{"released_ord": map[string]any{"gte": int64(10)}}},
 	}), canonJSON(t, onlyAfter))
 
-	onlyBefore := filterClauses(spec.WorksFilter{ReleasedBefore: 20})
+	onlyBefore := filterClauses(spec.WorksFilter{ReleasedBefore: 20, OLang: spec.OLang{All: true}})
 	require.Equal(t, canonJSON(t, []any{
 		map[string]any{"range": map[string]any{"released_ord": map[string]any{"lte": int64(20)}}},
 	}), canonJSON(t, onlyBefore))
 
-	require.Nil(t, filterClauses(spec.WorksFilter{LabelID: 0, EngineID: -1, SeriesID: 0}))
+	require.Nil(t, filterClauses(spec.WorksFilter{LabelID: 0, EngineID: -1, SeriesID: 0, OLang: spec.OLang{All: true}}))
 }
 
 func TestWorksSearchBodyMatchAll(t *testing.T) {
-	body, drop := worksSearchBody(spec.WorksQuery{Limit: 8})
+	body, drop := worksSearchBody(spec.WorksQuery{Limit: 8, Filter: spec.WorksFilter{OLang: spec.OLang{All: true}}})
 	require.False(t, drop)
 	require.Equal(t, canonJSON(t, map[string]any{"match_all": map[string]any{}}), canonJSON(t, body["query"]))
 	require.Equal(t, 0, body["from"])
@@ -368,5 +384,32 @@ func TestEnsureIndexesCreateAndSchemaMismatch(t *testing.T) {
 		err := eng.ensureIndex(t.Context(), IndexWorks)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "reindex-catalog -recreate")
+	})
+	t.Run("create race already exists", func(t *testing.T) {
+		var gets int
+		eng := testEngine(t, func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				gets++
+				if gets == 1 {
+					w.WriteHeader(http.StatusNotFound)
+					_, _ = io.WriteString(w, `{"error":{"type":"index_not_found_exception"}}`)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = io.WriteString(w, `{
+					"catalog_works": {
+						"mappings": {"_meta": {"schema_version": 1}}
+					}
+				}`)
+			case http.MethodPut:
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = io.WriteString(w, `{"error":{"type":"resource_already_exists_exception","reason":"index [catalog_works] already exists"}}`)
+			default:
+				w.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		})
+		require.NoError(t, eng.ensureIndex(t.Context(), IndexWorks))
+		require.Equal(t, 2, gets)
 	})
 }

@@ -8,7 +8,7 @@ import (
 
 	"api/internal/platform/catalog/dto"
 	"api/internal/platform/catalog/model"
-	catsearch "api/internal/platform/catalog/search"
+	"api/internal/platform/catalog/search/spec"
 )
 
 const (
@@ -71,19 +71,8 @@ func (o PublicOLang) predicate() (string, []any) {
 	}
 }
 
-func (o PublicOLang) meiliFilter() string {
-	switch {
-	case o.All:
-		return ""
-	case len(o.Values) > 0:
-		quoted := make([]string, len(o.Values))
-		for i, v := range o.Values {
-			quoted[i] = "'" + catsearch.EscapeFilterValue(v) + "'"
-		}
-		return "olang IN [" + strings.Join(quoted, ", ") + "]"
-	default:
-		return "(olang = 'ja' OR olang STARTS WITH 'zh')"
-	}
+func (o PublicOLang) Spec() spec.OLang {
+	return spec.OLang{All: o.All, Values: o.Values}
 }
 
 func (o PublicOLang) Key() string {

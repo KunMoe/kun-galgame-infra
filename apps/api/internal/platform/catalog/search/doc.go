@@ -1,11 +1,8 @@
 package search
 
 import (
-	"context"
 	"math"
 	"strings"
-
-	"api/internal/infrastructure/search"
 )
 
 type EntityDoc struct {
@@ -140,31 +137,3 @@ func bucket(lang string) string {
 }
 
 func Popularity(creditCount int) float64 { return math.Log1p(float64(creditCount)) }
-
-type Indexer struct{ client *search.Client }
-
-func NewIndexer(client *search.Client) *Indexer { return &Indexer{client: client} }
-
-func (i *Indexer) UpsertBatch(ctx context.Context, uid string, docs []EntityDoc) error {
-	if len(docs) == 0 {
-		return nil
-	}
-	_, err := i.client.Index(uid).AddDocumentsWithContext(ctx, docs, nil)
-	return err
-}
-
-func (i *Indexer) DeleteBatch(ctx context.Context, uid string, ids []string) error {
-	if len(ids) == 0 {
-		return nil
-	}
-	_, err := i.client.Index(uid).DeleteDocumentsWithContext(ctx, ids, nil)
-	return err
-}
-
-func (i *Indexer) Count(uid string) (int64, error) {
-	stats, err := i.client.Index(uid).GetStats()
-	if err != nil {
-		return 0, err
-	}
-	return stats.NumberOfDocuments, nil
-}

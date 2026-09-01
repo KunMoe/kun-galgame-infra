@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -83,11 +84,16 @@ func (e *Engine) ensureIndex(ctx context.Context, uid string) error {
 			return err
 		}
 		if err := e.client.Do(ctx, http.MethodPut, "/"+name, body, nil); err != nil {
-			return fmt.Errorf("create index %s: %w", name, err)
+			if !isResourceAlreadyExists(err) {
+				return fmt.Errorf("create index %s: %w", name, err)
+			}
+			if err := e.client.Do(ctx, http.MethodGet, "/"+name, nil, &got); err != nil {
+				return fmt.Errorf("get index %s: %w", name, err)
+			}
+		} else {
+			return nil
 		}
-		return nil
-	}
-	if err != nil {
+	} else if err != nil {
 		return fmt.Errorf("get index %s: %w", name, err)
 	}
 	gotVer, ok := mappingSchemaVersion(got)
@@ -95,6 +101,11 @@ func (e *Engine) ensureIndex(ctx context.Context, uid string) error {
 		return fmt.Errorf("index %s schema_version mismatch (got %d, want %d); run reindex-catalog -recreate", name, gotVer, SchemaVersion)
 	}
 	return nil
+}
+
+func isResourceAlreadyExists(err error) bool {
+	var ae *opensearch.APIError
+	return errors.As(err, &ae) && strings.Contains(ae.Body, "resource_already_exists_exception")
 }
 
 func (e *Engine) RecreateIndex(ctx context.Context, uid string) error {

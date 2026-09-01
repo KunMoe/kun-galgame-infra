@@ -49,10 +49,29 @@ func filterClauses(f spec.WorksFilter) []any {
 			"range": map[string]any{"released_ord": rng},
 		})
 	}
-	if len(f.OLangs) > 0 {
-		clauses = append(clauses, termsClause("olang", f.OLangs))
+	if c := olangClause(f.OLang); c != nil {
+		clauses = append(clauses, c)
 	}
 	return clauses
+}
+
+func olangClause(o spec.OLang) any {
+	switch {
+	case o.All:
+		return nil
+	case len(o.Values) > 0:
+		return termsClause("olang", o.Values)
+	default:
+		return map[string]any{
+			"bool": map[string]any{
+				"should": []any{
+					termClause("olang", "ja"),
+					map[string]any{"prefix": map[string]any{"olang": "zh"}},
+				},
+				"minimum_should_match": 1,
+			},
+		}
+	}
 }
 
 func termClause(field string, value any) map[string]any {

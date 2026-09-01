@@ -11,6 +11,7 @@ import (
 	"api/internal/platform/catalog/dto"
 	"api/internal/platform/catalog/model"
 	catsearch "api/internal/platform/catalog/search"
+	"api/internal/platform/catalog/search/spec"
 )
 
 var ErrSearchUnavailable = stderrors.New("catalog: works search indexer not configured")
@@ -116,11 +117,11 @@ func (s *PublicService) WorksSearch(ctx context.Context, f WorksSearchFilter) (d
 	}
 
 	rule, _ := WorksSearchSortRule(f.Sort)
-	res, err := s.worksSearch.SearchWorks(ctx, catsearch.WorksQuery{
+	res, err := s.worksSearch.SearchWorks(ctx, spec.WorksQuery{
 		Q:           text,
-		Filter:      f.meiliFilter(docID),
-		Sort:        rule,
-		Facets:      worksSearchMeiliFacets(f.Facets),
+		Filter:      f.worksFilter(docID),
+		SortLane:    rule,
+		FacetAttrs:  worksSearchFacetAttrs(f.Facets),
 		Page:        page,
 		Limit:       limit,
 		SearchIntro: f.SearchIntro,
@@ -139,65 +140,34 @@ func (s *PublicService) WorksSearch(ctx context.Context, f WorksSearchFilter) (d
 	}, nil
 }
 
-func (f WorksSearchFilter) meiliFilter(docID string) string {
-	var clauses []string
-	if docID != "" {
-		clauses = append(clauses, "id = '"+catsearch.EscapeFilterValue(docID)+"'")
+func (f WorksSearchFilter) worksFilter(docID string) spec.WorksFilter {
+	wf := spec.WorksFilter{
+		DocID:          docID,
+		ContentRating:  f.ContentRating,
+		Claimed:        f.Claimed,
+		ClaimStates:    f.ClaimStates,
+		DisplayLimits:  f.DisplayLimits,
+		TagIDs:         f.TagIDs,
+		LabelID:        f.LabelID,
+		EngineID:       f.EngineID,
+		SeriesID:       f.SeriesID,
+		ReleasedAfter:  f.ReleasedAfter,
+		ReleasedBefore: f.ReleasedBefore,
+		OLang:          f.OLang.Spec(),
 	}
 	if !f.NSFW {
-		clauses = append(clauses, "content_rating != "+strconv.Itoa(int(model.ContentRatingR18)))
-	}
-	if f.ContentRating != nil {
-		clauses = append(clauses, "content_rating = "+strconv.Itoa(int(*f.ContentRating)))
-	}
-	if f.Claimed != nil {
-		clauses = append(clauses, "claimed = "+strconv.FormatBool(*f.Claimed))
-	}
-	if len(f.ClaimStates) > 0 {
-		or := make([]string, 0, len(f.ClaimStates))
-		for _, st := range f.ClaimStates {
-			or = append(or, "claim_state = '"+catsearch.EscapeFilterValue(st)+"'")
-		}
-		clauses = append(clauses, "("+strings.Join(or, " OR ")+")")
+		r := model.ContentRatingR18
+		wf.ContentRatingNot = &r
 	}
 	// The browse lane's ban exclusion, in Meili: a banned work must not come
 	// back through q= either, and it did while claim_state= was absent.
 	if !slices.Contains(f.ClaimStates, model.ClaimStateKeyHidden) {
-		clauses = append(clauses, "claim_state != '"+model.ClaimStateKeyHidden+"'")
+		wf.ClaimStateNot = model.ClaimStateKeyHidden
 	}
-	if len(f.DisplayLimits) > 0 {
-		or := make([]string, 0, len(f.DisplayLimits))
-		for _, lim := range f.DisplayLimits {
-			or = append(or, "content_limit = '"+catsearch.EscapeFilterValue(lim)+"'")
-		}
-		clauses = append(clauses, "("+strings.Join(or, " OR ")+")")
-	}
-	for _, tagID := range f.TagIDs {
-		clauses = append(clauses, "tag_ids = "+strconv.FormatInt(tagID, 10))
-	}
-	for _, e := range []struct {
-		attr string
-		id   int64
-	}{
-		{"label_ids", f.LabelID}, {"engine_ids", f.EngineID}, {"series_ids", f.SeriesID},
-	} {
-		if e.id > 0 {
-			clauses = append(clauses, e.attr+" = "+strconv.FormatInt(e.id, 10))
-		}
-	}
-	if f.ReleasedAfter > 0 {
-		clauses = append(clauses, "released_ord >= "+strconv.FormatInt(f.ReleasedAfter, 10))
-	}
-	if f.ReleasedBefore > 0 {
-		clauses = append(clauses, "released_ord <= "+strconv.FormatInt(f.ReleasedBefore, 10))
-	}
-	if olang := f.OLang.meiliFilter(); olang != "" {
-		clauses = append(clauses, olang)
-	}
-	return strings.Join(clauses, " AND ")
+	return wf
 }
 
-func worksSearchMeiliFacets(tokens []string) []string {
+func worksSearchFacetAttrs(tokens []string) []string {
 	if len(tokens) == 0 {
 		return nil
 	}

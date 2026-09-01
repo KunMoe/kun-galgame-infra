@@ -1,10 +1,9 @@
 package search
 
 import (
+	"context"
 	"fmt"
 	"time"
-
-	"api/internal/infrastructure/search"
 
 	"github.com/meilisearch/meilisearch-go"
 )
@@ -160,21 +159,21 @@ func indexSpecs() []struct {
 	}
 }
 
-func EnsureIndexes(client *search.Client) error {
+func (e *meiliEngine) EnsureIndexes(ctx context.Context) error {
 	for _, spec := range indexSpecs() {
-		fullUID := client.IndexUID(spec.uid)
-		if task, err := client.Svc().CreateIndex(&meilisearch.IndexConfig{Uid: fullUID, PrimaryKey: "id"}); err != nil {
+		fullUID := e.client.IndexUID(spec.uid)
+		if task, err := e.client.Svc().CreateIndex(&meilisearch.IndexConfig{Uid: fullUID, PrimaryKey: "id"}); err != nil {
 			if !isAlreadyExists(err) {
 				return fmt.Errorf("create index %s: %w", fullUID, err)
 			}
-		} else if _, err := client.Svc().WaitForTask(task.TaskUID, 50*time.Millisecond); err != nil {
+		} else if _, err := e.client.Svc().WaitForTask(task.TaskUID, 50*time.Millisecond); err != nil {
 			return fmt.Errorf("wait create %s: %w", fullUID, err)
 		}
-		task, err := client.Index(spec.uid).UpdateSettings(spec.settings)
+		task, err := e.client.Index(spec.uid).UpdateSettings(spec.settings)
 		if err != nil {
 			return fmt.Errorf("update settings %s: %w", fullUID, err)
 		}
-		if _, err := client.Svc().WaitForTask(task.TaskUID, 50*time.Millisecond); err != nil {
+		if _, err := e.client.Svc().WaitForTask(task.TaskUID, 50*time.Millisecond); err != nil {
 			return fmt.Errorf("wait settings %s: %w", fullUID, err)
 		}
 		if spec.settings.LocalizedAttributes == nil {
@@ -183,11 +182,11 @@ func EnsureIndexes(client *search.Client) error {
 			// created under an older spec would silently keep its old pins
 			// forever. Reset explicitly, or this settings block stops being the
 			// declared terminal state it claims to be.
-			task, err := client.Index(spec.uid).ResetLocalizedAttributes()
+			task, err := e.client.Index(spec.uid).ResetLocalizedAttributes()
 			if err != nil {
 				return fmt.Errorf("reset localized attributes %s: %w", fullUID, err)
 			}
-			if _, err := client.Svc().WaitForTask(task.TaskUID, 50*time.Millisecond); err != nil {
+			if _, err := e.client.Svc().WaitForTask(task.TaskUID, 50*time.Millisecond); err != nil {
 				return fmt.Errorf("wait reset localized attributes %s: %w", fullUID, err)
 			}
 		}

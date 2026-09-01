@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"api/internal/platform/catalog/search/spec"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +23,7 @@ func TestSanitizeQueryOperators(t *testing.T) {
 		"  spaced  ": "spaced",
 	}
 	for in, want := range cases {
-		assert.Equal(t, want, sanitizeQuery(in), "in=%q", in)
+		assert.Equal(t, want, spec.SanitizeQuery(in), "in=%q", in)
 	}
 }
 
@@ -34,7 +36,7 @@ func TestLocalesForUIPairsWithTheIndex(t *testing.T) {
 }
 
 func TestEnsureIndexesResetsWorksLocalePins(t *testing.T) {
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	t.Cleanup(func() { _, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexWorks)) })
 
 	task, err := testClient.Index(IndexWorks).UpdateLocalizedAttributes(localizedAttributes())
@@ -45,14 +47,14 @@ func TestEnsureIndexesResetsWorksLocalePins(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, got, "precondition: the stale pins are in place")
 
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	got, err = testClient.Index(IndexWorks).GetLocalizedAttributes()
 	require.NoError(t, err)
 	assert.Empty(t, got, "EnsureIndexes must clear pins it no longer declares")
 }
 
 func TestWorksCJKTitleRecall(t *testing.T) {
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	t.Cleanup(func() { _, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexWorks)) })
 
 	docs := []EntityDoc{
@@ -74,7 +76,7 @@ func TestWorksCJKTitleRecall(t *testing.T) {
 		{"a zh title still recalls itself", "装甲恶鬼村正", "w4"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			res, err := idx.SearchWorks(t.Context(), WorksQuery{Q: tc.q, Limit: 12})
+			res, err := idx.SearchWorks(t.Context(), spec.WorksQuery{Q: tc.q, Limit: 12, Filter: spec.WorksFilter{OLang: spec.OLang{All: true}}})
 			require.NoError(t, err)
 			id, ok := WorkDocIDToWorkID(tc.want)
 			require.True(t, ok)
@@ -84,7 +86,7 @@ func TestWorksCJKTitleRecall(t *testing.T) {
 }
 
 func TestWorksTitleDelimiterRecall(t *testing.T) {
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	t.Cleanup(func() { _, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexWorks)) })
 
 	// Dropping SeparatorTokens from worksSettings turns the same 7 of 14
@@ -125,7 +127,7 @@ func TestWorksTitleDelimiterRecall(t *testing.T) {
 				want := lane.base + int64(i)
 				t.Run(fmt.Sprintf("%s_U+%04X", sep, []rune(sep)[0]), func(t *testing.T) {
 					for _, half := range []string{lane.left, lane.right} {
-						res, err := idx.SearchWorks(t.Context(), WorksQuery{Q: half, Limit: 50})
+						res, err := idx.SearchWorks(t.Context(), spec.WorksQuery{Q: half, Limit: 50, Filter: spec.WorksFilter{OLang: spec.OLang{All: true}}})
 						require.NoError(t, err)
 						assert.Contains(t, res.IDs, want, "%q must recall %s",
 							half, lane.left+sep+lane.right+lane.suffix)

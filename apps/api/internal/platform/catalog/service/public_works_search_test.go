@@ -21,7 +21,7 @@ func TestWorksSearchFilterCompilation(t *testing.T) {
 		ReleasedAfter: 20200101, ReleasedBefore: 20241231,
 		NSFW: true,
 	}
-	got := f.meiliFilter("")
+	got := catsearch.MeiliFilter(f.worksFilter(""))
 	for _, want := range []string{
 		"content_rating = 2", "claimed = true",
 		"tag_ids = 7", "label_ids = 8", "engine_ids = 9", "series_ids = 10",
@@ -36,24 +36,24 @@ func TestWorksSearchFilterCompilation(t *testing.T) {
 		t.Fatalf("nsfw=true must not exclude r18: %q", got)
 	}
 
-	if sfw := (WorksSearchFilter{}).meiliFilter(""); !strings.Contains(sfw, "content_rating != 2") {
+	if sfw := catsearch.MeiliFilter((WorksSearchFilter{}).worksFilter("")); !strings.Contains(sfw, "content_rating != 2") {
 		t.Fatalf("sfw filter %q must exclude r18 inside Meilisearch", sfw)
 	}
 
-	if all := (WorksSearchFilter{OLang: PublicOLang{All: true}}).meiliFilter(""); strings.Contains(all, "olang") {
+	if all := catsearch.MeiliFilter((WorksSearchFilter{OLang: PublicOLang{All: true}}).worksFilter("")); strings.Contains(all, "olang") {
 		t.Fatalf("olang=all must emit no olang clause: %q", all)
 	}
-	explicit := (WorksSearchFilter{OLang: PublicOLang{Values: []string{"en", "ko'x"}}}).meiliFilter("")
+	explicit := catsearch.MeiliFilter((WorksSearchFilter{OLang: PublicOLang{Values: []string{"en", "ko'x"}}}).worksFilter(""))
 	if !strings.Contains(explicit, `olang IN ['en', 'ko\'x']`) {
 		t.Fatalf("explicit olang clause = %q", explicit)
 	}
 
-	pinned := (WorksSearchFilter{TagIDs: []int64{3}}).meiliFilter("w42")
+	pinned := catsearch.MeiliFilter((WorksSearchFilter{TagIDs: []int64{3}}).worksFilter("w42"))
 	if !strings.Contains(pinned, "id = 'w42'") || !strings.Contains(pinned, "tag_ids = 3") {
 		t.Fatalf("pinned filter = %q, want the doc id AND the caller's filters", pinned)
 	}
 
-	if (WorksSearchFilter{}).meiliFilter("") == "" {
+	if catsearch.MeiliFilter((WorksSearchFilter{}).worksFilter("")) == "" {
 		t.Fatal("the default filter must never be empty")
 	}
 }
@@ -98,7 +98,7 @@ func TestWorksSearchClosedVocabularies(t *testing.T) {
 		}
 	}
 
-	got := worksSearchMeiliFacets([]string{"tag_id", "content_rating", "tag_id"})
+	got := worksSearchFacetAttrs([]string{"tag_id", "content_rating", "tag_id"})
 	if len(got) != 2 || got[0] != "tag_ids" || got[1] != "content_rating" {
 		t.Fatalf("facet attrs = %v, want [tag_ids content_rating]", got)
 	}
@@ -185,7 +185,8 @@ func worksSearchIndexer(t *testing.T) *catsearch.Indexer {
 	if err := client.Health(); err != nil {
 		dbtest.SkipSearch(t, "meilisearch unreachable: %v", err)
 	}
-	if err := catsearch.EnsureIndexes(client); err != nil {
+	idx := catsearch.NewIndexer(client)
+	if err := idx.EnsureIndexes(context.Background()); err != nil {
 		t.Fatalf("ensure indexes: %v", err)
 	}
 	t.Cleanup(func() {
@@ -198,7 +199,7 @@ func worksSearchIndexer(t *testing.T) *catsearch.Indexer {
 	if _, err := client.Svc().WaitForTask(task.TaskUID, 20*time.Millisecond); err != nil {
 		t.Fatalf("wait clear: %v", err)
 	}
-	return catsearch.NewIndexer(client)
+	return idx
 }
 
 func indexWorks(t *testing.T, idx *catsearch.Indexer, docs []catsearch.WorkDocInput) {
@@ -217,7 +218,7 @@ func waitIndexed(t *testing.T, idx *catsearch.Indexer, want int) {
 	t.Helper()
 	deadline := time.Now().Add(20 * time.Second)
 	for {
-		n, err := idx.Count(catsearch.IndexWorks)
+		n, err := idx.Count(t.Context(), catsearch.IndexWorks)
 		if err == nil && int(n) == want {
 			return
 		}

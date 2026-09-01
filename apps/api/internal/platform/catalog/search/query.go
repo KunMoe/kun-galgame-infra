@@ -2,7 +2,9 @@ package search
 
 import (
 	"context"
-	"strings"
+	"strconv"
+
+	"api/internal/platform/catalog/search/spec"
 
 	"github.com/meilisearch/meilisearch-go"
 )
@@ -43,21 +45,21 @@ type SearchResult struct {
 	Total int64
 }
 
-func (i *Indexer) SearchEntities(ctx context.Context, uid, q string, locales []string, limit int, filter string) (SearchResult, error) {
+func (e *meiliEngine) SearchEntities(ctx context.Context, uid string, q spec.EntityQuery) (SearchResult, error) {
 	req := &meilisearch.SearchRequest{
-		HitsPerPage:      int64(limit),
-		Locales:          locales,
+		HitsPerPage:      int64(q.Limit),
+		Locales:          q.Locales,
 		MatchingStrategy: meilisearch.All,
 	}
-	if filter != "" {
+	if filter := meiliEntityFilter(q); filter != "" {
 		req.Filter = filter
 	}
-	q = sanitizeQuery(q)
-	if q == "" {
+	text := spec.SanitizeQuery(q.Q)
+	if text == "" {
 		req.Sort = []string{"popularity:desc"}
 		req.MatchingStrategy = meilisearch.Last
 	}
-	resp, err := i.client.Index(uid).SearchWithContext(ctx, q, req)
+	resp, err := e.client.Index(uid).SearchWithContext(ctx, text, req)
 	if err != nil {
 		return SearchResult{}, err
 	}
@@ -75,6 +77,13 @@ func (i *Indexer) SearchEntities(ctx context.Context, uid, q string, locales []s
 	return SearchResult{Hits: hits, Total: total}, nil
 }
 
+func meiliEntityFilter(q spec.EntityQuery) string {
+	if q.ContentRatingNot != nil {
+		return "content_rating != " + strconv.Itoa(int(*q.ContentRatingNot))
+	}
+	return ""
+}
+
 func (d EntityDoc) Name() string {
 	switch {
 	case d.NameJa != "":
@@ -84,18 +93,4 @@ func (d EntityDoc) Name() string {
 	default:
 		return d.NameOther
 	}
-}
-
-const queryOperators = "-\"－＂"
-
-func sanitizeQuery(q string) string {
-	if strings.ContainsAny(q, queryOperators) {
-		q = strings.Map(func(r rune) rune {
-			if strings.ContainsRune(queryOperators, r) {
-				return ' '
-			}
-			return r
-		}, q)
-	}
-	return strings.TrimSpace(q)
 }

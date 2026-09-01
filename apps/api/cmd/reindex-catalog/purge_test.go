@@ -34,12 +34,11 @@ func TestReindexWorksPurgesSoftDeleted(t *testing.T) {
 	if err := client.Health(); err != nil {
 		dbtest.SkipSearch(t, "meilisearch unreachable: %v", err)
 	}
-	if err := catalogSearch.EnsureIndexes(client); err != nil {
+	idx := catalogSearch.NewIndexer(client)
+	if err := idx.EnsureIndexes(context.Background()); err != nil {
 		t.Fatalf("ensure indexes: %v", err)
 	}
 	t.Cleanup(func() { dbtest.SweepSearchIndexes(client.Svc(), prefix) })
-
-	idx := catalogSearch.NewIndexer(client)
 	docs := []catalogSearch.EntityDoc{
 		catalogSearch.BuildWorkDoc(catalogSearch.WorkDocInput{ID: live, DisplayName: "purge-live", OLang: "ja"}),
 		catalogSearch.BuildWorkDoc(catalogSearch.WorkDocInput{ID: dead, DisplayName: "purge-dead", OLang: "ja"}),
