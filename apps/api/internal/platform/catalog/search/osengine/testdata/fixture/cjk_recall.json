@@ -1,0 +1,110 @@
+[
+  {
+    "name": "latin title",
+    "index": "catalog_works",
+    "q": "CLANNAD",
+    "must_substr": "CLANNAD"
+  },
+  {
+    "name": "zh abbreviation of senren banka",
+    "index": "catalog_works",
+    "q": "千恋",
+    "must_id": "w15",
+    "must_rank": 3,
+    "must_substr": "せんれん"
+  },
+  {
+    "name": "full ja title with wave dash",
+    "index": "catalog_works",
+    "q": "色仕掛け学園～思春期男子誘惑作戦～",
+    "must_substr": "色仕掛け学園"
+  },
+  {
+    "name": "kanji span from the middle of a title",
+    "index": "catalog_works",
+    "q": "地獄学園",
+    "must_substr": "地獄学園"
+  },
+  {
+    "name": "fullwidth dash subtitle must not negate",
+    "index": "catalog_works",
+    "q": "アヘ顔アクメ中毒 －人体改造で狂ってイク私を見ないで－",
+    "must_substr": "アヘ顔アクメ中毒"
+  },
+  {
+    "name": "ascii hyphen subtitle must not negate",
+    "index": "catalog_works",
+    "q": "CRAZY CHA!N -エルピスの鎖-",
+    "must_substr": "エルピス"
+  },
+  {
+    "name": "zh title of muramasa",
+    "index": "catalog_works",
+    "q": "装甲恶鬼村正",
+    "must_substr": "村正"
+  },
+  {
+    "name": "left half of fullwidth-equals title (PR #12)",
+    "index": "catalog_works",
+    "q": "ココロネ",
+    "must_substr": "ペンデュラム"
+  },
+  {
+    "name": "full kana title",
+    "index": "catalog_works",
+    "q": "白昼夢の青写真",
+    "must_substr": "白昼夢の青写真"
+  },
+  {
+    "name": "short CJK character",
+    "index": "catalog_works",
+    "q": "夏",
+    "must_substr": "夏"
+  },
+  {
+    "name": "empty q popularity listing",
+    "index": "catalog_works",
+    "q": "",
+    "limit": 5
+  },
+  {
+    "name": "ja character full name",
+    "index": "catalog_characters",
+    "q": "遠野秋葉",
+    "locales": ["jpn"],
+    "must_id": "c57",
+    "must_rank": 4,
+    "must_substr": "遠野"
+  },
+  {
+    "name": "zh simplified character query (known weak under cmn pin)",
+    "index": "catalog_characters",
+    "q": "秋叶",
+    "locales": ["cmn"],
+    "must_substr": "秋"
+  },
+  {
+    "name": "zh credit name",
+    "index": "catalog_credit_names",
+    "q": "麻枝准",
+    "locales": ["cmn"],
+    "must_id": "n68",
+    "must_rank": 1,
+    "must_substr": "麻枝"
+  },
+  {
+    "name": "latin company",
+    "index": "catalog_labels",
+    "q": "Key",
+    "must_id": "b2",
+    "must_rank": 3,
+    "must_substr": "Key"
+  },
+  {
+    "name": "zh tag",
+    "index": "catalog_tags",
+    "q": "校园",
+    "locales": ["cmn"],
+    "must_substr": "校园"
+  }
+]

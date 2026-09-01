@@ -1,0 +1,161 @@
+[
+  {
+    "name": "mondegreen 千原万神 -> 千恋万花",
+    "kind": "assoc",
+    "index": "catalog_works",
+    "q": "千原万神",
+    "must_id": "w15",
+    "must_rank": 8,
+    "must_substr": "せんれん"
+  },
+  {
+    "name": "near-mondegreen 千恋万神 -> 千恋万花",
+    "kind": "assoc",
+    "index": "catalog_works",
+    "q": "千恋万神",
+    "must_id": "w15",
+    "must_rank": 5,
+    "must_substr": "せんれん"
+  },
+  {
+    "name": "simplified idiom 千变万化 -> 千恋万花",
+    "kind": "assoc",
+    "index": "catalog_works",
+    "q": "千变万化",
+    "must_id": "w15",
+    "must_rank": 5,
+    "must_substr": "せんれん"
+  },
+  {
+    "name": "花 vs 华 美少女万花镜",
+    "kind": "assoc",
+    "index": "catalog_works",
+    "q": "美少女万花镜",
+    "must_substr": "美少女万华镜"
+  },
+  {
+    "name": "missing 之 命运石门",
+    "kind": "assoc",
+    "index": "catalog_works",
+    "q": "命运石门",
+    "must_id": "w60",
+    "must_rank": 5,
+    "must_substr": "シュタインズ"
+  },
+  {
+    "name": "missing 的 魔女夜宴",
+    "kind": "assoc",
+    "index": "catalog_works",
+    "q": "魔女夜宴",
+    "must_id": "w53",
+    "must_rank": 3,
+    "must_substr": "サノバウィッチ"
+  },
+  {
+    "name": "extra 花 樱花之诗",
+    "kind": "assoc",
+    "index": "catalog_works",
+    "q": "樱花之诗",
+    "must_substr": "樱之诗"
+  },
+  {
+    "name": "missing 的 近月少女礼仪",
+    "kind": "assoc",
+    "index": "catalog_works",
+    "q": "近月少女礼仪",
+    "must_id": "w39",
+    "must_rank": 5,
+    "must_substr": "近月"
+  },
+  {
+    "name": "near-title 苍蓝彼方",
+    "kind": "assoc",
+    "index": "catalog_works",
+    "q": "苍蓝彼方",
+    "must_id": "w24",
+    "must_rank": 8,
+    "must_substr": "フォーリズム"
+  },
+  {
+    "name": "word order 村正恶鬼",
+    "kind": "assoc",
+    "index": "catalog_works",
+    "q": "村正恶鬼",
+    "must_id": "w141",
+    "must_rank": 8,
+    "must_substr": "村正"
+  },
+  {
+    "name": "heroine in intro 朝武芳乃",
+    "kind": "intro",
+    "index": "catalog_works",
+    "q": "朝武芳乃",
+    "search_intro": true,
+    "must_id": "w15",
+    "must_rank": 8,
+    "must_substr": "せんれん"
+  },
+  {
+    "name": "community abbr 苍彼 (alias)",
+    "kind": "alias",
+    "index": "catalog_works",
+    "q": "苍彼",
+    "must_id": "w24",
+    "must_rank": 5,
+    "must_substr": "フォーリズム"
+  },
+  {
+    "name": "community abbr 近月 (in zh title)",
+    "kind": "alias",
+    "index": "catalog_works",
+    "q": "近月",
+    "must_id": "w39",
+    "must_rank": 3,
+    "must_substr": "近月"
+  },
+  {
+    "name": "community abbr 石头门 (alias)",
+    "kind": "alias",
+    "index": "catalog_works",
+    "q": "石头门",
+    "must_id": "w60",
+    "must_rank": 5,
+    "must_substr": "シュタインズ"
+  },
+  {
+    "name": "ja nickname シュタゲ",
+    "kind": "alias",
+    "index": "catalog_works",
+    "q": "シュタゲ",
+    "must_id": "w60",
+    "must_rank": 5,
+    "must_substr": "シュタインズ"
+  },
+  {
+    "name": "romaji senren",
+    "kind": "alias",
+    "index": "catalog_works",
+    "q": "senren",
+    "must_id": "w15",
+    "must_rank": 5,
+    "must_substr": "せんれん"
+  },
+  {
+    "name": "pinyin jinyue -> 近月",
+    "kind": "pinyin",
+    "index": "catalog_works",
+    "q": "jinyue",
+    "must_id": "w39",
+    "must_rank": 3,
+    "must_substr": "近月"
+  },
+  {
+    "name": "series abbr 九九九",
+    "kind": "alias",
+    "index": "catalog_works",
+    "q": "九九九",
+    "must_id": "w34",
+    "must_rank": 8,
+    "must_substr": "9-nine"
+  }
+]
