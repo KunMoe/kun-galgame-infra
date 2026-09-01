@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 
 	"api/internal/platform/catalog/model"
 
@@ -12,11 +13,6 @@ import (
 )
 
 const seedChunk = 1000
-
-var seedBuckets = []bucket{
-	bucketAuto, bucketAnchorConflict, bucketRelConflict, bucketDateClash,
-	bucketBare, bucketBothKungal, bucketBridged,
-}
 
 func seedStatusFor(b bucket) int16 {
 	if b == bucketAuto {
@@ -36,14 +32,24 @@ func runSeed(ctx context.Context, db *gorm.DB, w io.Writer, actor int64, run boo
 		if b == bucketOutOfScope {
 			continue
 		}
+		reason := model.CandidateReasonNameNormEqual
+		if r.SharedNorms == 0 {
+			reason = model.CandidateReasonSharedExternalID
+		}
 		planned[b] = append(planned[b], model.CatalogMatchCandidate{
 			EntityType: model.EntityTypeWork, AID: r.A, BID: r.B,
-			Reason: model.CandidateReasonNameNormEqual, Status: seedStatusFor(b),
+			Reason: reason, Status: seedStatusFor(b),
 		})
 	}
 
+	keys := make([]bucket, 0, len(planned))
+	for b := range planned {
+		keys = append(keys, b)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
 	total, inserted := 0, 0
-	for _, b := range seedBuckets {
+	for _, b := range keys {
 		rows := planned[b]
 		total += len(rows)
 		if !run {

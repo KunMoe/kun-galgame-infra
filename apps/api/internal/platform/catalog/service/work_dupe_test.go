@@ -48,3 +48,57 @@ func TestSubmitWorkWithoutCollisionFilesNothing(t *testing.T) {
 	require.NoError(t, testDB.Model(&model.CatalogMatchCandidate{}).Count(&filed).Error)
 	assert.Zero(t, filed)
 }
+
+func TestWorkDupeNormEligible(t *testing.T) {
+	cases := []struct {
+		in   string
+		want bool
+	}{
+		{"红楼梦", true},
+		{"紅樓夢", true},
+		{"abc", false},
+		{"红楼", false},
+		{"ローズ", false},
+		{"abcd", true},
+		{"红楼梦x", true},
+	}
+	for _, tc := range cases {
+		assert.Equal(t, tc.want, WorkDupeNormEligible(tc.in), tc.in)
+	}
+}
+
+func TestSubmitWorkFilesHanThreeRuneDupeCandidate(t *testing.T) {
+	s := newLifecycle(t)
+	existing := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "红楼梦")
+
+	res, err := s.SubmitWork(t.Context(), SubmitWorkParams{
+		Site: submitSite, ProductWorkID: 90503, ActorUID: 7,
+		Fields: submitFields("红楼梦"),
+	})
+	require.NoError(t, err)
+
+	var cands []model.CatalogMatchCandidate
+	require.NoError(t, testDB.Order("a_id, b_id").Find(&cands).Error)
+	require.Len(t, cands, 1)
+	got := cands[0]
+	assert.Equal(t, model.EntityTypeWork, got.EntityType)
+	assert.Equal(t, min(existing.ID, res.WorkID), got.AID)
+	assert.Equal(t, max(existing.ID, res.WorkID), got.BID)
+	assert.Equal(t, model.CandidateReasonNameNormEqual, got.Reason)
+	assert.Equal(t, model.CandidateStatusPending, got.Status)
+}
+
+func TestSubmitWorkSkipsShortASCIICollision(t *testing.T) {
+	s := newLifecycle(t)
+	createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "abc")
+
+	_, err := s.SubmitWork(t.Context(), SubmitWorkParams{
+		Site: submitSite, ProductWorkID: 90504, ActorUID: 7,
+		Fields: submitFields("abc"),
+	})
+	require.NoError(t, err)
+
+	var filed int64
+	require.NoError(t, testDB.Model(&model.CatalogMatchCandidate{}).Count(&filed).Error)
+	assert.Zero(t, filed)
+}

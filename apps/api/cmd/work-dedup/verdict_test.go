@@ -15,7 +15,7 @@ func day(t *testing.T, s string) *time.Time {
 }
 
 func TestClassifyPairBuckets(t *testing.T) {
-	base := pairRow{A: 1, B: 2, LaneA: "kungal", LaneB: "bgm", SharedNorms: 1}
+	base := pairRow{A: 1, B: 2, LaneA: "kungal", LaneB: "bgm", SharedNorms: 1, SharedOfficial: 1}
 	cases := []struct {
 		name string
 		row  func(pairRow) pairRow
@@ -54,6 +54,35 @@ func TestClassifyPairBuckets(t *testing.T) {
 			r.LaneA, r.LaneB, r.AnchorConflict = "dlsite", "dlsite", true
 			return r
 		}, bucketOutOfScope},
+		{"exact ref outranks a year clash", func(r pairRow) pairRow {
+			r.RefOverlap = true
+			r.DateA, r.DateB = day(t, "2024-01-01"), day(t, "2026-01-01")
+			return r
+		}, bucketAuto},
+		{"exact ref with no shared norms is auto", func(r pairRow) pairRow {
+			r.RefOverlap = true
+			r.SharedNorms, r.SharedOfficial = 0, 0
+			return r
+		}, bucketAuto},
+		{"case-insensitive ref only is never auto", func(r pairRow) pairRow {
+			r.RefOverlapCI = true
+			r.SharedNorms, r.SharedOfficial = 0, 0
+			return r
+		}, bucketRefCI},
+		{"alias-only title with a corroborator", func(r pairRow) pairRow {
+			r.SharedOfficial = 0
+			r.LabelOverlap = true
+			return r
+		}, bucketAliasOnly},
+		{"exact ref outranks alias-only", func(r pairRow) pairRow {
+			r.SharedOfficial = 0
+			r.RefOverlap = true
+			return r
+		}, bucketAuto},
+		{"ci ref corroborates an official title pair", func(r pairRow) pairRow {
+			r.RefOverlapCI = true
+			return r
+		}, bucketAuto},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -66,9 +95,9 @@ func TestClassifyPairBuckets(t *testing.T) {
 
 func TestClassifyDemotesBridgedComponents(t *testing.T) {
 	rows := []pairRow{
-		{A: 1, B: 2, LaneA: "kungal", LaneB: "bgm", RefOverlap: true, SharedNorms: 1},
-		{A: 2, B: 3, LaneA: "bgm", LaneB: "kungal", RefOverlap: true, SharedNorms: 1},
-		{A: 10, B: 11, LaneA: "bgm", LaneB: "vndb", RefOverlap: true, SharedNorms: 1},
+		{A: 1, B: 2, LaneA: "kungal", LaneB: "bgm", RefOverlap: true, SharedNorms: 1, SharedOfficial: 1},
+		{A: 2, B: 3, LaneA: "bgm", LaneB: "kungal", RefOverlap: true, SharedNorms: 1, SharedOfficial: 1},
+		{A: 10, B: 11, LaneA: "bgm", LaneB: "vndb", RefOverlap: true, SharedNorms: 1, SharedOfficial: 1},
 	}
 	verdicts, groups := classify(rows)
 	if verdicts[0] != bucketBridged || verdicts[1] != bucketBridged {
@@ -91,19 +120,19 @@ func TestClassifySurvivorSelection(t *testing.T) {
 		{
 			name: "claimed work beats anchor count",
 			row: pairRow{A: 10, B: 11, LaneA: "bgm", LaneB: "kungal",
-				AnchorsA: 5, AnchorsB: 0, RefOverlap: true, SharedNorms: 1},
+				AnchorsA: 5, AnchorsB: 0, RefOverlap: true, SharedNorms: 1, SharedOfficial: 1},
 			want: 11,
 		},
 		{
 			name: "anchors decide when neither is claimed",
 			row: pairRow{A: 20, B: 21, LaneA: "bgm", LaneB: "vndb",
-				AnchorsA: 1, AnchorsB: 3, RefOverlap: true, SharedNorms: 1},
+				AnchorsA: 1, AnchorsB: 3, RefOverlap: true, SharedNorms: 1, SharedOfficial: 1},
 			want: 21,
 		},
 		{
 			name: "an anchor tie keeps the lower id",
 			row: pairRow{A: 30, B: 31, LaneA: "bgm", LaneB: "vndb",
-				AnchorsA: 1, AnchorsB: 1, RefOverlap: true, SharedNorms: 1},
+				AnchorsA: 1, AnchorsB: 1, RefOverlap: true, SharedNorms: 1, SharedOfficial: 1},
 			want: 30,
 		},
 	}
@@ -136,5 +165,11 @@ func TestPairEvidenceNamesTheCorroborators(t *testing.T) {
 	}
 	if got := pairEvidence(pairRow{SharedNorms: 1}); got != "none" {
 		t.Fatalf("evidence = %q, want %q", got, "none")
+	}
+	if got := pairEvidence(pairRow{RefOverlapCI: true, SharedNorms: 0}); got != "ref_ci" {
+		t.Fatalf("evidence = %q, want %q", got, "ref_ci")
+	}
+	if got := pairEvidence(pairRow{RefOverlap: true, RefOverlapCI: true, SharedNorms: 1}); got != "ref" {
+		t.Fatalf("evidence = %q, want %q", got, "ref")
 	}
 }

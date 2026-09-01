@@ -67,3 +67,39 @@ func TestBangumiXmedia(t *testing.T) {
 	assert.Equal(t, 3, st2.AlreadyWork)
 	assert.Equal(t, 3, st2.AlreadyEdge)
 }
+
+func TestBangumiXmediaProbableOccupancy(t *testing.T) {
+	if testDB == nil {
+		t.Skip("no test db")
+	}
+	clean(t)
+
+	gExact := seedAnchoredWork(t, 100)
+
+	var gProbable int64
+	require.NoError(t, testDB.Raw(`INSERT INTO catalog_work (medium_id, olang, display_name, content_rating, status, extra, field_provenance, display_nsfw)
+		VALUES (1,'ja','probable-galgame',0,0,'{}','{}',false) RETURNING id`).Scan(&gProbable).Error)
+	require.NoError(t, testDB.Exec(`INSERT INTO catalog_external_ref (entity_type, entity_id, source_id, external_id, link_kind, matched_by)
+		VALUES (5, ?, 3, '110', 1, 'test:probable-galgame')`, gProbable).Error)
+
+	var xHeld int64
+	require.NoError(t, testDB.Raw(`INSERT INTO catalog_work (medium_id, olang, display_name, content_rating, status, extra, field_provenance, display_nsfw)
+		VALUES (4,'ja','held-anime',0,0,'{}','{}',false) RETURNING id`).Scan(&xHeld).Error)
+	require.NoError(t, testDB.Exec(`INSERT INTO catalog_external_ref (entity_type, entity_id, source_id, external_id, link_kind, matched_by)
+		VALUES (5, ?, 3, '400', 1, 'test:probable-xmedia')`, xHeld).Error)
+
+	insertSubject(t, 400, 2, 0, "既存アニメ400", "")
+	insertSubject(t, 401, 2, 0, "未登録アニメ401", "")
+	require.NoError(t, testDB.Exec(`INSERT INTO src_bangumi.subject_relation (subject_id, relation_type, related_subject_id, item_order) VALUES
+		(100, 1, 400, 0),
+		(110, 1, 401, 0)`).Error)
+
+	st, err := New(testDB, nil, Options{}).RunBangumiXmedia()
+	require.NoError(t, err)
+	assert.Equal(t, 1, st.AlreadyWork)
+	assert.Zero(t, st.RegisteredAnime)
+	assert.Equal(t, 1, st.EdgesWritten)
+	assert.Equal(t, int64(1), scalarInt(t, `SELECT count(*) FROM catalog_work_relation WHERE a_work_id=`+itoa64(xHeld)+` AND b_work_id=`+itoa64(gExact)+` AND relation_type_id=1`))
+	assert.Zero(t, scalarInt(t, `SELECT count(*) FROM catalog_work_relation WHERE b_work_id=`+itoa64(gProbable)))
+	assert.Zero(t, scalarInt(t, `SELECT count(*) FROM catalog_external_ref WHERE matched_by='rule:bangumi-xmedia-import'`))
+}

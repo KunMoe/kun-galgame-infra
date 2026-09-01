@@ -221,14 +221,15 @@ func (im *Importer) registerXmedia(subs []xmediaSubject, xWork map[int64]int64, 
 
 func (im *Importer) loadBangumiAnchorsByMedium() (galgame, all map[int64]int64, err error) {
 	var rows []struct {
-		Ext    string `gorm:"column:external_id"`
-		Wid    int64  `gorm:"column:entity_id"`
-		Medium int16  `gorm:"column:medium_id"`
+		Ext      string `gorm:"column:external_id"`
+		Wid      int64  `gorm:"column:entity_id"`
+		Medium   int16  `gorm:"column:medium_id"`
+		LinkKind int16  `gorm:"column:link_kind"`
 	}
-	if err := im.catalog.Raw(`SELECT r.external_id, r.entity_id, w.medium_id
+	if err := im.catalog.Raw(`SELECT r.external_id, r.entity_id, w.medium_id, r.link_kind
 		FROM catalog_external_ref r JOIN catalog_work w ON w.id = r.entity_id
-		WHERE r.source_id = ? AND r.entity_type = ? AND r.link_kind = ?`,
-		bangumiSource, model.EntityTypeWork, model.LinkKindExact).Scan(&rows).Error; err != nil {
+		WHERE r.source_id = ? AND r.entity_type = ?`,
+		bangumiSource, model.EntityTypeWork).Scan(&rows).Error; err != nil {
 		return nil, nil, err
 	}
 	galgame = make(map[int64]int64)
@@ -238,8 +239,10 @@ func (im *Importer) loadBangumiAnchorsByMedium() (galgame, all map[int64]int64, 
 		if e != nil {
 			continue
 		}
-		all[sid] = r.Wid
-		if r.Medium == mediumGalgame {
+		if _, ok := all[sid]; !ok || r.LinkKind == model.LinkKindExact {
+			all[sid] = r.Wid
+		}
+		if r.Medium == mediumGalgame && r.LinkKind == model.LinkKindExact {
 			galgame[sid] = r.Wid
 		}
 	}

@@ -16,6 +16,8 @@ const (
 	bucketDateClash      bucket = "date-clash"
 	bucketBare           bucket = "bare"
 	bucketBridged        bucket = "bridged"
+	bucketAliasOnly      bucket = "alias-only"
+	bucketRefCI          bucket = "ref-case"
 )
 
 // dateNearDays tolerates cross-source date drift: sources record different
@@ -44,7 +46,7 @@ func classifyPair(r pairRow) bucket {
 	if r.LaneA == "dlsite" && r.LaneB == "dlsite" {
 		return bucketOutOfScope
 	}
-	corroborated := r.RefOverlap || r.LabelOverlap || r.SharedNorms >= 2 || datesNear(r.DateA, r.DateB)
+	corroborated := r.RefOverlapCI || r.LabelOverlap || r.SharedNorms >= 2 || datesNear(r.DateA, r.DateB)
 	dateClash := r.DateA != nil && r.DateB != nil && r.DateA.Year() != r.DateB.Year()
 	switch {
 	case r.AnchorConflict:
@@ -53,6 +55,13 @@ func classifyPair(r pairRow) bucket {
 		return bucketRelConflict
 	case r.LaneA == "kungal" && r.LaneB == "kungal":
 		return bucketBothKungal
+	case r.RefOverlap:
+		// works 51010/222325 shared bangumi subject 524476 yet were filed manual because the year check ran first.
+		return bucketAuto
+	case r.SharedNorms == 0:
+		return bucketRefCI
+	case r.SharedOfficial == 0:
+		return bucketAliasOnly
 	case dateClash:
 		return bucketDateClash
 	case !corroborated:

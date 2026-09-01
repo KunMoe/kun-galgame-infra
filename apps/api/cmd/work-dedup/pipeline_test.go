@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"api/internal/platform/catalog/migrate"
 	"api/internal/platform/catalog/model"
@@ -89,16 +90,27 @@ func mkWork(t *testing.T, medium int16, name string, site *string) int64 {
 
 func mkTitle(t *testing.T, workID int64, title string) {
 	t.Helper()
+	mkTitleKind(t, workID, title, model.WorkTitleKindOfficial)
+}
+
+func mkTitleKind(t *testing.T, workID int64, title string, kind int16) {
+	t.Helper()
 	require.NoError(t, testDB.Create(&model.CatalogWorkTitle{
-		WorkID: workID, Lang: "ja", Title: title, Kind: model.WorkTitleKindOfficial,
+		WorkID: workID, Lang: "ja", Title: title, Kind: kind,
 	}).Error)
 }
 
 func mkAnchor(t *testing.T, workID int64, sourceID int16, externalID string) {
 	t.Helper()
+	mkRef(t, workID, sourceID, externalID, model.LinkKindExact, nil)
+}
+
+func mkRef(t *testing.T, workID int64, sourceID int16, externalID string, linkKind int16, deadAt *time.Time) {
+	t.Helper()
 	require.NoError(t, testDB.Create(&model.CatalogExternalRef{
 		EntityType: model.EntityTypeWork, EntityID: workID, SourceID: sourceID,
-		ExternalID: externalID, LinkKind: model.LinkKindExact, MatchedBy: "test:work-dedup",
+		ExternalID: externalID, LinkKind: linkKind, MatchedBy: "test:work-dedup",
+		DeadAt: deadAt,
 	}).Error)
 }
 
@@ -308,4 +320,212 @@ func newMerge(t *testing.T) *service.MergeService {
 	resolve := service.NewResolveService(repository.NewRedirectRepository(testDB))
 	return service.NewMergeService(testDB, resolve,
 		repository.NewProposalRepository(testDB), repository.NewRevisionRepository(testDB))
+}
+
+func findPair(t *testing.T, c *census, a, b int64) (pairRow, bucket) {
+	t.Helper()
+	lo, hi := min(a, b), max(a, b)
+	for i, r := range c.rows {
+		if r.A == lo && r.B == hi {
+			return r, c.verdicts[i]
+		}
+	}
+	t.Fatalf("no pair (%d,%d) in %d rows: %+v", lo, hi, len(c.rows), c.rows)
+	return pairRow{}, ""
+}
+
+func hasPair(c *census, a, b int64) bool {
+	lo, hi := min(a, b), max(a, b)
+	for _, r := range c.rows {
+		if r.A == lo && r.B == hi {
+			return true
+		}
+	}
+	return false
+}
+
+func candidateOf(t *testing.T, a, b int64) model.CatalogMatchCandidate {
+	t.Helper()
+	var cand model.CatalogMatchCandidate
+	require.NoError(t, testDB.Where("entity_type = ? AND a_id = ? AND b_id = ?",
+		model.EntityTypeWork, min(a, b), max(a, b)).First(&cand).Error)
+	return cand
+}
+
+func TestWorkDedupCensusWidening(t *testing.T) {
+	requireDB(t)
+	ctx := context.Background()
+	const officialSite int16 = 9
+
+	t.Run("a_case_insensitive_ref", func(t *testing.T) {
+		cleanPipeline(t)
+		medium := galgameMedium(t)
+		a := mkWork(t, medium, "ケースエイ参照作品テスト", nil)
+		b := mkWork(t, medium, "ケースビー参照作品テスト", nil)
+		mkRef(t, a, officialSite, "www.example.com/home/x", model.LinkKindExact, nil)
+		mkRef(t, b, officialSite, "www.example.com/Home/x", model.LinkKindProbable, nil)
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		row, verdict := findPair(t, c, a, b)
+		assert.True(t, row.RefOverlapCI)
+		assert.False(t, row.RefOverlap)
+		assert.Equal(t, 0, row.SharedNorms)
+		assert.Equal(t, bucketRefCI, verdict)
+
+		var out bytes.Buffer
+		require.NoError(t, runSeed(ctx, testDB, &out, 1, true))
+		got := candidateOf(t, a, b)
+		assert.Equal(t, model.CandidateStatusNeedsManual, got.Status)
+		assert.Equal(t, model.CandidateReasonSharedExternalID, got.Reason)
+	})
+
+	t.Run("b_exact_ref_outranks_year_clash", func(t *testing.T) {
+		cleanPipeline(t)
+		medium := galgameMedium(t)
+		a := mkWork(t, medium, "年差エイ参照作品テスト", nil)
+		b := mkWork(t, medium, "年差ビー参照作品テスト", nil)
+		mkRef(t, a, officialSite, "www.example.com/ident/b", model.LinkKindProbable, nil)
+		mkRef(t, b, officialSite, "www.example.com/ident/b", model.LinkKindExact, nil)
+		mkRelease(t, a, 2014, 5, 1)
+		mkRelease(t, b, 2016, 5, 1)
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		row, verdict := findPair(t, c, a, b)
+		assert.True(t, row.RefOverlap)
+		assert.Equal(t, bucketAuto, verdict)
+	})
+
+	t.Run("c_han_three_rune_floor", func(t *testing.T) {
+		cleanPipeline(t)
+		medium := galgameMedium(t)
+		a := mkWork(t, medium, "红楼梦", nil)
+		b := mkWork(t, medium, "红楼梦", nil)
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		assert.True(t, hasPair(c, a, b), "3-rune all-Han display_name must pair")
+	})
+
+	t.Run("d_ascii_three_rune_no_pair", func(t *testing.T) {
+		cleanPipeline(t)
+		medium := galgameMedium(t)
+		a := mkWork(t, medium, "abc", nil)
+		b := mkWork(t, medium, "abc", nil)
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		assert.False(t, hasPair(c, a, b), "3-rune ASCII display_name must not pair")
+	})
+
+	t.Run("e_alias_only_and_abbreviation_excluded", func(t *testing.T) {
+		cleanPipeline(t)
+		medium := galgameMedium(t)
+		a := mkWork(t, medium, "エイ公式タイトルホルダー作品", nil)
+		b := mkWork(t, medium, "ビー別名タイトルホルダー作品", nil)
+		mkTitleKind(t, a, "共有別名タイトル検証", model.WorkTitleKindOfficial)
+		mkTitleKind(t, b, "共有別名タイトル検証", model.WorkTitleKindAlias)
+		lab := &model.CatalogLabel{DisplayName: "共有ブランド検証", Lang: "ja", Kind: model.LabelKindGameBrand, FieldProvenance: []byte(`{}`)}
+		require.NoError(t, testDB.Create(lab).Error)
+		require.NoError(t, testDB.Create(&model.CatalogWorkLabel{
+			WorkID: a, LabelID: lab.ID, Kind: model.WorkLabelKindBrand,
+		}).Error)
+		require.NoError(t, testDB.Create(&model.CatalogWorkLabel{
+			WorkID: b, LabelID: lab.ID, Kind: model.WorkLabelKindBrand,
+		}).Error)
+
+		cAbbrev := mkWork(t, medium, "シー短縮名ホルダー作品", nil)
+		dAbbrev := mkWork(t, medium, "ディー短縮名ホルダー作品", nil)
+		mkTitleKind(t, cAbbrev, "短縮名検証用", model.WorkTitleKindAbbreviation)
+		mkTitleKind(t, dAbbrev, "短縮名検証用", model.WorkTitleKindAbbreviation)
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		row, verdict := findPair(t, c, a, b)
+		assert.Equal(t, 1, row.SharedNorms)
+		assert.Equal(t, 0, row.SharedOfficial)
+		assert.True(t, row.LabelOverlap)
+		assert.Equal(t, bucketAliasOnly, verdict)
+		assert.False(t, hasPair(c, cAbbrev, dAbbrev), "kind=2 abbreviation must not generate a pair")
+	})
+
+	t.Run("f_dead_ref_no_pair", func(t *testing.T) {
+		cleanPipeline(t)
+		medium := galgameMedium(t)
+		a := mkWork(t, medium, "デッドエイ参照作品テスト", nil)
+		b := mkWork(t, medium, "デッドビー参照作品テスト", nil)
+		dead := time.Now()
+		mkRef(t, a, officialSite, "www.example.com/dead/x", model.LinkKindProbable, &dead)
+		mkRef(t, b, officialSite, "www.example.com/dead/x", model.LinkKindExact, nil)
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		assert.False(t, hasPair(c, a, b), "a dead_at ref must not generate a pair")
+	})
+
+	t.Run("g_soft_deleted_work_no_pair", func(t *testing.T) {
+		cleanPipeline(t)
+		medium := galgameMedium(t)
+		a := mkWork(t, medium, "削除エイ参照作品テスト", nil)
+		b := mkWork(t, medium, "削除ビー参照作品テスト", nil)
+		mkRef(t, a, officialSite, "www.example.com/gone/x", model.LinkKindProbable, nil)
+		mkRef(t, b, officialSite, "www.example.com/gone/x", model.LinkKindExact, nil)
+		require.NoError(t, testDB.Delete(&model.CatalogWork{}, a).Error)
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		assert.False(t, hasPair(c, a, b), "a soft-deleted work must not generate a pair")
+	})
+
+	t.Run("h_related_url_pair_needs_manual", func(t *testing.T) {
+		cleanPipeline(t)
+		medium := galgameMedium(t)
+		a := mkWork(t, medium, "関連エイ参照作品テスト", nil)
+		b := mkWork(t, medium, "関連ビー参照作品テスト", nil)
+		mkRef(t, a, officialSite, "www.example.com/related/h", model.LinkKindRelated, nil)
+		mkRef(t, b, officialSite, "www.example.com/related/h", model.LinkKindRelated, nil)
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		row, verdict := findPair(t, c, a, b)
+		assert.True(t, row.RefOverlapCI)
+		assert.False(t, row.RefOverlap)
+		assert.Equal(t, bucketRefCI, verdict)
+	})
+
+	t.Run("i_related_url_conflicting_anchors_no_pair", func(t *testing.T) {
+		cleanPipeline(t)
+		medium := galgameMedium(t)
+		a := mkWork(t, medium, "衝突関連エイ参照作品", nil)
+		b := mkWork(t, medium, "衝突関連ビー参照作品", nil)
+		mkRef(t, a, officialSite, "www.example.com/related/i", model.LinkKindRelated, nil)
+		mkRef(t, b, officialSite, "www.example.com/related/i", model.LinkKindRelated, nil)
+		mkAnchor(t, a, 3, "111")
+		mkAnchor(t, b, 3, "222")
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		assert.False(t, hasPair(c, a, b), "kind=2 URL plus conflicting exact anchors must not pair")
+	})
+
+	t.Run("j_related_url_does_not_grant_auto", func(t *testing.T) {
+		cleanPipeline(t)
+		medium := galgameMedium(t)
+		a := mkWork(t, medium, "年差関連エイ作品テスト", nil)
+		b := mkWork(t, medium, "年差関連ビー作品テスト", nil)
+		mkTitle(t, a, "関連年差作品検証テスト")
+		mkTitle(t, b, "関連年差作品検証テスト")
+		mkRef(t, a, officialSite, "www.example.com/related/j", model.LinkKindRelated, nil)
+		mkRef(t, b, officialSite, "www.example.com/related/j", model.LinkKindRelated, nil)
+		mkRelease(t, a, 2014, 5, 1)
+		mkRelease(t, b, 2016, 5, 1)
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		row, verdict := findPair(t, c, a, b)
+		assert.False(t, row.RefOverlap)
+		assert.True(t, row.RefOverlapCI)
+		assert.Equal(t, bucketDateClash, verdict)
+	})
 }

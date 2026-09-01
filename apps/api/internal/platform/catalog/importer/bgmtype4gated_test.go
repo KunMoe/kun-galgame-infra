@@ -198,6 +198,33 @@ func TestBgmType4GatedIntraCollisionFoldsSpace(t *testing.T) {
 	assert.Zero(t, dry.ToCreate)
 }
 
+func TestBgmType4GatedHanFloorCollisions(t *testing.T) {
+	clean(t)
+	require.NoError(t, testDB.Exec(`ALTER TABLE games ADD COLUMN IF NOT EXISTS gamename text`).Error)
+
+	seedSubject(t, 3201, "", "红楼梦", `["Galgame","PC","游戏"]`, "", false)
+	seedDisplayOnlyWork(t, "红楼梦")
+
+	seedSubject(t, 3202, "", "abc", `["Galgame","PC","游戏"]`, "", false)
+	seedDisplayOnlyWork(t, "abc")
+
+	dry, err := New(testDB, testDB, Options{DryRun: true}).RunBgmType4Gated(testDB)
+	require.NoError(t, err)
+	assert.Equal(t, 2, dry.GatedTotal)
+	assert.Equal(t, 1, dry.SkippedTitleCollision)
+	assert.Equal(t, 1, dry.ToCreate)
+	require.Len(t, dry.CollisionSamples, 1)
+	assert.Equal(t, int64(3201), dry.CollisionSamples[0].SubjectID)
+
+	st, err := New(testDB, testDB, Options{}).RunBgmType4Gated(testDB)
+	require.NoError(t, err)
+	assert.Equal(t, 1, st.WorksCreated)
+	assert.Equal(t, int64(1), scalarInt(t, `SELECT count(*) FROM catalog_external_ref
+		WHERE matched_by='rule:bgm-type4-gated' AND external_id='3202'`))
+	assert.Zero(t, scalarInt(t, `SELECT count(*) FROM catalog_external_ref
+		WHERE matched_by='rule:bgm-type4-gated' AND external_id='3201'`))
+}
+
 func seedDisplayOnlyWork(t *testing.T, displayName string) {
 	t.Helper()
 	require.NoError(t, testDB.Exec(`INSERT INTO catalog_work (medium_id, olang, display_name, content_rating, status, extra, field_provenance, display_nsfw)

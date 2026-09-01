@@ -5,6 +5,7 @@ import (
 
 	"api/internal/platform/catalog/editspec"
 	"api/internal/platform/catalog/model"
+	"api/internal/platform/catalog/service"
 
 	"gorm.io/gorm"
 )
@@ -54,7 +55,7 @@ func (im *Importer) loadExistingWorkTitleNorms() (map[string]wtNorm, error) {
 		}
 		for _, r := range rows {
 			folded := foldSpace(r.Norm)
-			if runeLen(folded) < bgmGatedMinLen {
+			if !service.WorkDupeNormEligible(folded) {
 				continue
 			}
 			if _, ok := out[folded]; !ok {
@@ -65,16 +66,14 @@ func (im *Importer) loadExistingWorkTitleNorms() (map[string]wtNorm, error) {
 	}
 	if err := collect(
 		`SELECT title_norm, work_id, title FROM catalog_work_title t
-		 WHERE length(title_norm) >= ? AND `+editspec.NotSuppressedWorkTitleSQL("t"),
-		bgmGatedMinLen,
+		 WHERE ` + service.WorkDupeNormEligibleSQL("title_norm") + ` AND ` + editspec.NotSuppressedWorkTitleSQL("t"),
 	); err != nil {
 		return nil, err
 	}
 	if err := collect(
 		`SELECT lower(normalize(w.display_name, NFKC)) AS title_norm, w.id AS work_id, w.display_name AS title
 		 FROM catalog_work w
-		 WHERE w.deleted_at IS NULL AND length(w.display_name) >= ?`,
-		bgmGatedMinLen,
+		 WHERE w.deleted_at IS NULL AND ` + service.WorkDupeNormEligibleSQL("w.display_name"),
 	); err != nil {
 		return nil, err
 	}

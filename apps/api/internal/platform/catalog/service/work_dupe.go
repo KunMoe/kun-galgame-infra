@@ -1,8 +1,6 @@
 package service
 
 import (
-	"strconv"
-
 	"api/internal/platform/catalog/editspec"
 	"api/internal/platform/catalog/model"
 
@@ -24,21 +22,45 @@ func WorkTitleFoldSQL(expr string) string {
 	return `regexp_replace(` + expr + `, '[[:space:]　]', '', 'g')`
 }
 
+func WorkDupeNormEligibleSQL(expr string) string {
+	return `(length(` + expr + `) >= 4 OR ` + expr + ` ~ '^[一-鿿]{3}$')`
+}
+
+// The 0x4E00..0x9FFF range must equal WorkDupeNormEligibleSQL's [一-鿿] class.
+func WorkDupeNormEligible(n string) bool {
+	runes := []rune(n)
+	if len(runes) >= WorkDupeMinRunes {
+		return true
+	}
+	if len(runes) != 3 {
+		return false
+	}
+	for _, r := range runes {
+		if r < 0x4E00 || r > 0x9FFF {
+			return false
+		}
+	}
+	return true
+}
+
 // WorkDupeCorpusSQL selects every live work's folded identity norms as
-// (work_id, n): official titles plus display_name. display_name must be in
-// the corpus — wiki-claimed works were born with zero title rows, which is
-// the other hole the 2026-07 wave slipped through.
+// (work_id, n, official): official and alias titles plus display_name, with
+// official=false marking alias-sourced norms so the verdict can refuse to
+// auto-merge on alias evidence alone. display_name must be in the corpus —
+// wiki-claimed works were born with zero title rows, which is the other hole
+// the 2026-07 wave slipped through.
 func WorkDupeCorpusSQL() string {
-	minLen := strconv.Itoa(WorkDupeMinRunes)
-	return `SELECT t.work_id, ` + WorkTitleFoldSQL("t.title_norm") + ` AS n
+	foldTitle := WorkTitleFoldSQL("t.title_norm")
+	foldDisplay := WorkTitleFoldSQL("lower(normalize(w.display_name, NFKC))")
+	return `SELECT t.work_id, ` + foldTitle + ` AS n, (t.kind = 0) AS official
 		FROM catalog_work_title t
 		JOIN catalog_work tw ON tw.id = t.work_id AND tw.deleted_at IS NULL
-		WHERE t.kind = 0 AND length(t.title_norm) >= ` + minLen + `
+		WHERE t.kind IN (0, 1) AND ` + WorkDupeNormEligibleSQL(foldTitle) + `
 		  AND ` + editspec.NotSuppressedWorkTitleSQL("t") + `
 		UNION
-		SELECT w.id, ` + WorkTitleFoldSQL("lower(normalize(w.display_name, NFKC))") + `
+		SELECT w.id, ` + foldDisplay + `, true AS official
 		FROM catalog_work w
-		WHERE w.deleted_at IS NULL AND length(w.display_name) >= ` + minLen
+		WHERE w.deleted_at IS NULL AND ` + WorkDupeNormEligibleSQL(foldDisplay)
 }
 
 // recordWorkDupeSuspects files a pending match candidate for every live work
@@ -52,8 +74,8 @@ func recordWorkDupeSuspects(tx *gorm.DB, workID int64) error {
 		SELECT DISTINCT o.work_id
 		FROM corpus mine
 		JOIN corpus o ON o.n = mine.n AND o.work_id <> mine.work_id
-		WHERE mine.work_id = ? AND length(mine.n) >= ?
-		ORDER BY o.work_id`, workID, WorkDupeMinRunes).Scan(&hits).Error
+		WHERE mine.work_id = ? AND `+WorkDupeNormEligibleSQL("mine.n")+`
+		ORDER BY o.work_id`, workID).Scan(&hits).Error
 	if err != nil || len(hits) == 0 {
 		return err
 	}
