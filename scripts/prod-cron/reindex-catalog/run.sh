@@ -4,8 +4,10 @@
 # aggregation-track alignment, doc 106 §25, window >= 06:00 CST after their
 # 03:20 claim registrar and 05:45 stats writer).
 #
-# reindex-catalog rebuilds the FIVE Meilisearch indexes (credit_names /
-# characters / labels / works / tags) from kun_catalog. Upsert-only, so this
+# reindex-catalog rebuilds the FIVE search indexes (credit_names /
+# characters / labels / works / tags) from kun_catalog; the engine follows the
+# env snapshot taken below (KUN_SEARCH_ENGINE — opensearch in production since
+# 2026-09-01). Upsert-only, so this
 # HEALS drift from bulk waves + merges (they skip the write-through hook).
 # Safe to re-run any time.
 #
@@ -45,7 +47,7 @@ echo "image: $IMG"
 
 # Fresh env snapshot from the catalog container (secrets never on command
 # lines; file shredded by the EXIT trap). Joining the catalog container's netns
-# gives byte-identical connectivity to BOTH postgres and meilisearch.
+# gives byte-identical connectivity to BOTH postgres and the search engine.
 docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$CATC" > env.tmp
 chmod 600 env.tmp
 
