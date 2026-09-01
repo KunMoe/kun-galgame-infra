@@ -22,12 +22,15 @@ func TestGatewayModerateSendsSubjectKind(t *testing.T) {
 
 	c := NewAIGatewayClient(srv.URL, "id", "secret")
 
-	v, err := c.Moderate(context.Background(), "hello", "forum_topic", nil)
+	v, err := c.Moderate(context.Background(), "kungal", "hello", "forum_topic", nil)
 	if err != nil {
 		t.Fatalf("Moderate(forum_topic): %v", err)
 	}
 	if !strings.Contains(string(lastBody), `"subject_kind":"forum_topic"`) {
 		t.Fatalf("body missing subject_kind forum_topic: %s", lastBody)
+	}
+	if !strings.Contains(string(lastBody), `"subject_site":"kungal"`) {
+		t.Fatalf("body missing subject_site kungal: %s", lastBody)
 	}
 	if !v.Flagged || v.Degraded {
 		t.Fatalf("want flagged not-degraded, got flagged=%v degraded=%v", v.Flagged, v.Degraded)
@@ -42,7 +45,7 @@ func TestGatewayModerateSendsSubjectKind(t *testing.T) {
 		t.Fatalf("score = %v, want ~0.9", v.Score)
 	}
 
-	v, err = c.Moderate(context.Background(), "hello", "", nil)
+	v, err = c.Moderate(context.Background(), "", "hello", "", nil)
 	if err != nil {
 		t.Fatalf("Moderate(empty kind): %v", err)
 	}
@@ -52,6 +55,9 @@ func TestGatewayModerateSendsSubjectKind(t *testing.T) {
 	}
 	if _, ok := body["subject_kind"]; ok {
 		t.Fatalf("empty subjectKind must omit the key, body=%s", lastBody)
+	}
+	if _, ok := body["subject_site"]; ok {
+		t.Fatalf("empty site must omit subject_site, body=%s", lastBody)
 	}
 	if !v.Flagged || v.Degraded || v.Channel != "x" {
 		t.Fatalf("empty-kind verdict wrong: flagged=%v degraded=%v channel=%q", v.Flagged, v.Degraded, v.Channel)

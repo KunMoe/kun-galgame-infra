@@ -59,6 +59,53 @@ func TestForcedEscalationDialsLLMBelowThreshold(t *testing.T) {
 	}
 }
 
+// The prod shape: the trust worker proxies every product site through one
+// client, so the binding site is always "trust" — the first ship keyed the
+// pair match and the site prompt off it and neither ever fired in prod.
+func TestForcedEscalationKeysOffSubjectSite(t *testing.T) {
+	cleanTables(t)
+	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
+		Flagged:        false,
+		Categories:     map[string]bool{},
+		CategoryScores: map[string]float64{"violence": 0.01},
+		Channel:        omniModel,
+	}}
+	llm := &fakeUpstream{configured: true, model: "deepseek-chat", result: upstream.ChatResult{
+		Content: `{"flagged": true, "categories": ["spam"], "score": 0.97}`,
+		Channel: "deepseek-chat",
+	}}
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{
+		EscalateThreshold: 0.4,
+		ForceEscalate:     "kungal:forum_topic",
+	})
+
+	res, err := s.Moderate(context.Background(), ModerateParams{
+		Site: "trust", SubjectSite: "kungal", Text: "classified ad", SubjectKind: "forum_topic",
+	})
+	if err != nil {
+		t.Fatalf("Moderate: %v", err)
+	}
+	if !res.Flagged || res.Channel != "deepseek-chat" {
+		t.Fatalf("subject_site=kungal must force-escalate to LLM, got flagged=%v channel=%q", res.Flagged, res.Channel)
+	}
+	if !strings.Contains(llm.lastSystem, "Site context (kungal)") {
+		t.Fatalf("prompt context must follow the subject site, got %q", llm.lastSystem)
+	}
+	if rows := usageRows(t, "trust", model.RouteModerateText); len(rows) != 2 {
+		t.Fatalf("metering must stay on the binding site, got %d rows under trust", len(rows))
+	}
+
+	res, err = s.Moderate(context.Background(), ModerateParams{
+		Site: "trust", SubjectSite: "letmoe", Text: "hi", SubjectKind: "forum_topic",
+	})
+	if err != nil {
+		t.Fatalf("Moderate (letmoe subject): %v", err)
+	}
+	if res.Flagged || res.Channel != omniModel {
+		t.Fatalf("unlisted subject site must stay omni-terminal, got flagged=%v channel=%q", res.Flagged, res.Channel)
+	}
+}
+
 func TestForcedEscalationIgnoresUnlistedPair(t *testing.T) {
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{

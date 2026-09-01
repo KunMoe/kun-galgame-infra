@@ -20,7 +20,7 @@ type scriptStep struct {
 
 func (g *scriptedGateway) Configured() bool { return true }
 
-func (g *scriptedGateway) Moderate(_ context.Context, _, _ string, _ *int64) (GatewayVerdict, error) {
+func (g *scriptedGateway) Moderate(_ context.Context, _, _, _ string, _ *int64) (GatewayVerdict, error) {
 	s := g.steps[len(g.steps)-1]
 	if g.calls < len(g.steps) {
 		s = g.steps[g.calls]

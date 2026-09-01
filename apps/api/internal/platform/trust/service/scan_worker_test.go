@@ -16,11 +16,13 @@ type fakeGateway struct {
 	err        error
 	calls      atomic.Int32
 	lastKind   string
+	lastSite   string
 }
 
 func (g *fakeGateway) Configured() bool { return g.configured }
-func (g *fakeGateway) Moderate(_ context.Context, _, kind string, _ *int64) (GatewayVerdict, error) {
+func (g *fakeGateway) Moderate(_ context.Context, site, _, kind string, _ *int64) (GatewayVerdict, error) {
 	g.calls.Add(1)
+	g.lastSite = site
 	g.lastKind = kind
 	return g.verdict, g.err
 }
@@ -75,6 +77,9 @@ func TestScanWorkerScoredAndShadow(t *testing.T) {
 	}
 	if g.calls.Load() != 1 {
 		t.Fatalf("gateway calls = %d, want 1", g.calls.Load())
+	}
+	if g.lastSite != tSite {
+		t.Fatalf("gateway site = %q, want %q", g.lastSite, tSite)
 	}
 	if g.lastKind != tKind {
 		t.Fatalf("gateway subjectKind = %q, want %q", g.lastKind, tKind)
@@ -205,7 +210,7 @@ type blockingGateway struct {
 }
 
 func (g *blockingGateway) Configured() bool { return true }
-func (g *blockingGateway) Moderate(_ context.Context, _, _ string, _ *int64) (GatewayVerdict, error) {
+func (g *blockingGateway) Moderate(_ context.Context, _, _, _ string, _ *int64) (GatewayVerdict, error) {
 	g.calls.Add(1)
 	g.entered <- struct{}{}
 	<-g.release

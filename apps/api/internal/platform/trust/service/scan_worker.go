@@ -135,7 +135,7 @@ func (w *ScanWorker) scoreOne(ctx context.Context, tx *gorm.DB, r *model.TrustSc
 	if !w.gateway.Configured() {
 		return w.markDegraded(tx, r, tier0, pol, model.ScanDegradedGatewayUnconfigured)
 	}
-	verdict, err := w.gateway.Moderate(ctx, r.ContentText, r.SubjectKind, r.AuthorID)
+	verdict, err := w.gateway.Moderate(ctx, r.Site, r.ContentText, r.SubjectKind, r.AuthorID)
 	if err != nil {
 		slog.Warn("trust scan gateway call failed; draining to degraded",
 			"scan_id", r.ID, "attempt", r.ScanAttempts+1, "err", err)
