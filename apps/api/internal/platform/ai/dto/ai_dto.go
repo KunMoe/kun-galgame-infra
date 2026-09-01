@@ -3,7 +3,8 @@ package dto
 type ModerateTextRequest struct {
 	Text        string `json:"text" doc:"the UGC text to scan"`
 	AuthorID    *int64 `json:"author_id,omitempty" doc:"optional author global id (attribution/repeat-offender signal); NOT the tenant — the tenant is derived from the client binding"`
-	SubjectKind string `json:"subject_kind,omitempty" doc:"optional product-side content kind (e.g. forum_topic); with the tenant site it selects forced Tier2 escalation for configured (site,kind) pairs"`
+	SubjectSite string `json:"subject_site,omitempty" doc:"optional site the content belongs to (e.g. kungal) when the caller proxies for other sites; falls back to the client-binding site"`
+	SubjectKind string `json:"subject_kind,omitempty" doc:"optional product-side content kind (e.g. forum_topic); with the subject site it selects forced Tier2 escalation for configured (site,kind) pairs"`
 }
 
 type ModerateTextResponse struct {

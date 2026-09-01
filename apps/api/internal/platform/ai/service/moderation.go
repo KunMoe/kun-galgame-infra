@@ -86,9 +86,22 @@ func (s *ModerationService) forceEscalated(site, kind string) bool {
 
 type ModerateParams struct {
 	Site        string
+	SubjectSite string
 	Text        string
 	AuthorID    *int64
 	SubjectKind string
+}
+
+// contentSite is what force-escalation pairs and the site prompt key off.
+// Site alone is wrong for that: it is the credential-binding tenant, and the
+// trust worker proxies every product site through one client, so Site is
+// always "trust" there — the first ship keyed off it and never fired in prod.
+// Site stays the metering/budget identity; SubjectSite says whose content it is.
+func (p ModerateParams) contentSite() string {
+	if p.SubjectSite != "" {
+		return p.SubjectSite
+	}
+	return p.Site
 }
 
 type ModerateResult struct {
@@ -175,7 +188,7 @@ func (s *ModerationService) Moderate(ctx context.Context, p ModerateParams) (Mod
 
 	rel := relevantScore(ores.CategoryScores)
 
-	if s.llm.Configured() && s.forceEscalated(p.Site, p.SubjectKind) {
+	if s.llm.Configured() && s.forceEscalated(p.contentSite(), p.SubjectKind) {
 		return s.moderateViaLLM(ctx, p, routeName, spec)
 	}
 
@@ -211,7 +224,7 @@ func (s *ModerationService) moderateViaLLM(ctx context.Context, p ModerateParams
 		return failOpen(routeName, "", spec), nil
 	}
 
-	res, err := s.llm.ChatJSON(ctx, moderateSystemPrompt(p.Site), p.Text, moderateMaxTokens)
+	res, err := s.llm.ChatJSON(ctx, moderateSystemPrompt(p.contentSite()), p.Text, moderateMaxTokens)
 	if err != nil && upstream.IsRateLimited(err) {
 		// The Cloudflare inference bucket is per-minute and shared with every
 		// other caller on the account, so a 429 here is contention, not a
@@ -228,7 +241,7 @@ func (s *ModerationService) moderateViaLLM(ctx context.Context, p ModerateParams
 		case <-ctx.Done():
 			timer.Stop()
 		case <-timer.C:
-			res, err = s.llm.ChatJSON(ctx, moderateSystemPrompt(p.Site), p.Text, moderateMaxTokens)
+			res, err = s.llm.ChatJSON(ctx, moderateSystemPrompt(p.contentSite()), p.Text, moderateMaxTokens)
 		}
 	}
 	if err != nil {

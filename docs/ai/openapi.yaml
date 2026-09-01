@@ -55,7 +55,10 @@ components:
           format: int64
           type: integer
         subject_kind:
-          description: optional product-side content kind (e.g. forum_topic); with the tenant site it selects forced Tier2 escalation for configured (site,kind) pairs
+          description: optional product-side content kind (e.g. forum_topic); with the subject site it selects forced Tier2 escalation for configured (site,kind) pairs
+          type: string
+        subject_site:
+          description: optional site the content belongs to (e.g. kungal) when the caller proxies for other sites; falls back to the client-binding site
           type: string
         text:
           description: the UGC text to scan
