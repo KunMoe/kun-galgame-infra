@@ -29,12 +29,19 @@ type PublicService struct {
 	cdnBase     string
 	imageMeta   ImageMetaFunc
 	metaCache   *imageMetaCache
+	totals      *totalsCache
 	worksSearch *catsearch.Indexer
+}
+
+// FlushTotals empties the include_total count cache so the next read recounts.
+func (s *PublicService) FlushTotals() {
+	s.totals.flush()
 }
 
 func NewPublicService(db *gorm.DB, read *ReadService, resolve *ResolveService, cdnBase string) *PublicService {
 	s := &PublicService{db: db, read: read, resolve: resolve,
-		mediums: map[int16]string{}, sources: map[int16]string{}, cdnBase: cdnBase}
+		mediums: map[int16]string{}, sources: map[int16]string{}, cdnBase: cdnBase,
+		totals: newTotalsCache()}
 	var rows []struct {
 		ID  int16
 		Key string

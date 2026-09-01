@@ -312,6 +312,8 @@ The first two are the same defect shape in a different env var. They are deliber
 
 102. **`GET /v2/catalog/schemas/{object}` published only the detail vocabulary** (2026-08-28). The schema face is where a machine consumer discovers `include=`, and it answered `collect.ObjectSpec(object)` for both halves — which for `work` is now the detail face's eighteen tokens. Left alone, deviation 100 would have made this face hand a generator the tokens the collection refuses. `list_include` and `list_full_set` are added beside `include`/`full_set`; for every family but `work` the two pairs are equal, because those lists and details share a Spec, and `TestLiveWorkSchemaPublishesBothVocabularies` asserts both the equality and the one inequality.
 
+103. **Listing `total` values are served through a 60-second in-process cache** (2026-09-01). Works list, labels/tags/engines/series, and the entity list faces all go through `taxonomyTotal`. That helper now caches by the full filter signature (table + WHERE clauses + bound args) for 60s, so `total` may lag writes by up to 60 seconds. Cursor predicates stay outside the key: the pre-existing "total counted before the cursor" property is preserved and strengthened — the total is now also stable across pages within the TTL.
+
 ## Stage 6 write
 
 | Route | Bind |

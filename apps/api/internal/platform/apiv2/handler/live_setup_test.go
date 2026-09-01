@@ -911,6 +911,11 @@ func seedLiveNews(db *gorm.DB) (int64, error) {
 
 func liveDo(t *testing.T, env *liveEnv, method, path, token, body string) (int, string, []byte) {
 	t.Helper()
+	// liveOnce shares one PublicService across the package, so a totals-cache
+	// entry minted by an earlier test outlived a fixture mutation and broke
+	// TestLiveWorksIncludeTotalFollowsNSFW in CI. The live suite asserts data,
+	// not caching; the service tests own the TTL semantics.
+	env.cat.Public.FlushTotals()
 	var rdr io.Reader
 	if body != "" {
 		rdr = strings.NewReader(body)
@@ -945,6 +950,7 @@ func liveETag(t *testing.T, env *liveEnv, path, token string) string {
 
 func liveDoHeader(t *testing.T, env *liveEnv, method, path, token, body string, extra map[string]string) (int, string, []byte) {
 	t.Helper()
+	env.cat.Public.FlushTotals()
 	var rdr io.Reader
 	if body != "" {
 		rdr = strings.NewReader(body)

@@ -294,3 +294,34 @@ func TestChangesFeedSeesFacetOnlyWrites(t *testing.T) {
 			resumed.Items, host.ID, bystander.ID)
 	}
 }
+
+func TestWorksListTotalStaleWithinTTL(t *testing.T) {
+	cleanTables(t)
+	svc := newPublicSvc()
+	ctx := t.Context()
+
+	createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "CachedTotalA")
+	createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "CachedTotalB")
+
+	filter := WorksListFilter{Sort: "id", IncludeTotal: true}
+	first, err := svc.WorksList(ctx, filter, "", 50)
+	if err != nil {
+		t.Fatalf("WorksList: %v", err)
+	}
+	if first.Total != 2 {
+		t.Fatalf("total = %d, want 2", first.Total)
+	}
+
+	createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "CachedTotalC")
+
+	second, err := svc.WorksList(ctx, filter, "", 50)
+	if err != nil {
+		t.Fatalf("WorksList after insert: %v", err)
+	}
+	if second.Total != 2 {
+		t.Fatalf("cached total = %d, want 2 (insert must not be visible within TTL)", second.Total)
+	}
+	if len(second.Items) != 3 {
+		t.Fatalf("items = %d, want 3 (the page itself is not cached)", len(second.Items))
+	}
+}

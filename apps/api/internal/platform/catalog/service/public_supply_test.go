@@ -472,7 +472,7 @@ func TestTaxonomyTotalsAndTagDetailWorkCount(t *testing.T) {
 	if err := testDB.Exec(`UPDATE catalog_label SET deleted_at = now() WHERE id = ?`, l1).Error; err != nil {
 		t.Fatalf("soft-delete label: %v", err)
 	}
-	labels, err = svc.LabelsList(ctx, LabelsListFilter{}, "", 50)
+	labels, err = newPublicSvc().LabelsList(ctx, LabelsListFilter{}, "", 50)
 	if err != nil {
 		t.Fatalf("LabelsList after merge: %v", err)
 	}
