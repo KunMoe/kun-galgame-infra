@@ -25,6 +25,7 @@ type Config struct {
 	Auth                    AuthConfig
 	OIDC                    OIDCConfig
 	Mail                    MailConfig
+	SearchEngine            string
 	Meilisearch             MeilisearchConfig
 	OpenSearch              OpenSearchConfig
 	ImageService            ImageServiceConfig
@@ -420,6 +421,7 @@ func Load() (*Config, error) {
 		Password: getEnv("KUN_VISUAL_NOVEL_EMAIL_PASSWORD", ""),
 	}
 
+	cfg.SearchEngine = getEnv("KUN_SEARCH_ENGINE", "meilisearch")
 	cfg.Meilisearch = MeilisearchConfig{
 		Host:        getEnv("KUN_MEILISEARCH_HOST", "http://127.0.0.1:7700"),
 		APIKey:      getEnv("KUN_MEILISEARCH_API_KEY", ""),

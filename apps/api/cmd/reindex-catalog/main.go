@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"api/internal/infrastructure/database"
-	searchInfra "api/internal/infrastructure/search"
 	"api/internal/platform/catalog/editspec"
 	"api/internal/platform/catalog/model"
 	catalogSearch "api/internal/platform/catalog/search"
@@ -24,6 +23,7 @@ import (
 func main() {
 	indexFlag := flag.String("index", "catalog_credit_names,catalog_characters,catalog_labels,catalog_works,catalog_tags", "comma-separated index uids")
 	batch := flag.Int("batch", 5000, "batch size per Meilisearch upsert")
+	recreate := flag.Bool("recreate", false, "drop and recreate each named index (opensearch only)")
 	flag.Parse()
 
 	cfg, err := config.Load()
@@ -39,24 +39,45 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
-	client, err := searchInfra.NewClient(cfg.Meilisearch)
+	idx, engineName, err := catalogSearch.NewIndexerFromConfig(cfg)
 	if err != nil {
-		slog.Error("meilisearch client", "error", err)
+		slog.Error("search indexer", "error", err)
 		os.Exit(1)
 	}
-	if err := client.Health(); err != nil {
-		slog.Error("meilisearch unreachable", "error", err)
+	slog.Info("reindex-catalog engine", "engine", engineName)
+	if *recreate && engineName != catalogSearch.EngineOpenSearch {
+		slog.Error("-recreate is unsupported for this search engine", "engine", engineName)
 		os.Exit(1)
 	}
-	if err := catalogSearch.EnsureIndexes(client); err != nil {
+	ctx := context.Background()
+	if err := idx.Health(ctx); err != nil {
+		slog.Error("search engine unreachable", "engine", engineName, "error", err)
+		os.Exit(1)
+	}
+	indexes := strings.Split(*indexFlag, ",")
+	if *recreate {
+		for _, t := range indexes {
+			t = strings.TrimSpace(t)
+			switch t {
+			case catalogSearch.IndexCreditNames, catalogSearch.IndexCharacters, catalogSearch.IndexLabels, catalogSearch.IndexWorks, catalogSearch.IndexTags:
+				if err := idx.RecreateIndex(ctx, t); err != nil {
+					slog.Error("recreate failed", "index", t, "error", err)
+					os.Exit(1)
+				}
+			case "":
+				continue
+			default:
+				slog.Warn("unknown index, skipping", "index", t)
+			}
+		}
+	}
+	if err := idx.EnsureIndexes(ctx); err != nil {
 		slog.Error("ensure indexes", "error", err)
 		os.Exit(1)
 	}
 
-	idx := catalogSearch.NewIndexer(client)
-	ctx := context.Background()
 	start := time.Now()
-	for _, t := range strings.Split(*indexFlag, ",") {
+	for _, t := range indexes {
 		t = strings.TrimSpace(t)
 		var err error
 		switch t {
@@ -80,6 +101,10 @@ func main() {
 		}
 		if err != nil {
 			slog.Error("reindex failed", "index", t, "error", err)
+			os.Exit(1)
+		}
+		if err := idx.Refresh(ctx, t); err != nil {
+			slog.Error("refresh failed", "index", t, "error", err)
 			os.Exit(1)
 		}
 	}

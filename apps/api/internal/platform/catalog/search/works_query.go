@@ -24,20 +24,12 @@ import (
 	"strconv"
 	"strings"
 
+	"api/internal/platform/catalog/search/spec"
+
 	"github.com/meilisearch/meilisearch-go"
 )
 
 const worksSearchScoreThreshold = 0.4
-
-type WorksQuery struct {
-	Q           string
-	Filter      string
-	Sort        string
-	Facets      []string
-	Page        int
-	Limit       int
-	SearchIntro bool
-}
 
 type WorksResult struct {
 	IDs    []int64
@@ -45,7 +37,7 @@ type WorksResult struct {
 	Facets map[string]map[string]int64
 }
 
-func (i *Indexer) SearchWorks(ctx context.Context, q WorksQuery) (WorksResult, error) {
+func (e *meiliEngine) SearchWorks(ctx context.Context, q spec.WorksQuery) (WorksResult, error) {
 	page, limit := q.Page, q.Limit
 	if page < 1 {
 		page = 1
@@ -53,37 +45,37 @@ func (i *Indexer) SearchWorks(ctx context.Context, q WorksQuery) (WorksResult, e
 	if limit < 1 {
 		limit = 20
 	}
-	text := sanitizeQuery(q.Q)
+	text := spec.SanitizeQuery(q.Q)
 
 	req := &meilisearch.SearchRequest{
 		Page:             int64(page),
 		HitsPerPage:      int64(limit),
 		MatchingStrategy: meilisearch.All,
 	}
-	if q.Filter != "" {
-		req.Filter = q.Filter
+	if filter := MeiliFilter(q.Filter); filter != "" {
+		req.Filter = filter
 	}
 	if !q.SearchIntro {
 		req.AttributesToSearchOn = WorksTitleSearchable
 	}
-	if len(q.Facets) > 0 {
-		req.Facets = q.Facets
+	if len(q.FacetAttrs) > 0 {
+		req.Facets = q.FacetAttrs
 	}
 	switch {
 	case text != "":
 		req.RankingScoreThreshold = worksSearchScoreThreshold
-		if q.Sort != "" {
-			req.Sort = []string{q.Sort}
+		if q.SortLane != "" {
+			req.Sort = []string{q.SortLane}
 		}
-	case q.Sort != "":
-		req.Sort = []string{q.Sort}
+	case q.SortLane != "":
+		req.Sort = []string{q.SortLane}
 		req.MatchingStrategy = meilisearch.Last
 	default:
 		req.Sort = []string{"popularity:desc"}
 		req.MatchingStrategy = meilisearch.Last
 	}
 
-	resp, err := i.client.Index(IndexWorks).SearchWithContext(ctx, text, req)
+	resp, err := e.client.Index(IndexWorks).SearchWithContext(ctx, text, req)
 	if err != nil {
 		return WorksResult{}, err
 	}
@@ -116,6 +108,77 @@ func (i *Indexer) SearchWorks(ctx context.Context, q WorksQuery) (WorksResult, e
 		}
 	}
 	return out, nil
+}
+
+func MeiliFilter(f spec.WorksFilter) string {
+	var clauses []string
+	if f.DocID != "" {
+		clauses = append(clauses, "id = '"+EscapeFilterValue(f.DocID)+"'")
+	}
+	if f.ContentRatingNot != nil {
+		clauses = append(clauses, "content_rating != "+strconv.Itoa(int(*f.ContentRatingNot)))
+	}
+	if f.ContentRating != nil {
+		clauses = append(clauses, "content_rating = "+strconv.Itoa(int(*f.ContentRating)))
+	}
+	if f.Claimed != nil {
+		clauses = append(clauses, "claimed = "+strconv.FormatBool(*f.Claimed))
+	}
+	if len(f.ClaimStates) > 0 {
+		or := make([]string, 0, len(f.ClaimStates))
+		for _, st := range f.ClaimStates {
+			or = append(or, "claim_state = '"+EscapeFilterValue(st)+"'")
+		}
+		clauses = append(clauses, "("+strings.Join(or, " OR ")+")")
+	}
+	if f.ClaimStateNot != "" {
+		clauses = append(clauses, "claim_state != '"+f.ClaimStateNot+"'")
+	}
+	if len(f.DisplayLimits) > 0 {
+		or := make([]string, 0, len(f.DisplayLimits))
+		for _, lim := range f.DisplayLimits {
+			or = append(or, "content_limit = '"+EscapeFilterValue(lim)+"'")
+		}
+		clauses = append(clauses, "("+strings.Join(or, " OR ")+")")
+	}
+	for _, tagID := range f.TagIDs {
+		clauses = append(clauses, "tag_ids = "+strconv.FormatInt(tagID, 10))
+	}
+	for _, e := range []struct {
+		attr string
+		id   int64
+	}{
+		{"label_ids", f.LabelID}, {"engine_ids", f.EngineID}, {"series_ids", f.SeriesID},
+	} {
+		if e.id > 0 {
+			clauses = append(clauses, e.attr+" = "+strconv.FormatInt(e.id, 10))
+		}
+	}
+	if f.ReleasedAfter > 0 {
+		clauses = append(clauses, "released_ord >= "+strconv.FormatInt(f.ReleasedAfter, 10))
+	}
+	if f.ReleasedBefore > 0 {
+		clauses = append(clauses, "released_ord <= "+strconv.FormatInt(f.ReleasedBefore, 10))
+	}
+	if olang := meiliOLang(f.OLang); olang != "" {
+		clauses = append(clauses, olang)
+	}
+	return strings.Join(clauses, " AND ")
+}
+
+func meiliOLang(o spec.OLang) string {
+	switch {
+	case o.All:
+		return ""
+	case len(o.Values) > 0:
+		quoted := make([]string, len(o.Values))
+		for i, v := range o.Values {
+			quoted[i] = "'" + EscapeFilterValue(v) + "'"
+		}
+		return "olang IN [" + strings.Join(quoted, ", ") + "]"
+	default:
+		return "(olang = 'ja' OR olang STARTS WITH 'zh')"
+	}
 }
 
 func WorkDocID(workID int64) string { return "w" + strconv.FormatInt(workID, 10) }

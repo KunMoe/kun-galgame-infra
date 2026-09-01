@@ -140,10 +140,8 @@ func utf8Valid(s string) bool {
 
 func TestEnsureIndexesConvergesOnSecondRun(t *testing.T) {
 	idx := worksSearchIndexer(t)
-	_ = idx
-
 	client := worksSearchClient(t)
-	if err := catsearch.EnsureIndexes(client); err != nil {
+	if err := idx.EnsureIndexes(t.Context()); err != nil {
 		t.Fatalf("second EnsureIndexes: %v", err)
 	}
 	got, err := client.Index(catsearch.IndexWorks).GetSettings()

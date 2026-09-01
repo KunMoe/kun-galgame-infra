@@ -12,7 +12,6 @@ import (
 	"api/internal/galgameapp"
 	"api/internal/infrastructure/cache"
 	"api/internal/infrastructure/database"
-	searchInfra "api/internal/infrastructure/search"
 	"api/internal/middleware"
 	v2handler "api/internal/platform/apiv2/handler"
 	"api/internal/platform/apiv2/protocol"
@@ -80,12 +79,17 @@ func main() {
 
 	readSvc := service.NewReadService(catalogDB.DB())
 	statsSvc := service.NewStatsService(catalogDB.DB())
-	searchClient, err := searchInfra.NewClient(cfg.Meilisearch)
+	searcher, engineName, err := catalogSearch.NewIndexerFromConfig(cfg)
 	if err != nil {
-		slog.Error("meilisearch client", "error", err)
+		slog.Error("search indexer", "error", err)
 		os.Exit(1)
 	}
-	searcher := catalogSearch.NewIndexer(searchClient)
+	if engineName == catalogSearch.EngineOpenSearch {
+		if err := searcher.Health(context.Background()); err != nil {
+			slog.Error("opensearch unhealthy", "error", err)
+			os.Exit(1)
+		}
+	}
 
 	application.Fiber.Use(middleware.RequestID())
 	application.Fiber.Use(middleware.Logger())
@@ -172,6 +176,7 @@ func main() {
 	slog.Info("catalog service starting",
 		"addr", fmt.Sprintf("%s:%d", cfg.CatalogService.Host, cfg.CatalogService.Port),
 		"dbname", cfg.CatalogDatabase.DBName,
+		"search_engine", engineName,
 	)
 
 	defer func() {

@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"api/internal/platform/catalog/model"
+	"api/internal/platform/catalog/search/spec"
 
+	"github.com/meilisearch/meilisearch-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -108,7 +110,7 @@ func TestEscapeFilterValue(t *testing.T) {
 }
 
 func TestWorksIndexSettingsCarryTheSearchContract(t *testing.T) {
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	t.Cleanup(func() {
 		for _, uid := range []string{IndexWorks, IndexTags} {
 			_, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(uid))
@@ -137,7 +139,7 @@ func TestWorksIndexSettingsCarryTheSearchContract(t *testing.T) {
 	assert.Contains(t, ts.SearchableAttributes, "name_zh")
 	assert.Contains(t, ts.SortableAttributes, "popularity")
 
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	again, err := testClient.Index(IndexWorks).GetSettings()
 	require.NoError(t, err)
 	assert.ElementsMatch(t, s.FilterableAttributes, again.FilterableAttributes)
@@ -147,7 +149,7 @@ func TestWorksIndexSettingsCarryTheSearchContract(t *testing.T) {
 }
 
 func TestTagsIndexSearchable(t *testing.T) {
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	t.Cleanup(func() {
 		_, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexTags))
 	})
@@ -162,22 +164,29 @@ func TestTagsIndexSearchable(t *testing.T) {
 	require.NoError(t, err)
 
 	idx := NewIndexer(testClient)
-	res, err := idx.SearchEntities(t.Context(), IndexTags, "ファンタジー", []string{"jpn"}, 20, "")
+	res, err := idx.SearchEntities(t.Context(), IndexTags, spec.EntityQuery{Q: "ファンタジー", Locales: []string{"jpn"}, Limit: 20})
 	require.NoError(t, err)
 	if assert.Len(t, res.Hits, 1) {
 		assert.Equal(t, "t2", res.Hits[0].ID)
 		require.NotNil(t, res.Hits[0].Tier)
 		assert.EqualValues(t, 1, *res.Hits[0].Tier)
 	}
-	res, err = idx.SearchEntities(t.Context(), IndexTags, "", nil, 20, "")
+	res, err = idx.SearchEntities(t.Context(), IndexTags, spec.EntityQuery{Q: "", Limit: 20})
 	require.NoError(t, err)
 	if assert.Len(t, res.Hits, 2) {
 		assert.Equal(t, "t1", res.Hits[0].ID)
 	}
-	res, err = idx.SearchEntities(t.Context(), IndexTags, "", nil, 20, "tier = 1")
+	raw, err := testClient.Index(IndexTags).SearchWithContext(t.Context(), "", &meilisearch.SearchRequest{
+		HitsPerPage:      20,
+		Filter:           "tier = 1",
+		Sort:             []string{"popularity:desc"},
+		MatchingStrategy: meilisearch.Last,
+	})
 	require.NoError(t, err)
-	if assert.Len(t, res.Hits, 1) {
-		assert.Equal(t, "t2", res.Hits[0].ID)
+	if assert.Len(t, raw.Hits, 1) {
+		var d EntityDoc
+		require.NoError(t, raw.Hits[0].DecodeInto(&d))
+		assert.Equal(t, "t2", d.ID)
 	}
 	uid, ok := IndexForType("tags")
 	assert.True(t, ok)
@@ -185,7 +194,7 @@ func TestTagsIndexSearchable(t *testing.T) {
 }
 
 func TestSearchWorksPaging(t *testing.T) {
-	require.NoError(t, EnsureIndexes(testClient))
+	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
 	t.Cleanup(func() {
 		_, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexWorks))
 	})
@@ -208,7 +217,16 @@ func TestSearchWorksPaging(t *testing.T) {
 
 	idx := NewIndexer(testClient)
 	ctx := t.Context()
-	q := WorksQuery{Filter: "content_rating != 2", Sort: "popularity:desc", Page: 1, Limit: 2}
+	r18 := int16(model.ContentRatingR18)
+	q := spec.WorksQuery{
+		Filter: spec.WorksFilter{
+			ContentRatingNot: &r18,
+			OLang:            spec.OLang{All: true},
+		},
+		SortLane: "popularity:desc",
+		Page:     1,
+		Limit:    2,
+	}
 
 	p1, err := idx.SearchWorks(ctx, q)
 	require.NoError(t, err)
@@ -227,7 +245,7 @@ func TestSearchWorksPaging(t *testing.T) {
 	assert.Empty(t, p3.IDs, "a page past the end is empty, not an error")
 	assert.EqualValues(t, 4, p3.Total)
 
-	q.Page, q.Facets = 1, []string{"content_rating"}
+	q.Page, q.FacetAttrs = 1, []string{"content_rating"}
 	withFacets, err := idx.SearchWorks(ctx, q)
 	require.NoError(t, err)
 	require.Contains(t, withFacets.Facets, "content_rating")

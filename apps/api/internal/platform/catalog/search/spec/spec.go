@@ -16,6 +16,11 @@ func SanitizeQuery(q string) string {
 	return strings.TrimSpace(q)
 }
 
+type OLang struct {
+	All    bool
+	Values []string
+}
+
 type WorksFilter struct {
 	DocID            string
 	ContentRatingNot *int16
@@ -30,7 +35,7 @@ type WorksFilter struct {
 	SeriesID         int64
 	ReleasedAfter    int64
 	ReleasedBefore   int64
-	OLangs           []string
+	OLang            OLang
 }
 
 type WorksQuery struct {
@@ -46,5 +51,6 @@ type WorksQuery struct {
 type EntityQuery struct {
 	Q                string
 	Limit            int
+	Locales          []string
 	ContentRatingNot *int16
 }

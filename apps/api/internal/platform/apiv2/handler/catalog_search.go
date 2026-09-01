@@ -11,6 +11,7 @@ import (
 	"api/internal/platform/apiv2/repr"
 	catmodel "api/internal/platform/catalog/model"
 	catsearch "api/internal/platform/catalog/search"
+	"api/internal/platform/catalog/search/spec"
 )
 
 var searchObjects = []string{"work", "character", "credit_name", "company", "tag"}
@@ -42,11 +43,16 @@ func (c *Catalog) Search(ctx context.Context, q collect.Query, object, query, lo
 	if limit <= 0 {
 		limit = collect.DefaultLimit
 	}
-	filter := ""
-	if object == "work" && !q.NSFW {
-		filter = "content_rating != " + strconv.Itoa(int(catmodel.ContentRatingR18))
+	eq := spec.EntityQuery{
+		Q:       query,
+		Limit:   limit,
+		Locales: catsearch.LocalesForUI(uid, locale),
 	}
-	res, serr := c.Searcher.SearchEntities(ctx, uid, query, catsearch.LocalesForUI(uid, locale), limit, filter)
+	if object == "work" && !q.NSFW {
+		r18 := catmodel.ContentRatingR18
+		eq.ContentRatingNot = &r18
+	}
+	res, serr := c.Searcher.SearchEntities(ctx, uid, eq)
 	if serr != nil {
 		return repr.List[repr.SearchHit]{}, serr
 	}

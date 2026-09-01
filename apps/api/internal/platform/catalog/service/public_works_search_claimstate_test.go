@@ -52,19 +52,19 @@ func TestClaimStateFilterCompilation(t *testing.T) {
 	// Was "no claim_state param must emit no clause". A ban writes only
 	// claim_state, so an unconditional exclusion is the only thing that keeps a
 	// banned work out of q= as well; the clause is now always present.
-	bare := (WorksSearchFilter{}).meiliFilter("")
+	bare := catsearch.MeiliFilter((WorksSearchFilter{}).worksFilter(""))
 	if !strings.Contains(bare, "claim_state != 'hidden'") {
 		t.Fatalf("no claim_state param must still exclude banned works: %q", bare)
 	}
 	if strings.Contains(bare, "claim_state = ") {
 		t.Fatalf("no claim_state param must select no state positively: %q", bare)
 	}
-	asked := WorksSearchFilter{ClaimStates: []string{model.ClaimStateKeyHidden}}.meiliFilter("")
+	asked := catsearch.MeiliFilter(WorksSearchFilter{ClaimStates: []string{model.ClaimStateKeyHidden}}.worksFilter(""))
 	if strings.Contains(asked, "claim_state != 'hidden'") {
 		t.Fatalf("an explicit claim_state=hidden must not be excluded by the ban gate: %q", asked)
 	}
 
-	one := WorksSearchFilter{ClaimStates: []string{model.ClaimStateKeyLive}}.meiliFilter("")
+	one := catsearch.MeiliFilter(WorksSearchFilter{ClaimStates: []string{model.ClaimStateKeyLive}}.worksFilter(""))
 	if !strings.Contains(one, "(claim_state = 'live')") {
 		t.Fatalf("single claim_state clause = %q", one)
 	}
@@ -72,9 +72,9 @@ func TestClaimStateFilterCompilation(t *testing.T) {
 		t.Fatalf("claim_state must not replace the other clauses: %q", one)
 	}
 
-	many := WorksSearchFilter{
+	many := catsearch.MeiliFilter(WorksSearchFilter{
 		ClaimStates: []string{model.ClaimStateKeyLive, model.ClaimStateKeyDraft},
-	}.meiliFilter("")
+	}.worksFilter(""))
 	if !strings.Contains(many, "(claim_state = 'live' OR claim_state = 'draft')") {
 		t.Fatalf("multi claim_state clause = %q", many)
 	}
