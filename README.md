@@ -1,8 +1,8 @@
-# kun-galgame-infra
+# nextmoe-infra
 
-> 鲲 Galgame 生态的**枢纽(hub)** —— 统一身份(OAuth)、图床(image service)、galgame-wiki,并**拥有全生态共享的基础设施**。
+> NextMoe / 鲲 Galgame 生态的**枢纽(hub)** —— 统一身份(OAuth)、图床(image service)、跨媒介 catalog,并**拥有全生态共享的基础设施**。
 >
-> 原名 `kun-oauth-admin`,现更名为 `kun-galgame-infra` 以反映其"生态基础设施枢纽"的定位。
+> 原名 `kun-oauth-admin` → `kun-galgame-infra`(2026-06-01) → `nextmoe-infra`(2026-09-01, GitHub `next-moe/nextmoe-infra`)。
 
 ## 这是什么
 
@@ -17,7 +17,7 @@
 
 | 仓库 | 代号 | 角色 |
 |---|---|---|
-| **kun-galgame-infra**(本仓) | infra / 枢纽 | 身份 + 图床 + wiki + 共享基础设施 |
+| **nextmoe-infra**(本仓) | infra / 枢纽 | 身份 + 图床 + catalog + 共享基础设施 |
 | [kun-galgame-forum](https://github.com/KunMoe/kun-galgame-forum) | kungal | 论坛主站 |
 | [kun-galgame-patch](https://github.com/KunMoe/kun-galgame-patch) | moyu | 补丁站 |
 

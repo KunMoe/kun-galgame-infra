@@ -1,4 +1,4 @@
-# Docker build assets — kun-galgame-infra
+# Docker build assets — nextmoe-infra
 
 This repo is the ecosystem **hub** (identity / image / content catalog). This
 directory holds the **Dockerfiles + init assets** the images are built from.

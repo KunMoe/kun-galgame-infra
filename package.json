@@ -1,5 +1,5 @@
 {
-  "name": "kun-galgame-infra",
+  "name": "nextmoe-infra",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.17.0",
@@ -24,7 +24,7 @@
     "prod:deploy": "./scripts/deploy.sh",
     "pm2:start": "./scripts/start.sh",
     "pm2:stop": "./scripts/stop.sh",
-    "pm2:restart": "pm2 restart kun-galgame-infra",
+    "pm2:restart": "pm2 restart nextmoe-infra",
     "pm2:logs": "pm2 logs"
   },
   "devDependencies": {

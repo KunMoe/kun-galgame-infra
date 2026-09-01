@@ -99,7 +99,7 @@ sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'pick-your-own';"
 
 # Clone into the LINUX filesystem. Not /mnt/c — cross-OS 9p writes are slow
 # enough that air's rebuild loop becomes unusable.
-cd ~ && git clone <this repo> && cd kun-galgame-infra
+cd ~ && git clone <this repo> && cd nextmoe-infra
 
 printf 'KUN_PG_PASSWORD=pick-your-own\n' > .env   # root .env, gitignored
 ./scripts/create-dev-databases.sh                 # creates the 12 databases

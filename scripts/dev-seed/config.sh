@@ -51,5 +51,5 @@ SEED_OUT_ROOT="${HOME}/.cache/kungal-dev-seed"
 # (scrubbed content, dev-only credentials, private-submission tables shipped
 # empty), and reusing the repo the collaborators already have beats
 # maintaining a separate invite list.
-SEED_REPO="KunMoe/kun-galgame-infra"
+SEED_REPO="next-moe/nextmoe-infra"
 SEED_TAG="dev-seed"

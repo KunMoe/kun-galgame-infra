@@ -234,7 +234,7 @@ sudo sysctl --system
 ```bash
 ssh -p <PORT> -i ~/.ssh/<your_key> kun@<SERVER_IP>
 mkdir -p ~/app && cd ~/app
-git clone https://github.com/KunMoe/kun-galgame-infra.git
+git clone https://github.com/next-moe/nextmoe-infra.git
 git clone https://github.com/KunMoe/kun-galgame-forum.git
 git clone https://github.com/KunMoe/kun-galgame-patch.git
 fastfetch        # 欣赏一下你的新机器 :)

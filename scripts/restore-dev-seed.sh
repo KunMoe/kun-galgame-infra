@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-SEED_REPO="${SEED_REPO:-KunMoe/kun-galgame-infra}"
+SEED_REPO="${SEED_REPO:-next-moe/nextmoe-infra}"
 SEED_TAG="${SEED_TAG:-dev-seed}"
 SEED_PG_HOST="${SEED_PG_HOST:-localhost}"
 SEED_PG_PORT="${SEED_PG_PORT:-5432}"
