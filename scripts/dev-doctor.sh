@@ -102,11 +102,11 @@ else
   hint "sudo apt install postgresql-client, then ./scripts/create-dev-databases.sh"
 fi
 
-# ── 5. GHCR (the platform images are private) ─────────────────────────────────
-if docker manifest inspect ghcr.io/kunmoe/infra-migrate:latest >/dev/null 2>&1; then
+# ── 5. GHCR (platform images; inherit repo access if linked) ──────────────────
+if docker manifest inspect ghcr.io/next-moe/infra-migrate:latest >/dev/null 2>&1; then
   ok "GHCR: infra-migrate readable"
 else
-  bad "cannot read ghcr.io/kunmoe/infra-migrate (private images)"
+  bad "cannot read ghcr.io/next-moe/infra-migrate"
   hint "A bare \`gh auth token\` lacks read:packages and fails 'unauthorized':"
   hint "  gh auth refresh -h github.com -s read:packages"
   hint "  gh auth token | docker login ghcr.io -u <your-gh-user> --password-stdin"

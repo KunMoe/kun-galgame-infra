@@ -30,7 +30,7 @@ services:
   # over the public /v1 face. Routing = Dokploy Domains panel; NO labels block
   # here (see the file header for why that must stay true).
   mcp:
-    image: ghcr.io/kunmoe/infra-mcp:latest
+    image: ghcr.io/next-moe/infra-mcp:latest
     pull_policy: always
     environment:
       # The public /v1 face served by the catalog process (galgame + catalog

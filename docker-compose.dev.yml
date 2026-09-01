@@ -8,7 +8,7 @@
 # top of that sits behind the `full` profile.
 #
 # Differs from docker-compose.prod.yml (Dokploy) and docker-compose.yml (local build):
-#   1. `image: ghcr.io/kunmoe/infra-*:${INFRA_IMAGE_TAG:-latest}` — prebuilt, PULLED
+#   1. `image: ghcr.io/next-moe/infra-*:${INFRA_IMAGE_TAG:-latest}` — prebuilt, PULLED
 #      (not built here). Pin a digest via INFRA_IMAGE_TAG when collaborating.
 #   2. `network_mode: host` — every service shares 127.0.0.1, so inter-service
 #      URLs are 127.0.0.1:<prod-port> and the ports match prod (9277-9284;
@@ -221,7 +221,7 @@ services:
   # domain's DB (cmd/migrate). The five per-domain images this used to pull
   # (infra-migrate-catalog/-community/-trust/-ai/-news) no longer exist.
   migrate:
-    image: ghcr.io/kunmoe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
     network_mode: host
     environment: { <<: *dev-env }
     restart: "no"
@@ -230,21 +230,21 @@ services:
   # migrated the galgame wiki family via KUN_GALGAME_PG_DATABASE from W5 until
   # wave 161 retired that family; the env var is now unread by this job.
   migrate-catalog:
-    image: ghcr.io/kunmoe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
     command: ["catalog"]
     network_mode: host
     environment: { <<: *dev-env }
     restart: "no"
 
   migrate-trust:
-    image: ghcr.io/kunmoe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
     command: ["trust"]
     network_mode: host
     environment: { <<: *dev-env }
     restart: "no"
 
   migrate-news:
-    image: ghcr.io/kunmoe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
     command: ["news"]
     network_mode: host
     environment: { <<: *dev-env }
@@ -255,7 +255,7 @@ services:
   # and trust — itself `full`-only — has empty AI creds so it never dials).
   # Their consumers are the PRODUCT repos, which is what `pnpm dev:full` is for.
   migrate-community:
-    image: ghcr.io/kunmoe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
     command: ["community"]
     profiles: ["full"]
     network_mode: host
@@ -263,7 +263,7 @@ services:
     restart: "no"
 
   migrate-ai:
-    image: ghcr.io/kunmoe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-migrate:${INFRA_IMAGE_TAG:-latest}
     command: ["ai"]
     profiles: ["full"]
     network_mode: host
@@ -275,7 +275,7 @@ services:
   # → binary at /app. Ports match prod (9277-9284); host network binds them on the
   # box directly, so `go run ./cmd/<svc>` on the same port replaces a stopped one.
   oauth:
-    image: ghcr.io/kunmoe/infra-oauth:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-oauth:${INFRA_IMAGE_TAG:-latest}
     # The five frequently-edited Go services (oauth/catalog/image/artifact/trust)
     # sit behind the `full` profile so a bare `up` starts the platform WITHOUT
     # them — leaving their host ports free for `air` to hot-reload from source
@@ -317,7 +317,7 @@ services:
     restart: unless-stopped
 
   image:
-    image: ghcr.io/kunmoe/infra-image:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-image:${INFRA_IMAGE_TAG:-latest}
     profiles: ["full"]
     network_mode: host
     environment:
@@ -338,7 +338,7 @@ services:
     restart: unless-stopped
 
   artifact:
-    image: ghcr.io/kunmoe/infra-artifact:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-artifact:${INFRA_IMAGE_TAG:-latest}
     profiles: ["full"]
     network_mode: host
     environment:
@@ -365,7 +365,7 @@ services:
   # to the most-edited service, so infra's `pnpm dev` runs it from source via
   # air (:9281) and only `dev:full` serves it from the image.
   catalog:
-    image: ghcr.io/kunmoe/infra-catalog:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-catalog:${INFRA_IMAGE_TAG:-latest}
     profiles: ["full"]
     network_mode: host
     environment:
@@ -393,7 +393,7 @@ services:
     restart: unless-stopped
 
   community:
-    image: ghcr.io/kunmoe/infra-community:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-community:${INFRA_IMAGE_TAG:-latest}
     profiles: ["full"]
     network_mode: host
     environment:
@@ -421,7 +421,7 @@ services:
     restart: unless-stopped
 
   trust:
-    image: ghcr.io/kunmoe/infra-trust:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-trust:${INFRA_IMAGE_TAG:-latest}
     profiles: ["full"]
     network_mode: host
     environment:
@@ -449,7 +449,7 @@ services:
     restart: unless-stopped
 
   ai:
-    image: ghcr.io/kunmoe/infra-ai:${INFRA_IMAGE_TAG:-latest}
+    image: ghcr.io/next-moe/infra-ai:${INFRA_IMAGE_TAG:-latest}
     profiles: ["full"]
     network_mode: host
     environment:

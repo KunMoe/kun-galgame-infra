@@ -38,7 +38,7 @@
 
 ## Phase 0 · 前置(动 Dokploy 应用之前)
 
-- [ ] **镜像上 GHCR**:三仓 push 到 main → CI build+push `ghcr.io/kunmoe/*`(含 `*-tools`)。→ [13-registry-ci](./13-registry-ci.md)
+- [ ] **镜像上 GHCR**:三仓 push 到 main → CI build+push `ghcr.io/next-moe/*`(含 `*-tools`)。→ [13-registry-ci](./13-registry-ci.md)
 - [ ] **GHCR 包设 Public**(或给 Dokploy 配 registry 凭证)。
 - [ ] **(可选)GitHub repo Secrets**:`DOKPLOY_WEBHOOK_INFRA` / `_KUNGAL` / `_MOYU`。
 - [ ] **DNS A 记录 → 服务器公网 IP**:`oauth.kungal.com`、`kungal.com`+`www`、`moyu.moe`+`www`。(`wiki.kungal.com` 已于开放 API Phase 2 · W5 退役,解析记录待删。)

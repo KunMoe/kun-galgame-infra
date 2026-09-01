@@ -1,7 +1,7 @@
 # kun-galgame-infra — PRODUCTION compose (Dokploy + GHCR prebuilt images).
 #
 # Differs from docker-compose.yml (local/dev):
-#   1. `image: ghcr.io/kunmoe/infra-*` — NOT `build:`. CI builds+pushes; Dokploy PULLS.
+#   1. `image: ghcr.io/next-moe/infra-*` — NOT `build:`. CI builds+pushes; Dokploy PULLS.
 #   2. `expose:` (container-network only) not `ports:` — Traefik routes internally.
 #   3. network = `dokploy-network` (external) — shared by the 3 Dokploy apps.
 #   4. **NO `env_file`** — all runtime config is inline `environment:` here, so Dokploy
@@ -217,7 +217,7 @@ services:
 
   # ───────────────────────────── Go services ─────────────────────────────────
   oauth:
-    image: ghcr.io/kunmoe/infra-oauth:latest
+    image: ghcr.io/next-moe/infra-oauth:latest
     pull_policy: always
     environment:
       <<: *infra-env
@@ -352,7 +352,7 @@ services:
     restart: unless-stopped
 
   image:
-    image: ghcr.io/kunmoe/infra-image:latest
+    image: ghcr.io/next-moe/infra-image:latest
     pull_policy: always
     environment:
       <<: *infra-env
@@ -379,7 +379,7 @@ services:
   # target, and the separate migrate-galgame entry point were removed in W5.
 
   artifact:
-    image: ghcr.io/kunmoe/infra-artifact:latest
+    image: ghcr.io/next-moe/infra-artifact:latest
     pull_policy: always
     environment:
       <<: *infra-env
@@ -401,7 +401,7 @@ services:
     restart: unless-stopped
 
   catalog:
-    image: ghcr.io/kunmoe/infra-catalog:latest
+    image: ghcr.io/next-moe/infra-catalog:latest
     pull_policy: always
     environment:
       <<: *infra-env
@@ -574,7 +574,7 @@ services:
   # product backends (letmoe first) reach over S2S; it reads oauth_clients from
   # kun_galgame_infra for S2S Basic auth + the per-client `catalog_site` tenant.
   community:
-    image: ghcr.io/kunmoe/infra-community:latest
+    image: ghcr.io/next-moe/infra-community:latest
     pull_policy: always
     environment:
       <<: *infra-env
@@ -623,7 +623,7 @@ services:
   # `catalog_site` tenant, and users/roles for the reporter-weight lookup. A
   # background goroutine dispatches enforcement callbacks (HMAC + retry + dead-letter).
   trust:
-    image: ghcr.io/kunmoe/infra-trust:latest
+    image: ghcr.io/next-moe/infra-trust:latest
     pull_policy: always
     environment:
       <<: *infra-env
@@ -684,7 +684,7 @@ services:
   # envs below; empty (the default) = degraded mode: moderate-text is fail-open
   # (never blocks) and the service starts fine WITHOUT a channel layer (doc 20 §9).
   ai:
-    image: ghcr.io/kunmoe/infra-ai:latest
+    image: ghcr.io/next-moe/infra-ai:latest
     pull_policy: always
     environment:
       <<: *infra-env
@@ -727,7 +727,7 @@ services:
   # Public (browser) config is BAKED into the image at CI build time (build-args in
   # .github/workflows/build.yml). Only the SSR base (service name) is injected here.
   web:
-    image: ghcr.io/kunmoe/infra-web:latest
+    image: ghcr.io/next-moe/infra-web:latest
     pull_policy: always
     environment:
       NUXT_API_BASE_SSR: http://oauth:9277/api/v1
@@ -761,7 +761,8 @@ services:
   # phase 2 wave 05 (A3) — wiki.kungal.com now serves nothing and its DNS record
   # is removed separately (C5, user action). The galgame-wiki-admin OAuth client
   # is kept (image site-key identity rule — NOT a data-API artifact).
-  # Recovery: git revert + ghcr.io/kunmoe/infra-wiki:latest still in GHCR.
+  # Recovery: git revert + ghcr.io/kunmoe/infra-wiki:latest still in GHCR
+  # (retired image, never republished under next-moe).
 
   # developer (NextMoe developer portal on developer.nextmoe.dev) MOVED OUT of this
   # stack into its OWN Dokploy "Compose" project — see docker-compose.developer.yml.
@@ -770,7 +771,7 @@ services:
   # that file (labels, never the Dokploy domain panel); its /api/** relay reaches
   # oauth by EXACT container name (cross-project bare aliases round-robin).
   # Recovery: the full service block lives on in docker-compose.developer.yml;
-  # image unchanged (ghcr.io/kunmoe/infra-developer:latest, still in GHCR).
+  # image unchanged (ghcr.io/next-moe/infra-developer:latest, still in GHCR).
 
   # ─── schema migrations (auto-run on deploy) + one-off jobs (profile: jobs) ───
   # The migrate-* jobs below are NOT in the jobs profile — they run on every
@@ -784,7 +785,7 @@ services:
   # with the go services (build.yml), so :latest never lags the code.
   # Manual run still works: docker compose -f docker-compose.prod.yml run --rm migrate
   migrate:
-    image: ghcr.io/kunmoe/infra-migrate:latest
+    image: ghcr.io/next-moe/infra-migrate:latest
     pull_policy: always
     environment: { <<: *infra-env }
     depends_on:
@@ -801,7 +802,7 @@ services:
   # longer read by this job — had it stayed, the deploy after the N5 DROP would
   # have recreated the whole family as empty shells.
   migrate-catalog:
-    image: ghcr.io/kunmoe/infra-migrate:latest
+    image: ghcr.io/next-moe/infra-migrate:latest
     command: ["catalog"]
     pull_policy: always
     environment: { <<: *infra-env }
@@ -813,7 +814,7 @@ services:
   # is the single migration entry point against kun_community (the service itself
   # never migrates on startup).
   migrate-community:
-    image: ghcr.io/kunmoe/infra-migrate:latest
+    image: ghcr.io/next-moe/infra-migrate:latest
     command: ["community"]
     pull_policy: always
     environment: { <<: *infra-env }
@@ -825,7 +826,7 @@ services:
   # single migration entry point against kun_trust (the service never migrates
   # on startup); idempotent AutoMigrate + raw SQL + reason seed.
   migrate-trust:
-    image: ghcr.io/kunmoe/infra-migrate:latest
+    image: ghcr.io/next-moe/infra-migrate:latest
     command: ["trust"]
     pull_policy: always
     environment: { <<: *infra-env }
@@ -837,7 +838,7 @@ services:
   # migration entry point against kun_ai (the service never migrates on startup);
   # idempotent AutoMigrate + CREATE INDEX IF NOT EXISTS, no seed.
   migrate-ai:
-    image: ghcr.io/kunmoe/infra-migrate:latest
+    image: ghcr.io/next-moe/infra-migrate:latest
     command: ["ai"]
     pull_policy: always
     environment: { <<: *infra-env }
@@ -851,7 +852,7 @@ services:
   # news_source seed. ⚠️ kun_news must EXIST first — the first deploy needs a
   # manual `CREATE DATABASE kun_news` (initdb only runs on an empty data dir).
   migrate-news:
-    image: ghcr.io/kunmoe/infra-migrate:latest
+    image: ghcr.io/next-moe/infra-migrate:latest
     command: ["news"]
     pull_policy: always
     environment: { <<: *infra-env }
@@ -863,7 +864,7 @@ services:
   #   docker compose -f docker-compose.prod.yml --profile jobs run --rm tools reindex-catalog --batch=5000
   #   docker compose -f docker-compose.prod.yml --profile jobs run --rm tools migrate-moemoepoint
   tools:
-    image: ghcr.io/kunmoe/infra-tools:latest
+    image: ghcr.io/next-moe/infra-tools:latest
     pull_policy: always
     environment: { <<: *infra-env }
     profiles: ["jobs"]

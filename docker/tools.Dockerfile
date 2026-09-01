@@ -12,7 +12,7 @@
 # the target service container's .Config.Env, see docs/deploy/16-data-cutover.md):
 #
 #   docker run --rm --network dokploy-network \
-#     --env-file /root/infra.env ghcr.io/kunmoe/infra-tools reindex-catalog
+#     --env-file /root/infra.env ghcr.io/next-moe/infra-tools reindex-catalog
 #
 # Built CGO_ENABLED=1 + libwebp so the cgo cmds (image*, oauth) compile too; the
 # rest are pure Go. Build context MUST be the repo root.

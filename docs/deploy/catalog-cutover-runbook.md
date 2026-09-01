@@ -46,7 +46,7 @@
    cd /home/kun/Desktop/code/website/kun-galgame-infra
    git push origin main
    ```
-2. **盯 CI**:GitHub → Actions → `build-and-push` 本次 run 全绿。push 改了 `apps/api/**` → **go 组全建**,新镜像 `ghcr.io/kunmoe/infra-catalog:latest` + `infra-migrate-catalog:latest` 首次出现,连同 `infra-migrate`/`infra-migrate-galgame`/`infra-galgame`/…一并重建。
+2. **盯 CI**:GitHub → Actions → `build-and-push` 本次 run 全绿。push 改了 `apps/api/**` → **go 组全建**,新镜像 `ghcr.io/next-moe/infra-catalog:latest` + `infra-migrate-catalog:latest` 首次出现,连同 `infra-migrate`/`infra-migrate-galgame`/`infra-galgame`/…一并重建。
 3. **核 `infra-tools` 已随本次 push 建绿**(它现在与 go 组锁步,`apps/api/**` 或 `docker/tools.Dockerfile` 一变即建;要单独重建走 Actions → **`build-and-push`** → **Run workflow** → `scope=tools`)。`infra-tools` 由 `docker/tools.Dockerfile` 的 `-o /out/ ./cmd/...` 打包**每个** `cmd/*`,故本轮新增的 `reconcile-galgame-works`/`import-dlsite-works`/`reindex-catalog`/`enrich-bangumi` 等**都随这次重建进镜像**——拉到旧镜像则生产 tools 里没有它们(stale → 静默失败)。
 
 ---
@@ -170,10 +170,10 @@ sudo docker exec "$PG" psql -U postgres -d kun_galgame_infra -c \
 ### 6.0 · tools 运行配方（每条 cmd 通用)
 
 ```bash
-sudo docker pull ghcr.io/kunmoe/infra-tools:latest   # §1.3 已建;这里确认拉到新的
+sudo docker pull ghcr.io/next-moe/infra-tools:latest   # §1.3 已建;这里确认拉到新的
 # 把某服务的注入 env 导成 root-only 文件(含密码;绝不 echo 到日志/文件/commit):
 dump_env(){ sudo docker inspect "$1" --format '{{range .Config.Env}}{{println .}}{{end}}' | sudo tee /tmp/x.env >/dev/null && sudo chmod 600 /tmp/x.env; }
-run_tool(){ sudo docker run --rm --network dokploy-network --env-file /tmp/x.env ghcr.io/kunmoe/infra-tools:latest "$@"; }
+run_tool(){ sudo docker run --rm --network dokploy-network --env-file /tmp/x.env ghcr.io/next-moe/infra-tools:latest "$@"; }
 ```
 > 每条 cmd 先 **dry-run**(仓库铁律:不带 `--apply` = 只统计),核 config 行(如 `tagMap entries: N`)确认镜像是新的,再 `--apply`。跑完 **`sudo shred -u /tmp/x.env`**。
 > `reconcile`/`reindex-catalog` 需 catalog 的 env(用 `${PROJ}-catalog-1`);`enrich-bangumi`/`reindex-search`/`audit-*` 需 galgame/wiki 的 env(用 `${PROJ}-galgame-1`)。

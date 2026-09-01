@@ -51,7 +51,7 @@ CATC=kun-visual-novel-infra-vqvqbc-catalog-1
 # with the deployed schema — the hand-staged binaries this replaced fell two
 # commits behind a NOT NULL migration and wrote nothing for 15 days (2026-08-05).
 # A failed pull falls back to the local copy loudly rather than dying offline.
-IMG_TAG=ghcr.io/kunmoe/infra-tools:latest
+IMG_TAG=ghcr.io/next-moe/infra-tools:latest
 docker pull -q "$IMG_TAG" >/dev/null 2>&1 || echo "WARN: image pull failed; using the local copy"
 IMG=$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMG_TAG")
 echo "image: $IMG"

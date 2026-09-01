@@ -46,7 +46,7 @@ kungalgame(_patch)_backup.dump
    #  必须带 sudo:本篇都以 root 跑 docker,凭据要落到 root 的 config。不带 sudo 登录会存进
    #     你自己的 ~/.docker,sudo docker 读不到 → 报 unauthorized。
    for img in infra-tools kungal-tools moyu-tools; do
-     printf "%-13s " "$img:"; sudo docker manifest inspect ghcr.io/kunmoe/$img:latest >/dev/null 2>&1 && echo OK || echo "拉不到 → 检查登录 / 包可见性"
+     printf "%-13s " "$img:"; sudo docker manifest inspect ghcr.io/next-moe/$img:latest >/dev/null 2>&1 && echo OK || echo "拉不到 → 检查登录 / 包可见性"
    done
    ```
    > 镜像都已由 CI 构建好(在 GitHub Packages 里),**无需重跑 CI**。`infra-*` 是 private(`infra-tools` 还打包了 oauth/image 二进制,**别设为 public**);`kungal-tools`/`moyu-tools` 是 public。

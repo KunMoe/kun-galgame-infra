@@ -385,7 +385,7 @@ docker compose -f docker-compose.prod.yml --profile jobs run --rm tools migrate-
 > `migrate-moyu-galgame`、`dedup-galgame-alias`、`reindex-search` 等——这些是**独立的 `cmd/` 二进制**,
 > 而 Dockerfile 一镜像只编一个 `CMD`,**不能**用 `infra-catalog` 镜像 `--entrypoint migrate-users`。
 > CI 现已额外发布 **`infra-tools` / `kungal-tools` / `moyu-tools`** 全量工具镜像([13-registry-ci.md](./13-registry-ci.md)),
-> 用 `docker run ... ghcr.io/kunmoe/infra-tools <job-name>` 跑这些一次性迁移,**不依赖生产机临时 build / go run**。
+> 用 `docker run ... ghcr.io/next-moe/infra-tools <job-name>` 跑这些一次性迁移,**不依赖生产机临时 build / go run**。
 
 ---
 

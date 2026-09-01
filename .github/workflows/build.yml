@@ -20,11 +20,11 @@
 # `tools` is the only group Dokploy does not deploy, so a `tools`-only build does
 # not trigger a redeploy; Actions → Run workflow → scope=tools rebuilds it alone.
 #
-# Image namespace stays ghcr.io/kunmoe/* (user packages). Transferring the git
-# repo to next-moe/nextmoe-infra unlinked every package (repository=null);
-# GITHUB_TOKEN cannot push an unlinked package in another namespace, and the
-# OCI source label is the documented reconnect. Do not retag to
-# ghcr.io/next-moe/* until compose, cron, doctor, and Dokploy flip together.
+# Images publish to ghcr.io/<repo owner>/* (today: next-moe). The first push
+# creates the package and links it to this repo — that is how GHCR "new
+# package" works; there is no UI create button. The KunMoe user packages
+# stayed behind after the git transfer (unlinked) and are not the pull path
+# any more. compose / cron / doctor must use the same owner namespace.
 #
 # web BAKEs its browser-facing public config from build-args here.
 name: build-and-push
@@ -152,8 +152,8 @@ jobs:
           build-args: ${{ matrix.args }}
           push: true
           tags: |
-            ghcr.io/kunmoe/${{ matrix.name }}:latest
-            ghcr.io/kunmoe/${{ matrix.name }}:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}:latest
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/next-moe/nextmoe-infra
           cache-from: type=gha,scope=${{ matrix.name }}

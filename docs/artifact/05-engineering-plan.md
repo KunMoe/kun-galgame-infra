@@ -65,7 +65,7 @@
   args: CMD=artifact
 ```
 
-产出 `ghcr.io/kunmoe/infra-artifact`，Dokploy 配新服务，端口 `9279`，注入上表 B2/DB 环境变量。
+产出 `ghcr.io/next-moe/infra-artifact`，Dokploy 配新服务，端口 `9279`，注入上表 B2/DB 环境变量。
 
 ### GC 任务的部署位置
 

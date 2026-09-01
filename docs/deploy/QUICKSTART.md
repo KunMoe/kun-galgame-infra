@@ -38,14 +38,14 @@ curl -sSL https://dokploy.com/install.sh | sudo sh        # sudo 加在 sh 上(�
 
 ```bash
 # 本机:三仓各自 push 到默认分支(infra=main,kungal/moyu=master)
-git push        # → GitHub Actions 自动 build 并推 ghcr.io/kunmoe/*(:latest + :<sha>)
+git push        # → GitHub Actions 自动 build 并推 ghcr.io/next-moe/*(:latest + :<sha>)
 ```
 - 到 GitHub 各仓 **Packages**,把镜像设为 **public** → Dokploy 免凭证拉;私有则在 Dokploy 配 `read:packages` 的 PAT。
 - *起步捷径*:不想配 CI → 第 4 步应用直接选 **Git source** 让 Dokploy 在服务器上 build(简单,但重镜像有拖垮单机风险)。
 
 ## 4. Dokploy 建 3 个 Compose 应用
 
-面板 → **Create → Compose**,各对应一个 Git 仓库,Compose 文件指向各仓 **`docker-compose.prod.yml`**(已用 `image: ghcr.io/kunmoe/*` + `expose` + `dokploy-network`):
+面板 → **Create → Compose**,各对应一个 Git 仓库,Compose 文件指向各仓 **`docker-compose.prod.yml`**(已用 `image: ghcr.io/next-moe/*` + `expose` + `dokploy-network`):
 
 | 应用 | 仓库 | Compose 文件 |
 |---|---|---|

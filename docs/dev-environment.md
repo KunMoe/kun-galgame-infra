@@ -15,13 +15,13 @@ repo needs on top of that sits behind the `full` profile.
 
 | Service | Port (host) | Image / origin | Browser UI |
 | --- | --- | --- | --- |
-| oauth | 9277 | `ghcr.io/kunmoe/infra-oauth` | — |
-| image | 9278 | `ghcr.io/kunmoe/infra-image` | — |
-| artifact | 9279 | `ghcr.io/kunmoe/infra-artifact` | — |
-| catalog (hosts the galgame surface; :9280 retired) | 9281 | `ghcr.io/kunmoe/infra-catalog` | — |
-| community *(`full`)* | 9282 | `ghcr.io/kunmoe/infra-community` | — |
-| trust | 9283 | `ghcr.io/kunmoe/infra-trust` | — |
-| ai *(`full`)* | 9284 | `ghcr.io/kunmoe/infra-ai` | — |
+| oauth | 9277 | `ghcr.io/next-moe/infra-oauth` | — |
+| image | 9278 | `ghcr.io/next-moe/infra-image` | — |
+| artifact | 9279 | `ghcr.io/next-moe/infra-artifact` | — |
+| catalog (hosts the galgame surface; :9280 retired) | 9281 | `ghcr.io/next-moe/infra-catalog` | — |
+| community *(`full`)* | 9282 | `ghcr.io/next-moe/infra-community` | — |
+| trust | 9283 | `ghcr.io/next-moe/infra-trust` | — |
+| ai *(`full`)* | 9284 | `ghcr.io/next-moe/infra-ai` | — |
 | image-cdn-proxy (Caddy) | 9290 | `caddy:2-alpine` | — |
 | MinIO (S3) | 9000 / 9001 | `minio/minio` | http://127.0.0.1:9001 (minioadmin/minioadmin) |
 | Mailpit | 1025 / 8025 | `axllent/mailpit` | http://127.0.0.1:8025 |

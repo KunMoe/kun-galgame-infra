@@ -37,7 +37,7 @@ on_exit() {
 trap on_exit EXIT
 echo "=== mt nightly start $(date -u '+%F %T')Z ==="
 
-IMG_TAG=ghcr.io/kunmoe/infra-tools:latest
+IMG_TAG=ghcr.io/next-moe/infra-tools:latest
 docker pull -q "$IMG_TAG" >/dev/null 2>&1 || echo "WARN: image pull failed; using the local copy"
 IMG=$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMG_TAG")
 echo "image: $IMG"

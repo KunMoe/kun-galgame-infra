@@ -27,7 +27,7 @@ services:
   # no backend change. Routing = Dokploy Domains panel; NO labels block here (see
   # the file header for why that must stay true).
   developer:
-    image: ghcr.io/kunmoe/infra-developer:latest
+    image: ghcr.io/next-moe/infra-developer:latest
     pull_policy: always
     environment:
       # SERVER-only base for the /api/** relay — never exposed to the browser.
