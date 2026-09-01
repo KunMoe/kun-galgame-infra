@@ -5,9 +5,8 @@
 # 03:20 claim registrar and 05:45 stats writer).
 #
 # reindex-catalog rebuilds the FIVE search indexes (credit_names /
-# characters / labels / works / tags) from kun_catalog; the engine follows the
-# env snapshot taken below (KUN_SEARCH_ENGINE — opensearch in production since
-# 2026-09-01). Upsert-only, so this
+# characters / labels / works / tags) from kun_catalog into OpenSearch
+# (the only search engine since 2026-09-02). Upsert-only, so this
 # HEALS drift from bulk waves + merges (they skip the write-through hook).
 # Safe to re-run any time.
 #

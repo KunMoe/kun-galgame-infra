@@ -219,7 +219,7 @@ func (c *Catalog) ListWorksFiltered(ctx context.Context, q collect.Query, f work
 		return repr.List[repr.Work]{}, p
 	}
 	// WorksSearchFilter has no Site and no Platform member, so these two were
-	// accepted, dropped on the way to Meilisearch and answered with the
+	// accepted, dropped on the way to the search engine and answered with the
 	// unfiltered population — including whenever facets= alone switched the
 	// collection to search, which is how the consumers reach this lane. They are
 	// refused rather than filtered because neither is a filterable attribute on

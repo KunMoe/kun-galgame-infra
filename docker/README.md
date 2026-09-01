@@ -61,9 +61,9 @@ its own root `/healthz` and exits 0/1. Frontends use a Node TCP liveness probe.
 
 - **No BuildKit/buildx** on this host → Dockerfiles avoid `--mount=type=cache`
   (plain layer caching only). Install buildx to re-enable cache mounts.
-- **Meilisearch ≥ v1.13**: the `meilisearch-go` client sends `disableOnNumbers`
-  (rejected by older servers). Pinned to `v1.20`. Bumping a *populated* Meili
-  volume across major versions needs a dump/migrate — wipe the volume in dev.
+- **OpenSearch**: catalog search uses the `infra-opensearch` image
+  (`docker/opensearch/Dockerfile`, OS + icu/kuromoji/pinyin). Indexes are
+  derived from Postgres; rebuild with `go run ./cmd/reindex-catalog`.
 - **sharp arch**: the Nuxt build bundles `sharp` for `linux-x64`; build + run
   both happen in linux-x64 containers, so they match. Don't copy host-built
   `.output` into the image.
@@ -76,7 +76,7 @@ its own root `/healthz` and exits 0/1. Frontends use a Node TCP liveness probe.
 ## Three-repo orchestration
 
 In production every repo's compose joins the shared external `dokploy-network`;
-the backing services (`postgres`/`redis`/`minio`/`meili`) are defined **only
+the backing services (`postgres`/`redis`/`minio`/`opensearch`) are defined **only
 here** (the hub). kungal + moyu services connect to `postgres:5432`,
 `http://oauth:9277`, `http://catalog:9281`, etc.; Traefik fronts the lot by
 domain (routes are compose-owned labels).

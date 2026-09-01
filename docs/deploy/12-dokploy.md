@@ -14,14 +14,14 @@
                                             └──────────────────────┬──────────────────────┘
                                           全部容器接入共享网络  dokploy-network
    ┌──────────────── infra compose app ─────────────────┐  ┌── kungal app ──┐  ┌── moyu app ──┐
-   │ postgres redis minio meili(基础设施,仅内部)      │  │ api  web       │  │ api  web      │
+   │ postgres redis minio opensearch(基础设施,仅内部) │  │ api  web       │  │ api  web      │
    │ oauth  image  catalog  web(admin)  wiki  …        │  └────────────────┘  └───────────────┘
    └───────────────────────────────────────────────────┘   下游按服务名连枢纽:postgres / redis /
                                                             oauth:9277 / catalog:9281 / image:9278
 ```
 
 - **3 个独立 Dokploy "Compose" 应用**(各对应一个 Git 仓库,Dokploy 克隆 + `build`):`nextmoe-infra`(infra)、`kun-galgame-forum`(kungal)、`kun-galgame-patch`(moyu)。
-- **共享一个 `dokploy-network`**(external)。跨应用 s2s 只用枢纽的**唯一服务名**(`postgres`/`redis`/`meilisearch`/`oauth`/`galgame`/`image`)——这些名字全局唯一,在共享网络上可解析;各应用自己的 `api`/`web`/`migrate` 只在本应用内解析,不跨应用引用,因此**不存在名称冲突**(这点和手动反代文档里"web/api 别名跨仓冲突"是同一回事,Dokploy 用 Traefik router 区分对外路由,内部 s2s 只引用唯一名)。
+- **共享一个 `dokploy-network`**(external)。跨应用 s2s 只用枢纽的**唯一服务名**(`postgres`/`redis`/`oauth`/`catalog`/`image`)——这些名字全局唯一,在共享网络上可解析;各应用自己的 `api`/`web`/`migrate` 只在本应用内解析,不跨应用引用,因此**不存在名称冲突**(这点和手动反代文档里"web/api 别名跨仓冲突"是同一回事,Dokploy 用 Traefik router 区分对外路由,内部 s2s 只引用唯一名)。OpenSearch 不在这条共享网上:它只挂 project-scoped `search` 网络,仅 catalog 可达。
 - **infra 仓额外挂一个独立 Compose 项目**承载 NextMoe 开发者门户(`developer.nextmoe.dev`):同一 Git 仓库、**两个** Dokploy Compose 应用——主栈 `docker-compose.prod.yml`(push→CI→**自动 redeploy webhook**)与门户 `docker-compose.developer.yml`(**手动部署,不挂 webhook**,发布节奏与主栈解耦)。门户是独立 Compose 项目,跨项目调 oauth 走主栈 oauth 服务上**专设的 compose 网络别名 `infra-oauth`**(主栈项目重建也不变;裸 `oauth` 同名别名跨项目会轮询,精确容器名则在项目重建时失效——别名两害皆免,见 [12.1](#121-域名--服务映射) 表下说明)。总计 Git 仓库 3 个、Dokploy Compose 应用 4 个。
 
 > 为什么**不用伞状单 compose**:Dokploy 的 Compose 应用是"一个 Git 仓库 → 克隆并 build"。三仓是三个独立仓库;伞状 compose 要么需要 monorepo,要么走 Raw compose(那样必须预先 build+push 镜像到 registry)。**单服务器 + 三应用 + 共享网络**才是 Dokploy 的原生形态。
@@ -51,7 +51,7 @@ DNS 把下列域名的 A/AAAA 记录指向**服务器公网 IP**;Traefik 自动�
 
 当前栈用 `ports: ["1xxxx:..."]` 暴露宿主端口 + 前端把浏览器 URL 烤成 `localhost:1xxxx`。Dokploy/Traefik 走容器内部端口路由,需做以下调整(都是**编排/配置层**,不动业务代码):
 
-> **下面 A/B/C/D/E 列的值,三仓 `docker-compose.prod.yml` 已替你写死(非密钥/域名)**;真正要你填的只剩**各应用 Dokploy Environment 面板里的几个密钥**(`POSTGRES_PASSWORD`/`JWT_SECRET`/`MEILI_MASTER_KEY`/`OAUTH_CLIENT_SECRET`/S3 keys…)。逐个面板清单见 [15-environment §15.8](./15-environment.md) 与 [17-go-live-checklist.md](./17-go-live-checklist.md)。C/D/E 仅作"哪个值是什么"的参考。
+> **下面 A/B/C/D/E 列的值,三仓 `docker-compose.prod.yml` 已替你写死(非密钥/域名)**;真正要你填的只剩**各应用 Dokploy Environment 面板里的几个密钥**(`POSTGRES_PASSWORD`/`JWT_SECRET`/`OAUTH_CLIENT_SECRET`/S3 keys…)。逐个面板清单见 [15-environment §15.8](./15-environment.md) 与 [17-go-live-checklist.md](./17-go-live-checklist.md)。C/D/E 仅作"哪个值是什么"的参考。
 
 **A. compose 网络**
 - 各仓 compose 的网络从 `kun-galgame-infra_default`(external)改为 **`dokploy-network`**(external):
@@ -61,11 +61,11 @@ DNS 把下列域名的 A/AAAA 记录指向**服务器公网 IP**;Traefik 自动�
       name: dokploy-network
       external: true
   ```
-- infra 的基础设施(`postgres`/`redis`/`minio`/`meili`)与对外服务都要在此网络上(默认 `default` 即可)。
+- infra 的基础设施(`postgres`/`redis`/`minio`)与对外服务都要在此网络上(默认 `default` 即可)。OpenSearch 只挂 compose 的 `search` 网络,不进 `dokploy-network`。
 - Dokploy 若开启"isolated network",要确保需要 s2s 的服务显式接入 `dokploy-network`,否则跨应用解析不到枢纽服务。
 
 **B. `ports` → `expose`**
-- 删除/改写所有 `ports: ["1xxxx:yyyy"]`,对外服务改用 `expose: ["yyyy"]`(只在容器网络内开放,Traefik 内部回源)。基础设施(pg/redis/minio/meili)连 `expose` 都不需要,纯内部即可。**生产不再有 1xxxx 宿主端口。**
+- 删除/改写所有 `ports: ["1xxxx:yyyy"]`,对外服务改用 `expose: ["yyyy"]`(只在容器网络内开放,Traefik 内部回源)。基础设施(pg/redis/minio/opensearch)连 `expose` 都不需要,纯内部即可。**生产不再有 1xxxx 宿主端口。**
 
 **C. 前端浏览器侧 URL → 真实域名**(构建期 build args / 运行期 env;SSR 内部 base 维持服务名不变,见 [双 base 说明](#125-双-base-与-ssr))
 - **infra web**(compose build args):`PUBLIC_API_BASE=https://oauth.kungal.com/api/v1`、`PUBLIC_IMAGE_CDN_BASE=https://image.kungal.iloveren.link`
@@ -102,7 +102,7 @@ OAuth client 的 `redirect_uris` 存在枢纽 `kun_galgame_infra.oauth_clients` 
 2. **DNS**:把 12.1 所有域名 A 记录指向服务器公网 IP(`image.kungal.iloveren.link` 走 R2 则指 Cloudflare,不指本机)。
 3. **建 3 个 Compose 应用**。两种来源:**(推荐·生产)** 指向各仓 `docker-compose.prod.yml`(用 `image:` 引用 GHCR 预构建镜像,见 [13-registry-ci.md](./13-registry-ci.md));**(起步)** 直接 Git source + 在 Dokploy 上 build(简单,但重镜像有拖垮单机风险)。**开发者门户额外建第 4 个、独立** Compose 应用(同 infra 仓,compose 路径 `docker-compose.developer.yml`,**手动部署、不挂 webhook**,见 [12.1](#121-域名--服务映射)),按需单独触发。
 4. **填环境变量**:prod compose 已内联非密钥/域名;**只需在各应用 Dokploy Environment 面板填密钥**(逐个清单见 [15-environment §15.8](./15-environment.md) / [17-go-live-checklist.md](./17-go-live-checklist.md));**全部轮换测试值**(见 [05-configuration.md](./05-configuration.md))。
-5. **部署顺序**:先部署 **infra**(等 `postgres`/`redis`/`minio`/`meili` healthy)→ 在 Dokploy **Terminal/Run** 跑首启迁移(见 12.6)→ 再部署 **kungal**、**moyu**。
+5. **部署顺序**:先部署 **infra**(等 `postgres`/`redis`/`minio`/`opensearch` healthy)→ 在 Dokploy **Terminal/Run** 跑首启迁移(见 12.6)→ 再部署 **kungal**、**moyu**。
 6. **配域名**:每个应用的对外服务在 **Domains** 标签按 12.1 添加(含 `/api*` 与 `/` 两条),Dokploy 自动注入 Traefik labels + 签发证书。
 7. **验证**:`curl -I https://oauth.kungal.com`(302→登录,有效证书)、`https://www.moyu.moe`、`https://www.kungal.com`。(`wiki.kungal.com` 已于 W5 退役,现返 404。)
 
@@ -117,7 +117,7 @@ OAuth client 的 `redirect_uris` 存在枢纽 `kun_galgame_infra.oauth_clients` 
 ## 12.7 注意 / 取舍
 
 - **宿主端口随机问题**:Dokploy 下若仍用 `ports` 而不绑定固定值,重部署后宿主端口会变、打断外部连接([官方提示](https://docs.dokploy.com/docs/core/docker-compose));本套已全部走 Traefik 内部路由,**不要再发布 host 端口**。
-- **数据库托管**:`postgres`/`redis` 可继续留在 infra compose,或迁到 **Dokploy 原生数据库**(带备份/UI);`minio`/`meili` 无原生支持,留 compose。
+- **数据库托管**:`postgres`/`redis` 可继续留在 infra compose,或迁到 **Dokploy 原生数据库**(带备份/UI);`minio`/`opensearch` 无原生支持,留 compose。
 - **证书**:由 Traefik/Dokploy 管理与持久化,无需手动 certbot。
 - **入站端口**:服务器需公网可达 80/443;若在 NAT/无法开入站,改回 [11-cloudflare-tunnel.md](./11-edge-cloudflare-tunnel.md) 方案(此时不用 Dokploy 的 Traefik 对外)。
 - **dae**:生产服务器保持纯净,**不要叠加 dae**(见 [08-dae-dev-proxy.md](./08-dae-dev-proxy.md))。

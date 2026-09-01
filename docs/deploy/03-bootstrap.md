@@ -16,7 +16,7 @@ cd nextmoe-infra
 # 首次:从模板生成运行时 env(docker/*.env 不入仓,见 15-environment §15.8)
 for f in oauth image galgame; do cp -n docker/$f.env.example docker/$f.env; done
 docker compose build
-docker compose up -d postgres redis minio meili
+docker compose up -d postgres redis minio opensearch
 ```
 
 > `docker/*.env` 已 `.gitignore`,fresh clone 里只有 `*.env.example`。生产则按 [15-environment §15.8](./15-environment.md) 用 Dokploy 注入,**别提交真实 env**。
@@ -94,12 +94,9 @@ docker compose build && docker compose run --rm migrate && docker compose up -d 
 
 ### A.6 搜索回填(可选)
 
-Meili 索引由 `galgame` 启动时创建,但**空**。要让 wiki 搜索出结果,需把 Postgres 数据灌进去:
+OpenSearch 索引由 catalog 启动时 `EnsureIndexes` 创建,但**空**。要让搜索出结果,需把 Postgres 数据灌进去:
 ```bash
-cd nextmoe-infra && docker compose run --rm \
-  -e __dummy=1 --entrypoint /app galgame  # 注:reindex 是独立 cmd,见下
-docker build -f docker/go.Dockerfile --build-arg CMD=reindex-search -t nextmoe-infra/reindex .
-docker run --rm --network kun-galgame-infra_default --env-file docker/galgame.env nextmoe-infra/reindex
+cd nextmoe-infra/apps/api && go run ./cmd/reindex-catalog
 ```
 
 ---

@@ -8,13 +8,13 @@ name: test
 #                 unit logic is wrong". A DB-backed suite that FAILS here instead
 #                 of skipping is a bug in the suite, not a missing service — see
 #                 internal/testsupport/dbtest, which is where that decision lives.
-#   integration — spins Postgres + Meilisearch service containers and re-runs
-#                 the suite with the env vars the integration tests look for, so
-#                 the galgame service / search / refping tests (which
-#                 self-migrate) actually execute instead of skipping. Auth and
-#                 image tests still skip here (they need a pre-migrated infra DB /
-#                 MinIO — a later follow-up). Required as of 2026-07-01 (first CI
-#                 run was green): a failure now fails the workflow.
+#   integration — spins Postgres + OpenSearch and re-runs the suite with the
+#                 env vars the integration tests look for, so the catalog /
+#                 search / refping tests (which self-migrate) actually execute
+#                 instead of skipping. Auth and image tests still skip here
+#                 (they need a pre-migrated infra DB / MinIO — a later
+#                 follow-up). Required as of 2026-07-01 (first CI run was
+#                 green): a failure now fails the workflow.
 #
 # Independent of build.yml on purpose — this is a merge/PR signal, not a deploy
 # gate (build.yml is a separate workflow; deploys aren't blocked on it).
@@ -91,7 +91,7 @@ jobs:
           git diff --exit-code -- ../../docs/artifact/ ../../docs/catalog/ ../../docs/community/ ../../docs/trust/ ../../docs/ai/ ../developer/app/generated/mcp-tools.mjs ../developer/app/generated/problems.ts ../developer/app/generated/vocabularies.ts
 
   integration:
-    name: integration (postgres + meilisearch + opensearch)
+    name: integration (postgres + opensearch)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -108,19 +108,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-      meilisearch:
-        # Pin the same major as prod so tokenization/matching behaviour in the
-        # search tests reflects production.
-        image: getmeili/meilisearch:v1.45
-        env:
-          # >=16 bytes so it's valid regardless of MEILI_ENV.
-          MEILI_MASTER_KEY: citest_meili_master_key_change_me
-          MEILI_NO_ANALYTICS: "true"
-        ports:
-          - 7700:7700
-        # No container health-cmd: the meilisearch image has no guaranteed
-        # curl/wget, so readiness is gated from the runner (which has curl) in a
-        # step below instead.
     env:
       # The galgame service + jobs (refping) tests read TEST_DATABASE_DSN and
       # self-AutoMigrate into it; an empty DB is all they need.
@@ -132,16 +119,15 @@ jobs:
       # exactly the case where a missing DSN means the job is broken rather than
       # a service being legitimately absent (the unit job above).
       REQUIRE_DB_TESTS: "1"
-      MEILISEARCH_TEST_HOST: "http://127.0.0.1:7700"
-      MEILISEARCH_TEST_API_KEY: citest_meili_master_key_change_me
-      # The OpenSearch recall suite (osengine/recall_test.go) is gated on this
-      # host and hard-failed by REQUIRE_SEARCH_TESTS below, so a missing or
-      # unbootable engine container turns the job red instead of skip-green.
+      # Live search suites (catalog/search, catalog/service, reindex-catalog,
+      # osengine/recall_test.go) bind this host and are hard-failed by
+      # REQUIRE_SEARCH_TESTS below, so a missing or unbootable engine container
+      # turns the job red instead of skip-green.
       KUN_OPENSEARCH_TEST_HOST: "http://127.0.0.1:19200"
       # Same assertion for the search-backed suites, and it is not hypothetical:
-      # the W4 wave shipped a Meili filter that returned zero hits for every
-      # query, and catalog/service still printed `ok` because every test touching
-      # the index had skipped itself.
+      # the W4 wave shipped a filter that returned zero hits for every query,
+      # and catalog/service still printed `ok` because every test touching the
+      # index had skipped itself.
       REQUIRE_SEARCH_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
@@ -171,14 +157,6 @@ jobs:
             -e DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI=true \
             -e "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" \
             "$IMG"
-      - name: Wait for Meilisearch
-        run: |
-          for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:7700/health && exit 0
-            sleep 2
-          done
-          echo "meilisearch did not become healthy" >&2
-          exit 1
       - name: Wait for OpenSearch
         run: |
           for i in $(seq 1 60); do

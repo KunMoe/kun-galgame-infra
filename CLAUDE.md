@@ -48,7 +48,7 @@ English, and short. When in doubt, delete it — a wrong comment costs more than
 ## Local development (one command)
 
 `pnpm dev` starts **everything an infra session needs**: it brings up the
-platform base from `docker-compose.dev.yml` (redis / minio / meili / mailpit +
+platform base from `docker-compose.dev.yml` (redis / minio / opensearch / mailpit +
 the migrations, all from the single `infra-migrate` image — one binary, one
 target per invocation) and then runs `air` for the five frequently-edited Go services
 (**oauth / catalog / image / artifact / trust**, hot-reloaded from source)

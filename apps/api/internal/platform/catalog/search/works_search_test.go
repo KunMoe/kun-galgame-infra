@@ -7,7 +7,6 @@ import (
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/search/spec"
 
-	"github.com/meilisearch/meilisearch-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,6 +16,31 @@ func mustJSON(t *testing.T, d EntityDoc) string {
 	b, err := json.Marshal(d)
 	require.NoError(t, err)
 	return string(b)
+}
+
+func TestSanitizeQueryOperators(t *testing.T) {
+	cases := map[string]string{
+		"アヘ顔アクメ中毒 －人体改造で狂ってイク私を見ないで－": "アヘ顔アクメ中毒  人体改造で狂ってイク私を見ないで",
+		"－人体改造":                "人体改造",
+		"＂CLANNAD＂":            "CLANNAD",
+		"CRAZY CHA!N -エルピスの鎖-": "CRAZY CHA!N  エルピスの鎖",
+		`"CLANNAD"`:            "CLANNAD",
+		"色仕掛け学園～思春期男子誘惑作戦～": "色仕掛け学園～思春期男子誘惑作戦～",
+		"ソードアート":     "ソードアート",
+		"":           "",
+		"  spaced  ": "spaced",
+	}
+	for in, want := range cases {
+		assert.Equal(t, want, spec.SanitizeQuery(in), "in=%q", in)
+	}
+}
+
+func TestLocalesForUIPairsWithTheIndex(t *testing.T) {
+	assert.Equal(t, []string{"cmn"}, LocalesForUI(IndexCharacters, "zh"))
+	assert.Equal(t, []string{"jpn"}, LocalesForUI(IndexCreditNames, "ja"))
+	assert.Nil(t, LocalesForUI(IndexLabels, "en"))
+	assert.Nil(t, LocalesForUI(IndexWorks, "zh"))
+	assert.Nil(t, LocalesForUI(IndexWorks, "ja"))
 }
 
 func TestBuildWorkDoc(t *testing.T) {
@@ -103,67 +127,15 @@ func TestWorkDocIDRoundTrip(t *testing.T) {
 	}
 }
 
-func TestEscapeFilterValue(t *testing.T) {
-	assert.Equal(t, `zh\'Hans`, EscapeFilterValue(`zh'Hans`))
-	assert.Equal(t, `a\\b`, EscapeFilterValue(`a\b`))
-	assert.Equal(t, "ja", EscapeFilterValue("ja"))
-}
-
-func TestWorksIndexSettingsCarryTheSearchContract(t *testing.T) {
-	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
-	t.Cleanup(func() {
-		for _, uid := range []string{IndexWorks, IndexTags} {
-			_, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(uid))
-		}
-	})
-
-	s, err := testClient.Index(IndexWorks).GetSettings()
-	require.NoError(t, err)
-	for _, attr := range []string{
-		"id", "content_rating", "claimed", "olang",
-		"tag_ids", "label_ids", "engine_ids", "series_ids", "released_ord", "source_keys",
-	} {
-		assert.Containsf(t, s.FilterableAttributes, attr, "works index must filter on %s", attr)
-	}
-	for _, attr := range []string{"popularity", "released_ord", "updated_ts"} {
-		assert.Containsf(t, s.SortableAttributes, attr, "works index must sort on %s", attr)
-	}
-	require.NotNil(t, s.Pagination)
-	assert.GreaterOrEqual(t, s.Pagination.MaxTotalHits, int64(300_000),
-		"maxTotalHits must exceed the live galgame population or total under-reports")
-
-	ts, err := testClient.Index(IndexTags).GetSettings()
-	require.NoError(t, err)
-	assert.Contains(t, ts.FilterableAttributes, "tier")
-	assert.Contains(t, ts.FilterableAttributes, "kind")
-	assert.Contains(t, ts.SearchableAttributes, "name_zh")
-	assert.Contains(t, ts.SortableAttributes, "popularity")
-
-	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
-	again, err := testClient.Index(IndexWorks).GetSettings()
-	require.NoError(t, err)
-	assert.ElementsMatch(t, s.FilterableAttributes, again.FilterableAttributes)
-	assert.ElementsMatch(t, s.SortableAttributes, again.SortableAttributes)
-	require.NotNil(t, again.Pagination)
-	assert.Equal(t, s.Pagination.MaxTotalHits, again.Pagination.MaxTotalHits)
-}
-
 func TestTagsIndexSearchable(t *testing.T) {
-	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
-	t.Cleanup(func() {
-		_, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexTags))
-	})
+	idx := ensureSearchIndexes(t, IndexTags)
 
 	docs := []EntityDoc{
 		BuildTagDoc(TagDocInput{ID: 1, Name: "純愛", Tier: 0, Kind: 0, WorkCount: 100}),
 		BuildTagDoc(TagDocInput{ID: 2, Name: "ファンタジー", Tier: 1, Kind: 0, WorkCount: 5}),
 	}
-	task, err := testClient.Index(IndexTags).AddDocuments(docs, nil)
-	require.NoError(t, err)
-	_, err = testClient.Svc().WaitForTask(task.TaskUID, 0)
-	require.NoError(t, err)
+	putDocs(t, IndexTags, docs)
 
-	idx := NewIndexer(testClient)
 	res, err := idx.SearchEntities(t.Context(), IndexTags, spec.EntityQuery{Q: "ファンタジー", Locales: []string{"jpn"}, Limit: 20})
 	require.NoError(t, err)
 	if assert.Len(t, res.Hits, 1) {
@@ -176,28 +148,13 @@ func TestTagsIndexSearchable(t *testing.T) {
 	if assert.Len(t, res.Hits, 2) {
 		assert.Equal(t, "t1", res.Hits[0].ID)
 	}
-	raw, err := testClient.Index(IndexTags).SearchWithContext(t.Context(), "", &meilisearch.SearchRequest{
-		HitsPerPage:      20,
-		Filter:           "tier = 1",
-		Sort:             []string{"popularity:desc"},
-		MatchingStrategy: meilisearch.Last,
-	})
-	require.NoError(t, err)
-	if assert.Len(t, raw.Hits, 1) {
-		var d EntityDoc
-		require.NoError(t, raw.Hits[0].DecodeInto(&d))
-		assert.Equal(t, "t2", d.ID)
-	}
 	uid, ok := IndexForType("tags")
 	assert.True(t, ok)
 	assert.Equal(t, IndexTags, uid)
 }
 
 func TestSearchWorksPaging(t *testing.T) {
-	require.NoError(t, NewIndexer(testClient).EnsureIndexes(t.Context()))
-	t.Cleanup(func() {
-		_, _ = testClient.Svc().DeleteIndex(testClient.IndexUID(IndexWorks))
-	})
+	idx := ensureSearchIndexes(t, IndexWorks)
 
 	docs := make([]EntityDoc, 0, 5)
 	for i := 1; i <= 5; i++ {
@@ -210,12 +167,8 @@ func TestSearchWorksPaging(t *testing.T) {
 			ContentRating: rating, Popularity: float64(i), UpdatedTS: int64(i),
 		}))
 	}
-	task, err := testClient.Index(IndexWorks).AddDocuments(docs, nil)
-	require.NoError(t, err)
-	_, err = testClient.Svc().WaitForTask(task.TaskUID, 0)
-	require.NoError(t, err)
+	putDocs(t, IndexWorks, docs)
 
-	idx := NewIndexer(testClient)
 	ctx := t.Context()
 	r18 := int16(model.ContentRatingR18)
 	q := spec.WorksQuery{

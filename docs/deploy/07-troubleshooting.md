@@ -33,24 +33,11 @@
 - **原因**:`OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET` 是 `requireEnv`,**空则 fail-fast**。kungal 仓自带的 `api.env` 这俩默认是空的。
 - **解法**:填非空值(`kungal-web` / 注册时的 secret)。见 [05-configuration.md](./05-configuration.md)。
 
-### K3 · kungal api 连不上库 / 搜索 403
-- **原因**:kungal 自带 `api.env` 用的是仓库默认值——DB 密码 `kungal_dev_pw`(infra 是 `191007`)、`MEILISEARCH_KEY` 空(infra meili 有 master key → 403)。
-- **解法**:接 infra 时把密码改 `191007`、`MEILISEARCH_KEY` 填共享 master key、`JWT_SECRET` 填共享密钥。
+### K3 · kungal api 连不上库
+- **原因**:kungal 自带 `api.env` 用的是仓库默认值——DB 密码 `kungal_dev_pw`(infra 是 `191007`)。
+- **解法**:接 infra 时把密码改 `191007`、`JWT_SECRET` 填共享密钥。
 
 ## 跨仓 / 基础设施
-
-### I1 · galgame 日志 `EnsureIndexes failed ... Unknown field 'disableOnNumbers'`
-- **原因**:`meilisearch-go` 客户端发了新字段,**Meili 版本过旧**(<1.13)。
-- **解法**:Meili 用 `v1.20`(≥1.13)。注:该错误**非致命**,galgame 仍健康,只是搜索设置没生效。
-
-### I2 · Meili 起不来,崩溃循环 `incompatible database version` → 连带 `lookup meili: no such host`
-- **现象**:升级 Meili 镜像后它反复重启;依赖它的服务报「解析不到 meili」。
-- **原因**:Meili **不允许跨大版本直接复用旧数据卷**;崩溃循环时容器不在网络上 → DNS 名消失。
-- **解法**:索引是派生数据 → **开发**直接清卷重建:`docker compose rm -sf meili && docker volume rm kun-galgame-infra_meili && docker compose up -d meili`,再 `go run ./cmd/reindex-search` 重建(2026-06 v1.20→v1.45 即此法,见 [06-operations.md](./06-operations.md));**生产**同理(或按官方 dump→升级→import)。
-
-### I3 · kungal 连 `meilisearch` 解析不到
-- **原因**:kungal 用服务名 `meilisearch`,infra 的服务叫 `meili`。
-- **解法**:infra 的 meili 已加网络别名 `meilisearch`(`networks.default.aliases`),两个名都解析到同一实例。
 
 ### I4 · 下游报「数据库不存在」/ 服务起来但业务接口 500
 - **原因 a**:`kungalgame` / `kungalgame_patch` 没建。initdb 脚本**只在数据卷首次初始化时跑一次**;复用旧卷不会补建。

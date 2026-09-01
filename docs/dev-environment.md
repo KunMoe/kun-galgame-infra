@@ -25,7 +25,7 @@ repo needs on top of that sits behind the `full` profile.
 | image-cdn-proxy (Caddy) | 9290 | `caddy:2-alpine` | — |
 | MinIO (S3) | 9000 / 9001 | `minio/minio` | http://127.0.0.1:9001 (minioadmin/minioadmin) |
 | Mailpit | 1025 / 8025 | `axllent/mailpit` | http://127.0.0.1:8025 |
-| Meilisearch | 7700 | `getmeili/meilisearch` | http://127.0.0.1:7700 |
+| OpenSearch | 9200 | `ghcr.io/next-moe/infra-opensearch` | http://127.0.0.1:9200 |
 | Redis | 6379 | `redis:8-alpine` | — |
 | **Postgres** | **5432** | **your host's own server — NOT in compose** | — |
 
@@ -217,7 +217,7 @@ that container. Start a subset explicitly, e.g. only the infra + the two service
 you need:
 
 ```sh
-docker compose -f docker-compose.dev.yml up -d minio minio-setup mailpit meili image-cdn-proxy catalog community
+docker compose -f docker-compose.dev.yml up -d minio minio-setup mailpit opensearch image-cdn-proxy catalog community
 ```
 
 ## Verify (healthz checklist)
@@ -229,7 +229,7 @@ for p in 9277 9278 9279 9281 9282 9283 9284; do
   printf '%s ' "$p"; curl -fsS "http://127.0.0.1:$p/healthz" && echo || echo DOWN
 done
 curl -fsS http://127.0.0.1:9000/minio/health/live && echo minio-ok   # MinIO
-curl -fsS http://127.0.0.1:7700/health && echo                        # Meili
+curl -fsS http://127.0.0.1:9200/_cluster/health && echo               # OpenSearch
 curl -fsS http://127.0.0.1:8025/api/v1/messages?limit=1 >/dev/null && echo mailpit-ok
 ```
 
@@ -247,7 +247,7 @@ docker compose -f docker-compose.dev.yml stop catalog      # free port 9281
 cd apps/api && go run ./cmd/catalog                        # your code now IS the platform's catalog
 ```
 
-Your local process reads the same host Postgres / MinIO / Meili as the containers,
+Your local process reads the same host Postgres / MinIO / OpenSearch as the containers,
 so the rest of the stack talks to it transparently. Restart the container when done:
 
 ```sh
@@ -462,5 +462,5 @@ and links back to this file.
 
 ```sh
 docker compose -f docker-compose.dev.yml down       # keep data volumes
-docker compose -f docker-compose.dev.yml down -v    # also drop redis/minio/meili volumes
+docker compose -f docker-compose.dev.yml down -v    # also drop redis/minio/opensearch volumes
 ```

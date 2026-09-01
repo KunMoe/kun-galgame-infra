@@ -4,27 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	infrasearch "api/internal/infrastructure/search"
 	"api/internal/platform/catalog/model"
 	catsearch "api/internal/platform/catalog/search"
-	"api/internal/testsupport/dbtest"
-	"api/pkg/config"
 )
-
-func worksSearchClient(t *testing.T) *infrasearch.Client {
-	t.Helper()
-	host, apiKey := dbtest.SearchHost()
-	if host == "" {
-		dbtest.SkipSearch(t, "MEILISEARCH_TEST_HOST unset")
-	}
-	client, err := infrasearch.NewClient(config.MeilisearchConfig{
-		Host: host, APIKey: apiKey, IndexPrefix: worksSearchTestPrefix,
-	})
-	if err != nil {
-		dbtest.SkipSearch(t, "meilisearch client: %v", err)
-	}
-	return client
-}
 
 const introOnlyTerm = "夏至祭"
 
@@ -136,29 +118,6 @@ func utf8Valid(s string) bool {
 		}
 	}
 	return true
-}
-
-func TestEnsureIndexesConvergesOnSecondRun(t *testing.T) {
-	idx := worksSearchIndexer(t)
-	client := worksSearchClient(t)
-	if err := idx.EnsureIndexes(t.Context()); err != nil {
-		t.Fatalf("second EnsureIndexes: %v", err)
-	}
-	got, err := client.Index(catsearch.IndexWorks).GetSettings()
-	if err != nil {
-		t.Fatalf("get settings: %v", err)
-	}
-	want := append(append([]string{}, catsearch.WorksTitleSearchable...),
-		"intro_zh", "intro_ja", "intro_other")
-	if len(got.SearchableAttributes) != len(want) {
-		t.Fatalf("searchable = %v, want %v", got.SearchableAttributes, want)
-	}
-	for i := range want {
-		if got.SearchableAttributes[i] != want[i] {
-			t.Fatalf("searchable[%d] = %q, want %q (titles must precede intros)",
-				i, got.SearchableAttributes[i], want[i])
-		}
-	}
 }
 
 func TestTagSexualReachesBothFacesFromTheColumn(t *testing.T) {

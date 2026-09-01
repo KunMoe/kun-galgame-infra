@@ -38,7 +38,7 @@
 1. **prod compose 不用 `env_file`、不需要任何 `docker/*.env` 文件**(那是 dev/本地用的)。三仓 `docker-compose.prod.yml`
    把配置内联进 `environment:`:**非密钥/域名是字面值**(写死在 compose),**密钥/部署相关用 `${VAR}`** 从
    Dokploy 面板取。所以 Dokploy 部署**不用在服务器放任何 env 文件**,面板里只填那几个密钥即可。
-2. **三仓 prod compose 都用 `${VAR}` 插值**(不再只 infra)。infra 内 oauth/image/galgame 读**同一个** `${POSTGRES_PASSWORD}`/`${JWT_SECRET}`/`${MEILI_MASTER_KEY}`(YAML anchor 共享)→ **应用内一致性自动保证**;跨应用(kungal/moyu 各自面板)需手动设成相同值(见 [§15.3](#153-跨服务一致性铁律最容易踩))。
+2. **三仓 prod compose 都用 `${VAR}` 插值**(不再只 infra)。infra 内 oauth/image/galgame 读**同一个** `${POSTGRES_PASSWORD}`/`${JWT_SECRET}`(YAML anchor 共享)→ **应用内一致性自动保证**;跨应用(kungal/moyu 各自面板)需手动设成相同值(见 [§15.3](#153-跨服务一致性铁律最容易踩))。
 
 ---
 
@@ -46,7 +46,7 @@
 
 | 前缀 / 形态 | 含义 | 谁读 | 例 |
 |---|---|---|---|
-| `KUN_PG_*` / `KUN_IMAGE_*` / `KUN_MEILISEARCH_*` / `KUN_FIBER_*` | **infra** Go 服务运行时 | oauth/image/galgame | `KUN_PG_PASSWORD`、`KUN_IMAGE_S3_ENDPOINT` |
+| `KUN_PG_*` / `KUN_IMAGE_*` / `KUN_OPENSEARCH_*` / `KUN_FIBER_*` | **infra** Go 服务运行时 | oauth/image/galgame/catalog | `KUN_PG_PASSWORD`、`KUN_IMAGE_S3_ENDPOINT` |
 | `KUN_DATABASE_URL` / `OAUTH_*` / `CORS_ALLOW_ORIGINS` / `KUN_VISUAL_NOVEL_S3_*` | **下游** Go 服务运行时 | kungal/moyu api | `KUN_DATABASE_URL`、`OAUTH_CLIENT_SECRET` |
 | `NUXT_PUBLIC_*` | **浏览器可见**,Nitro 运行期覆盖 runtimeConfig.public | 各前端 | `NUXT_PUBLIC_API_BASE`、`NUXT_PUBLIC_OAUTH_CLIENT_ID` |
 | `NUXT_API_BASE_SSR` / `NUXT_API_BASE_URL` / `NUXT_AUTH_API_BASE_SSR` | **SSR 内部 base**(容器内服务名),**每个前端名字不同**(见 [§15.5](#155-前端-public-配置infra-烤镜像-vs-下游运行期)) | 各前端 SSR | `http://oauth:9277/api/v1` |
@@ -70,7 +70,6 @@
 |---|---|---|
 | **Postgres 密码** | infra postgres ↔ 所有连库者 | postgres `POSTGRES_PASSWORD` = infra `KUN_PG_PASSWORD`(oauth/image/galgame.env)= kungal/moyu `KUN_DATABASE_URL` 里的密码 |
 | **`JWT_SECRET`** | **仅 infra 三个 Go 服务之间** | oauth/image/galgame.env 的 `JWT_SECRET`。oauth 用它 **HS256 签发** access_token,image/galgame 用 `utils.ParseToken` **本地验签**。三者不一致 → image/galgame 对带令牌的请求 401 |
-| **Meili master key** | infra meili ↔ 用搜索者 | meili `MEILI_MASTER_KEY` = galgame.env `KUN_MEILISEARCH_API_KEY` = kungal api.env `MEILISEARCH_KEY` |
 | **MinIO 凭据**(仅自托管图床时) | infra minio ↔ 连 S3 者 | minio `MINIO_ROOT_USER/PASSWORD` = oauth/image.env `KUN_IMAGE_S3_ACCESS_KEY/SECRET_KEY`。**生产用 R2 则填 R2 的 key,与 minio 无关** |
 | **OAuth client secret** | 枢纽注册的明文 ↔ 下游 env | 枢纽 `oauth_clients` 表存 `sha256:<hex>`;下游 `OAUTH_CLIENT_SECRET` 填**注册时的明文**。详见 [12-dokploy §12.3](./12-dokploy.md) |
 | **图片 CDN 公网域** | 所有「生成图片 URL」的后端/前端 | infra 各 env 的 `KUN_IMAGE_PUBLIC_BASE_URL`、moyu `KUN_IMAGE_CDN_BASE`(+ 前端 imageBed)、kungal `KUN_IMAGE_PUBLIC_BASE_URL` 应指**同一公网域**(`https://image.kungal.iloveren.link`) |
@@ -101,11 +100,9 @@
 | **redis** | —(无 env) | | | `--appendonly yes` 持久化 |
 | **minio** | `MINIO_ROOT_USER` | `minioadmin` | `${MINIO_ROOT_USER:?}`(**必填**) | S3 管理员;**生产用 R2 时此服务可空跑** |
 | | `MINIO_ROOT_PASSWORD` | `minioadmin` | `${MINIO_ROOT_PASSWORD:?}`(**必填**) | S3 管理员密码 |
-| **meili** | `MEILI_MASTER_KEY` | `kun_docker_test_meili_master_key_change_me` | `${MEILI_MASTER_KEY:?}`(**必填**) | 搜索主密钥,**必须 = galgame `KUN_MEILISEARCH_API_KEY`** |
-| | `MEILI_NO_ANALYTICS` | `true` | 同 | 关遥测 |
-| | `MEILI_ENV` | —(dev 默认) | `production` | 生产模式 |
+| **opensearch** | —(无密钥;dev/prod 均关 security plugin) | | `KUN_OPENSEARCH_HOST` | catalog 搜索引擎(自 2026-09-01;Meilisearch 于 2026-09-02 退役)。生产只挂 project-scoped `search` 网络,不进 `dokploy-network` |
 
-> postgres 在 pg18 起 VOLUME 路径是 `/var/lib/postgresql`(不再是 `/data`);meili 别名 `meilisearch`(供 kungal 用同名解析)。
+> postgres 在 pg18 起 VOLUME 路径是 `/var/lib/postgresql`(不再是 `/data`)。
 
 ### 15.4.2 infra · oauth(`docker/oauth.env`)
 
@@ -162,8 +159,7 @@
 | `KUN_PG_*`(host/port/user/password/sslmode/timezone) | `postgres`…`191007`… | `PASSWORD` 必填 | 连主库(身份) |
 | `KUN_GALGAME_PG_DATABASE` | 生产 `kun_catalog`(本地 dev `kun_galgame_wiki`) | | wiki 业务库(`migrate-catalog` 建 schema,W5 单一迁移入口) |
 | `JWT_SECRET` | (同 oauth) | 是 | 本地验下游令牌;= oauth/image |
-| `KUN_MEILISEARCH_HOST` | `http://meili:7700` | | 搜索引擎 |
-| `KUN_MEILISEARCH_API_KEY` | `kun_docker_test_meili_master_key_change_me` | | = `MEILI_MASTER_KEY`(否则 403;`EnsureIndexes` 非致命) |
+| `KUN_OPENSEARCH_HOST` | `http://opensearch:9200` | | 搜索引擎(生产;本地 dev `http://127.0.0.1:9200`) |
 
 ### 15.4.5 infra · web / wiki(前端,**public 走构建期烤镜像**)
 
@@ -188,7 +184,6 @@
 | `OAUTH_CLIENT_SECRET` | (密钥) | 是 | **空则 `requireEnv` 启动失败**;= 注册明文 |
 | `OAUTH_REDIRECT_URI` | `http://localhost:15013/auth/callback` | 是 | 回调,= 注册的 redirect → 生产 `https://www.kungal.com/auth/callback` |
 | `JWT_SECRET` | `kun-docker-test-...` | | **签 kungal 自己的会话 cookie**(仅 kungal 内部自洽;生产换强随机) |
-| `MEILISEARCH_URL` / `MEILISEARCH_KEY` | `http://meilisearch:7700` / `kun_docker_test_meili_master_key_change_me` | | 搜索;key = `MEILI_MASTER_KEY`(否则 403) |
 | `KUN_NEXTMOE_API_BASE` / `KUN_NEXTMOE_API_KEY` | `http://catalog:9281` / (internal-tier `nm_` key) | key 必填 | galgame 富读走 catalog internal 面(客户端拼 `/internal`);W5 硬依赖 key,空则启动 fail-fast(旧名 `GALGAME_WIKI_BASE_URL` + legacy `/api` 读面已退役) |
 | `KUN_IMAGE_PUBLIC_BASE_URL` | `https://image.kungal.com` | | 生成图片 URL 的公网前缀(应与 infra 一致 → `https://image.kungal.iloveren.link`) |
 | `KUN_IMAGE_CLIENT_BASE_URL` | `http://image:9278` | | 直传封面到 image 服务(s2s) |
@@ -322,14 +317,13 @@
 `${VAR:?}` 留空会**直接报错**(不静默用空值),`${VAR:-default}` 留空用默认。
 
 > **面板密钥只用字母数字(+ `-` `_`),勿含 `$ # % : / @ ? & 空格 引号`**。面板值经 `.env` → `${VAR}` 解析:
-> `$` 被当变量替换、`#` 被当注释截断 → **密钥被悄悄改短/改坏**(典型:`MEILI_MASTER_KEY` 带 `$#` → meili 只收到几字节 → "master key must be at least 16 bytes")。
+> `$` 被当变量替换、`#` 被当注释截断 → **密钥被悄悄改短/改坏**。
 > 最省心:**`openssl rand -hex 32`**(纯十六进制,绝不被吃,且天然 URL-safe,可同时满足 `POSTGRES_PASSWORD` 拼进 DSN 的要求)。
 
 ### A. infra 应用 · Environment 面板
 ```env
 POSTGRES_PASSWORD=<强随机>          # 必填;= 下游 KUN_DATABASE_URL 里的密码
 JWT_SECRET=<强随机>                 # 必填;infra oauth/image/galgame 共用(同一 ${VAR},自动一致)
-MEILI_MASTER_KEY=<强随机, ≥16 字节>  # 必填;太短 → MEILI_ENV=production 下 meili 崩溃重启
 MINIO_ROOT_USER=<自定义>            # 必填(用 R2 可填占位,minio 空跑)
 MINIO_ROOT_PASSWORD=<强随机>        # 必填
 KUN_IMAGE_S3_ENDPOINT=https://<acct>.r2.cloudflarestorage.com   # 图床要工作就填(R2)
@@ -344,7 +338,6 @@ KUN_IMAGE_S3_SECRET_KEY=<R2 secret>
 POSTGRES_PASSWORD=<= infra 同名值>     # 必填
 OAUTH_CLIENT_SECRET=<注册论坛 client 的明文>   # 必填
 JWT_SECRET=<强随机>                    # 必填;kungal 自己的会话密钥(不必=infra)
-MEILI_MASTER_KEY=<= infra 同名值>      # 必填
 # 可选:KUN_IMAGE_CLIENT_ID/SECRET、FILE_STORAGE_*(B2 工具集)、MAIL_*、S3_*(内联图床)
 ```
 
@@ -358,7 +351,7 @@ KUN_VISUAL_NOVEL_S3_STORAGE_SECRET_ACCESS_KEY=<B2 secret>
 ```
 
 > **跨应用一致性**(各应用面板独立,需手动对齐,见 [§15.3](#153-跨服务一致性铁律最容易踩)):
-> `POSTGRES_PASSWORD`、`MEILI_MASTER_KEY` 三个面板填**同一个值**;每个 `OAUTH_CLIENT_SECRET` = 注册该 client 时的明文。
+> `POSTGRES_PASSWORD` 三个面板填**同一个值**;每个 `OAUTH_CLIENT_SECRET` = 注册该 client 时的明文。
 > infra 内部(oauth/image/galgame 同一 compose)读同一 `${VAR}`,自动一致,无需重复。
 
 ### D. 一次性 job / 数据迁移(jobs profile)
@@ -373,7 +366,7 @@ docker compose -f docker-compose.prod.yml --profile jobs run --rm tools migrate-
 
 ### E. 顺序与首启
 
-先部署 **infra**(等 pg/redis/minio/meili healthy)→ 跑 schema/数据迁移 → 注册 OAuth client → 再部署 **kungal**、**moyu**。
+先部署 **infra**(等 pg/redis/minio/opensearch healthy)→ 跑 schema/数据迁移 → 注册 OAuth client → 再部署 **kungal**、**moyu**。
 详见 [12-dokploy §12.4](./12-dokploy.md)、[03-bootstrap.md](./03-bootstrap.md)、[17-go-live-checklist.md](./17-go-live-checklist.md)。
 
 > **历史坑(已修)**:infra 仓曾误把 `docker/oauth.env`/`image.env`/`galgame.env` 提交进版本库(已 `git rm --cached` + 补 `.gitignore`)。
@@ -428,7 +421,6 @@ kungal 旧 `apps/web/.env` 里有 `KUN_CF_CACHE_ZONE_ID` / `KUN_CF_CACHE_PURGE_A
 
 - [ ] **Postgres**:`POSTGRES_PASSWORD`(Dokploy Env)+ 所有 `KUN_PG_PASSWORD` / `KUN_DATABASE_URL` 密码 —— **同一个强随机**
 - [ ] **JWT**:infra 三服务的 `JWT_SECRET` 换同一个强随机;kungal 的 `JWT_SECRET` 单独换强随机
-- [ ] **Meili**:`MEILI_MASTER_KEY`(Dokploy Env)= galgame `KUN_MEILISEARCH_API_KEY` = kungal `MEILISEARCH_KEY`
 - [ ] **MinIO / R2**:用 R2 → 填 R2 凭据(`KUN_IMAGE_S3_*`);自托管 → 换 `MINIO_ROOT_*`
 - [ ] **OAuth**:每个 client 的 secret 重新生成(枢纽存 `sha256:`,下游 env 填明文);`redirect_uris` 改 https 域名([12.3](./12-dokploy.md))
 - [ ] **下游 S3/B2**:moyu `KUN_VISUAL_NOVEL_S3_*`(B2 补丁)、kungal `FILE_STORAGE_*`(B2 档案)填真值
@@ -447,7 +439,7 @@ kungal 旧 `apps/web/.env` 里有 `KUN_CF_CACHE_ZONE_ID` / `KUN_CF_CACHE_PURGE_A
 
 1. **infra**:`docker/oauth.env`、`image.env`、`galgame.env` 已带测试值,直接 `docker compose up -d` 即可。
 2. **注册 3 个 OAuth client**(否则前端登录走不通),把生成的 secret 回填下游 `OAUTH_CLIENT_SECRET`(见 [03-bootstrap §A.5](./03-bootstrap.md))。
-3. **下游连 infra**:确认 kungal/moyu `docker/api.env` 的库密码 = `191007`、`MEILISEARCH_KEY` / s2s base 用服务名(仓库默认已对)。
+3. **下游连 infra**:确认 kungal/moyu `docker/api.env` 的库密码 = `191007`、s2s base 用服务名(仓库默认已对)。
 4. 图床想真传图:填 `KUN_IMAGE_S3_*`(本地 minio 用 `minioadmin`)。
 
 上生产则按 [§15.10](#1510-生产必改--必轮换清单) 全量替换 + [§15.8](#158-生产--dokploy-注入方法) 注入。

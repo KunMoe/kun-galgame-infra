@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
-	infrasearch "api/internal/infrastructure/search"
+	"api/internal/infrastructure/opensearch"
 	"api/internal/platform/catalog/model"
 	catalogSearch "api/internal/platform/catalog/search"
 	"api/internal/testsupport/dbtest"
-	"api/pkg/config"
 )
 
 func TestReindexWorksPurgesSoftDeleted(t *testing.T) {
@@ -20,25 +20,13 @@ func TestReindexWorksPurgesSoftDeleted(t *testing.T) {
 		t.Fatalf("soft-delete work %d: %v", dead, err)
 	}
 
-	host, apiKey := dbtest.SearchHost()
-	if host == "" {
-		dbtest.SkipSearch(t, "MEILISEARCH_TEST_HOST unset")
-	}
 	prefix := dbtest.SearchIndexPrefix("reindex")
-	client, err := infrasearch.NewClient(config.MeilisearchConfig{
-		Host: host, APIKey: apiKey, IndexPrefix: prefix,
-	})
-	if err != nil {
-		dbtest.SkipSearch(t, "meilisearch client: %v", err)
-	}
-	if err := client.Health(); err != nil {
-		dbtest.SkipSearch(t, "meilisearch unreachable: %v", err)
-	}
-	idx := catalogSearch.NewIndexer(client)
+	client := dbtest.OpenSearchClient(t, prefix)
+	idx := catalogSearch.NewOpenSearchIndexer(client)
 	if err := idx.EnsureIndexes(context.Background()); err != nil {
 		t.Fatalf("ensure indexes: %v", err)
 	}
-	t.Cleanup(func() { dbtest.SweepSearchIndexes(client.Svc(), prefix) })
+	t.Cleanup(func() { dbtest.SweepSearchIndexes(client, prefix) })
 	docs := []catalogSearch.EntityDoc{
 		catalogSearch.BuildWorkDoc(catalogSearch.WorkDocInput{ID: live, DisplayName: "purge-live", OLang: "ja"}),
 		catalogSearch.BuildWorkDoc(catalogSearch.WorkDocInput{ID: dead, DisplayName: "purge-dead", OLang: "ja"}),
@@ -46,34 +34,41 @@ func TestReindexWorksPurgesSoftDeleted(t *testing.T) {
 	if err := idx.UpsertBatch(context.Background(), catalogSearch.IndexWorks, docs); err != nil {
 		t.Fatalf("seed index: %v", err)
 	}
-	waitWorkDocs(t, client, 2)
+	waitWorkDocs(t, idx, 2)
 
 	if err := reindexWorks(context.Background(), facetTestDB, idx, 100); err != nil {
 		t.Fatalf("reindexWorks: %v", err)
 	}
+	if err := idx.Refresh(context.Background(), catalogSearch.IndexWorks); err != nil {
+		t.Fatalf("refresh after reindex: %v", err)
+	}
 
 	deadline := time.Now().Add(20 * time.Second)
 	for {
-		var doc map[string]any
-		deadErr := client.Index(catalogSearch.IndexWorks).GetDocument(catalogSearch.WorkDocID(dead), nil, &doc)
-		liveErr := client.Index(catalogSearch.IndexWorks).GetDocument(catalogSearch.WorkDocID(live), nil, &doc)
-		if deadErr != nil && liveErr == nil {
+		deadErr := client.Do(context.Background(), http.MethodGet,
+			"/"+client.IndexName(catalogSearch.IndexWorks)+"/_doc/"+catalogSearch.WorkDocID(dead), nil, nil)
+		liveErr := client.Do(context.Background(), http.MethodGet,
+			"/"+client.IndexName(catalogSearch.IndexWorks)+"/_doc/"+catalogSearch.WorkDocID(live), nil, nil)
+		if opensearch.IsNotFound(deadErr) && liveErr == nil {
 			return
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("purge did not converge: dead doc err=%v (want non-nil), live doc err=%v (want nil)",
+			t.Fatalf("purge did not converge: dead doc err=%v (want not found), live doc err=%v (want nil)",
 				deadErr, liveErr)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 }
 
-func waitWorkDocs(t *testing.T, client *infrasearch.Client, want int64) {
+func waitWorkDocs(t *testing.T, idx *catalogSearch.Indexer, want int64) {
 	t.Helper()
+	if err := idx.Refresh(t.Context(), catalogSearch.IndexWorks); err != nil {
+		t.Fatalf("refresh works index: %v", err)
+	}
 	deadline := time.Now().Add(20 * time.Second)
 	for {
-		stats, err := client.Index(catalogSearch.IndexWorks).GetStats()
-		if err == nil && stats.NumberOfDocuments == want {
+		n, err := idx.Count(t.Context(), catalogSearch.IndexWorks)
+		if err == nil && n == want {
 			return
 		}
 		if time.Now().After(deadline) {

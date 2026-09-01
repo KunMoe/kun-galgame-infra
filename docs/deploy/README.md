@@ -25,7 +25,7 @@
 | 7 | [07-troubleshooting.md](./07-troubleshooting.md) | 故障排查:实跑中踩到的每一个坑 + 解法 |
 | 12 | [12-dokploy.md](./12-dokploy.md) | **Dokploy 部署(线上推荐)**:单服务器自托管 PaaS,内置 Traefik 反代 + 自动 SSL + 编排;含真实域名映射与改造清单 |
 | 13 | [13-registry-ci.md](./13-registry-ci.md) | **镜像 Registry + CI 构建**:GHCR + GitHub Actions 在 CI build → 推 GHCR → Dokploy 拉预构建镜像(生产机零构建);镜像清单 / workflow / tag 回滚 / prod compose 用 `image:` |
-| 14 | [14-backup-restore.md](./14-backup-restore.md) | **数据库备份与还原**:Postgres(5 库)手动/自动/异地备份、各类还原场景与演练;Redis/MinIO/Meili 取舍;PITR 进阶 |
+| 14 | [14-backup-restore.md](./14-backup-restore.md) | **数据库备份与还原**:Postgres(5 库)手动/自动/异地备份、各类还原场景与演练;Redis/MinIO/OpenSearch 取舍;PITR 进阶 |
 | 9 | [09-edge-caddy.md](./09-edge-caddy.md) | 手动边缘反代 · Caddy(**不用 Dokploy 时**):自动 HTTPS、域名映射、§9.0 共同前提 |
 | 10 | [10-edge-nginx.md](./10-edge-nginx.md) | 手动边缘反代 · Nginx:手动 TLS(certbot)、WS 升级头、容器名回源 |
 | 11 | [11-edge-cloudflare-tunnel.md](./11-edge-cloudflare-tunnel.md) | 手动边缘反代 · Cloudflare Tunnel:纯出站、零入站端口(NAT/dae 后首选) |
@@ -36,7 +36,7 @@
 ## 30 秒速览
 
 - **三个仓库**:`nextmoe-infra`(枢纽 / infra)、`kun-galgame-forum`(kungal / 论坛)、`kun-galgame-patch`(moyu / 补丁站)。
-- **枢纽拥有共享基础设施**:一套 Postgres(5 个库)、Redis、MinIO(S3)、Meilisearch。kungal/moyu 按服务名连过来。
+- **枢纽拥有共享基础设施**:一套 Postgres(5 个库)、Redis、MinIO(S3)、OpenSearch。kungal/moyu 按服务名连过来。
 - **每仓 = 无状态 api + web 容器**;Go 服务多阶段编译,Nuxt 出自包含 `.output`。
 - **全部 host 端口在 `1xxxx` 段**,与本机 `air` 开发服务共存。
 - 整套在测试机上**已实跑通过**:13 个容器全 healthy,跨仓服务名连通已验证。

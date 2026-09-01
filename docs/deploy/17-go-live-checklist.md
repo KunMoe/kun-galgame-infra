@@ -14,13 +14,12 @@
 
 > **所有面板密钥都只用「字母数字(+ `-` `_`)」,不要含 `$ # % : / @ ? & 空格 引号`。**
 > 原因:面板值经 Dokploy 写成 `.env` → docker compose 解析 `${VAR}`,`$` 会被当变量替换、`#` 会被当注释截断 →
-> **密钥被悄悄改短/改坏**(典型:`MEILI_MASTER_KEY` 里带 `$#` → meili 只收到 5 字节 → "master key must be at least 16 bytes")。
+> **密钥被悄悄改短/改坏**(典型:密钥里带 `$#` → compose `${VAR}` 解析后只剩几字节)。
 > 最省心:**`openssl rand -hex 32`**(64 位十六进制,纯 0-9a-f,绝不会被吃,且远超 16 字节;`POSTGRES_PASSWORD` 用它也天然 URL-safe)。
 
 - [ ] `POSTGRES_PASSWORD` = `openssl rand -hex 32`(三仓面板填**同一个值**;务必字母数字,它还要被拼进 `KUN_DATABASE_URL`)
 - [ ] `JWT_SECRET`(infra)= 强随机(infra 面板;oauth/image/galgame 共用)
 - [ ] `JWT_SECRET`(kungal)= 强随机(kungal 面板;**与 infra 不同**,只是同名变量)
-- [ ] `MEILI_MASTER_KEY` = 强随机(**≥16 字节**,否则 `MEILI_ENV=production` 下 meili 崩溃重启;infra + kungal 面板填**同一个值**)
 - [ ] `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`(用 R2 则填占位即可)
 - [ ] **Cloudflare R2**:endpoint、Access Key、Secret(、bucket)
 - [ ] **B2**:moyu 补丁文件一套 key(**必填**,补丁站核心;moyu prod compose 已 fail-fast);kungal 工具集一套 key(**可选**,不填则 toolset 上传端点 500)
@@ -29,7 +28,6 @@
 
 > **一致性铁律**(配错→能起但 401/403/连不上,见 [15-environment §15.3](./15-environment.md)):
 > - 三仓面板的 `POSTGRES_PASSWORD` 填**同一个值**(infra postgres 密码 = 下游 DSN 密码)
-> - infra + kungal 面板的 `MEILI_MASTER_KEY` 填**同一个值**
 > - 每个 `OAUTH_CLIENT_SECRET` = 注册该 client 时枢纽生成的明文
 > - infra 内部 oauth/image/galgame 读同一 `${JWT_SECRET}`(YAML anchor),自动一致;kungal 的 `JWT_SECRET` 是它自己的,无需匹配 infra;moyu **没有** JWT_SECRET
 > - 图床 CDN 域 `https://image.kungal.iloveren.link` 已写死在三仓 prod compose,天然一致
@@ -55,7 +53,6 @@
 # ── 必填(留空 → docker compose 直接报错,不启动)──
 POSTGRES_PASSWORD=<强随机>              # PG 超级用户密码;= 下游 KUN_DATABASE_URL 里的密码。必须 URL-safe(字母数字)
 JWT_SECRET=<强随机>                     # oauth 签发 / image·galgame 验签 access_token,三者共用同一个
-MEILI_MASTER_KEY=<强随机,≥16 字节>      # 搜索主密钥;galgame 用同一个。<16 字节 meili 会崩溃重启
 MINIO_ROOT_USER=<自定义>                # MinIO 管理员名(用 R2 也要填,可填占位如 minioadmin)
 MINIO_ROOT_PASSWORD=<强随机>            # MinIO 管理员密码
 KUN_IMAGE_S3_ENDPOINT=<R2 端点>         # 图床后端;R2=https://<acct>.r2.cloudflarestorage.com,自托管 MinIO=http://minio:9000
@@ -70,7 +67,7 @@ KUN_VISUAL_NOVEL_EMAIL_PASSWORD=<SMTP 密码>   # 默认空。不填则注册验
 POSTGRES_USER=postgres                 # 默认 postgres,一般不改
 ```
 > infra web/wiki 前端域名是 **CI 构建期烤进镜像**的(build.yml),**部署时无需配**;要改改 build.yml 重构。
-- [ ] **部署 infra**,确认 `postgres` / `redis` / `minio` / `meili` 全部 **`(healthy)`**(四个都已配 healthcheck)。oauth/image/galgame/web/wiki 此时可能因空库/未注册 client 未完全就绪,正常。
+- [ ] **部署 infra**,确认 `postgres` / `redis` / `minio` / `opensearch` 全部 **`(healthy)`**(都已配 healthcheck)。oauth/image/galgame/web/wiki 此时可能因空库/未注册 client 未完全就绪,正常。
   > **怎么看 healthy?** Dokploy 应用页能看到每个服务的容器状态和日志;最直接是在 Dokploy 应用的 **Terminal**(或 SSH 到服务器)跑:
   > ```bash
   > docker compose -f docker-compose.prod.yml ps   # STATUS 列:(healthy) / (unhealthy) / (health: starting)
@@ -110,7 +107,6 @@ POSTGRES_USER=postgres                 # 默认 postgres,一般不改
 POSTGRES_PASSWORD=<= infra 同名值>
 OAUTH_CLIENT_SECRET=<注册论坛 client 的明文>
 JWT_SECRET=<强随机>                 # kungal 自己的会话密钥(不必=infra)
-MEILI_MASTER_KEY=<= infra 同名值>
 # 可选:KUN_IMAGE_CLIENT_ID / KUN_IMAGE_CLIENT_SECRET(直传封面)
 # 可选:FILE_STORAGE_*(B2 工具集)、MAIL_*(发信)、S3_*(内联图床)
 ```

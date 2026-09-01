@@ -22,7 +22,7 @@ import (
 
 func main() {
 	indexFlag := flag.String("index", "catalog_credit_names,catalog_characters,catalog_labels,catalog_works,catalog_tags", "comma-separated index uids")
-	batch := flag.Int("batch", 5000, "batch size per Meilisearch upsert")
+	batch := flag.Int("batch", 5000, "batch size per search upsert")
 	recreate := flag.Bool("recreate", false, "drop and recreate each named index (opensearch only)")
 	flag.Parse()
 
@@ -469,7 +469,7 @@ func reindexWorks(ctx context.Context, db *gorm.DB, idx *catalogSearch.Indexer, 
 	// Works was the only soft-deleting lane without this purge: the 2026-08-29
 	// merge wave left its 3,242 soft-deleted works in the index — hits
 	// self-healed through DB hydration, totals and ranking slots did not — and
-	// the stale documents had to be hand-deleted over the Meilisearch API.
+	// the stale documents had to be hand-deleted over the search API.
 	if err := purgeSoftDeleted(ctx, db, idx, catalogSearch.IndexWorks, "catalog_work", "w"); err != nil {
 		return err
 	}
