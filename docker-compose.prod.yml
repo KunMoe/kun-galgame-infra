@@ -934,8 +934,11 @@ networks:
     name: dokploy-network
     external: true
   # Project-scoped, no external reach: the only members are opensearch and the
-  # catalog service. The prod reindex cron joins it explicitly at run time
-  # (docker run --network kun-galgame-infra_search).
+  # catalog service. No explicit name, so the runtime name carries the Dokploy
+  # project prefix (kun-visual-novel-infra-vqvqbc_search), not this file's
+  # basename. The prod reindex cron does not join this network by name — it
+  # joins the catalog container's netns (--network container:<catalog>), which
+  # reaches postgres and opensearch at once.
   search:
     internal: true
   # Same physical network under the key Dokploy injects at deploy time — must
