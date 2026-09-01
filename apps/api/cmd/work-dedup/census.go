@@ -14,6 +14,7 @@ type pairRow struct {
 	B              int64      `gorm:"column:b"`
 	SharedNorm     string     `gorm:"column:shared_norm"`
 	SharedNorms    int        `gorm:"column:shared_norms"`
+	SharedOfficial int        `gorm:"column:shared_official"`
 	LaneA          string     `gorm:"column:lane_a"`
 	LaneB          string     `gorm:"column:lane_b"`
 	AnchorsA       int        `gorm:"column:anchors_a"`
@@ -25,13 +26,16 @@ type pairRow struct {
 	AnchorConflict bool       `gorm:"column:anchor_conflict"`
 	RelConflict    bool       `gorm:"column:release_conflict"`
 	RefOverlap     bool       `gorm:"column:ref_overlap"`
+	RefOverlapCI   bool       `gorm:"column:ref_overlap_ci"`
 	DateA          *time.Time `gorm:"column:date_a"`
 	DateB          *time.Time `gorm:"column:date_b"`
 	LabelOverlap   bool       `gorm:"column:label_overlap"`
 }
 
 // pairQuerySQL is the standing duplicate detector: every pair of live works
-// sharing a folded official-title/display_name norm, scored with the
+// sharing a folded title/display_name norm or a case-insensitively equal
+// work-level external ref (identity kinds pair outright; related-page refs
+// pair only when no exact anchors prove the works distinct), scored with the
 // corroborating facts the verdict needs. Work-level identity anchors drive
 // lanes and conflicts; dlsite identity lives on releases (entity_type 6), so
 // the dlsite lane and the release-level conflict/overlap read through
@@ -43,18 +47,59 @@ WITH lw AS (
   SELECT id, site, display_name FROM catalog_work WHERE deleted_at IS NULL
 ),
 norms AS (
-  SELECT DISTINCT work_id, n FROM (` + service.WorkDupeCorpusSQL() + `) c
+  SELECT work_id, n, bool_or(official) AS official FROM (` + service.WorkDupeCorpusSQL() + `) c GROUP BY work_id, n
 ),
 pairs AS (
-  SELECT a.work_id AS a, b.work_id AS b, min(a.n) AS shared_norm, count(*) AS shared_norms
+  SELECT a.work_id AS a, b.work_id AS b, min(a.n) AS shared_norm, count(*) AS shared_norms,
+    count(*) FILTER (WHERE a.official AND b.official) AS shared_official
   FROM norms a JOIN norms b ON a.n = b.n AND a.work_id < b.work_id
-  WHERE length(a.n) >= 4
+  WHERE ` + service.WorkDupeNormEligibleSQL("a.n") + `
   GROUP BY a.work_id, b.work_id
 ),
 wanchor AS (
   SELECT entity_id AS work_id, source_id, external_id
   FROM catalog_external_ref
   WHERE entity_type = 5 AND link_kind = 0 AND dead_at IS NULL
+),
+refpairs AS (
+  SELECT x.entity_id AS a, y.entity_id AS b
+  FROM catalog_external_ref x
+  JOIN catalog_external_ref y
+    ON y.source_id = x.source_id
+   AND lower(y.external_id) = lower(x.external_id)
+   AND x.entity_id < y.entity_id
+  JOIN lw ON lw.id = x.entity_id
+  JOIN lw lw_b ON lw_b.id = y.entity_id
+  WHERE x.entity_type = 5 AND y.entity_type = 5
+    AND x.dead_at IS NULL AND y.dead_at IS NULL
+    AND x.link_kind IN (0, 1) AND y.link_kind IN (0, 1)
+  GROUP BY x.entity_id, y.entity_id
+  UNION
+  -- any-kind pairing generated ~78k brand-hub pairs of which 76,632 had conflicting exact
+  -- anchors; the no-conflict residue sampled 15/15 as true duplicates.
+  SELECT x.entity_id AS a, y.entity_id AS b
+  FROM catalog_external_ref x
+  JOIN catalog_external_ref y
+    ON y.source_id = x.source_id
+   AND lower(y.external_id) = lower(x.external_id)
+   AND x.entity_id < y.entity_id
+  JOIN lw ON lw.id = x.entity_id
+  JOIN lw lw_b ON lw_b.id = y.entity_id
+  WHERE x.entity_type = 5 AND y.entity_type = 5
+    AND x.dead_at IS NULL AND y.dead_at IS NULL
+    AND x.link_kind = 2 AND y.link_kind = 2
+    AND NOT EXISTS (
+      SELECT 1 FROM wanchor p JOIN wanchor q ON q.source_id = p.source_id AND q.external_id <> p.external_id
+      WHERE p.work_id = x.entity_id AND q.work_id = y.entity_id)
+  GROUP BY x.entity_id, y.entity_id
+),
+universe AS (
+  SELECT coalesce(p.a, r.a) AS a, coalesce(p.b, r.b) AS b,
+    coalesce(p.shared_norm, '') AS shared_norm,
+    coalesce(p.shared_norms, 0) AS shared_norms,
+    coalesce(p.shared_official, 0) AS shared_official
+  FROM pairs p
+  FULL OUTER JOIN refpairs r ON r.a = p.a AND r.b = p.b
 ),
 ranchor AS (
   SELECT rel.work_id, r.source_id, r.external_id
@@ -86,7 +131,7 @@ bgmdate AS (
   WHERE r.source_id = 3 AND s.date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
   GROUP BY r.work_id
 )
-SELECT p.a, p.b, p.shared_norm, p.shared_norms,
+SELECT p.a, p.b, p.shared_norm, p.shared_norms, p.shared_official,
   la.lane AS lane_a, lb.lane AS lane_b,
   la.anchors AS anchors_a, lb.anchors AS anchors_b,
   wa.site AS site_a, wb.site AS site_b,
@@ -100,14 +145,21 @@ SELECT p.a, p.b, p.shared_norm, p.shared_norms,
   (EXISTS (SELECT 1 FROM catalog_external_ref x
            JOIN catalog_external_ref y ON y.source_id = x.source_id AND y.external_id = x.external_id
            WHERE x.entity_type = 5 AND x.entity_id = p.a AND x.dead_at IS NULL
-             AND y.entity_type = 5 AND y.entity_id = p.b AND y.dead_at IS NULL)
+             AND y.entity_type = 5 AND y.entity_id = p.b AND y.dead_at IS NULL
+             AND x.link_kind IN (0, 1) AND y.link_kind IN (0, 1))
    OR EXISTS (SELECT 1 FROM ranchor x JOIN ranchor y ON y.source_id = x.source_id AND y.external_id = x.external_id
               WHERE x.work_id = p.a AND y.work_id = p.b)) AS ref_overlap,
+  (EXISTS (SELECT 1 FROM catalog_external_ref x
+           JOIN catalog_external_ref y ON y.source_id = x.source_id AND lower(y.external_id) = lower(x.external_id)
+           WHERE x.entity_type = 5 AND x.entity_id = p.a AND x.dead_at IS NULL
+             AND y.entity_type = 5 AND y.entity_id = p.b AND y.dead_at IS NULL)
+   OR EXISTS (SELECT 1 FROM ranchor x JOIN ranchor y ON y.source_id = x.source_id AND lower(y.external_id) = lower(x.external_id)
+              WHERE x.work_id = p.a AND y.work_id = p.b)) AS ref_overlap_ci,
   coalesce(da.d, ba.d) AS date_a,
   coalesce(dbb.d, bb.d) AS date_b,
   EXISTS (SELECT 1 FROM catalog_work_label x JOIN catalog_work_label y ON y.label_id = x.label_id
           WHERE x.work_id = p.a AND y.work_id = p.b) AS label_overlap
-FROM pairs p
+FROM universe p
 JOIN lane la ON la.id = p.a
 JOIN lane lb ON lb.id = p.b
 JOIN lw wa ON wa.id = p.a

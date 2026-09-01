@@ -168,6 +168,9 @@ func pairEvidence(r pairRow) string {
 	if r.RefOverlap {
 		parts = append(parts, "ref")
 	}
+	if r.RefOverlapCI && !r.RefOverlap {
+		parts = append(parts, "ref_ci")
+	}
 	if datesNear(r.DateA, r.DateB) {
 		parts = append(parts, fmt.Sprintf("date(%s~%s)", dateStr(r.DateA), dateStr(r.DateB)))
 	}

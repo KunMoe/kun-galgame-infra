@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"strings"
 	"unicode"
+
+	"api/internal/platform/catalog/service"
 )
 
 func tallySignals(st *BgmGatedStats, p, t, x bool) {
@@ -62,11 +64,11 @@ func collide(r poolRow, wt map[string]wtNorm) (BgmGatedCollision, bool) {
 // raw one keeps the pre-fold behaviour, the folded one stops "A B C" from
 // becoming a 3-rune key that collides by genre rather than identity.
 func foldedGateKey(norm string) (string, bool) {
-	if runeLen(norm) < bgmGatedMinLen {
+	if !service.WorkDupeNormEligible(norm) {
 		return "", false
 	}
 	folded := foldSpace(norm)
-	if runeLen(folded) < bgmGatedMinLen {
+	if !service.WorkDupeNormEligible(folded) {
 		return "", false
 	}
 	return folded, true

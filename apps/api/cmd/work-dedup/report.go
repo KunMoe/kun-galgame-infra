@@ -42,7 +42,7 @@ func printCensus(c *census, w io.Writer) {
 		}
 	}
 	fmt.Fprintf(w, "[census] pairs=%d in_scope=%d\n", len(c.rows), len(c.rows)-buckets[bucketOutOfScope])
-	for _, b := range []bucket{bucketAuto, bucketAnchorConflict, bucketRelConflict, bucketDateClash, bucketBare, bucketBothKungal, bucketBridged, bucketOutOfScope} {
+	for _, b := range []bucket{bucketAuto, bucketAnchorConflict, bucketRelConflict, bucketDateClash, bucketBare, bucketBothKungal, bucketBridged, bucketRefCI, bucketAliasOnly, bucketOutOfScope} {
 		fmt.Fprintf(w, "  %-16s %d\n", b, buckets[b])
 	}
 	fmt.Fprintf(w, "  merge groups: %d\n", len(c.groups))
@@ -73,6 +73,7 @@ func exportCSV(c *census, path string) error {
 		"a", "b", "bucket", "lane_a", "lane_b", "site_a", "site_b", "name_a", "name_b",
 		"shared_norm", "shared_norms", "anchor_conflict", "release_conflict", "ref_overlap",
 		"date_a", "date_b", "label_overlap", "anchors_a", "anchors_b",
+		"shared_official", "ref_overlap_ci",
 	}); err != nil {
 		return err
 	}
@@ -90,6 +91,7 @@ func exportCSV(c *census, path string) error {
 			strconv.FormatBool(r.AnchorConflict), strconv.FormatBool(r.RelConflict), strconv.FormatBool(r.RefOverlap),
 			dateStr(r.DateA), dateStr(r.DateB),
 			strconv.FormatBool(r.LabelOverlap), strconv.Itoa(r.AnchorsA), strconv.Itoa(r.AnchorsB),
+			strconv.Itoa(r.SharedOfficial), strconv.FormatBool(r.RefOverlapCI),
 		}
 		if err := cw.Write(rec); err != nil {
 			return err
