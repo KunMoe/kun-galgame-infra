@@ -175,7 +175,9 @@ services:
 
   redis:
     image: redis:8-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    # volatile-lru, not allkeys: sessions carry no TTL and must never be
+    # evicted; only TTL'd cache entries (forum nmcache, quotas) are fair game.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "1gb", "--maxmemory-policy", "volatile-lru"]
     volumes: ["redis:/data"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
