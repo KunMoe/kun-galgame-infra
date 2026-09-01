@@ -1,4 +1,5 @@
-# kun-galgame-infra — NextMoe MCP server (mcp.nextmoe.dev), STANDALONE.
+# nextmoe-infra — NextMoe MCP server (mcp.nextmoe.dev), STANDALONE.
+# Compose `name:` is frozen: volumes, networks and container names hang off it.
 #
 # This is the MCP (Model Context Protocol) server split OUT into its OWN Dokploy
 # "Compose" project, so its deploys are triggered MANUALLY and stay independent

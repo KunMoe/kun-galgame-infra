@@ -10,7 +10,7 @@ Caddy 是这套自托管栈最优雅的默认选择([Caddy 官方](https://caddy
    docker build -f docker/nuxt.Dockerfile --build-arg APP=web \
      --build-arg PUBLIC_API_BASE=https://oauth.kungal.com/api/v1 \
      --build-arg PUBLIC_IMAGE_CDN_BASE=https://image.kungal.iloveren.link \
-     -t kun-galgame-infra/web .
+     -t nextmoe-infra/web .
    # (infra wiki 前端 + wiki.kungal.com 域已于开放 API Phase 2 · W5 退役,不再构建)
    ```
    moyu/kungal 同理(`PUBLIC_*` / `OAUTH_*` 改真实域名)。**OAuth client 的 redirect_uri 也要在枢纽里改成 https 域名**(见 [03-bootstrap.md](./03-bootstrap.md) A.5)。

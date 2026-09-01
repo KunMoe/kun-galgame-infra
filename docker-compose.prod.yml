@@ -1,4 +1,5 @@
-# kun-galgame-infra — PRODUCTION compose (Dokploy + GHCR prebuilt images).
+# nextmoe-infra — PRODUCTION compose (Dokploy + GHCR prebuilt images).
+# Compose `name:` is frozen: volumes, networks and container names hang off it.
 #
 # Differs from docker-compose.yml (local/dev):
 #   1. `image: ghcr.io/next-moe/infra-*` — NOT `build:`. CI builds+pushes; Dokploy PULLS.

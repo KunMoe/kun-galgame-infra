@@ -6,4 +6,4 @@ Type=oneshot
 # Adjust if the repo lives elsewhere; install with:
 #   systemctl --user link $(pwd)/scripts/dev-seed/systemd/kungal-dev-seed.service
 #   systemctl --user enable --now $(pwd)/scripts/dev-seed/systemd/kungal-dev-seed.timer
-ExecStart=/bin/bash -lc '%h/Desktop/code/website/kun-galgame-infra/scripts/dev-seed/build-seed.sh && %h/Desktop/code/website/kun-galgame-infra/scripts/dev-seed/publish-seed.sh'
+ExecStart=/bin/bash -lc '%h/Desktop/code/website/nextmoe-infra/scripts/dev-seed/build-seed.sh && %h/Desktop/code/website/nextmoe-infra/scripts/dev-seed/publish-seed.sh'

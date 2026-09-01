@@ -15,7 +15,7 @@
 # host. Image + Cloudflare env live in /root/imgsafety/env.img and env.cf
 # (env.cf carries CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN, which the tool
 # reads straight from the environment). Canonical copy:
-# scripts/prod-cron/image-grade-nightly/run.sh in kun-galgame-infra — edit
+# scripts/prod-cron/image-grade-nightly/run.sh in nextmoe-infra — edit
 # there and redeploy.
 set -eu
 BASE=/root/image-grade-nightly

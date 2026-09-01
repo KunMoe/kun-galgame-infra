@@ -4,7 +4,7 @@
 
 | 仓库 | 代号 | 角色 | apps |
 |---|---|---|---|
-| `kun-galgame-infra` | **infra / 枢纽** | 身份(OAuth)+ 图床 + galgame-wiki 的单一来源;**拥有共享基础设施** | api(多二进制)、web(admin)、wiki(galgame-wiki) |
+| `nextmoe-infra` | **infra / 枢纽** | 身份(OAuth)+ 图床 + galgame-wiki 的单一来源;**拥有共享基础设施** | api(多二进制)、web(admin)、wiki(galgame-wiki) |
 | `kun-galgame-forum` | **kungal** | 论坛站(Fiber API + Nuxt SSR) | api、web |
 | `kun-galgame-patch` | **moyu** | 补丁站(Fiber API + Nuxt SSR) | api、web |
 

@@ -20,7 +20,7 @@
                                                             oauth:9277 / catalog:9281 / image:9278
 ```
 
-- **3 个独立 Dokploy "Compose" 应用**(各对应一个 Git 仓库,Dokploy 克隆 + `build`):`kun-galgame-infra`(infra)、`kun-galgame-forum`(kungal)、`kun-galgame-patch`(moyu)。
+- **3 个独立 Dokploy "Compose" 应用**(各对应一个 Git 仓库,Dokploy 克隆 + `build`):`nextmoe-infra`(infra)、`kun-galgame-forum`(kungal)、`kun-galgame-patch`(moyu)。
 - **共享一个 `dokploy-network`**(external)。跨应用 s2s 只用枢纽的**唯一服务名**(`postgres`/`redis`/`meilisearch`/`oauth`/`galgame`/`image`)——这些名字全局唯一,在共享网络上可解析;各应用自己的 `api`/`web`/`migrate` 只在本应用内解析,不跨应用引用,因此**不存在名称冲突**(这点和手动反代文档里"web/api 别名跨仓冲突"是同一回事,Dokploy 用 Traefik router 区分对外路由,内部 s2s 只引用唯一名)。
 - **infra 仓额外挂一个独立 Compose 项目**承载 NextMoe 开发者门户(`developer.nextmoe.dev`):同一 Git 仓库、**两个** Dokploy Compose 应用——主栈 `docker-compose.prod.yml`(push→CI→**自动 redeploy webhook**)与门户 `docker-compose.developer.yml`(**手动部署,不挂 webhook**,发布节奏与主栈解耦)。门户是独立 Compose 项目,跨项目调 oauth 走主栈 oauth 服务上**专设的 compose 网络别名 `infra-oauth`**(主栈项目重建也不变;裸 `oauth` 同名别名跨项目会轮询,精确容器名则在项目重建时失效——别名两害皆免,见 [12.1](#121-域名--服务映射) 表下说明)。总计 Git 仓库 3 个、Dokploy Compose 应用 4 个。
 

@@ -175,12 +175,12 @@ var (
 
 ### 安装
 
-通过 Go module replace 引用（kun-galgame-infra 是单仓库）：
+通过 Go module replace 引用（nextmoe-infra 是单仓库）：
 
 ```go
 // go.mod
 require api v0.0.0
-replace api => ../path/to/kun-galgame-infra/apps/api
+replace api => ../path/to/nextmoe-infra/apps/api
 ```
 
 或直接拷贝 `pkg/imageclient/client.go` 到调用方仓库（单文件 ~280 行，零外部依赖，标准库 + `golang-jwt`）。

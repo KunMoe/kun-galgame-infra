@@ -11,7 +11,7 @@
 #
 # Runs from the infra-tools image resolved below; nothing is staged on this
 # host. Canonical copy: scripts/prod-cron/reindex-catalog/run.sh in
-# kun-galgame-infra — edit there and redeploy.
+# nextmoe-infra — edit there and redeploy.
 set -eu
 BASE=/root/reindex-catalog
 cd "$BASE"

@@ -15,7 +15,7 @@
 #
 # Runs from the infra-tools image resolved below; nothing is staged on this
 # host. Canonical copy: scripts/prod-cron/work-dedup-watch/run.sh in
-# kun-galgame-infra — installing or updating it on the box is a manual scp over
+# nextmoe-infra — installing or updating it on the box is a manual scp over
 # /root/work-dedup-watch/run.sh, so edit here first and copy it out (two chains
 # once sat on a stale hand-edited copy for a whole cycle).
 set -eu

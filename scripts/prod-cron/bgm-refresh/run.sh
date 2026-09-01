@@ -5,7 +5,7 @@
 # family tools. Safe to re-run any time; skips when no new dump is published.
 # Every tool runs from the infra-tools image resolved below; nothing is staged
 # on this host. Canonical copy: scripts/prod-cron/bgm-refresh/run.sh in
-# kun-galgame-infra — edit there and redeploy.
+# nextmoe-infra — edit there and redeploy.
 set -eu
 BASE=/root/bgm-refresh
 cd "$BASE"

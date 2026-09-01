@@ -8,7 +8,7 @@
 # Runs intro-mt / entity-intro-mt from the infra-tools image resolved below;
 # nothing is staged on this host. LLM + app env live in $BASE/app.env and
 # $BASE/llm.env (moved here from /root/wave75 at the 2026-08-13 cutover).
-# Canonical copy: scripts/prod-cron/intromt-nightly/run.sh in kun-galgame-infra
+# Canonical copy: scripts/prod-cron/intromt-nightly/run.sh in nextmoe-infra
 # — edit there and redeploy.
 set -eu
 BASE=/root/intromt-nightly

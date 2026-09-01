@@ -13,7 +13,7 @@
 
 > **JWT 密钥只需 infra 三服务一致**:oauth 用它 HS256 签发 access_token,image/galgame 用同一密钥**本地验签**——三者不一致 → image/galgame 401。下游 kungal/moyu **不本地验签**(走 `/oauth/userinfo` 网络校验),无需与 infra 共用:kungal 的 `JWT_SECRET` 只签自己的会话,moyu 没有 `JWT_SECRET`。详见 [15-environment.md §15.3](./15-environment.md)。
 
-## infra · oauth(`kun-galgame-infra/docker/oauth.env`)
+## infra · oauth(`nextmoe-infra/docker/oauth.env`)
 
 | 变量 | 值 | 说明 |
 |---|---|---|

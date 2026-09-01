@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const userAgent = "kun-galgame-infra/backfill-vndb-covers (+https://www.kungal.com)"
+const userAgent = "nextmoe-infra/backfill-vndb-covers (+https://www.kungal.com)"
 
 const maxRatingLevel = 2
 

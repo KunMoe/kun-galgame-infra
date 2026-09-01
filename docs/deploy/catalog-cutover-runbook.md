@@ -43,7 +43,7 @@
 
 1. **推送(全流程第一个动作,由你执行)**——单仓 infra:
    ```bash
-   cd /home/kun/Desktop/code/website/kun-galgame-infra
+   cd /home/kun/Desktop/code/website/nextmoe-infra
    git push origin main
    ```
 2. **盯 CI**:GitHub → Actions → `build-and-push` 本次 run 全绿。push 改了 `apps/api/**` → **go 组全建**,新镜像 `ghcr.io/next-moe/infra-catalog:latest` + `infra-migrate-catalog:latest` 首次出现,连同 `infra-migrate`/`infra-migrate-galgame`/`infra-galgame`/…一并重建。
@@ -80,7 +80,7 @@ sudo docker exec "$PG" psql -U postgres -c "\l" | grep -E 'kun_catalog|erogamesc
 
 **本地**(开发机)导两库:
 ```bash
-cd /home/kun/Desktop/code/website/kun-galgame-infra
+cd /home/kun/Desktop/code/website/nextmoe-infra
 PGPASSWORD=<本地pg密码> pg_dump -h localhost -U postgres -Fc -d kun_catalog   -f /tmp/kun_catalog.dump
 PGPASSWORD=<本地pg密码> pg_dump -h localhost -U postgres -Fc -d erogamescape -f /tmp/erogamescape.dump
 scp /tmp/kun_catalog.dump   kungal-neo:/root/

@@ -1,4 +1,5 @@
-# kun-galgame-infra — NextMoe developer portal (developer.nextmoe.dev), STANDALONE.
+# nextmoe-infra — NextMoe developer portal (developer.nextmoe.dev), STANDALONE.
+# Compose `name:` is frozen: volumes, networks and container names hang off it.
 #
 # This is the developer portal split OUT of docker-compose.prod.yml into its OWN
 # Dokploy "Compose" project, so portal deploys are triggered MANUALLY and stay

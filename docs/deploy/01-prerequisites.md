@@ -23,7 +23,7 @@
 
 ```
 website/
-├── kun-galgame-infra/        # infra
+├── nextmoe-infra/           # infra
 ├── kun-galgame-forum/      # kungal
 └── kun-galgame-patch/ # moyu
 ```

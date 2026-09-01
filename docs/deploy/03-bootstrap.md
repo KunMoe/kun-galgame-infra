@@ -12,7 +12,7 @@
 ### A.1 启动枢纽基础设施 + 建库
 
 ```bash
-cd kun-galgame-infra
+cd nextmoe-infra
 # 首次:从模板生成运行时 env(docker/*.env 不入仓,见 15-environment §15.8)
 for f in oauth image galgame; do cp -n docker/$f.env.example docker/$f.env; done
 docker compose build
@@ -39,7 +39,7 @@ docker exec kun-galgame-infra-postgres-1 psql -U postgres -tAc \
 ### A.2 建 schema(各仓 migrate job)
 
 ```bash
-cd kun-galgame-infra
+cd nextmoe-infra
 docker compose -f docker-compose.prod.yml run --rm migrate            # kun_galgame_infra:表 + 站点/角色种子
 docker compose -f docker-compose.prod.yml run --rm migrate-catalog   # wiki 两族 + catalog:表 + 约束(W5 单一入口)
 ```
@@ -96,10 +96,10 @@ docker compose build && docker compose run --rm migrate && docker compose up -d 
 
 Meili 索引由 `galgame` 启动时创建,但**空**。要让 wiki 搜索出结果,需把 Postgres 数据灌进去:
 ```bash
-cd kun-galgame-infra && docker compose run --rm \
+cd nextmoe-infra && docker compose run --rm \
   -e __dummy=1 --entrypoint /app galgame  # 注:reindex 是独立 cmd,见下
-docker build -f docker/go.Dockerfile --build-arg CMD=reindex-search -t kun-galgame-infra/reindex .
-docker run --rm --network kun-galgame-infra_default --env-file docker/galgame.env kun-galgame-infra/reindex
+docker build -f docker/go.Dockerfile --build-arg CMD=reindex-search -t nextmoe-infra/reindex .
+docker run --rm --network kun-galgame-infra_default --env-file docker/galgame.env nextmoe-infra/reindex
 ```
 
 ---

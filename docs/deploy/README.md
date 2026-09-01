@@ -35,7 +35,7 @@
 
 ## 30 秒速览
 
-- **三个仓库**:`kun-galgame-infra`(枢纽 / infra)、`kun-galgame-forum`(kungal / 论坛)、`kun-galgame-patch`(moyu / 补丁站)。
+- **三个仓库**:`nextmoe-infra`(枢纽 / infra)、`kun-galgame-forum`(kungal / 论坛)、`kun-galgame-patch`(moyu / 补丁站)。
 - **枢纽拥有共享基础设施**:一套 Postgres(5 个库)、Redis、MinIO(S3)、Meilisearch。kungal/moyu 按服务名连过来。
 - **每仓 = 无状态 api + web 容器**;Go 服务多阶段编译,Nuxt 出自包含 `.output`。
 - **全部 host 端口在 `1xxxx` 段**,与本机 `air` 开发服务共存。

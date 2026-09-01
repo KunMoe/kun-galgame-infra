@@ -13,7 +13,7 @@
 
 ### 1) 枢纽
 ```bash
-cd kun-galgame-infra
+cd nextmoe-infra
 docker compose up -d            # 9 个服务全起
 docker compose ps              # 应全 healthy
 ```
@@ -74,7 +74,7 @@ docker compose down -v              # 仅在 infra 目录会删 pg/redis/minio/m
 在 `website/` 放一个 `compose.yaml`:
 ```yaml
 include:
-  - kun-galgame-infra/docker-compose.yml   # (已移除,历史)
+  - nextmoe-infra/docker-compose.yml   # (已移除,历史)
   - kun-galgame-patch/docker-compose.yml
   - kun-galgame-forum/docker-compose.yml
 # 注意:include 各子 compose 的 `name:` 与 moyu/kungal 的 external network 块在伞状下需调整

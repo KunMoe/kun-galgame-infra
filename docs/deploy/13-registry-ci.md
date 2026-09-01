@@ -74,7 +74,7 @@ CI 按各仓**现有 Dockerfile**(参数化)构建以下镜像并推到 `ghcr.io
 > **省额度:infra 的实际 workflow 已改为「路径过滤 + 动态 matrix」**(下面这段是说明结构的简化示例,不是逐字现状)。GitHub 按 job 数×分钟计费且每 job 向上取整到 1 分钟,全量 matrix 即使全缓存每次 push 也要 ~10 分钟。现状:`changes` job 用 `dorny/paths-filter` 算出哪些组变了,只构建变更的镜像 —— `go`(oauth/image/artifact/catalog/community/trust/ai + 单一 `migrate`,与服务同 sha 锁步 ← `apps/api/**`)、`web`(← `apps/web/**`+根 manifest)、`wiki`(← `apps/wiki/**`+根 manifest)、`developer`(← `apps/developer/**`)、`tools`(`infra-tools`,与 go 组同源锁步 ← `apps/api/**` + `docker/tools.Dockerfile`)。docs-only 的 push 不构建任何镜像(~1 分钟)。`tools` 是唯一不触发 Dokploy redeploy 的组;要单独重建它,Actions → Run workflow → `scope=tools`。
 
 ```yaml
-# kun-galgame-infra/.github/workflows/build.yml
+# nextmoe-infra/.github/workflows/build.yml
 name: build-and-push
 on:
   push:
@@ -179,7 +179,7 @@ Nuxt 的 public 配置有两种注入方式,直接影响"镜像是否环境无�
 **已在三仓各加一份**只引用镜像的生产 compose `docker-compose.prod.yml`,Dokploy 指向它;CI 负责把这些 tag build+push 出来。下面是 infra 片段(完整见仓库文件):
 
 ```yaml
-# kun-galgame-infra/docker-compose.prod.yml(节选)
+# nextmoe-infra/docker-compose.prod.yml(节选)
 name: kun-galgame-infra
 services:
   oauth:

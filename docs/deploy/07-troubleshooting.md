@@ -27,7 +27,7 @@
 ### K1 · kungal/moyu `docker compose up` 报 `network kun-galgame-infra_default not found`
 - **现象**:在 kungal 或 moyu 目录 `docker compose up` 报找不到外部网络(`build` 不受影响)。
 - **原因**:两仓 base 都声明了 `networks.default.external: kun-galgame-infra_default`,该网络由 **infra** 创建 —— infra 没先起来,网络就不存在。
-- **解法**:先 `cd kun-galgame-infra && docker compose up -d`(它建网络 + 基础设施),再回下游 `docker compose up -d api web`。(注:kungal 已和 moyu 同构,**不再有** `docker-compose.infra.yml` / `standalone.yml`。)
+- **解法**:先 `cd nextmoe-infra && docker compose up -d`(它建网络 + 基础设施),再回下游 `docker compose up -d api web`。(注:kungal 已和 moyu 同构,**不再有** `docker-compose.infra.yml` / `standalone.yml`。)
 
 ### K2 · kungal api 启动即退出(无明显日志)
 - **原因**:`OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET` 是 `requireEnv`,**空则 fail-fast**。kungal 仓自带的 `api.env` 这俩默认是空的。

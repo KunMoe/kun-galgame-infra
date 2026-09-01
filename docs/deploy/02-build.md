@@ -2,7 +2,7 @@
 
 所有镜像的**构建 context 都是各自仓库根**(前端要把 `packages/ui` 这个 Nuxt layer 一起带进去)。
 
-## Infra(kun-galgame-infra)
+## Infra(nextmoe-infra)
 
 Infra 有 3 个 Dockerfile,因为它的二进制分两类:
 
@@ -19,9 +19,9 @@ Infra 有 3 个 Dockerfile,因为它的二进制分两类:
 参数化单独构建(go/cgo 用 `CMD`,nuxt 用 `APP`):
 
 ```bash
-docker build -f docker/go.Dockerfile  --build-arg CMD=catalog -t kun-galgame-infra/catalog .
-docker build -f docker/cgo.Dockerfile --build-arg CMD=oauth   -t kun-galgame-infra/oauth .
-docker build -f docker/nuxt.Dockerfile --build-arg APP=wiki   -t kun-galgame-infra/wiki .
+docker build -f docker/go.Dockerfile  --build-arg CMD=catalog -t nextmoe-infra/catalog .
+docker build -f docker/cgo.Dockerfile --build-arg CMD=oauth   -t nextmoe-infra/oauth .
+docker build -f docker/nuxt.Dockerfile --build-arg APP=wiki   -t nextmoe-infra/wiki .
 ```
 
 ## moyu(kun-galgame-patch)

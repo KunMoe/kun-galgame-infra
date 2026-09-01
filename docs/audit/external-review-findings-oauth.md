@@ -1,8 +1,8 @@
-# 外部审计发现 · kun-galgame-infra(已逐条对代码核实)
+# 外部审计发现 · nextmoe-infra(已逐条对代码核实)
 
 > 来源:codex(`kungal-docs/gpt/`)+ claude(`kungal-docs/claude/`)对三仓的双重审计,合并裁决见 `kungal-docs/gpt/04-claude-comparison-final.md`。
 >
-> 本文件**只收录与本仓(kun-galgame-infra)相关**的发现,并由本仓维护者**逐条对当前工作树代码核实**(2026-05-30)。
+> 本文件**只收录与本仓(nextmoe-infra)相关**的发现,并由本仓维护者**逐条对当前工作树代码核实**(2026-05-30)。
 >
 > **核实前提**:当前工作树为**原始上线代码**(例:`revision_service.go:448` `MergePR` 仍用 `now := galgame.Updated`)。两位外部审计审的就是这份代码,故下列发现对当前代码成立。
 >

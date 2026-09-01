@@ -110,7 +110,7 @@ infra `oauth` 进程内置 job 调度器(启动日志可见 `jobs: scheduler sta
 ## 资源 / 清理
 
 ```bash
-docker images --format '{{.Repository}}:{{.Tag}}\t{{.Size}}' | grep -E 'kun-galgame-infra/|moyu/|kungal/'
+docker images --format '{{.Repository}}:{{.Tag}}\t{{.Size}}' | grep -E 'nextmoe-infra/|moyu/|kungal/'
 docker system df            # 看占用
 docker image prune          # 清悬空镜像
 ```

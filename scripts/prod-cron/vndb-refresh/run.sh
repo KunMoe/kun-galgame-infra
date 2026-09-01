@@ -8,7 +8,7 @@
 #
 # Every tool runs from the infra-tools image resolved below; nothing is staged
 # on this host. Canonical copy: scripts/prod-cron/vndb-refresh/run.sh in
-# kun-galgame-infra — edit there and redeploy.
+# nextmoe-infra — edit there and redeploy.
 #
 # WHY a separate job from bgm-refresh: the two upstreams publish on different
 # clocks (Bangumi weekly on Tue, VNDB daily ~08:05Z) and the two family lists

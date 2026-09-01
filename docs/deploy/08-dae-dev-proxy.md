@@ -42,7 +42,7 @@ Docker 默认 bridge 容器的包路径是 `容器 → veth → docker 网桥 �
 cd kun-galgame-forum && docker compose down
 cd ../kun-galgame-patch && docker compose down
 # 2) 停 infra(网络归 infra project)
-cd ../kun-galgame-infra && docker compose down
+cd ../nextmoe-infra && docker compose down
 # 3) infra 用 dae override 重新起 → 新网桥名
 docker compose -f docker-compose.yml -f docker-compose.dae.yml up -d
 ip -o link show kungal-br0 && echo "OK: kungal-br0 已就位"
@@ -92,8 +92,8 @@ sudo ufw status                            # 若开了 ufw,需放行 FORWARD(见
 docker run --rm golang:1.25-bookworm bash -c \
   'timeout 12 bash -c "echo > /dev/tcp/proxy.golang.org/443" && echo "OK: bridge 经 dae 通了" || echo "FAIL: 仍不通"'
 # B) 实跑构建,确认默认 proxy(无 goproxy.cn)经 dae 通过
-cd kun-galgame-infra && docker build --no-cache -f docker/go.Dockerfile \
-  --build-arg CMD=galgame -t kun-galgame-infra/galgame:daetest . 2>&1 | grep -iE "go mod download|error|Successfully"
+cd nextmoe-infra && docker build --no-cache -f docker/go.Dockerfile \
+  --build-arg CMD=galgame -t nextmoe-infra/galgame:daetest . 2>&1 | grep -iE "go mod download|error|Successfully"
 ```
 
 ## 8.4 注意

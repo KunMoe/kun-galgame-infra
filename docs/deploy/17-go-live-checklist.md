@@ -49,7 +49,7 @@
 
 ## Phase 1 · 起枢纽 infra(地基)
 
-- [ ] Dokploy 建 **Compose 应用 `infra`** → 指向 `kun-galgame-infra/docker-compose.prod.yml`,网络 `dokploy-network`。
+- [ ] Dokploy 建 **Compose 应用 `infra`** → 指向 `nextmoe-infra/docker-compose.prod.yml`,网络 `dokploy-network`。
 - [ ] **infra 应用 Environment 面板**填(其余非密钥/域名 prod compose 已写死):
 ```env
 # ── 必填(留空 → docker compose 直接报错,不启动)──

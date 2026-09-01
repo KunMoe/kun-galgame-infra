@@ -31,6 +31,8 @@ kungalgame(_patch)_backup.dump
 | 数据库 | 各仓独立 pg、密码 `kunloveren`/`renlovekun` | **同一个 pg、同一个 `POSTGRES_PASSWORD`**;源库 DSN 用 `host=postgres` |
 | 连库 | `host=127.0.0.1` | `host=postgres`(容器服务名;`compose run` 自动接 `dokploy-network`) |
 
+> 2026-09-01 枢纽仓再改名:`kun-galgame-infra` → `nextmoe-infra`(GitHub `next-moe/nextmoe-infra`)。compose `name:`、Dokploy appName、Postgres 库名未改。上表是 2026-06 那次 cutover 的仓名对照,保持原样。
+
 每个 `cmd/*` 二进制都打包在对应 `*-tools` 镜像里(`infra-tools` / `kungal-tools` / `moyu-tools`,CI 推到 GHCR,**已含各仓 `/migrations` 与 infra 的 `docs/tagMap.ts`**)。`tools` 已是各仓 prod compose 的 jobs-profile 服务,**environment 内联、密钥从 Dokploy 面板取**(Dokploy 把面板写成应用目录的 `.env`)。**日常部署你不用手放任何 env 文件**;但**手动跑下面这些 cutover 命令时**,要用 `--env-file` 指向那个 `.env`(见 16.2)才能给 `${VAR}` 插值。镜像清单见 [13-registry-ci.md](./13-registry-ci.md)。
 
 > **本地→容器 速查**:`go run ./cmd/migrate-users --kungal-dsn=…` ⇒

@@ -1,4 +1,5 @@
-# kun-galgame-infra — LOCAL DEV compose (one-command platform for every repo).
+# nextmoe-infra — LOCAL DEV compose (one-command platform for every repo).
+# Compose `name:` is frozen: volumes, networks and container names hang off it.
 #
 # Motivation: any product repo's `pnpm dev` / `air` should depend on ONE fact —
 # "localhost has a platform". This file brings up the platform services from

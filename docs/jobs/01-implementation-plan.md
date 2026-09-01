@@ -8,7 +8,7 @@
 
 ## 0. 范围与边界（先划清，防 scope creep）
 
-### 本仓要写的代码（kun-galgame-infra）
+### 本仓要写的代码（nextmoe-infra）
 
 1. `internal/jobs`：Job 抽象 + 注册表 + 极简调度器 + advisory-lock 单飞 + panic 隔离 + `job_run` 落库。
 2. `JobRun` model + 进 `cmd/migrate` 的 AutoMigrate（OAuth 核心库）。

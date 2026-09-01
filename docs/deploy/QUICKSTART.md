@@ -49,7 +49,7 @@ git push        # → GitHub Actions 自动 build 并推 ghcr.io/next-moe/*(:lat
 
 | 应用 | 仓库 | Compose 文件 |
 |---|---|---|
-| `kun-galgame-infra` | infra | `docker-compose.prod.yml` |
+| `nextmoe-infra` | infra | `docker-compose.prod.yml` |
 | `kun-galgame-forum` | kungal | `docker-compose.prod.yml` |
 | `kun-galgame-patch` | moyu | `docker-compose.prod.yml` |
 

@@ -1,6 +1,6 @@
 # Catalog 服务 契约文档
 
-这里是 **kun-galgame-infra** 的**跨媒介身份/图谱注册层**（`catalog`）的对外契约文档。服务把多来源(VNDB / Bangumi / DLsite / erogamescape / 用户)的作品、发行、人物、署名、厂牌收敛成一套**带来源锚(external_ref)与分级信任**的规范身份,供各产品站(galgame wiki / kungal / moyu / letmoe / 未来 NextMoe 聚合)通过 S2S 接入。
+这里是 **nextmoe-infra** 的**跨媒介身份/图谱注册层**（`catalog`）的对外契约文档。服务把多来源(VNDB / Bangumi / DLsite / erogamescape / 用户)的作品、发行、人物、署名、厂牌收敛成一套**带来源锚(external_ref)与分级信任**的规范身份,供各产品站(galgame wiki / kungal / moyu / letmoe / 未来 NextMoe 聚合)通过 S2S 接入。
 
 它与 [`image_service`](../image_service/README.md)、[`artifact`](../artifact/README.md) 并列为跨服务契约:图床管图片字节、artifact 管大文件字节,**catalog 管「身份与关系」**——谁是谁、哪个作品对应哪些外部 id、哪些名义指向同一个人。三者共享 OAuth Client 租户模型,但数据库/职责独立。
 
