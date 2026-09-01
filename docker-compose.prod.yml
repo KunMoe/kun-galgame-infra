@@ -216,6 +216,42 @@ services:
         aliases: [meilisearch] # kungal connects by the name `meilisearch`
     restart: unless-stopped
 
+  # Catalog search engine the migration is cutting over to (refs/plans/
+  # 15-opensearch; image = docker/opensearch/Dockerfile, OS + icu/kuromoji/
+  # pinyin analysis plugins). Security plugin stays disabled BECAUSE the port
+  # never leaves the project-scoped `search` network below — do not attach this
+  # service to the shared dokploy-network, that is the whole isolation model.
+  opensearch:
+    image: ghcr.io/next-moe/infra-opensearch:2.19.6
+    environment:
+      discovery.type: single-node
+      cluster.name: kun-infra-os
+      node.name: prod
+      bootstrap.memory_lock: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI: "true"
+      # ~2 GiB RSS at this heap on the full corpus (bench-measured); do not
+      # raise the heap without re-measuring — 62% utilisation was the plateau.
+      OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes: ["opensearch:/usr/share/opensearch/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9200/_cluster/health"]
+      <<: *svc-health
+    networks: [search]
+    deploy:
+      resources:
+        limits:
+          memory: 3g
+    restart: unless-stopped
+
   # ───────────────────────────── Go services ─────────────────────────────────
   oauth:
     image: ghcr.io/next-moe/infra-oauth:latest
@@ -427,6 +463,13 @@ services:
       KUN_CATALOG_IMAGE_CLIENT_ID: ${KUN_CATALOG_IMAGE_CLIENT_ID:-}
       KUN_CATALOG_IMAGE_CLIENT_SECRET: ${KUN_CATALOG_IMAGE_CLIENT_SECRET:-}
       KUN_CATALOG_IMAGE_CLIENT_BASE_URL: http://image:9278
+      # Search engine dial (refs/plans/15-opensearch). Cutover = fill OS via
+      # reindex-catalog, then set KUN_SEARCH_ENGINE=opensearch in the Dokploy
+      # panel and redeploy; Meili stays up as the rollback target until the
+      # deletion wave. The var MUST stay interpolated here — a panel-only var
+      # never reaches the container (learned on the store wave, twice).
+      KUN_SEARCH_ENGINE: ${KUN_SEARCH_ENGINE:-meilisearch}
+      KUN_OPENSEARCH_HOST: http://opensearch:9200
       # The /v1/news face reads kun_news from this same process (a second DB
       # connection, no second container). An unreachable kun_news degrades that
       # face to 503 and leaves catalog serving.
@@ -569,6 +612,7 @@ services:
     healthcheck:
       test: ["CMD", "/app", "healthcheck"]
       <<: *svc-health
+    networks: [default, search]
     restart: unless-stopped
 
   # Community primitive (kun_community). The multi-tenant discussion service the
@@ -878,11 +922,17 @@ volumes:
   redis:
   minio:
   meili:
+  opensearch:
 
 networks:
   default:
     name: dokploy-network
     external: true
+  # Project-scoped, no external reach: the only members are opensearch and the
+  # catalog service. The prod reindex cron joins it explicitly at run time
+  # (docker run --network kun-galgame-infra_search).
+  search:
+    internal: true
   # Same physical network under the key Dokploy injects at deploy time — must
   # exist so the oauth service can hang its cross-project alias on that key
   # (see the oauth networks block for the full story).

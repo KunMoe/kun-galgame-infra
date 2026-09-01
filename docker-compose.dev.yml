@@ -117,6 +117,11 @@ x-dev-env: &dev-env
   # MEILI_MASTER_KEY below.
   KUN_MEILISEARCH_HOST: http://127.0.0.1:7700
   KUN_MEILISEARCH_API_KEY: kun-dev-meili-master-key-local-only
+  # OpenSearch — the catalog search engine the migration is cutting over to
+  # (refs/plans/15-opensearch). KUN_SEARCH_ENGINE is the dial; flip it to
+  # `opensearch` after `go run ./cmd/reindex-catalog` has filled the indexes.
+  KUN_SEARCH_ENGINE: meilisearch
+  KUN_OPENSEARCH_HOST: http://127.0.0.1:9200
   # Mail → Mailpit (SMTP black hole + web UI on :8025). No auth, no password.
   KUN_VISUAL_NOVEL_EMAIL_FROM: 鲲 Galgame OAuth (dev)
   KUN_VISUAL_NOVEL_EMAIL_HOST: 127.0.0.1
@@ -212,6 +217,35 @@ services:
       <<: *svc-health
     restart: unless-stopped
     # Search API on :7700 (the galgame surface connects at KUN_MEILISEARCH_HOST).
+
+  opensearch:
+    image: ghcr.io/next-moe/infra-opensearch:2.19.6
+    network_mode: host
+    environment:
+      discovery.type: single-node
+      cluster.name: kun-infra-dev-os
+      node.name: dev
+      bootstrap.memory_lock: "true"
+      # No auth in dev, same posture as dev Meili's throwaway key: the port
+      # only binds this box. Prod isolates the port on an internal network
+      # instead (docker-compose.prod.yml).
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes: ["opensearch:/usr/share/opensearch/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9200/_cluster/health"]
+      <<: *svc-health
+    restart: unless-stopped
+    # Search API on :9200 (KUN_OPENSEARCH_HOST).
 
   # ───── schema migrations (gate the services, like prod) ─────────────────────
   # migrate-* run FIRST and the services depend on them completing. All are
@@ -483,3 +517,4 @@ volumes:
   redis:
   minio:
   meili:
+  opensearch:
