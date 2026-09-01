@@ -37,6 +37,7 @@ on:
 
 permissions:
   contents: read
+  packages: read # pull the pinned infra-opensearch image in the integration job
 
 defaults:
   run:
@@ -90,7 +91,7 @@ jobs:
           git diff --exit-code -- ../../docs/artifact/ ../../docs/catalog/ ../../docs/community/ ../../docs/trust/ ../../docs/ai/ ../developer/app/generated/mcp-tools.mjs ../developer/app/generated/problems.ts ../developer/app/generated/vocabularies.ts
 
   integration:
-    name: integration (postgres + meilisearch)
+    name: integration (postgres + meilisearch + opensearch)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -133,6 +134,10 @@ jobs:
       REQUIRE_DB_TESTS: "1"
       MEILISEARCH_TEST_HOST: "http://127.0.0.1:7700"
       MEILISEARCH_TEST_API_KEY: citest_meili_master_key_change_me
+      # The OpenSearch recall suite (osengine/recall_test.go) is gated on this
+      # host and hard-failed by REQUIRE_SEARCH_TESTS below, so a missing or
+      # unbootable engine container turns the job red instead of skip-green.
+      KUN_OPENSEARCH_TEST_HOST: "http://127.0.0.1:19200"
       # Same assertion for the search-backed suites, and it is not hypothetical:
       # the W4 wave shipped a Meili filter that returned zero hits for every
       # query, and catalog/service still printed `ok` because every test touching
@@ -147,6 +152,25 @@ jobs:
       # go-webp (cgo → libwebp) is compiled by the whole-module test run.
       - name: Install CGO deps (libwebp)
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libwebp-dev pkg-config
+      # Not a `services:` container: the image is our own GHCR build (OS +
+      # icu/kuromoji/pinyin analysis plugins) and may not exist yet on a branch
+      # that just changed docker/opensearch/** — pull the pinned tag, else build
+      # it from the Dockerfile in-job. The tag comes from the Dockerfile's ARG,
+      # the single source of the OS↔pinyin version lock.
+      - name: Start OpenSearch
+        working-directory: .
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          VER=$(sed -n 's/^ARG OS_VERSION=//p' docker/opensearch/Dockerfile)
+          IMG=ghcr.io/${{ github.repository_owner }}/infra-opensearch:$VER
+          docker pull "$IMG" || docker build -t "$IMG" docker/opensearch
+          docker run -d --name opensearch-test -p 127.0.0.1:19200:9200 \
+            -e discovery.type=single-node \
+            -e DISABLE_SECURITY_PLUGIN=true \
+            -e DISABLE_INSTALL_DEMO_CONFIG=true \
+            -e DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI=true \
+            -e "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" \
+            "$IMG"
       - name: Wait for Meilisearch
         run: |
           for i in $(seq 1 30); do
@@ -154,6 +178,15 @@ jobs:
             sleep 2
           done
           echo "meilisearch did not become healthy" >&2
+          exit 1
+      - name: Wait for OpenSearch
+        run: |
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:19200/_cluster/health && exit 0
+            sleep 2
+          done
+          echo "opensearch did not become healthy" >&2
+          docker logs opensearch-test | tail -50 >&2
           exit 1
       # -p 1 serializes package test binaries: the service and jobs packages
       # share TEST_DATABASE_DSN and both AutoMigrate/TRUNCATE the same tables, so
