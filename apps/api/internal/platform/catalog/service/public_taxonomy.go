@@ -414,10 +414,23 @@ func (s *PublicService) tagSexualFor(ctx context.Context, ids []int64) (map[int6
 }
 
 func (s *PublicService) taxonomyTotal(ctx context.Context, table string, where []string, args []any) (int64, error) {
+	var key string
+	cacheable := false
+	if raw, err := json.Marshal(args); err == nil {
+		key = table + "\x00" + strings.Join(where, "\x00") + "\x00" + string(raw)
+		cacheable = true
+		if v, ok := s.totals.get(key); ok {
+			return v, nil
+		}
+	}
+
 	var total int64
 	q := `SELECT count(*) FROM ` + table + ` ` + whereClause(where)
 	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&total).Error; err != nil {
 		return 0, err
+	}
+	if cacheable {
+		s.totals.put(key, total)
 	}
 	return total, nil
 }
