@@ -56,12 +56,14 @@ type fakeUpstream struct {
 	err        error
 	errSeq     []error
 	calls      int
+	lastSystem string
 }
 
 func (f *fakeUpstream) Configured() bool { return f.configured }
 func (f *fakeUpstream) Model() string    { return f.model }
-func (f *fakeUpstream) ChatJSON(_ context.Context, _, _ string, _ int) (upstream.ChatResult, error) {
+func (f *fakeUpstream) ChatJSON(_ context.Context, system, _ string, _ int) (upstream.ChatResult, error) {
 	f.calls++
+	f.lastSystem = system
 	if len(f.errSeq) > 0 {
 		e := f.errSeq[0]
 		f.errSeq = f.errSeq[1:]

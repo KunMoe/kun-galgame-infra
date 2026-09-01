@@ -505,6 +505,7 @@ services:
       # Tier1→Tier2 cascade tuning (explicit defaults; spec 09 ruling 3).
       KUN_AI_ESCALATE_THRESHOLD: "0.4"
       KUN_AI_NEGATIVE_SAMPLE_RATE: "0.05"
+      KUN_AI_FORCE_ESCALATE: ""
     depends_on:
       migrate: { condition: service_completed_successfully }     # reads oauth_clients
       migrate-ai: { condition: service_completed_successfully }  # kun_ai schema

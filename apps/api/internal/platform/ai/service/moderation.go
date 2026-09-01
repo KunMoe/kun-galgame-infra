@@ -36,12 +36,14 @@ type ModerationService struct {
 	negativeSampleRate float64
 	rand               func() float64
 	retryDelay         time.Duration
+	forceEscalate      map[string]struct{}
 }
 
 type ModerationOptions struct {
 	EscalateThreshold  float32
 	NegativeSampleRate float64
 	Rand               func() float64
+	ForceEscalate      string
 }
 
 func NewModerationService(db *gorm.DB, omni omniClient, llm upstreamClient, opts ModerationOptions) *ModerationService {
@@ -57,13 +59,36 @@ func NewModerationService(db *gorm.DB, omni omniClient, llm upstreamClient, opts
 		negativeSampleRate: opts.NegativeSampleRate,
 		rand:               r,
 		retryDelay:         moderateRetryDelay,
+		forceEscalate:      parseForceEscalate(opts.ForceEscalate),
 	}
 }
 
+func parseForceEscalate(raw string) map[string]struct{} {
+	set := map[string]struct{}{}
+	for _, pair := range strings.Split(raw, ",") {
+		pair = strings.ToLower(strings.TrimSpace(pair))
+		site, kind, ok := strings.Cut(pair, ":")
+		if !ok || site == "" || kind == "" {
+			continue
+		}
+		set[site+":"+kind] = struct{}{}
+	}
+	return set
+}
+
+func (s *ModerationService) forceEscalated(site, kind string) bool {
+	if kind == "" {
+		return false
+	}
+	_, ok := s.forceEscalate[strings.ToLower(site)+":"+strings.ToLower(kind)]
+	return ok
+}
+
 type ModerateParams struct {
-	Site     string
-	Text     string
-	AuthorID *int64
+	Site        string
+	Text        string
+	AuthorID    *int64
+	SubjectKind string
 }
 
 type ModerateResult struct {
@@ -80,6 +105,16 @@ Judge the user message for policy violations (abuse/harassment, spam, illegal co
 Respond with ONLY a JSON object, no prose, of the form:
 {"flagged": <bool>, "categories": [<string>, ...], "score": <number between 0 and 1>}
 "flagged" is true only when the message clearly violates policy; "score" is your confidence that it violates policy.`
+
+var siteModerationContext = map[string]string{
+	"kungal": `
+
+Site context (kungal): the text is from a Chinese-language visual-novel (galgame) community forum. Discussion of adult (R18) games, requests for game resources/patches, and lewd banter about fictional game content are on-policy here — do not flag them as sexual content. The dominant real abuse is commercial solicitation spam: escort/prostitution classified ads (外送茶, 楼凤, 上门, 空降, 兼职 companions, prices with LINE / Telegram / WeChat contact handles), gambling or casino promotion, and other off-platform recruitment. Flag those as spam with high confidence even when the wording is not explicitly sexual.`,
+}
+
+func moderateSystemPrompt(site string) string {
+	return ModerateSystemPrompt + siteModerationContext[site]
+}
 
 // moderateMaxTokens caps the reply. The verdict object itself is ~40 tokens, so
 // this looks generous — but it is a CEILING, not a budget: a model that answers
@@ -140,6 +175,10 @@ func (s *ModerationService) Moderate(ctx context.Context, p ModerateParams) (Mod
 
 	rel := relevantScore(ores.CategoryScores)
 
+	if s.llm.Configured() && s.forceEscalated(p.Site, p.SubjectKind) {
+		return s.moderateViaLLM(ctx, p, routeName, spec)
+	}
+
 	if rel >= s.escalateThreshold {
 		if s.llm.Configured() {
 			return s.moderateViaLLM(ctx, p, routeName, spec)
@@ -172,7 +211,7 @@ func (s *ModerationService) moderateViaLLM(ctx context.Context, p ModerateParams
 		return failOpen(routeName, "", spec), nil
 	}
 
-	res, err := s.llm.ChatJSON(ctx, ModerateSystemPrompt, p.Text, moderateMaxTokens)
+	res, err := s.llm.ChatJSON(ctx, moderateSystemPrompt(p.Site), p.Text, moderateMaxTokens)
 	if err != nil && upstream.IsRateLimited(err) {
 		// The Cloudflare inference bucket is per-minute and shared with every
 		// other caller on the account, so a 429 here is contention, not a
@@ -189,7 +228,7 @@ func (s *ModerationService) moderateViaLLM(ctx context.Context, p ModerateParams
 		case <-ctx.Done():
 			timer.Stop()
 		case <-timer.C:
-			res, err = s.llm.ChatJSON(ctx, ModerateSystemPrompt, p.Text, moderateMaxTokens)
+			res, err = s.llm.ChatJSON(ctx, moderateSystemPrompt(p.Site), p.Text, moderateMaxTokens)
 		}
 	}
 	if err != nil {

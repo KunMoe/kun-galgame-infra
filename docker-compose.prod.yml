@@ -756,6 +756,11 @@ services:
       # negative rate for shadow calibration (only when the LLM tier is configured).
       KUN_AI_ESCALATE_THRESHOLD: ${KUN_AI_ESCALATE_THRESHOLD:-0.4}
       KUN_AI_NEGATIVE_SAMPLE_RATE: ${KUN_AI_NEGATIVE_SAMPLE_RATE:-0.05}
+      # Per-face forced escalation: comma-separated site:kind pairs (e.g.
+      # "kungal:forum_topic,kungal:forum_reply") whose texts always get Tier2
+      # final adjudication — omni has no spam category, so classified-ad spam
+      # scores ~0 and the threshold can never catch it.
+      KUN_AI_FORCE_ESCALATE: ${KUN_AI_FORCE_ESCALATE:-}
     # Internal only — product/platform backends reach it at http://ai:9284 over
     # dokploy-network.
     expose: ["9284"]

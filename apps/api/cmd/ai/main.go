@@ -65,7 +65,11 @@ func main() {
 	moderationSvc := service.NewModerationService(aiDB.DB(), omni, up, service.ModerationOptions{
 		EscalateThreshold:  cfg.AIOmni.EscalateThreshold,
 		NegativeSampleRate: cfg.AIOmni.NegativeSampleRate,
+		ForceEscalate:      cfg.AIOmni.ForceEscalate,
 	})
+	if cfg.AIOmni.ForceEscalate != "" {
+		slog.Info("ai cascade forced escalation", "pairs", cfg.AIOmni.ForceEscalate)
+	}
 	statsSvc := service.NewStatsService(aiDB.DB())
 	budgetSvc := service.NewBudgetService(aiDB.DB())
 

@@ -54,7 +54,7 @@ func (s *Server) moderateText(ctx context.Context, in *moderateTextInput) (*mode
 		return nil, he
 	}
 	res, err := s.moderation.Moderate(ctx, service.ModerateParams{
-		Site: site, Text: in.Body.Text, AuthorID: in.Body.AuthorID,
+		Site: site, Text: in.Body.Text, AuthorID: in.Body.AuthorID, SubjectKind: in.Body.SubjectKind,
 	})
 	if err != nil {
 		slog.Error("ai moderate-text", "err", err)
