@@ -20,6 +20,12 @@
 # `tools` is the only group Dokploy does not deploy, so a `tools`-only build does
 # not trigger a redeploy; Actions → Run workflow → scope=tools rebuilds it alone.
 #
+# Image namespace stays ghcr.io/kunmoe/* (user packages). Transferring the git
+# repo to next-moe/nextmoe-infra unlinked every package (repository=null);
+# GITHUB_TOKEN cannot push an unlinked package in another namespace, and the
+# OCI source label is the documented reconnect. Do not retag to
+# ghcr.io/next-moe/* until compose, cron, doctor, and Dokploy flip together.
+#
 # web BAKEs its browser-facing public config from build-args here.
 name: build-and-push
 
@@ -148,6 +154,8 @@ jobs:
           tags: |
             ghcr.io/kunmoe/${{ matrix.name }}:latest
             ghcr.io/kunmoe/${{ matrix.name }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/next-moe/nextmoe-infra
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
