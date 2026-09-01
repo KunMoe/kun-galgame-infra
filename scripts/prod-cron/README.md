@@ -36,6 +36,13 @@ the image is the fix, not a preference.
 | tag-vocab-backlog | 1st 12:30 | 768h |
 | work-dedup-watch | Mon 04:20 | 192h |
 
+`metrics-sampler/` is the one non-job entry: a host-level resource sampler
+(docker stats + loadavg + MemAvailable/SwapFree to daily CSVs under
+`/root/metrics/`, 14-day retention) installed as `/etc/cron.d/kun-metrics-sampler`
+(`*/5 * * * *`, flock-guarded), deployed as `/root/metrics/sample.sh`. It has no
+deadman entry and never touches the infra-tools image — it exists to answer the
+2026-09 upgrade-vs-split capacity question and is cheap enough to leave running.
+
 Crontab (root) also runs `/root/lib/watchdog.sh` daily at 09:00 — the deadman
 that alerts when a job has not *succeeded* within its limit, the failure mode
 no in-script trap can see. Registry: `lib/watchdog.conf`.
