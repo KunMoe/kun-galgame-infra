@@ -26,6 +26,7 @@ type Config struct {
 	OIDC                    OIDCConfig
 	Mail                    MailConfig
 	Meilisearch             MeilisearchConfig
+	OpenSearch              OpenSearchConfig
 	ImageService            ImageServiceConfig
 	ImageS3                 S3Config
 	ImageClient             ImageClientConfig
@@ -209,6 +210,11 @@ type S3Config struct {
 type MeilisearchConfig struct {
 	Host        string
 	APIKey      string
+	IndexPrefix string
+}
+
+type OpenSearchConfig struct {
+	Host        string
 	IndexPrefix string
 }
 
@@ -418,6 +424,11 @@ func Load() (*Config, error) {
 		Host:        getEnv("KUN_MEILISEARCH_HOST", "http://127.0.0.1:7700"),
 		APIKey:      getEnv("KUN_MEILISEARCH_API_KEY", ""),
 		IndexPrefix: getEnv("KUN_MEILISEARCH_INDEX_PREFIX", ""),
+	}
+
+	cfg.OpenSearch = OpenSearchConfig{
+		Host:        getEnv("KUN_OPENSEARCH_HOST", "http://127.0.0.1:9200"),
+		IndexPrefix: getEnv("KUN_OPENSEARCH_INDEX_PREFIX", ""),
 	}
 
 	cfg.ImagesDatabase = DatabaseConfig{

@@ -1,0 +1,92 @@
+{
+  "char_filter": {
+    "icu_nfc": {
+      "type": "icu_normalizer",
+      "name": "nfc",
+      "mode": "compose"
+    },
+    "title_sep": {
+      "type": "pattern_replace",
+      "pattern": "[=＝☆★×✕～〜・♪♭♯†‡|:/+#@!?&＆＊*-]",
+      "replacement": " "
+    },
+    "kw_strip": {
+      "type": "pattern_replace",
+      "pattern": "[=＝☆★×✕～〜・♪♭♯†‡＊*|:/+#@!?&＆\\s-]",
+      "replacement": ""
+    }
+  },
+  "tokenizer": {
+    "ja_search": {
+      "type": "kuromoji_tokenizer",
+      "mode": "search",
+      "discard_punctuation": true
+    },
+    "pinyin_tok": {
+      "type": "pinyin",
+      "keep_first_letter": true,
+      "keep_separate_first_letter": false,
+      "keep_full_pinyin": true,
+      "keep_joined_full_pinyin": true,
+      "keep_original": false,
+      "limit_first_letter_length": 16,
+      "lowercase": true,
+      "remove_duplicated_term": true,
+      "none_chinese_pinyin_tokenize": true,
+      "keep_none_chinese_in_first_letter": true,
+      "keep_none_chinese": true,
+      "keep_none_chinese_together": true
+    },
+    "cjk_ngram_tok": {
+      "type": "ngram",
+      "min_gram": 1,
+      "max_gram": 2,
+      "token_chars": ["letter", "digit"]
+    }
+  },
+  "analyzer": {
+    "ja": {
+      "type": "custom",
+      "char_filter": ["icu_nfc", "title_sep"],
+      "tokenizer": "ja_search",
+      "filter": ["kuromoji_baseform", "kuromoji_stemmer", "cjk_width", "lowercase"]
+    },
+    "zh": {
+      "type": "custom",
+      "char_filter": ["icu_nfc", "title_sep"],
+      "tokenizer": "icu_tokenizer",
+      "filter": ["cjk_width", "lowercase"]
+    },
+    "mixed": {
+      "type": "custom",
+      "char_filter": ["icu_nfc", "title_sep"],
+      "tokenizer": "icu_tokenizer",
+      "filter": ["cjk_width", "lowercase"]
+    },
+    "latin": {
+      "type": "custom",
+      "char_filter": ["icu_nfc", "title_sep"],
+      "tokenizer": "standard",
+      "filter": ["cjk_width", "lowercase", "asciifolding"]
+    },
+    "zh_pinyin": {
+      "type": "custom",
+      "char_filter": ["icu_nfc", "title_sep"],
+      "tokenizer": "pinyin_tok",
+      "filter": ["lowercase"]
+    },
+    "cjk_ngram": {
+      "type": "custom",
+      "char_filter": ["icu_nfc", "title_sep"],
+      "tokenizer": "cjk_ngram_tok",
+      "filter": ["cjk_width", "lowercase"]
+    }
+  },
+  "normalizer": {
+    "kw_norm": {
+      "type": "custom",
+      "char_filter": ["icu_nfc", "kw_strip"],
+      "filter": ["lowercase", "cjk_width", "asciifolding"]
+    }
+  }
+}
