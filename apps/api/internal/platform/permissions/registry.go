@@ -7,6 +7,7 @@ import (
 	catalogPerm "api/internal/platform/catalog/perm"
 	devapiPerm "api/internal/platform/devapi/perm"
 	newsPerm "api/internal/platform/news/perm"
+	settingsPerm "api/internal/platform/settings/perm"
 	sitePerm "api/internal/platform/site/perm"
 	trustPerm "api/internal/platform/trust/perm"
 )
@@ -196,6 +197,16 @@ var live = NewRegistry(
 		Holder:  artifactPerm.Resolver,
 		Keys: []Key{
 			{artifactPerm.FilesManage, "Browse, delete and reclaim stored artifact files.", "浏览/删除/回收 artifact 文件"},
+		},
+	},
+	Domain{
+		Name:    "settings",
+		TitleZH: "配置中心",
+		Bundles: settingsPerm.Bundles,
+		Holder:  settingsPerm.Resolver,
+		Keys: []Key{
+			{settingsPerm.View, "See the configuration center — every key, its effective value and where it comes from.", "查看配置中心(全部键、生效值与来源)"},
+			{settingsPerm.Write, "Set or reset a configuration override; every service picks it up within 30 seconds.", "设置/撤销配置覆盖值(30 秒内全服务生效)"},
 		},
 	},
 )
