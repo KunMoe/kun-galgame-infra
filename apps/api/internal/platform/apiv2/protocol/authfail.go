@@ -7,13 +7,9 @@ import (
 	"time"
 
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/settings/keys"
 
 	"github.com/gofiber/fiber/v3"
-)
-
-const (
-	AuthFailPerMinute = 120
-	authBlockFor      = 60 * time.Second
 )
 
 // Deviations 29 and 47 moved the quota limiter behind the auth stack on
@@ -47,10 +43,10 @@ func (l *limiter) countAuthFailure(c fiber.Ctx) {
 		storeDegraded("auth-failure counter", err)
 		return
 	}
-	if int(n) < AuthFailPerMinute {
+	if int(n) < int(keys.APIV2AuthFailPerMinute.Get()) {
 		return
 	}
-	if err := l.store.Set(c.Context(), authBlockKey(ip), []byte{'1'}, authBlockFor); err != nil {
+	if err := l.store.Set(c.Context(), authBlockKey(ip), []byte{'1'}, time.Duration(keys.APIV2AuthFailBlockSeconds.Get())*time.Second); err != nil {
 		storeDegraded("auth-failure block write", err)
 		return
 	}
@@ -58,7 +54,7 @@ func (l *limiter) countAuthFailure(c fiber.Ctx) {
 }
 
 func authFailRefusal(c fiber.Ctx) error {
-	retry := int(authBlockFor / time.Second)
+	retry := int(keys.APIV2AuthFailBlockSeconds.Get())
 	c.Set("Retry-After", strconv.Itoa(retry))
 	p := problem.New(problem.CodeRateLimited, problem.RequestID(c), problem.Instance(c),
 		"Too many rejected credentials from this address.")

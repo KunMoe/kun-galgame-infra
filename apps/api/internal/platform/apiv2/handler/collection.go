@@ -12,6 +12,7 @@ import (
 	"api/internal/platform/apiv2/repr"
 	"api/internal/platform/apiv2/vocab"
 	"api/internal/platform/devapi"
+	"api/internal/platform/settings/keys"
 	"api/pkg/routepath"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -247,7 +248,7 @@ func credentialLimitIdentity(c fiber.Ctx) (protocol.LimitIdentity, bool) {
 	if uid > 0 {
 		return protocol.LimitIdentity{
 			Key:  "u" + strconv.FormatInt(uid, 10),
-			Rate: protocol.RatePerMinute, Quota: protocol.QuotaPerDay,
+			Rate: int(keys.APIV2DefaultRatePerMinute.Get()), Quota: int(keys.APIV2DefaultQuotaPerDay.Get()),
 		}, true
 	}
 	return protocol.LimitIdentity{}, false

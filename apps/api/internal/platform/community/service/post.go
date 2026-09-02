@@ -8,6 +8,7 @@ import (
 	"api/internal/platform/community/model"
 	"api/internal/platform/community/repository"
 	"api/internal/platform/community/sanitize"
+	"api/internal/platform/settings/keys"
 
 	"gorm.io/gorm"
 )
@@ -58,11 +59,11 @@ func (s *PostService) Reply(ctx context.Context, p ReplyParams) (*model.Communit
 		return nil, err
 	}
 	if isSandboxed(level) {
-		n, err := s.posts.CountByAuthorSince(p.AuthorID, time.Now().Add(-sandboxWindow))
+		n, err := s.posts.CountByAuthorSince(p.AuthorID, time.Now().Add(-time.Duration(keys.CommunitySandboxWindowHours.Get())*time.Hour))
 		if err != nil {
 			return nil, err
 		}
-		if n >= tl0MaxRepliesPerDay {
+		if n >= keys.CommunitySandboxMaxRepliesPerDay.Get() {
 			return nil, &SandboxError{Reason: "daily reply limit"}
 		}
 	}

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"api/internal/platform/settings/keys"
 	"api/internal/platform/trust/model"
 )
 
@@ -191,14 +192,15 @@ func TestRateLimit(t *testing.T) {
 	registerKind(t, tSite, tKind, nil, nil)
 	svc := newReportSvc(newWeigher())
 
-	for i := 0; i < rateLimitMax; i++ {
+	max := int(keys.TrustReportRateMaxPerWindow.Get())
+	for i := 0; i < max; i++ {
 		submit(t, svc, 1, fmt.Sprintf("s%d", i))
 	}
 	_, err := svc.Submit(context.Background(), ReportParams{
 		Site: tSite, SubjectKind: tKind, SubjectID: "over", ReasonKey: "abuse", ReporterID: 1,
 	})
 	if !errors.Is(err, ErrRateLimited) {
-		t.Fatalf("report %d should be rate-limited, got %v", rateLimitMax+1, err)
+		t.Fatalf("report %d should be rate-limited, got %v", max+1, err)
 	}
 }
 

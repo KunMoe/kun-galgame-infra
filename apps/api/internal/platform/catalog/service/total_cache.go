@@ -3,12 +3,11 @@ package service
 import (
 	"sync"
 	"time"
+
+	"api/internal/platform/settings/keys"
 )
 
-const (
-	totalsTTL        = 60 * time.Second
-	totalsMaxEntries = 8192
-)
+const totalsMaxEntries = 8192
 
 // Forum S2S traffic at ~40 rps re-ran identical count(*) per page request and saturated prod postgres on 2026-09-01.
 type totalsCache struct {
@@ -49,7 +48,7 @@ func (c *totalsCache) put(key string, v int64) {
 	if _, exists := c.entries[key]; !exists && len(c.entries) >= totalsMaxEntries {
 		c.entries = make(map[string]totalsEntry)
 	}
-	c.entries[key] = totalsEntry{val: v, exp: c.now().Add(totalsTTL)}
+	c.entries[key] = totalsEntry{val: v, exp: c.now().Add(time.Duration(keys.CatalogTotalsCacheTTLSeconds.Get()) * time.Second)}
 }
 
 func (c *totalsCache) flush() {

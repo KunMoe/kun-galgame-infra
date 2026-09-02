@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"api/internal/infrastructure/cache"
+	"api/internal/platform/settings/keys"
 	"api/pkg/errors"
 	"api/pkg/routepath"
 
@@ -12,11 +13,11 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 )
 
-const oauthTokenRatePerMin = 6000
-
 func RateLimit(redisCache *cache.RedisCache) fiber.Handler {
 	config := limiter.Config{
-		Max:        100,
+		MaxFunc: func(_ fiber.Ctx) int {
+			return int(keys.AuthIPRatePerMinute.Get())
+		},
 		Expiration: 1 * time.Minute,
 		Next: func(c fiber.Ctx) bool {
 			return c.Get("Authorization") != ""
@@ -41,7 +42,9 @@ func RateLimit(redisCache *cache.RedisCache) fiber.Handler {
 
 func OAuthTokenRateLimit(redisCache *cache.RedisCache) fiber.Handler {
 	config := limiter.Config{
-		Max:        oauthTokenRatePerMin,
+		MaxFunc: func(_ fiber.Ctx) int {
+			return int(keys.AuthTokenEndpointRatePerMinute.Get())
+		},
 		Expiration: 1 * time.Minute,
 		KeyGenerator: func(c fiber.Ctx) string {
 			var body struct {
@@ -69,7 +72,9 @@ func OAuthTokenRateLimit(redisCache *cache.RedisCache) fiber.Handler {
 
 func StrictRateLimit(redisCache *cache.RedisCache) fiber.Handler {
 	config := limiter.Config{
-		Max:        10,
+		MaxFunc: func(_ fiber.Ctx) int {
+			return int(keys.AuthStrictRatePerMinute.Get())
+		},
 		Expiration: 1 * time.Minute,
 		KeyGenerator: func(c fiber.Ctx) string {
 			return c.IP() + ":" + routepath.Normalize(c.Path())

@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"api/internal/platform/settings/keys"
+
 	"gorm.io/gorm"
 )
 
@@ -43,8 +45,8 @@ func (w *DBWeigher) Weigh(ctx context.Context, reporterID int64) (ReporterWeight
 	}
 
 	weight := float32(1.0)
-	if !createdAt.IsZero() && time.Since(createdAt) < newAccountAge {
-		weight = 0.5
+	if !createdAt.IsZero() && time.Since(createdAt) < time.Duration(keys.TrustNewAccountAgeDays.Get())*24*time.Hour {
+		weight = float32(keys.TrustNewAccountReporterWeight.Get())
 	}
 	return ReporterWeight{Weight: weight, Staff: false}, nil
 }

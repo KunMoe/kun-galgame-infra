@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"api/internal/platform/settings/keys"
 	"api/internal/platform/trust/model"
 
 	"gorm.io/gorm"
@@ -29,7 +30,6 @@ type DefaultsSource func() PlatformDefaults
 type PolicyService struct {
 	db  *gorm.DB
 	src DefaultsSource
-	ttl time.Duration
 	now func() time.Time
 
 	mu       sync.Mutex
@@ -38,7 +38,9 @@ type PolicyService struct {
 	loadedAt time.Time
 }
 
-func DefaultAggregateThreshold() float32 { return aggregateThreshold }
+func DefaultAggregateThreshold() float32 {
+	return float32(keys.TrustAggregateThreshold.Get())
+}
 
 func NewPolicyService(db *gorm.DB, defaults PlatformDefaults) *PolicyService {
 	return NewPolicyServiceFrom(db, func() PlatformDefaults { return defaults })
@@ -48,7 +50,6 @@ func NewPolicyServiceFrom(db *gorm.DB, src DefaultsSource) *PolicyService {
 	return &PolicyService{
 		db:  db,
 		src: src,
-		ttl: policyCacheTTL,
 		now: time.Now,
 	}
 }
@@ -86,7 +87,7 @@ func (s *PolicyService) Resolve(site string) ResolvedPolicy {
 func (s *PolicyService) lookup(site string) (model.TrustSitePolicy, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !s.loaded || s.now().Sub(s.loadedAt) >= s.ttl {
+	if !s.loaded || s.now().Sub(s.loadedAt) >= time.Duration(keys.TrustPolicyCacheTTLSeconds.Get())*time.Second {
 		var rows []model.TrustSitePolicy
 		if err := s.db.Find(&rows).Error; err != nil {
 			if s.loaded {

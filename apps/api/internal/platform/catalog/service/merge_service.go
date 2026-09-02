@@ -11,11 +11,10 @@ import (
 	"api/internal/platform/catalog/model"
 	"api/internal/platform/catalog/repository"
 	"api/internal/platform/editing"
+	"api/internal/platform/settings/keys"
 
 	"gorm.io/gorm"
 )
-
-const coolingOffWindow = 48 * time.Hour
 
 type MergeService struct {
 	db        *gorm.DB
@@ -76,7 +75,7 @@ func (s *MergeService) ProposeMerge(ctx context.Context, entityType int16, sourc
 
 func (s *MergeService) ApproveMerge(ctx context.Context, proposalID, approvedBy int64) error {
 	return s.transition(ctx, proposalID, model.ProposalStatusOpen, func(tx *gorm.DB, p *model.CatalogMergeProposal) error {
-		after := time.Now().Add(coolingOffWindow)
+		after := time.Now().Add(time.Duration(keys.CatalogMergeCoolingOffHours.Get()) * time.Hour)
 		return tx.Model(p).Updates(map[string]any{
 			"status":        model.ProposalStatusApproved,
 			"execute_after": after,

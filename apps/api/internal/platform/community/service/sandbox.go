@@ -1,20 +1,10 @@
 package service
 
 import (
-	"time"
-
 	"api/internal/platform/community/model"
 	"api/internal/platform/community/repository"
 	"api/internal/platform/community/sanitize"
-)
-
-const (
-	tl0MaxLinks         = 2
-	tl0MaxImages        = 1
-	tl0MaxMentions      = 2
-	tl0MaxTopicsPerDay  = 3
-	tl0MaxRepliesPerDay = 10
-	sandboxWindow       = 24 * time.Hour
+	"api/internal/platform/settings/keys"
 )
 
 func isSandboxed(level int16) bool { return level < model.TrustLevelBasic }
@@ -24,11 +14,11 @@ func checkContentSandbox(level int16, cooked sanitize.Cooked) error {
 		return nil
 	}
 	switch {
-	case cooked.Links > tl0MaxLinks:
+	case cooked.Links > int(keys.CommunitySandboxMaxLinks.Get()):
 		return &SandboxError{Reason: "too many links"}
-	case cooked.Images > tl0MaxImages:
+	case cooked.Images > int(keys.CommunitySandboxMaxImages.Get()):
 		return &SandboxError{Reason: "too many images"}
-	case cooked.Mentions > tl0MaxMentions:
+	case cooked.Mentions > int(keys.CommunitySandboxMaxMentions.Get()):
 		return &SandboxError{Reason: "too many mentions"}
 	}
 	return nil
