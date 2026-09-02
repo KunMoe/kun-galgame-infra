@@ -35,7 +35,7 @@ func NewDistributor(db *gorm.DB, reg *Registry, bus Broadcaster) *Distributor {
 }
 
 func (d *Distributor) Refresh(ctx context.Context) error {
-	rows, err := d.store.Values(ctx)
+	rows, err := d.store.Values(ctx, PlatformScope)
 	if err != nil {
 		return err
 	}

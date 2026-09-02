@@ -1,12 +1,28 @@
 package settings
 
 import (
+	"strconv"
 	"time"
 
 	"gorm.io/datatypes"
 )
 
 const ScopePlatform = "platform"
+
+const ScopeSite = "site"
+
+type Scope struct {
+	Kind string
+	ID   string
+}
+
+var PlatformScope = Scope{Kind: ScopePlatform, ID: ""}
+
+func SiteScope(siteID uint) Scope {
+	return Scope{Kind: ScopeSite, ID: strconv.FormatUint(uint64(siteID), 10)}
+}
+
+func (s Scope) IsPlatform() bool { return s.Kind == ScopePlatform }
 
 type SettingOverride struct {
 	ID              uint           `gorm:"primaryKey" json:"id"`

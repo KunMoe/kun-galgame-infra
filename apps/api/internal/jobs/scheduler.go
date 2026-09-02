@@ -4,42 +4,62 @@ import (
 	"context"
 	"log/slog"
 	"time"
+
+	"api/internal/platform/settings/keys"
 )
 
 const staleMaxAge = 6 * time.Hour
 
+const rescheduleTick = 30 * time.Second
+
 func StartScheduler(ctx context.Context, reg *Registry, runner *Runner) {
 	runner.ReapStale(ctx, staleMaxAge)
-
-	scheduled := 0
 	for _, job := range reg.List() {
-		if job.Schedule.Zero() {
-			slog.Info("jobs: registered (manual-only)", "job", job.Name)
-			continue
-		}
-		next := job.Schedule.Next(time.Now())
-		slog.Info("jobs: scheduled", "job", job.Name, "next", next.Format(time.RFC3339))
-		scheduled++
 		go runLoop(ctx, job, runner)
 	}
-	slog.Info("jobs: scheduler started", "total", len(reg.List()), "auto", scheduled)
+	slog.Info("jobs: scheduler started", "total", len(reg.List()))
 }
 
 func runLoop(ctx context.Context, job Job, runner *Runner) {
+	jk, _ := keys.Job(job.Name)
+	var (
+		spec  string
+		sched Schedule
+		next  time.Time
+	)
 	for {
-		next := job.Schedule.Next(time.Now())
-		if next.IsZero() {
-			slog.Error("jobs: bad schedule, loop exiting", "job", job.Name)
-			return
+		if cur := jk.Schedule.Get(); cur != spec {
+			spec = cur
+			s, err := ParseSchedule(cur)
+			if err != nil {
+				slog.Error("jobs: bad schedule; job idle until it changes", "job", job.Name, "schedule", cur, "err", err)
+				next = time.Time{}
+			} else {
+				sched = s
+				next = s.Next(time.Now())
+				slog.Info("jobs: scheduled", "job", job.Name, "schedule", cur, "next", next.Format(time.RFC3339))
+			}
 		}
-		timer := time.NewTimer(time.Until(next))
+		wait := rescheduleTick
+		if !next.IsZero() {
+			if d := time.Until(next); d < wait {
+				wait = d
+			}
+		}
 		select {
 		case <-ctx.Done():
-			timer.Stop()
 			slog.Info("jobs: scheduler loop stopped", "job", job.Name)
 			return
-		case <-timer.C:
-			runner.Run(ctx, job, TriggerSchedule)
+		case <-time.After(wait):
 		}
+		if next.IsZero() || time.Now().Before(next) {
+			continue
+		}
+		if jk.Enabled.Get() {
+			runner.Run(ctx, job, TriggerSchedule)
+		} else {
+			slog.Info("jobs: skipped, disabled", "job", job.Name, "schedule", spec)
+		}
+		next = sched.Next(time.Now())
 	}
 }

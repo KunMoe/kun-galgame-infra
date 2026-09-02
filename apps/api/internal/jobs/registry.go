@@ -1,6 +1,10 @@
 package jobs
 
-import "sort"
+import (
+	"sort"
+
+	"api/internal/platform/settings/keys"
+)
 
 type Registry struct {
 	jobs map[string]Job
@@ -11,6 +15,9 @@ func NewRegistry() *Registry {
 }
 
 func (r *Registry) Register(j Job) {
+	if _, ok := keys.Job(j.Name); !ok {
+		panic("jobs: " + j.Name + " has no settings keys; add it to internal/platform/settings/keys/jobs.go")
+	}
 	r.jobs[j.Name] = j
 }
 

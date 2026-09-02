@@ -27,22 +27,22 @@ type OverrideRow struct {
 	UpdatedByName string
 }
 
-func (s *Store) Overrides(ctx context.Context) ([]OverrideRow, error) {
+func (s *Store) Overrides(ctx context.Context, scope Scope) ([]OverrideRow, error) {
 	var rows []OverrideRow
 	err := s.db.WithContext(ctx).
 		Model(&SettingOverride{}).
 		Select("setting_overrides.*, users.name AS updated_by_name").
 		Joins("LEFT JOIN users ON users.id = setting_overrides.updated_by_user_id").
-		Where("setting_overrides.scope_kind = ? AND setting_overrides.scope_id = ?", ScopePlatform, "").
+		Where("setting_overrides.scope_kind = ? AND setting_overrides.scope_id = ?", scope.Kind, scope.ID).
 		Order("setting_overrides.key").
 		Scan(&rows).Error
 	return rows, err
 }
 
-func (s *Store) Values(ctx context.Context) (map[string]json.RawMessage, error) {
+func (s *Store) Values(ctx context.Context, scope Scope) (map[string]json.RawMessage, error) {
 	var rows []SettingOverride
 	err := s.db.WithContext(ctx).
-		Where("scope_kind = ? AND scope_id = ?", ScopePlatform, "").
+		Where("scope_kind = ? AND scope_id = ?", scope.Kind, scope.ID).
 		Find(&rows).Error
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (s *Store) Values(ctx context.Context) (map[string]json.RawMessage, error) 
 	return out, nil
 }
 
-func (s *Store) Set(ctx context.Context, key string, value json.RawMessage, note string, expectVersion *int64, actorID uint) (*SettingOverride, error) {
+func (s *Store) Set(ctx context.Context, scope Scope, key string, value json.RawMessage, note string, expectVersion *int64, actorID uint) (*SettingOverride, error) {
 	compacted, err := compactJSON(value)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (s *Store) Set(ctx context.Context, key string, value json.RawMessage, note
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var row SettingOverride
 		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("scope_kind = ? AND scope_id = ? AND key = ?", ScopePlatform, "", key).
+			Where("scope_kind = ? AND scope_id = ? AND key = ?", scope.Kind, scope.ID, key).
 			Take(&row).Error
 		exists := err == nil
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -92,8 +92,8 @@ func (s *Store) Set(ctx context.Context, key string, value json.RawMessage, note
 			}
 		} else {
 			row = SettingOverride{
-				ScopeKind:       ScopePlatform,
-				ScopeID:         "",
+				ScopeKind:       scope.Kind,
+				ScopeID:         scope.ID,
 				Key:             key,
 				Value:           compacted,
 				Version:         1,
@@ -109,8 +109,8 @@ func (s *Store) Set(ctx context.Context, key string, value json.RawMessage, note
 		return tx.Create(&SettingAuditLog{
 			ActorUserID: actorID,
 			Action:      ActionSet,
-			ScopeKind:   ScopePlatform,
-			ScopeID:     "",
+			ScopeKind:   scope.Kind,
+			ScopeID:     scope.ID,
 			Key:         key,
 			OldValue:    oldValue,
 			NewValue:    compacted,
@@ -123,11 +123,11 @@ func (s *Store) Set(ctx context.Context, key string, value json.RawMessage, note
 	return &out, nil
 }
 
-func (s *Store) Reset(ctx context.Context, key string, note string, actorID uint) error {
+func (s *Store) Reset(ctx context.Context, scope Scope, key string, note string, actorID uint) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var row SettingOverride
 		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("scope_kind = ? AND scope_id = ? AND key = ?", ScopePlatform, "", key).
+			Where("scope_kind = ? AND scope_id = ? AND key = ?", scope.Kind, scope.ID, key).
 			Take(&row).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrNoOverride
@@ -142,8 +142,8 @@ func (s *Store) Reset(ctx context.Context, key string, note string, actorID uint
 		return tx.Create(&SettingAuditLog{
 			ActorUserID: actorID,
 			Action:      ActionReset,
-			ScopeKind:   ScopePlatform,
-			ScopeID:     "",
+			ScopeKind:   scope.Kind,
+			ScopeID:     scope.ID,
 			Key:         key,
 			OldValue:    row.Value,
 			Note:        note,
@@ -156,6 +156,8 @@ type AuditEntry struct {
 	ActorUserID uint            `json:"actor_user_id"`
 	ActorName   string          `json:"actor_name"`
 	Action      string          `json:"action"`
+	ScopeKind   string          `json:"scope_kind"`
+	ScopeID     string          `json:"scope_id"`
 	Key         string          `json:"key"`
 	OldValue    json.RawMessage `json:"old_value"`
 	NewValue    json.RawMessage `json:"new_value"`
@@ -188,6 +190,8 @@ func (s *Store) RecentAudit(ctx context.Context, limit int) ([]AuditEntry, error
 			ActorUserID: r.ActorUserID,
 			ActorName:   r.ActorName,
 			Action:      r.Action,
+			ScopeKind:   r.ScopeKind,
+			ScopeID:     r.ScopeID,
 			Key:         r.Key,
 			OldValue:    jsonOrNull(r.OldValue),
 			NewValue:    jsonOrNull(r.NewValue),

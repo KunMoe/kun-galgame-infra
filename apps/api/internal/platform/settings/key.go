@@ -28,18 +28,21 @@ const (
 	SourceDefault Source = "default"
 	SourceEnv     Source = "env"
 	SourceDB      Source = "db"
+	SourceSite    Source = "site"
 )
 
 type Meta struct {
-	Name    string
-	Kind    Kind
-	EnvVar  string
-	DescEN  string
-	DescZH  string
-	Enum    []string
-	Min     *float64
-	Max     *float64
-	Pattern string
+	Name       string
+	Kind       Kind
+	EnvVar     string
+	DescEN     string
+	DescZH     string
+	Enum       []string
+	Min        *float64
+	Max        *float64
+	Pattern    string
+	SiteScoped bool
+	Public     bool
 }
 
 func F(v float64) *float64 { return &v }

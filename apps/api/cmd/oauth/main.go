@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"strconv"
@@ -47,6 +48,7 @@ import (
 	storeService "api/internal/platform/store/service"
 
 	"github.com/gofiber/fiber/v3"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -336,10 +338,26 @@ func setupRoutes(a *app.App, cfg *config.Config, cleanupCtx context.Context) {
 	settingsH := settings.NewHandler(
 		settings.NewService(settingsReg, settings.NewStore(db), settingsDist),
 		func(roles []string) bool { return settingsPerm.Resolver.Can(roles, settingsPerm.Write) },
+		func(ctx context.Context, id uint) (bool, error) {
+			_, err := siteRepository.FindByID(ctx, id)
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return false, nil
+			}
+			if err != nil {
+				return false, err
+			}
+			return true, nil
+		},
 	)
 	settingsH.Register(admin,
 		middleware.RequirePermission(settingsPerm.Resolver, settingsPerm.View),
 		middleware.RequirePermission(settingsPerm.Resolver, settingsPerm.Write))
+	settingsH.RegisterS2S(v1, middleware.OAuthClientBasicAuth(oauthClientRepo), func(c fiber.Ctx) *uint {
+		if client := middleware.OAuthClientFromCtx(c); client != nil {
+			return client.SiteID
+		}
+		return nil
+	})
 
 	registerImageAdmin(a, cfg, admin)
 	registerArtifactAdmin(a, cfg, authSvc)
@@ -358,8 +376,8 @@ func registerJobsAdmin(admin fiber.Router, reg *jobs.Registry, runner *jobs.Runn
 		type jobView struct {
 			Name      string `json:"name"`
 			Desc      string `json:"desc"`
-			DailyAt   string `json:"daily_at,omitempty"`
-			Auto      bool   `json:"auto"`
+			Schedule  string `json:"schedule"`
+			Enabled   bool   `json:"enabled"`
 			LatestRun any    `json:"latest_run"`
 		}
 		out := make([]jobView, 0)
@@ -368,11 +386,12 @@ func registerJobsAdmin(admin fiber.Router, reg *jobs.Registry, runner *jobs.Runn
 			if err != nil {
 				slog.Error("jobs admin: latest run", "job", j.Name, "err", err)
 			}
+			jk, _ := keys.Job(j.Name)
 			out = append(out, jobView{
 				Name:      j.Name,
 				Desc:      j.Desc,
-				DailyAt:   j.Schedule.DailyAt,
-				Auto:      !j.Schedule.Zero(),
+				Schedule:  jk.Schedule.Get(),
+				Enabled:   jk.Enabled.Get(),
 				LatestRun: latest,
 			})
 		}

@@ -1,6 +1,7 @@
 package keys_test
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -8,6 +9,8 @@ import (
 )
 
 var goldenNames = []string{
+	"platform.read_only",
+	"platform.notice",
 	"auth.verification_code_ttl_minutes",
 	"image.upload_enabled",
 	"artifact.upload_enabled",
@@ -26,6 +29,30 @@ var goldenNames = []string{
 	"ai.negative_sample_rate",
 	"ai.force_escalate",
 	"store.link_quota_per_client",
+	"jobs.image_gc.enabled",
+	"jobs.image_gc.schedule",
+	"jobs.galgame_image_refping.enabled",
+	"jobs.galgame_image_refping.schedule",
+	"jobs.catalog_image_refping.enabled",
+	"jobs.catalog_image_refping.schedule",
+	"jobs.news_image_refping.enabled",
+	"jobs.news_image_refping.schedule",
+	"jobs.user_avatar_refping.enabled",
+	"jobs.user_avatar_refping.schedule",
+	"jobs.image_ref_audit.enabled",
+	"jobs.image_ref_audit.schedule",
+	"jobs.artifact_gc.enabled",
+	"jobs.artifact_gc.schedule",
+	"jobs.prune_developer_usage.enabled",
+	"jobs.prune_developer_usage.schedule",
+	"jobs.ymgal_news_poll.enabled",
+	"jobs.ymgal_news_poll.schedule",
+	"jobs.ymgal_news_sweep.enabled",
+	"jobs.ymgal_news_sweep.schedule",
+	"jobs.store_stats_sync.enabled",
+	"jobs.store_stats_sync.schedule",
+	"jobs.news_moderate.enabled",
+	"jobs.news_moderate.schedule",
 }
 
 func TestLiveRegistryIsWellFormed(t *testing.T) {
@@ -42,7 +69,10 @@ func TestLiveRegistryIsWellFormed(t *testing.T) {
 		if m.DescEN == "" || m.DescZH == "" {
 			t.Errorf("%s: missing description", m.Name)
 		}
-		if m.EnvVar == "" || !strings.HasPrefix(m.EnvVar, "KUN_") {
+		if m.Public && (m.DescEN == "" || m.DescZH == "") {
+			t.Errorf("%s: Public key is missing a description", m.Name)
+		}
+		if m.EnvVar != "" && !strings.HasPrefix(m.EnvVar, "KUN_") {
 			t.Errorf("%s: EnvVar %q must start with KUN_", m.Name, m.EnvVar)
 		}
 		if err := e.Validate(e.Default()); err != nil {
@@ -79,6 +109,9 @@ func TestLiveRegistryIsWellFormed(t *testing.T) {
 	envVars := make(map[string]string)
 	for _, e := range entries {
 		m := e.Meta()
+		if m.EnvVar == "" {
+			continue
+		}
 		if other, ok := envVars[m.EnvVar]; ok {
 			t.Errorf("EnvVar %q is used by both %q and %q", m.EnvVar, other, m.Name)
 		}
@@ -91,6 +124,50 @@ func TestLiveRegistryIsWellFormed(t *testing.T) {
 			if !strings.HasPrefix(e.Meta().Name, prefix) {
 				t.Errorf("%s: name %q does not start with %q", d.Name, e.Meta().Name, prefix)
 			}
+		}
+	}
+}
+
+func TestJobKeysLookup(t *testing.T) {
+	jk, ok := keys.Job("image-gc")
+	if !ok {
+		t.Fatal(`Job("image-gc") missing`)
+	}
+	if got := jk.Enabled.Name(); got != "jobs.image_gc.enabled" {
+		t.Errorf("enabled name %q, want jobs.image_gc.enabled", got)
+	}
+	if got := jk.Schedule.Name(); got != "jobs.image_gc.schedule" {
+		t.Errorf("schedule name %q, want jobs.image_gc.schedule", got)
+	}
+	if jk.Enabled.Default() != true {
+		t.Errorf("enabled default %v, want true", jk.Enabled.Default())
+	}
+	if jk.Schedule.Default() != "daily@03:30" {
+		t.Errorf("schedule default %v, want daily@03:30", jk.Schedule.Default())
+	}
+	if _, ok := keys.Job("nope"); ok {
+		t.Error(`Job("nope") should be missing`)
+	}
+
+	names := keys.JobNames()
+	if len(names) != 12 {
+		t.Fatalf("JobNames() = %d, want 12", len(names))
+	}
+	seen := make(map[string]bool, len(names))
+	re := regexp.MustCompile(keys.JobSchedulePattern)
+	for _, name := range names {
+		if seen[name] {
+			t.Errorf("duplicate JobNames entry %q", name)
+		}
+		seen[name] = true
+		jk, ok := keys.Job(name)
+		if !ok {
+			t.Errorf("Job(%q) missing", name)
+			continue
+		}
+		def, _ := jk.Schedule.Default().(string)
+		if !re.MatchString(def) {
+			t.Errorf("%s default %q does not match JobSchedulePattern", name, def)
 		}
 	}
 }
