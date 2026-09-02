@@ -29,19 +29,21 @@ var AuthVerificationCodeTTLMinutes = settings.Int(settings.Meta{
 }, 15)
 
 var ImageUploadEnabled = settings.Bool(settings.Meta{
-	Name:   "image.upload_enabled",
-	EnvVar: "KUN_IMAGE_UPLOAD_ENABLED",
-	DescEN: "Master switch for accepting new image uploads; off rejects every upload.",
-	DescZH: "图床上传总开关,关闭后拒绝所有新上传。",
-	Public: true,
+	Name:       "image.upload_enabled",
+	EnvVar:     "KUN_IMAGE_UPLOAD_ENABLED",
+	DescEN:     "Master switch for accepting new image uploads; off rejects every upload.",
+	DescZH:     "图床上传总开关,关闭后拒绝所有新上传。",
+	SiteScoped: true,
+	Public:     true,
 }, false)
 
 var ArtifactUploadEnabled = settings.Bool(settings.Meta{
-	Name:   "artifact.upload_enabled",
-	EnvVar: "KUN_ARTIFACT_UPLOAD_ENABLED",
-	DescEN: "Master switch for accepting new artifact uploads; off rejects every upload.",
-	DescZH: "文件存储上传总开关,关闭后拒绝所有新上传。",
-	Public: true,
+	Name:       "artifact.upload_enabled",
+	EnvVar:     "KUN_ARTIFACT_UPLOAD_ENABLED",
+	DescEN:     "Master switch for accepting new artifact uploads; off rejects every upload.",
+	DescZH:     "文件存储上传总开关,关闭后拒绝所有新上传。",
+	SiteScoped: true,
+	Public:     true,
 }, false)
 
 var ArtifactMultipartThresholdBytes = settings.Int(settings.Meta{

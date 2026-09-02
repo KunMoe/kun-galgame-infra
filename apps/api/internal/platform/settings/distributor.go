@@ -39,8 +39,19 @@ func (d *Distributor) Refresh(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	siteRows, err := d.store.SiteValues(ctx)
+	if err != nil {
+		return err
+	}
 	for _, c := range Resolve(d.reg, rows, d.env) {
 		slog.Info("settings: applied", "key", c.Key, "value", c.New, "source", c.NewSource)
+	}
+	for _, c := range ResolveSites(d.reg, siteRows) {
+		if c.New == nil {
+			slog.Info("settings: site override removed", "key", c.Key, "site", c.SiteID)
+		} else {
+			slog.Info("settings: site override applied", "key", c.Key, "site", c.SiteID, "value", c.New)
+		}
 	}
 	return nil
 }
@@ -118,10 +129,11 @@ func (d *Distributor) initialLoad(ctx context.Context) {
 		"THIS PROCESS IS RUNNING ON THE CODE/ENV FLOOR ONLY — no database override is in force until a later poll succeeds",
 		"attempts", len(startupBackoff), "poll_interval", PollInterval, "err", lastErr)
 	Resolve(d.reg, nil, d.env)
+	ResolveSites(d.reg, nil)
 }
 
 func (d *Distributor) logLoaded() {
-	n, nDB, nEnv := 0, 0, 0
+	n, nDB, nEnv, nSite := 0, 0, 0, 0
 	for _, e := range d.reg.Entries() {
 		n++
 		switch e.Source() {
@@ -130,6 +142,7 @@ func (d *Distributor) logLoaded() {
 		case SourceEnv:
 			nEnv++
 		}
+		nSite += len(e.siteValues())
 	}
-	slog.Info("settings: loaded", "keys", n, "overrides", nDB, "env_floor", nEnv)
+	slog.Info("settings: loaded", "keys", n, "overrides", nDB, "env_floor", nEnv, "site_overrides", nSite)
 }

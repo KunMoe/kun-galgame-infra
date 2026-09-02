@@ -247,6 +247,43 @@ func TestServiceSiteScope(t *testing.T) {
 	}
 }
 
+func TestServiceSiteWriteRefreshesForSite(t *testing.T) {
+	reset(t)
+	seedActor(t)
+	ctx := context.Background()
+
+	scoped := settings.Bool(settings.Meta{
+		Name: "sc.flag", DescEN: "e", DescZH: "z",
+		SiteScoped: true,
+	}, false)
+	reg := settings.NewRegistry(
+		settings.Domain{Name: "sc", TitleZH: "sc", Keys: []settings.Entry{scoped}},
+	)
+	dist := settings.NewDistributor(testDB, reg, nil)
+	svc := settings.NewService(reg, settings.NewStore(testDB), dist)
+	site := settings.SiteScope(3)
+
+	if _, err := svc.Set(ctx, 7, site, scoped.Name(), json.RawMessage(`true`), "site", nil); err != nil {
+		t.Fatalf("set site scoped: %v", err)
+	}
+	if scoped.ForSite(3) != true {
+		t.Errorf("ForSite(3) after Set = %v, want true without a manual Refresh", scoped.ForSite(3))
+	}
+	if scoped.Get() != false {
+		t.Errorf("Get() after site Set = %v, want platform false", scoped.Get())
+	}
+	if scoped.ForSite(4) != false {
+		t.Errorf("ForSite(4) after site 3 Set = %v, want platform false", scoped.ForSite(4))
+	}
+
+	if _, err := svc.Reset(ctx, 7, site, scoped.Name(), "undo"); err != nil {
+		t.Fatalf("reset site: %v", err)
+	}
+	if scoped.ForSite(3) != false {
+		t.Errorf("ForSite(3) after Reset = %v, want platform fallback false", scoped.ForSite(3))
+	}
+}
+
 func TestServiceEffective(t *testing.T) {
 	reset(t)
 	seedActor(t)

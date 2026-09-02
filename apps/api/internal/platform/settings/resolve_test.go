@@ -162,3 +162,89 @@ func TestResolveUnknownRowIgnored(t *testing.T) {
 		}
 	}
 }
+
+func TestResolveSites(t *testing.T) {
+	scoped := settings.Int(settings.Meta{
+		Name: "t.scoped", DescEN: "e", DescZH: "z",
+		Min: settings.F(0), Max: settings.F(10),
+		SiteScoped: true,
+	}, 1)
+	plain := settings.Int(settings.Meta{
+		Name: "t.plain", DescEN: "e", DescZH: "z",
+		Min: settings.F(0), Max: settings.F(10),
+	}, 1)
+	reg := settings.NewRegistry(settings.Domain{
+		Name: "t", TitleZH: "t",
+		Keys: []settings.Entry{scoped, plain},
+	})
+
+	rows := map[string]map[uint]json.RawMessage{
+		"t.scoped": {
+			7: json.RawMessage(`5`),
+			8: json.RawMessage(`99`),
+		},
+		"t.plain": {
+			7: json.RawMessage(`5`),
+		},
+	}
+	changes := settings.ResolveSites(reg, rows)
+
+	if scoped.ForSite(7) != 5 {
+		t.Errorf("ForSite(7) after valid row = %d, want 5", scoped.ForSite(7))
+	}
+	if scoped.Get() != 1 {
+		t.Errorf("Get() after site resolve = %d, want 1", scoped.Get())
+	}
+	found := false
+	for _, c := range changes {
+		if c.Key == scoped.Name() && c.SiteID == 7 {
+			found = true
+			if c.Old != nil {
+				t.Errorf("first apply Old = %#v, want nil", c.Old)
+			}
+			if c.New != int64(5) {
+				t.Errorf("first apply New = %#v, want int64(5)", c.New)
+			}
+		}
+		if c.Key == scoped.Name() && c.SiteID == 8 {
+			t.Errorf("out-of-bounds site 8 must not emit a change: %+v", c)
+		}
+		if c.Key == plain.Name() {
+			t.Errorf("non-scoped key must not emit a change: %+v", c)
+		}
+	}
+	if !found {
+		t.Errorf("valid site 7 row must emit a change, got %+v", changes)
+	}
+	if scoped.ForSite(8) != scoped.Get() {
+		t.Errorf("ForSite(8) after out-of-bounds row = %d, want Get() %d", scoped.ForSite(8), scoped.Get())
+	}
+	if plain.ForSite(7) != plain.Get() {
+		t.Errorf("non-scoped ForSite(7) = %d, want Get() %d", plain.ForSite(7), plain.Get())
+	}
+
+	again := settings.ResolveSites(reg, rows)
+	if len(again) != 0 {
+		t.Errorf("identical ResolveSites changes = %+v, want none", again)
+	}
+
+	removed := settings.ResolveSites(reg, map[string]map[uint]json.RawMessage{})
+	found = false
+	for _, c := range removed {
+		if c.Key == scoped.Name() && c.SiteID == 7 {
+			found = true
+			if c.Old != int64(5) {
+				t.Errorf("removal Old = %#v, want int64(5)", c.Old)
+			}
+			if c.New != nil {
+				t.Errorf("removal New = %#v, want nil", c.New)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("removing site 7 must emit a change, got %+v", removed)
+	}
+	if scoped.ForSite(7) != scoped.Get() {
+		t.Errorf("ForSite(7) after removal = %d, want Get() %d", scoped.ForSite(7), scoped.Get())
+	}
+}
