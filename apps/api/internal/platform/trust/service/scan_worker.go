@@ -88,10 +88,15 @@ func (w *ScanWorker) policyFor(site string) ResolvedPolicy {
 }
 
 func (w *ScanWorker) Run(ctx context.Context) {
+	mode, rate := w.mode, w.sampleRate
+	if w.policy != nil {
+		d := w.policy.Defaults()
+		mode, rate = d.ScanMode, d.SampleRate
+	}
 	slog.Info("trust scan worker starting",
 		"interval", w.interval.String(), "batch", w.batchSize,
 		"gateway_configured", w.gateway.Configured(),
-		"default_mode", scanModeName(w.mode), "default_sample_rate", w.sampleRate,
+		"default_mode", scanModeName(mode), "default_sample_rate", rate,
 		"per_site_policy", w.policy != nil)
 	t := time.NewTicker(w.interval)
 	defer t.Stop()

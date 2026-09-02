@@ -15,6 +15,7 @@ import (
 	"api/internal/platform/artifact/quota"
 	"api/internal/platform/artifact/repository"
 	"api/internal/platform/artifact/storage"
+	"api/internal/platform/settings/keys"
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
@@ -34,34 +35,14 @@ var (
 
 const maxS3Parts = 10000
 
-type Options struct {
-	MultipartThreshold int64
-	PartSize           int64
-	PresignUploadTTL   time.Duration
-	PresignDownloadTTL time.Duration
-}
-
 type Service struct {
 	repo  *repository.ArtifactRepository
 	store *storage.Client
 	quota *quota.Checker
-	opts  Options
 }
 
-func New(repo *repository.ArtifactRepository, store *storage.Client, q *quota.Checker, opts Options) *Service {
-	if opts.MultipartThreshold <= 0 {
-		opts.MultipartThreshold = 50 * 1024 * 1024
-	}
-	if opts.PartSize <= 0 {
-		opts.PartSize = 16 * 1024 * 1024
-	}
-	if opts.PresignUploadTTL <= 0 {
-		opts.PresignUploadTTL = time.Hour
-	}
-	if opts.PresignDownloadTTL <= 0 {
-		opts.PresignDownloadTTL = 24 * time.Hour
-	}
-	return &Service{repo: repo, store: store, quota: q, opts: opts}
+func New(repo *repository.ArtifactRepository, store *storage.Client, q *quota.Checker) *Service {
+	return &Service{repo: repo, store: store, quota: q}
 }
 
 type InitParams struct {
@@ -117,11 +98,15 @@ func (s *Service) InitUpload(ctx context.Context, req dto.InitUploadRequest, p I
 		return nil, err
 	}
 
-	expiresAt := time.Now().Add(s.opts.PresignUploadTTL).UTC().Format(time.RFC3339)
+	uploadTTL := time.Duration(keys.ArtifactPresignUploadTTLSeconds.Get()) * time.Second
+	partSize := keys.ArtifactPartSizeBytes.Get()
+	threshold := keys.ArtifactMultipartThresholdBytes.Get()
+
+	expiresAt := time.Now().Add(uploadTTL).UTC().Format(time.RFC3339)
 	resp := &dto.InitUploadResponse{UUID: id, ExpiresAt: expiresAt}
 
-	if req.FileSize >= s.opts.MultipartThreshold {
-		numParts := (req.FileSize + s.opts.PartSize - 1) / s.opts.PartSize
+	if req.FileSize >= threshold {
+		numParts := (req.FileSize + partSize - 1) / partSize
 		if numParts > maxS3Parts {
 			return nil, ErrTooBig
 		}
@@ -130,13 +115,13 @@ func (s *Service) InitUpload(ctx context.Context, req dto.InitUploadRequest, p I
 			return nil, err
 		}
 		a.UploadID = uploadID
-		a.PartSize = s.opts.PartSize
+		a.PartSize = partSize
 		if err := s.repo.Update(ctx, a); err != nil {
 			return nil, err
 		}
 		parts := make([]dto.PartURL, 0, numParts)
 		for n := int32(1); int64(n) <= numParts; n++ {
-			url, err := s.store.PresignUploadPart(ctx, fileKey, uploadID, n, s.opts.PresignUploadTTL)
+			url, err := s.store.PresignUploadPart(ctx, fileKey, uploadID, n, uploadTTL)
 			if err != nil {
 				return nil, err
 			}
@@ -144,12 +129,12 @@ func (s *Service) InitUpload(ctx context.Context, req dto.InitUploadRequest, p I
 		}
 		resp.Multipart = true
 		resp.UploadID = uploadID
-		resp.PartSize = s.opts.PartSize
+		resp.PartSize = partSize
 		resp.PartURLs = parts
 		return resp, nil
 	}
 
-	url, err := s.store.PresignPut(ctx, fileKey, s.opts.PresignUploadTTL)
+	url, err := s.store.PresignPut(ctx, fileKey, uploadTTL)
 	if err != nil {
 		return nil, err
 	}
@@ -176,11 +161,12 @@ func (s *Service) ResumeUpload(ctx context.Context, uuidStr, site string) (*dto.
 		slog.Warn("artifact: touch on resume", "uuid", a.UUID, "err", err)
 	}
 
-	expiresAt := time.Now().Add(s.opts.PresignUploadTTL).UTC().Format(time.RFC3339)
+	uploadTTL := time.Duration(keys.ArtifactPresignUploadTTLSeconds.Get()) * time.Second
+	expiresAt := time.Now().Add(uploadTTL).UTC().Format(time.RFC3339)
 	resp := &dto.ResumeUploadResponse{UUID: a.UUID, ExpiresAt: expiresAt}
 
 	if !a.IsMultipart() {
-		url, err := s.store.PresignPut(ctx, a.FileKey, s.opts.PresignUploadTTL)
+		url, err := s.store.PresignPut(ctx, a.FileKey, uploadTTL)
 		if err != nil {
 			return nil, err
 		}
@@ -211,7 +197,7 @@ func (s *Service) ResumeUpload(ctx context.Context, uuidStr, site string) (*dto.
 		if _, ok := have[n]; ok {
 			continue
 		}
-		url, err := s.store.PresignUploadPart(ctx, a.FileKey, a.UploadID, n, s.opts.PresignUploadTTL)
+		url, err := s.store.PresignUploadPart(ctx, a.FileKey, a.UploadID, n, uploadTTL)
 		if err != nil {
 			return nil, err
 		}
@@ -296,13 +282,14 @@ func (s *Service) Download(ctx context.Context, uuidStr, site, cdnBase string) (
 		return &dto.DownloadResponse{URL: strings.TrimRight(cdnBase, "/") + "/" + a.FileKey}, nil
 	}
 
-	url, err := s.store.PresignGet(ctx, a.FileKey, a.Name, s.opts.PresignDownloadTTL)
+	downloadTTL := time.Duration(keys.ArtifactPresignDownloadTTLSeconds.Get()) * time.Second
+	url, err := s.store.PresignGet(ctx, a.FileKey, a.Name, downloadTTL)
 	if err != nil {
 		return nil, err
 	}
 	return &dto.DownloadResponse{
 		URL:       url,
-		ExpiresAt: time.Now().Add(s.opts.PresignDownloadTTL).UTC().Format(time.RFC3339),
+		ExpiresAt: time.Now().Add(downloadTTL).UTC().Format(time.RFC3339),
 	}, nil
 }
 

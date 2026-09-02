@@ -10,6 +10,7 @@ import (
 	"api/internal/platform/artifact/model"
 	"api/internal/platform/artifact/repository"
 	"api/internal/platform/artifact/storage"
+	"api/internal/platform/settings/keys"
 	"api/pkg/config"
 )
 
@@ -20,19 +21,12 @@ type ArtifactGCOpts struct {
 	DryRun        bool
 }
 
-func DefaultArtifactGCOpts(cfg *config.Config) ArtifactGCOpts {
-	o := ArtifactGCOpts{
-		OrphanTTL:     cfg.ArtifactService.OrphanTTL,
-		SoftDeleteTTL: cfg.ArtifactService.SoftDeleteTTL,
+func DefaultArtifactGCOpts() ArtifactGCOpts {
+	return ArtifactGCOpts{
+		OrphanTTL:     time.Duration(keys.ArtifactOrphanTTLHours.Get()) * time.Hour,
+		SoftDeleteTTL: time.Duration(keys.ArtifactSoftDeleteTTLHours.Get()) * time.Hour,
 		MaxPerRun:     10000,
 	}
-	if o.OrphanTTL <= 0 {
-		o.OrphanTTL = 24 * time.Hour
-	}
-	if o.SoftDeleteTTL <= 0 {
-		o.SoftDeleteTTL = 7 * 24 * time.Hour
-	}
-	return o
 }
 
 func RunArtifactGC(ctx context.Context, cfg *config.Config, opts ArtifactGCOpts) (Summary, error) {
@@ -42,12 +36,6 @@ func RunArtifactGC(ctx context.Context, cfg *config.Config, opts ArtifactGCOpts)
 
 	if opts.MaxPerRun <= 0 {
 		opts.MaxPerRun = 10000
-	}
-	if opts.OrphanTTL <= 0 {
-		opts.OrphanTTL = 24 * time.Hour
-	}
-	if opts.SoftDeleteTTL <= 0 {
-		opts.SoftDeleteTTL = 7 * 24 * time.Hour
 	}
 
 	db, err := database.NewPostgresDB(cfg.ArtifactsDatabase)

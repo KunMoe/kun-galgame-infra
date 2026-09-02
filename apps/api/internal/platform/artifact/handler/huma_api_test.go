@@ -12,8 +12,8 @@ import (
 
 func TestOpenAPIGeneration(t *testing.T) {
 	app := fiber.New()
-	svc := service.New(nil, nil, nil, service.Options{})
-	api := Setup(app, svc, true)
+	svc := service.New(nil, nil, nil)
+	api := Setup(app, svc)
 
 	spec, err := json.Marshal(api.OpenAPI())
 	if err != nil {

@@ -449,7 +449,7 @@ func registerArtifactAdmin(a *app.App, cfg *config.Config, authSvc *authService.
 			store = c
 		}
 	}
-	adminH := artifactHandler.NewAdmin(artifactsDB.DB(), statsRepo, store, cfg.ArtifactService.ReclaimMinIdle)
+	adminH := artifactHandler.NewAdmin(artifactsDB.DB(), statsRepo, store)
 
 	a.Fiber.Use("/api/v1/admin/artifact", middleware.Auth(authSvc), middleware.RequirePermission(sitePerm.Resolver, sitePerm.AdminAccess))
 	artifactHandler.SetupAdmin(a.Fiber, adminH)

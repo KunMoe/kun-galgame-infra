@@ -18,6 +18,7 @@ import (
 	"api/internal/platform/auth/dto"
 	"api/internal/platform/auth/model"
 	"api/internal/platform/auth/repository"
+	"api/internal/platform/settings/keys"
 	"api/pkg/config"
 	"api/pkg/errors"
 	"api/pkg/oidctoken"
@@ -30,6 +31,10 @@ type emailChangeData struct {
 }
 
 const registerGiftPoints = 7
+
+func verificationCodeTTL() time.Duration {
+	return time.Duration(keys.AuthVerificationCodeTTLMinutes.Get()) * time.Minute
+}
 
 type AuthService struct {
 	userRepo          *repository.UserRepository
@@ -125,7 +130,8 @@ func (s *AuthService) SendRegisterCode(ctx context.Context, name, email string) 
 		return err
 	}
 
-	if err := s.cache.Set(redisKey, []byte(code), s.cfg.Auth.VerificationCodeTTL); err != nil {
+	ttl := verificationCodeTTL()
+	if err := s.cache.Set(redisKey, []byte(code), ttl); err != nil {
 		return err
 	}
 	if err := s.cache.Set(cooldownKey, []byte("1"), resendCodeCooldown); err != nil {
@@ -133,7 +139,7 @@ func (s *AuthService) SendRegisterCode(ctx context.Context, name, email string) 
 	}
 
 	if s.mailer != nil {
-		ttlMinutes := int(s.cfg.Auth.VerificationCodeTTL.Minutes())
+		ttlMinutes := int(ttl.Minutes())
 		if err := s.mailer.SendRegisterCodeEmail(email, name, code, ttlMinutes); err != nil {
 			return fmt.Errorf("failed to send email: %w", err)
 		}
@@ -707,9 +713,10 @@ func (s *AuthService) SendEmailChangeCode(ctx context.Context, userUUID, newEmai
 		return err
 	}
 
+	ttl := verificationCodeTTL()
 	if s.cache != nil {
 		data, _ := json.Marshal(emailChangeData{Code: code, NewEmail: newEmail})
-		if err := s.cache.Set(redisKey, data, s.cfg.Auth.VerificationCodeTTL); err != nil {
+		if err := s.cache.Set(redisKey, data, ttl); err != nil {
 			return err
 		}
 		if err := s.cache.Set(cooldownKey, []byte("1"), resendCodeCooldown); err != nil {
@@ -718,7 +725,7 @@ func (s *AuthService) SendEmailChangeCode(ctx context.Context, userUUID, newEmai
 	}
 
 	if s.mailer != nil {
-		ttlMinutes := int(s.cfg.Auth.VerificationCodeTTL.Minutes())
+		ttlMinutes := int(ttl.Minutes())
 		if err := s.mailer.SendEmailChangeCodeEmail(user.Email, user.Name, code, ttlMinutes); err != nil {
 			return fmt.Errorf("failed to send email: %w", err)
 		}

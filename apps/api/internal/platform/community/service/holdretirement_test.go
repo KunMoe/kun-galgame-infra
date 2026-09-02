@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"api/internal/platform/community/model"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 )
 
 func TestNewcomerPostsStraightThrough(t *testing.T) {
@@ -33,6 +35,7 @@ func TestNewcomerPostsStraightThrough(t *testing.T) {
 }
 
 func TestTier0HoldStillEnqueues(t *testing.T) {
+	settings.Override(t, keys.TrustCheckEnabled, true)
 	cleanTables(t)
 	ts := NewThreadService(testDB, NoopSink{})
 	ps := NewPostService(testDB, NoopSink{}, WithPostChecker(NewCheckService(&fakeChecker{decision: checkHold})))

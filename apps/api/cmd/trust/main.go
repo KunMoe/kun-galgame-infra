@@ -11,6 +11,8 @@ import (
 	"api/internal/infrastructure/database"
 	"api/internal/middleware"
 	"api/internal/platform/permissions"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 	siteRepo "api/internal/platform/site/repository"
 	trustHandler "api/internal/platform/trust/handler"
 	trustPerm "api/internal/platform/trust/perm"
@@ -46,13 +48,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	settings.NewDistributor(application.DB.DB(), keys.Live(), nil).Start(ctx)
+
 	weigher := service.NewDBWeigher(application.DB.DB())
 
-	policySvc := service.NewPolicyService(trustDB.DB(), service.PlatformDefaults{
-		ScanMode:           service.ScanModeFromName(cfg.TrustScanMode),
-		SampleRate:         cfg.TrustScanSampleRate,
-		AggregateThreshold: service.DefaultAggregateThreshold(),
-		AutoHideEnabled:    true,
+	policySvc := service.NewPolicyServiceFrom(trustDB.DB(), func() service.PlatformDefaults {
+		return service.PlatformDefaults{
+			ScanMode:           service.ScanModeFromName(keys.TrustScanMode.Get()),
+			SampleRate:         keys.TrustScanSampleRate.Get(),
+			AggregateThreshold: service.DefaultAggregateThreshold(),
+			AutoHideEnabled:    true,
+		}
 	})
 
 	reportSvc := service.NewReportService(trustDB.DB(), weigher, service.WithReportPolicy(policySvc))
@@ -73,10 +81,8 @@ func main() {
 
 	aiGateway := service.NewAIGatewayClient(cfg.AIClient.BaseURL, cfg.AIClient.ClientID, cfg.AIClient.ClientSecret)
 	scanWorker := service.NewScanWorker(trustDB.DB(), aiGateway, termSvc,
-		service.WithScanMode(cfg.TrustScanMode),
-		service.WithSampleRate(cfg.TrustScanSampleRate),
 		service.WithPolicy(policySvc))
-	slog.Info("trust scan worker", "gateway_configured", aiGateway.Configured(), "default_mode", cfg.TrustScanMode)
+	slog.Info("trust scan worker", "gateway_configured", aiGateway.Configured(), "default_mode", keys.TrustScanMode.Get())
 
 	application.Fiber.Use(middleware.RequestID())
 	application.Fiber.Use(middleware.Logger())
@@ -104,8 +110,6 @@ func main() {
 		return c.Send(b)
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	permissions.NewDistributor(application.DB.DB(), permissions.Live(), nil).Start(ctx)
 
 	go worker.Run(ctx)

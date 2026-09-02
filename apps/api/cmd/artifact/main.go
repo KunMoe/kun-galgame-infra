@@ -17,6 +17,8 @@ import (
 	"api/internal/platform/artifact/repository"
 	"api/internal/platform/artifact/service"
 	"api/internal/platform/artifact/storage"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 	siteRepo "api/internal/platform/site/repository"
 	"api/pkg/config"
 	"api/pkg/health"
@@ -45,6 +47,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	settings.NewDistributor(application.DB.DB(), keys.Live(), application.Cache).Start(ctx)
+
 	artifactsDB, err := database.NewPostgresDB(cfg.ArtifactsDatabase)
 	if err != nil {
 		slog.Error("artifacts db connect", "error", err)
@@ -67,12 +73,7 @@ func main() {
 	repo := repository.NewArtifactRepository(artifactsDB.DB())
 	clientRepo := siteRepo.NewOAuthClientRepository(application.DB.DB())
 	q := quota.New(application.Cache)
-	svc := service.New(repo, s3Client, q, service.Options{
-		MultipartThreshold: cfg.ArtifactService.MultipartThreshold,
-		PartSize:           cfg.ArtifactService.PartSize,
-		PresignUploadTTL:   cfg.ArtifactService.PresignUploadTTL,
-		PresignDownloadTTL: cfg.ArtifactService.PresignDownloadTTL,
-	})
+	svc := service.New(repo, s3Client, q)
 
 	application.Fiber.Use(middleware.RequestID())
 	application.Fiber.Use(middleware.Logger())
@@ -83,7 +84,7 @@ func main() {
 
 	application.Fiber.Use("/api/v1/artifacts", artMW.ClientAuth(clientRepo, cfg))
 
-	humaAPI := artHandler.Setup(application.Fiber, svc, cfg.ArtifactService.UploadEnabled)
+	humaAPI := artHandler.Setup(application.Fiber, svc)
 
 	application.Fiber.Get("/openapi.json", func(c fiber.Ctx) error {
 		b, err := json.Marshal(humaAPI.OpenAPI())
@@ -97,7 +98,7 @@ func main() {
 	slog.Info("artifact service starting",
 		"addr", fmt.Sprintf("%s:%d", cfg.ArtifactService.Host, cfg.ArtifactService.Port),
 		"bucket", s3Client.Bucket(),
-		"upload_enabled", cfg.ArtifactService.UploadEnabled,
+		"upload_enabled", keys.ArtifactUploadEnabled.Get(),
 	)
 
 	defer func() {

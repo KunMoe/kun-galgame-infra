@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"api/internal/platform/settings/keys"
 	"api/pkg/trustclient"
 )
 
@@ -28,7 +29,7 @@ func NewCheckService(ck Checker) *CheckService {
 	return &CheckService{ck: ck}
 }
 
-func (s *CheckService) Enabled() bool { return s != nil && s.ck != nil }
+func (s *CheckService) Enabled() bool { return s != nil && s.ck != nil && keys.TrustCheckEnabled.Get() }
 
 func (s *CheckService) Decision(ctx context.Context, site, text string, authorID *int64) string {
 	if !s.Enabled() {

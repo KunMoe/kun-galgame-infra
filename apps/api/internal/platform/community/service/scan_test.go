@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"api/internal/platform/community/model"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 	"api/pkg/trustclient"
 )
 
@@ -89,6 +91,7 @@ func TestScanDisabledZeroDial(t *testing.T) {
 }
 
 func TestScanReplyPayload(t *testing.T) {
+	settings.Override(t, keys.TrustScanEnabled, true)
 	cleanTables(t)
 	ctx := context.Background()
 	fake := newFakeScanner()
@@ -126,6 +129,7 @@ func TestScanReplyPayload(t *testing.T) {
 }
 
 func TestScanFirstPostTitlePrefix(t *testing.T) {
+	settings.Override(t, keys.TrustScanEnabled, true)
 	cleanTables(t)
 	ctx := context.Background()
 	fake := newFakeScanner()
@@ -152,6 +156,7 @@ func TestScanFirstPostTitlePrefix(t *testing.T) {
 }
 
 func TestScanOnEdit(t *testing.T) {
+	settings.Override(t, keys.TrustScanEnabled, true)
 	cleanTables(t)
 	ctx := context.Background()
 	fake := newFakeScanner()
@@ -185,6 +190,7 @@ func TestScanOnEdit(t *testing.T) {
 }
 
 func TestScanErrorNeverBreaksWrite(t *testing.T) {
+	settings.Override(t, keys.TrustScanEnabled, true)
 	cleanTables(t)
 	ctx := context.Background()
 	fake := newFakeScanner()
@@ -217,6 +223,7 @@ func TestScanErrorNeverBreaksWrite(t *testing.T) {
 }
 
 func TestScanForwardSinkDisjoint(t *testing.T) {
+	settings.Override(t, keys.TrustScanEnabled, true)
 	cleanTables(t)
 	fakeScan := newFakeScanner()
 	fakeFwd := newFakeForwarder()

@@ -25,6 +25,8 @@ import (
 	newsHandler "api/internal/platform/news/handler"
 	newsService "api/internal/platform/news/service"
 	"api/internal/platform/permissions"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 	siteRepo "api/internal/platform/site/repository"
 	storeService "api/internal/platform/store/service"
 	"api/internal/platform/store/shortener"
@@ -53,6 +55,10 @@ func main() {
 		slog.Error("app init", "error", err)
 		os.Exit(1)
 	}
+
+	permCtx, cancelPerm := context.WithCancel(context.Background())
+	defer cancelPerm()
+	settings.NewDistributor(application.DB.DB(), keys.Live(), nil).Start(permCtx)
 
 	catalogDB, err := database.NewPostgresDB(cfg.CatalogDatabase)
 	if err != nil {
@@ -167,8 +173,6 @@ func main() {
 	// and an earlier mount would put the tombstone in front of a live route.
 	catHandler.MountRetiredV1(application.Fiber)
 
-	permCtx, cancelPerm := context.WithCancel(context.Background())
-	defer cancelPerm()
 	permissions.NewDistributor(application.DB.DB(), permissions.Live(), nil).Start(permCtx)
 
 	slog.Info("catalog service starting",
@@ -272,9 +276,8 @@ func setupPublicCatalog(
 			"pro_ready", storeService.ValidAffTemplate(cfg.Store.AffTemplatePro))
 	}
 	storeSvc := storeService.New(oauthDB, storeMinter, storeService.Options{
-		AffTemplateManiax:  cfg.Store.AffTemplateManiax,
-		AffTemplatePro:     cfg.Store.AffTemplatePro,
-		LinkQuotaPerClient: cfg.Store.LinkQuotaPerClient,
+		AffTemplateManiax: cfg.Store.AffTemplateManiax,
+		AffTemplatePro:    cfg.Store.AffTemplatePro,
 	})
 
 	// Wave R3 moved the metering here from the v1 groups. Deleting the v1 faces
