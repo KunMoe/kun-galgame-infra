@@ -50,6 +50,13 @@ func userSubFromCtx(ctx context.Context) string {
 	return s
 }
 
+func uploadEnabled(ctx context.Context) bool {
+	if client := clientFromCtx(ctx); client != nil && client.SiteID != nil {
+		return keys.ArtifactUploadEnabled.ForSite(*client.SiteID)
+	}
+	return keys.ArtifactUploadEnabled.Get()
+}
+
 type uuidInput struct {
 	UUID string `path:"uuid" doc:"Artifact UUID"`
 }
@@ -203,7 +210,7 @@ func (s *HumaServer) download(ctx context.Context, in *uuidInput) (*downloadOutp
 }
 
 func (s *HumaServer) resumeUpload(ctx context.Context, in *uuidInput) (*resumeOutput, error) {
-	if !keys.ArtifactUploadEnabled.Get() {
+	if !uploadEnabled(ctx) {
 		return nil, apiErr(http.StatusServiceUnavailable, errors.ErrArtifactUploadDisabled)
 	}
 	site := siteFromCtx(ctx)
@@ -244,7 +251,7 @@ func (s *HumaServer) delete(ctx context.Context, in *uuidInput) (*deleteOutput, 
 }
 
 func (s *HumaServer) initUpload(ctx context.Context, in *initInput) (*initOutput, error) {
-	if !keys.ArtifactUploadEnabled.Get() {
+	if !uploadEnabled(ctx) {
 		return nil, apiErr(http.StatusServiceUnavailable, errors.ErrArtifactUploadDisabled)
 	}
 	site := siteFromCtx(ctx)
@@ -287,7 +294,7 @@ func (s *HumaServer) initUpload(ctx context.Context, in *initInput) (*initOutput
 }
 
 func (s *HumaServer) completeUpload(ctx context.Context, in *completeInput) (*artifactOutput, error) {
-	if !keys.ArtifactUploadEnabled.Get() {
+	if !uploadEnabled(ctx) {
 		return nil, apiErr(http.StatusServiceUnavailable, errors.ErrArtifactUploadDisabled)
 	}
 	site := siteFromCtx(ctx)

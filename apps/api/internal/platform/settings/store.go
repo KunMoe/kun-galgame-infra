@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
+	"strconv"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -50,6 +52,29 @@ func (s *Store) Values(ctx context.Context, scope Scope) (map[string]json.RawMes
 	out := make(map[string]json.RawMessage, len(rows))
 	for _, r := range rows {
 		out[r.Key] = json.RawMessage(r.Value)
+	}
+	return out, nil
+}
+
+func (s *Store) SiteValues(ctx context.Context) (map[string]map[uint]json.RawMessage, error) {
+	var rows []SettingOverride
+	err := s.db.WithContext(ctx).
+		Where("scope_kind = ?", ScopeSite).
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]map[uint]json.RawMessage)
+	for _, r := range rows {
+		id, err := strconv.ParseUint(r.ScopeID, 10, 64)
+		if err != nil {
+			slog.Warn("settings: site override row has a non-numeric scope_id; ignored", "scope_id", r.ScopeID, "key", r.Key)
+			continue
+		}
+		if out[r.Key] == nil {
+			out[r.Key] = make(map[uint]json.RawMessage)
+		}
+		out[r.Key][uint(id)] = json.RawMessage(r.Value)
 	}
 	return out, nil
 }
