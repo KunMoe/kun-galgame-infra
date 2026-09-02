@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"time"
+
+	skeys "api/internal/platform/settings/keys"
 )
 
 func (s *Service) refreshLoop() {
@@ -21,6 +23,9 @@ func (s *Service) refreshLoop() {
 }
 
 func (s *Service) refreshTick() {
+	if !skeys.StorePriceEnabled.Get() {
+		return
+	}
 	keys, err := s.dueForRefresh(context.Background(), time.Now(), s.opts.HotWindow, s.opts.RefreshLimit)
 	if err != nil {
 		slog.Warn("store price: refresh query failed", "error", err)

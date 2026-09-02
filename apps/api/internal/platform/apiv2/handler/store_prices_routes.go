@@ -12,12 +12,11 @@ import (
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/apiv2/repr"
 	catsvc "api/internal/platform/catalog/service"
+	"api/internal/platform/settings/keys"
 	"api/internal/platform/store/price"
 
 	"github.com/danielgtaylor/huma/v2"
 )
-
-const waitOnMiss = 1500 * time.Millisecond
 
 const pricesStaleDoc = "Quotes are cached observations; read fetched_at / expires_at / stale. pending means a fetch is in flight, retry shortly."
 
@@ -56,6 +55,9 @@ func registerStorePrices(api huma.API, cat *Catalog) {
 }
 
 func pricesBound(ctx context.Context, cat *Catalog) (*price.Service, error) {
+	if !keys.StorePriceEnabled.Get() {
+		return nil, withIdent(ctx, problem.New(problem.CodeServiceUnavailable, "", "", "the store price face is disabled."))
+	}
 	if cat == nil || cat.Prices == nil {
 		return nil, withIdent(ctx, problem.New(problem.CodeServiceUnavailable, "", "",
 			"the store price service is not configured."))
@@ -85,7 +87,7 @@ func getStoreWorkPrices(cat *Catalog) func(context.Context, *getStoreWorkPricesI
 		if !visible[id] {
 			return nil, cat.missWork(ctx, id)
 		}
-		quotes, qerr := svc.Quotes(ctx, toPriceAnchors(anchors[id]), waitOnMiss)
+		quotes, qerr := svc.Quotes(ctx, toPriceAnchors(anchors[id]), time.Duration(keys.StorePriceWaitOnMissMs.Get())*time.Millisecond)
 		if qerr != nil {
 			return nil, catalogErr(ctx, qerr)
 		}

@@ -9,6 +9,7 @@ import (
 	"api/internal/platform/image/repository"
 	"api/internal/platform/image/service"
 	"api/internal/platform/image/storage"
+	"api/internal/platform/settings/keys"
 	"api/pkg/config"
 )
 
@@ -21,7 +22,12 @@ type ImageGCOpts struct {
 }
 
 func DefaultImageGCOpts() ImageGCOpts {
-	return ImageGCOpts{ColdDays: 60, SoftDays: 365, HardDays: 30, MaxPerRun: 10000}
+	return ImageGCOpts{
+		ColdDays:  int(keys.ImageGCColdAfterDays.Get()),
+		SoftDays:  int(keys.ImageGCSoftDeleteAfterDays.Get()),
+		HardDays:  int(keys.ImageGCHardDeleteAfterDays.Get()),
+		MaxPerRun: int(keys.ImageGCMaxPerRun.Get()),
+	}
 }
 
 func RunImageGC(ctx context.Context, cfg *config.Config, opts ImageGCOpts) (Summary, error) {

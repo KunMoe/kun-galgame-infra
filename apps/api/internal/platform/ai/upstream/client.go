@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"api/internal/platform/settings/keys"
 )
 
 const llmTimeout = 90 * time.Second
@@ -34,7 +36,14 @@ func (c *Client) Configured() bool {
 	return c.baseURL != "" && c.token != ""
 }
 
-func (c *Client) Model() string { return c.model }
+func (c *Client) Model() string { return c.resolveModel() }
+
+func (c *Client) resolveModel() string {
+	if c.model != "" {
+		return c.model
+	}
+	return keys.AIUpstreamModel.Get()
+}
 
 // StatusError carries the upstream HTTP status so a caller can tell transient
 // contention from a permanent failure. Cloudflare delivers its per-minute
@@ -94,7 +103,7 @@ type chatResponse struct {
 
 func (c *Client) ChatJSON(ctx context.Context, system, user string, maxTokens int) (ChatResult, error) {
 	body := chatRequest{
-		Model:       c.model,
+		Model:       c.resolveModel(),
 		MaxTokens:   maxTokens,
 		Temperature: 0,
 		Messages: []chatMessage{
@@ -138,7 +147,7 @@ func (c *Client) ChatJSON(ctx context.Context, system, user string, maxTokens in
 	}
 	channel := cr.Model
 	if channel == "" {
-		channel = c.model
+		channel = c.resolveModel()
 	}
 	return ChatResult{
 		Content:          strings.TrimSpace(cr.Choices[0].Message.Content),

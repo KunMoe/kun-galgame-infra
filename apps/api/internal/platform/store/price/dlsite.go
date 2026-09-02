@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	skeys "api/internal/platform/settings/keys"
 )
 
 const dlsiteDefaultBase = "https://www.dlsite.com"
@@ -17,7 +19,6 @@ const dlsiteDefaultBase = "https://www.dlsite.com"
 var dlsiteIDRe = regexp.MustCompile(`^(RJ|VJ)[0-9]{6,8}$`)
 
 type dlsite struct {
-	ua         string
 	currencies map[string]struct{}
 	base       string
 	http       *http.Client
@@ -28,7 +29,7 @@ type dlsite struct {
 // `302 → https://www.google.com/` on every path, so the first deploy decoded
 // Google's HTML and every quote came back unavailable; the same request from a
 // Tokyo host returns the JSON.
-func NewDLsite(userAgent string, currencies []string, base string, proxy *url.URL) Fetcher {
+func NewDLsite(currencies []string, base string, proxy *url.URL) Fetcher {
 	if base == "" {
 		base = dlsiteDefaultBase
 	}
@@ -50,7 +51,6 @@ func NewDLsite(userAgent string, currencies []string, base string, proxy *url.UR
 		loc = time.FixedZone("JST", 9*3600)
 	}
 	return &dlsite{
-		ua:         userAgent,
 		currencies: want,
 		base:       strings.TrimRight(base, "/"),
 		http:       client,
@@ -89,7 +89,7 @@ func (d *dlsite) Fetch(ctx context.Context, region string, ids []string) (map[st
 		return nil, err
 	}
 	req.Header.Set("Cookie", "adultchecked=1")
-	req.Header.Set("User-Agent", d.ua)
+	req.Header.Set("User-Agent", skeys.StorePriceUserAgent.Get())
 	resp, err := d.http.Do(req)
 	if err != nil {
 		return nil, err

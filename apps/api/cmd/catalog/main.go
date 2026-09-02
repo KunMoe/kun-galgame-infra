@@ -281,27 +281,21 @@ func setupPublicCatalog(
 		AffTemplateManiax: cfg.Store.AffTemplateManiax,
 		AffTemplatePro:    cfg.Store.AffTemplatePro,
 	})
-	var priceSvc *price.Service
-	if cfg.Store.PriceEnabled {
-		ua := cfg.Store.PriceUserAgent
-		var dlsiteProxy *url.URL
-		if raw := cfg.Store.PriceDLsiteProxy; raw != "" {
-			u, err := url.Parse(raw)
-			if err != nil || u.Host == "" {
-				slog.Error("store price: KUN_STORE_PRICE_DLSITE_PROXY is not a proxy URL (scheme://host:port)", "error", err)
-				os.Exit(1)
-			}
-			dlsiteProxy = u
-			slog.Info("store price: dlsite lane egresses via proxy", "scheme", u.Scheme, "host", u.Host)
+	var dlsiteProxy *url.URL
+	if raw := cfg.Store.PriceDLsiteProxy; raw != "" {
+		u, err := url.Parse(raw)
+		if err != nil || u.Host == "" {
+			slog.Error("store price: KUN_STORE_PRICE_DLSITE_PROXY is not a proxy URL (scheme://host:port)", "error", err)
+			os.Exit(1)
 		}
-		priceSvc = price.New(oauthDB, []price.Fetcher{
-			price.NewDLsite(ua, cfg.Store.PriceDLsiteCurrencies, cfg.Store.PriceDLsiteBase, dlsiteProxy),
-			price.NewSteam(ua, cfg.Store.PriceSteamRegions, ""),
-		}, price.Options{})
-		priceSvc.Start()
-	} else {
-		slog.Warn("store price face: disabled — /v2/store/prices answers 503 (KUN_STORE_PRICE_ENABLED=false)")
+		dlsiteProxy = u
+		slog.Info("store price: dlsite lane egresses via proxy", "scheme", u.Scheme, "host", u.Host)
 	}
+	priceSvc := price.New(oauthDB, []price.Fetcher{
+		price.NewDLsite(keys.StorePriceDLsiteCurrencies.Get(), cfg.Store.PriceDLsiteBase, dlsiteProxy),
+		price.NewSteam(keys.StorePriceSteamRegions.Get(), ""),
+	}, price.Options{})
+	priceSvc.Start()
 
 	// Wave R3 moved the metering here from the v1 groups. Deleting the v1 faces
 	// removed every writer of developer_api_usage and every TouchLastUsed call,
@@ -395,9 +389,7 @@ func setupPublicCatalog(
 		}
 	}()
 	application.Fiber.Hooks().OnPreShutdown(func() error {
-		if priceSvc != nil {
-			priceSvc.Stop()
-		}
+		priceSvc.Stop()
 		close(flushDone)
 		if err := usageRec.Flush(context.Background()); err != nil {
 			slog.Warn("devapi final usage flush failed", "err", err)

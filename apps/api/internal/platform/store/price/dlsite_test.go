@@ -37,13 +37,13 @@ func TestDLsiteFetch(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	f := NewDLsite("Test-UA/1.0", []string{"CNY", "USD", "TWD", "HKD", "KRW", "EUR"}, srv.URL, nil)
+	f := NewDLsite([]string{"CNY", "USD", "TWD", "HKD", "KRW", "EUR"}, srv.URL, nil)
 	out, err := f.Fetch(context.Background(), "jp", []string{"RJ00000001", "RJ01402486"})
 	require.NoError(t, err)
 	require.Equal(t, "/maniax/product/info/ajax", gotPath)
 	require.Equal(t, "RJ00000001,RJ01402486", gotQuery)
 	require.Equal(t, "adultchecked=1", gotCookie)
-	require.Equal(t, "Test-UA/1.0", gotUA)
+	require.Equal(t, "NextMoe-PriceBot/1.0 (+https://www.kungal.com)", gotUA)
 	_, omitted := out["RJ00000001"]
 	require.False(t, omitted)
 	up, ok := out["RJ01402486"]
@@ -68,7 +68,7 @@ func TestDLsiteOnSaleZero(t *testing.T) {
 		})
 	}))
 	t.Cleanup(srv.Close)
-	f := NewDLsite("Test-UA/1.0", nil, srv.URL, nil)
+	f := NewDLsite(nil, srv.URL, nil)
 	out, err := f.Fetch(context.Background(), "jp", []string{"RJ149770"})
 	require.NoError(t, err)
 	up, ok := out["RJ149770"]
@@ -95,7 +95,7 @@ func TestDLsiteFetchViaProxy(t *testing.T) {
 	proxyURL, err := url.Parse(proxy.URL)
 	require.NoError(t, err)
 
-	f := NewDLsite("Test-UA/1.0", nil, origin.URL, proxyURL)
+	f := NewDLsite(nil, origin.URL, proxyURL)
 	out, err := f.Fetch(context.Background(), "jp", []string{"RJ149770"})
 	require.NoError(t, err)
 	require.True(t, out["RJ149770"].Found)
@@ -104,7 +104,7 @@ func TestDLsiteFetchViaProxy(t *testing.T) {
 }
 
 func TestDLsiteAccepts(t *testing.T) {
-	f := NewDLsite("", nil, "", nil)
+	f := NewDLsite(nil, "", nil)
 	require.False(t, f.Accepts("RE149770"))
 	require.True(t, f.Accepts("RJ149770"))
 	require.True(t, f.Accepts("VJ012345"))
@@ -122,7 +122,7 @@ func TestDLsiteTimesaleTLayout(t *testing.T) {
 		})
 	}))
 	t.Cleanup(srv.Close)
-	f := NewDLsite("Test-UA/1.0", nil, srv.URL, nil)
+	f := NewDLsite(nil, srv.URL, nil)
 	out, err := f.Fetch(context.Background(), "jp", []string{"RJ149770"})
 	require.NoError(t, err)
 	up := out["RJ149770"]
