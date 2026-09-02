@@ -31,7 +31,7 @@
  *
  * Operation GROUPING is derived here, not in the specs: the OpenAPI tags put
  * every operation of a face in one bucket, which is no navigation at all for an
- * 88-operation face. The spec YAML is a frozen contract and must not be edited
+ * 90-operation face. The spec YAML is a frozen contract and must not be edited
  * to carry portal IA.
  */
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'

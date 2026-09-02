@@ -76,13 +76,18 @@ type Config struct {
 // StoreConfig is the DLsite distribution face: how the platform reaches the
 // link shortener, and the affiliate URL templates the short links point at.
 // The aff id lives inside the templates because it is a commercial value the
-// deployment supplies, never a constant in the source.
+// deployment supplies, never a constant in the source. PriceEnabled and its
+// siblings configure the lazy storefront price cache on /v2/store/prices.
 type StoreConfig struct {
-	ShortlinkBaseURL   string
-	ShortlinkAPIKey    string
-	AffTemplateManiax  string
-	AffTemplatePro     string
-	LinkQuotaPerClient int
+	ShortlinkBaseURL      string
+	ShortlinkAPIKey       string
+	AffTemplateManiax     string
+	AffTemplatePro        string
+	LinkQuotaPerClient    int
+	PriceEnabled          bool
+	PriceUserAgent        string
+	PriceSteamRegions     []string
+	PriceDLsiteCurrencies []string
 }
 
 type AIClientConfig struct {
@@ -597,6 +602,15 @@ func Load() (*Config, error) {
 		ClientSecret: getEnv("KUN_AI_CLIENT_SECRET", ""),
 	}
 
+	priceEnabled, _ := strconv.ParseBool(getEnv("KUN_STORE_PRICE_ENABLED", "true"))
+	steamRegions := splitCSV(getEnv("KUN_STORE_PRICE_STEAM_REGIONS", "jp,cn,us"))
+	for i := range steamRegions {
+		steamRegions[i] = strings.ToLower(steamRegions[i])
+	}
+	dlsiteCurrencies := splitCSV(getEnv("KUN_STORE_PRICE_DLSITE_CURRENCIES", "CNY,USD,TWD,HKD,KRW,EUR"))
+	for i := range dlsiteCurrencies {
+		dlsiteCurrencies[i] = strings.ToUpper(dlsiteCurrencies[i])
+	}
 	cfg.Store = StoreConfig{
 		ShortlinkBaseURL: getEnv("KUN_STORE_SHORTLINK_BASE_URL", ""),
 		ShortlinkAPIKey:  getEnv("KUN_STORE_SHORTLINK_API_KEY", ""),
@@ -605,9 +619,13 @@ func Load() (*Config, error) {
 		// unconfigured deployment minted real short links crediting nobody, and
 		// a minted alias is pinned to its destination forever. Empty makes the
 		// minting face answer 503 instead, which the caller retries.
-		AffTemplateManiax:  getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX", ""),
-		AffTemplatePro:     getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_PRO", ""),
-		LinkQuotaPerClient: int(getEnvInt64("KUN_STORE_LINK_QUOTA_PER_CLIENT", 5000)),
+		AffTemplateManiax:     getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX", ""),
+		AffTemplatePro:        getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_PRO", ""),
+		LinkQuotaPerClient:    int(getEnvInt64("KUN_STORE_LINK_QUOTA_PER_CLIENT", 5000)),
+		PriceEnabled:          priceEnabled,
+		PriceUserAgent:        getEnv("KUN_STORE_PRICE_USER_AGENT", "NextMoe-PriceBot/1.0 (+https://www.kungal.com)"),
+		PriceSteamRegions:     steamRegions,
+		PriceDLsiteCurrencies: dlsiteCurrencies,
 	}
 
 	cfg.NewsModeration = NewsModerationConfig{
