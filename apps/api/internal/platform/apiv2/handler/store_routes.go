@@ -56,6 +56,7 @@ func registerStore(api huma.API, cat *Catalog) {
 		Description: "Daily clicks on the links this application minted, over a JST-day range of at most 92 days. The bearer application is the subject — this replaces v1's /v1/store/me/stats. Requires an application key with the store:read scope.",
 		Tags:        tags, Errors: statsErrs, SkipValidateParams: true,
 	}, getStoreStats(cat))
+	registerStorePrices(api, cat)
 }
 
 func getStorePurchaseLinks(cat *Catalog) func(context.Context, *getPurchaseLinksInput) (*getPurchaseLinksOutput, error) {

@@ -257,3 +257,14 @@ func TestMergeWorkAxisKeepsHumanRoster(t *testing.T) {
 	assert.Equal(t, model.WorkCharacterKindUnknown, edge.Kind, "a human 0 survives the kind upgrade")
 	assert.EqualValues(t, model.SpoilerNone, edge.Spoiler, "a human 0 survives GREATEST")
 }
+
+func TestExecuteMergeReleasesQuarantinedTarget(t *testing.T) {
+	cleanTables(t)
+	target := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusQuarantine, "隔離先")
+	source := createWork(t, "隔離元")
+	executeMerge(t, model.EntityTypeWork, source.ID, target.ID, "quarantine target")
+
+	var got model.CatalogWork
+	require.NoError(t, testDB.First(&got, target.ID).Error)
+	assert.Equal(t, model.WorkStatusLive, got.Status)
+}

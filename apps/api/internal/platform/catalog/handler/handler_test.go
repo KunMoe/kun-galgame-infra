@@ -48,6 +48,7 @@ func TestSetupAdmin_RegistersQueueOperations(t *testing.T) {
 	for _, p := range []string{
 		"/api/v1/admin/catalog/candidates",
 		"/api/v1/admin/catalog/candidates/decide",
+		"/api/v1/admin/catalog/works/release",
 		"/api/v1/admin/catalog/names/detach",
 		"/api/v1/admin/catalog/proposals",
 		"/api/v1/admin/catalog/proposals/{id}/{action}",

@@ -14,6 +14,7 @@ import (
 	"api/internal/platform/editing"
 	newsdto "api/internal/platform/news/dto"
 	newssvc "api/internal/platform/news/service"
+	"api/internal/platform/store/price"
 	storesvc "api/internal/platform/store/service"
 )
 
@@ -32,6 +33,7 @@ type Catalog struct {
 	EditHistory *catsvc.EditHistoryService
 	Uploads     EditImageUpload
 	Store       *storesvc.Service
+	Prices      *price.Service
 	// oauth_clients lives in the infra database, which no catalog service can
 	// reach, so the moderation fence takes its client -> site resolver here.
 	SiteOfAppClient func(ctx context.Context, clientID string) (string, error)

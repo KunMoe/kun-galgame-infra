@@ -241,3 +241,56 @@ func planVIDs(st VNDBWorksStats) []string {
 	}
 	return out
 }
+
+func TestVNDBWorksMintQuarantineOnTitleCollision(t *testing.T) {
+	clean(t)
+	cleanReleases(t)
+	cleanVNPool(t)
+
+	liveID := seedExistingWork(t, "衝突する既存タイトル作品")
+	deadID := seedExistingWork(t, "削除済みタイトル作品")
+	require.NoError(t, testDB.Exec(`UPDATE catalog_work SET deleted_at = now() WHERE id = ?`, deadID).Error)
+
+	insVN(t, "v200", "ja", 0)
+	insVNTitle(t, "v200", "ja", true, "衝突する既存タイトル作品", "")
+	insVN(t, "v201", "ja", 0)
+	insVNTitle(t, "v201", "ja", true, "削除済みタイトル作品", "")
+	insVN(t, "v202", "ja", 0)
+	insVNTitle(t, "v202", "ja", true, "衝突しない新規タイトル作品", "")
+
+	dry, err := New(testDB, nil, Options{Source: "vndb", DryRun: true}).RunVNDBWorks()
+	require.NoError(t, err)
+	assert.Equal(t, 1, dry.TitleCollisions)
+	assert.Equal(t, 1, dry.ToQuarantine)
+	assert.Equal(t, 3, dry.Planned)
+	assert.Equal(t, 3, dry.WorksCreated)
+	assert.Zero(t, countWhere(t, `SELECT count(*) FROM catalog_external_ref WHERE matched_by = ?`, ruleVNDBWork))
+
+	st, err := New(testDB, nil, Options{Source: "vndb"}).RunVNDBWorks()
+	require.NoError(t, err)
+	assert.Equal(t, 3, st.WorksCreated)
+	assert.Equal(t, 1, st.Quarantined)
+
+	workOf := func(vid string) int64 {
+		t.Helper()
+		var id int64
+		require.NoError(t, testDB.Raw(`SELECT entity_id FROM catalog_external_ref
+			WHERE entity_type = ? AND source_id = ? AND external_id = ? AND link_kind = ?`,
+			model.EntityTypeWork, vndbSource, vid, model.LinkKindExact).Scan(&id).Error)
+		return id
+	}
+
+	qID := workOf("v200")
+	require.NotZero(t, qID)
+	assert.Equal(t, model.WorkStatusQuarantine, workStatusOf(t, qID))
+	a, b := liveID, qID
+	if b < a {
+		a, b = b, a
+	}
+	assert.Equal(t, int64(1), countWhere(t, `SELECT count(*) FROM catalog_match_candidate
+		WHERE entity_type = ? AND a_id = ? AND b_id = ? AND reason = ? AND status = ?`,
+		model.EntityTypeWork, a, b, model.CandidateReasonNameNormEqual, model.CandidateStatusPending))
+
+	assert.Equal(t, model.WorkStatusLive, workStatusOf(t, workOf("v201")))
+	assert.Equal(t, model.WorkStatusLive, workStatusOf(t, workOf("v202")))
+}

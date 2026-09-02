@@ -626,7 +626,7 @@ export const searchIndex: SearchEntry[] = [
     "r": "/docs/v2",
     "t": "Public API v2",
     "s": "端点参考",
-    "d": "/v2 · 88 个端点",
+    "d": "/v2 · 90 个端点",
     "b": "v2 /v2 API v2 Public API v2"
   },
   {
@@ -1230,6 +1230,20 @@ export const searchIndex: SearchEntry[] = [
     "s": "端点 · 审核",
     "d": "GET /v2/moderation/snapshots/{object}/{id}",
     "b": "getModerationSnapshot /v2/moderation/snapshots/{object}/{id} get Current edit snapshot Registered field values. Requires a user access token. 已登记字段的当前值。需要用户访问令牌。 object id"
+  },
+  {
+    "r": "/docs/v2/listStorePrices",
+    "t": "批量获取多部作品的商店价格",
+    "s": "端点 · 商店",
+    "d": "GET /v2/store/prices",
+    "b": "listStorePrices /v2/store/prices get Get storefront prices for many works Cached storefront price quotes for up to 100 catalog works. Unauthenticated. Quotes are cached observations; read fetched_at / expires_at / stale. pending means a fetch is in flight, retry shortly. The batch lane never waits on a cold miss. 最多 100 部目录作品的商店价格缓存报价。无需凭证。报价是缓存的观测值；请读取 fetched_at / expires_at / stale。pending 表示正在抓取，请稍后重试。批量车道在冷未命中时不等待。 ids"
+  },
+  {
+    "r": "/docs/v2/getStoreWorkPrices",
+    "t": "获取一部作品的商店价格",
+    "s": "端点 · 商店",
+    "d": "GET /v2/store/prices/{id}",
+    "b": "getStoreWorkPrices /v2/store/prices/{id} get Get storefront prices for one work Cached storefront price quotes for one catalog work. Unauthenticated. Quotes are cached observations; read fetched_at / expires_at / stale. pending means a fetch is in flight, retry shortly. 一部目录作品的商店价格缓存报价。无需凭证。报价是缓存的观测值；请读取 fetched_at / expires_at / stale。pending 表示正在抓取，请稍后重试。 id"
   },
   {
     "r": "/docs/v2/getStorePurchaseLinks",

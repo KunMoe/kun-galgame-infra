@@ -23,6 +23,20 @@ export const CANDIDATE_STATUS = {
   needsManual: 4
 } as const
 
+export const WORK_STATUS = {
+  LIVE: 0,
+  STUB: 1,
+  MERGED: 2,
+  QUARANTINE: 3
+} as const
+
+export const WORK_STATUS_LABELS: Record<number, string> = {
+  0: '公开',
+  1: '未达标',
+  2: '已合并',
+  3: '隔离中'
+}
+
 export const CANDIDATE_STATUS_LABELS: Record<number, string> = {
   0: '待处理',
   1: '已接受',

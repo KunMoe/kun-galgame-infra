@@ -3678,6 +3678,55 @@ components:
         - object
         - items
       type: object
+    ListWorkPrices:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/ListWorkPrices.json
+          format: uri
+          readOnly: true
+          type: string
+        facets:
+          additionalProperties:
+            items:
+              $ref: "#/components/schemas/FacetValue"
+            type:
+              - array
+              - "null"
+          description: Named facet buckets. Present only when facets= is requested.
+          type: object
+        items:
+          description: Members of this page. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/WorkPrices"
+          type: array
+        missing:
+          description: ids requested but not visible. Present only on the ids=/refs= batch lane.
+          items:
+            type: string
+          type: array
+        next_cursor:
+          description: Opaque keyset cursor. Omitted on the last page.
+          maxLength: 512
+          pattern: ^cur_[A-Za-z0-9._~-]+$
+          type: string
+        object:
+          description: Type discriminant. Always list.
+          enum:
+            - list
+          type: string
+          x-vocabulary-closed: true
+        total:
+          description: Present only when include_total=true. Same visibility gate as items.
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+        - object
+        - items
+      type: object
     ListWorkSeriesRef:
       additionalProperties: true
       properties:
@@ -3825,6 +3874,23 @@ components:
         - waist_cm
         - hip_cm
         - cup
+      type: object
+    Money:
+      additionalProperties: true
+      properties:
+        amount:
+          description: Decimal string with two fraction digits, tax-inclusive as the store shows it.
+          maxLength: 12
+          pattern: ^[0-9]{1,9}\.[0-9]{2}$
+          type: string
+        currency:
+          description: ISO 4217 currency code.
+          maxLength: 3
+          pattern: ^[A-Z]{3}$
+          type: string
+      required:
+        - currency
+        - amount
       type: object
     NameCredit:
       additionalProperties: true
@@ -4353,6 +4419,100 @@ components:
         - source
         - metric
         - value
+      type: object
+    PriceQuote:
+      additionalProperties: true
+      properties:
+        converted:
+          description: The storefront's own conversions of current, informational, not a second price. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/Money"
+          type: array
+        current:
+          $ref: "#/components/schemas/Money"
+          description: Current price, tax-inclusive as the store shows it. null unless quote_state is priced.
+        discount_percent:
+          description: Percent off list. Zero when not on sale or not priced.
+          format: int64
+          maximum: 100
+          minimum: 0
+          type: integer
+        expires_at:
+          description: RFC 3339 UTC instant after which this quote is stale. null when pending.
+          format: date-time
+          maxLength: 32
+          type:
+            - string
+            - "null"
+        external_id:
+          description: "Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links."
+          maxLength: 256
+          type: string
+        fetched_at:
+          description: RFC 3339 UTC instant this quote was observed. null when pending.
+          format: date-time
+          maxLength: 32
+          type:
+            - string
+            - "null"
+        list:
+          $ref: "#/components/schemas/Money"
+          description: List price, tax-inclusive as the store shows it. null unless quote_state is priced.
+        object:
+          description: Type discriminant. Always price_quote.
+          enum:
+            - price_quote
+          type: string
+          x-vocabulary-closed: true
+        quote_state:
+          description: priced has list and current; pending means a fetch is in flight; unavailable means the storefront has no price.
+          enum:
+            - priced
+            - pending
+            - unavailable
+          type: string
+          x-vocabulary-closed: true
+        region:
+          description: ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite.
+          maxLength: 2
+          pattern: ^[a-z]{2}$
+          type: string
+        sale_ends_at:
+          description: RFC 3339 UTC instant the published sale ends. null when the store publishes no end.
+          format: date-time
+          maxLength: 32
+          type:
+            - string
+            - "null"
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        stale:
+          description: true when served past expires_at; a refresh is in flight.
+          type: boolean
+        url:
+          description: Absolute URL.
+          format: uri
+          maxLength: 1024
+          type: string
+      required:
+        - object
+        - source
+        - external_id
+        - region
+        - quote_state
+        - url
+        - list
+        - current
+        - discount_percent
+        - sale_ends_at
+        - converted
+        - fetched_at
+        - expires_at
+        - stale
       type: object
     Problem:
       additionalProperties: true
@@ -6281,6 +6441,38 @@ components:
       required:
         - platform
         - source
+      type: object
+    WorkPrices:
+      additionalProperties: true
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/WorkPrices.json
+          format: uri
+          readOnly: true
+          type: string
+        object:
+          description: Type discriminant. Always work_prices.
+          enum:
+            - work_prices
+          type: string
+          x-vocabulary-closed: true
+        quotes:
+          description: One quote per storefront anchor and region. Empty array, never null.
+          items:
+            $ref: "#/components/schemas/PriceQuote"
+          type: array
+        work_id:
+          description: Catalog work id this row is about.
+          maxLength: 20
+          minLength: 1
+          pattern: ^[0-9]+$
+          type: string
+      required:
+        - object
+        - work_id
+        - quotes
       type: object
     WorkSeriesRef:
       additionalProperties: true
@@ -16071,6 +16263,125 @@ paths:
       summary: Get one top-level error code
       tags:
         - meta
+  /v2/store/prices:
+    get:
+      description: Cached storefront price quotes for up to 100 catalog works. Unauthenticated. Quotes are cached observations; read fetched_at / expires_at / stale. pending means a fetch is in flight, retry shortly. The batch lane never waits on a cold miss.
+      operationId: listStorePrices
+      parameters:
+        - description: Comma-separated decimal catalog work ids, at most 100. Duplicates are collapsed. Unknown ids are listed in missing[].
+          explode: false
+          in: query
+          name: ids
+          required: true
+          schema:
+            description: Comma-separated decimal catalog work ids, at most 100. Duplicates are collapsed. Unknown ids are listed in missing[].
+            maxLength: 2100
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWorkPrices"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Get storefront prices for many works
+      tags:
+        - store
+  /v2/store/prices/{id}:
+    get:
+      description: Cached storefront price quotes for one catalog work. Unauthenticated. Quotes are cached observations; read fetched_at / expires_at / stale. pending means a fetch is in flight, retry shortly.
+      operationId: getStoreWorkPrices
+      parameters:
+        - description: Decimal catalog work id.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Decimal catalog work id.
+            maxLength: 20
+            minLength: 1
+            pattern: ^[0-9]+$
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkPrices"
+          description: OK
+        "304":
+          description: Not Modified. The representation is unchanged.
+        "400":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Bad Request
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Not Found
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Too Many Requests
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Internal Server Error
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: Service Unavailable
+      summary: Get storefront prices for one work
+      tags:
+        - store
   /v2/store/purchase-links/{product_id}:
     get:
       description: Mints (or returns) the short links this application sends readers to. The purchase link belongs to your application alone — use it verbatim, because the click counter behind it is what settlement reads. coupon_url and campaign are present only while a campaign is running. Requires an application key with the store:read scope.

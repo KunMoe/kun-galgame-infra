@@ -44,12 +44,23 @@ type EntitySummary struct {
 	DisplayName string `json:"display_name"`
 	CreditCount *int64 `json:"credit_count,omitempty"`
 	SourceID    *int16 `json:"source_id,omitempty"`
+	WorkStatus  *int16 `json:"work_status,omitempty"`
 }
 
 func entitySummary(db *gorm.DB, entityType int16, id int64) EntitySummary {
 	table, ok := entityTableName(entityType)
 	if !ok {
 		return EntitySummary{ID: id}
+	}
+	if entityType == model.EntityTypeWork {
+		var row struct {
+			DisplayName string
+			Status      int16
+		}
+		if res := db.Raw(`SELECT display_name, status FROM catalog_work WHERE id = ?`, id).Scan(&row); res.Error != nil || res.RowsAffected == 0 {
+			return EntitySummary{ID: id}
+		}
+		return EntitySummary{ID: id, DisplayName: row.DisplayName, WorkStatus: &row.Status}
 	}
 	column := "display_name"
 	if entityType == model.EntityTypeCreditName {
@@ -171,6 +182,7 @@ type CandidateDecision struct {
 type CandidateOutcome struct {
 	Proposal *model.CatalogMergeProposal
 	Link     *PersonLinkResult
+	Released []int64
 }
 
 func (s *AdminQueueService) DecideCandidate(ctx context.Context, d CandidateDecision) (*CandidateOutcome, error) {
@@ -196,6 +208,9 @@ func (s *AdminQueueService) DecideCandidate(ctx context.Context, d CandidateDeci
 
 	if d.Action == "accept" && d.EntityType == model.EntityTypeCreditName {
 		return s.acceptAsPersonLink(ctx, d)
+	}
+	if d.Action == "reject" && d.EntityType == model.EntityTypeWork {
+		return s.rejectWorkCandidate(ctx, d)
 	}
 
 	status := model.CandidateStatusRejected

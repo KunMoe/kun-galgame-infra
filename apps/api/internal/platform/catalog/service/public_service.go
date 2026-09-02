@@ -1086,7 +1086,7 @@ func (s *PublicService) loadWorkBriefs(ctx context.Context, ids []int64, nsfw bo
 		SELECT w.id, w.medium_id, w.display_name, w.content_rating, w.status, w.site, w.product_work_id, w.claim_state,
 		       w.display_nsfw
 		FROM catalog_work w
-		WHERE w.id IN ? AND w.deleted_at IS NULL`, ids).Scan(&rows).Error; err != nil {
+		WHERE w.id IN ? AND w.deleted_at IS NULL AND w.status = ?`, ids, model.WorkStatusLive).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make(map[int64]*dto.PublicWorkBrief, len(rows))

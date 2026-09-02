@@ -239,3 +239,119 @@ func TestRejectRefRefusesCuratedLink(t *testing.T) {
 	require.NoError(t, testDB.Where("entity_id = ? AND source_id = ?", person.ID, 2).First(&rej).Error)
 	assert.Equal(t, "wrong person", rej.Reason)
 }
+
+func fileWorkCandidate(t *testing.T, a, b int64, status int16) {
+	t.Helper()
+	require.NoError(t, testDB.Create(&model.CatalogMatchCandidate{
+		EntityType: model.EntityTypeWork, AID: min(a, b), BID: max(a, b),
+		Reason: model.CandidateReasonNameNormEqual, Status: status,
+	}).Error)
+}
+
+func TestDecideCandidateRejectReleasesQuarantine(t *testing.T) {
+	cleanTables(t)
+	ctx := t.Context()
+
+	live := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "公開")
+	q := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusQuarantine, "隔離")
+	fileWorkCandidate(t, live.ID, q.ID, model.CandidateStatusPending)
+
+	et := model.EntityTypeWork
+	items, _, err := testQueues.ListCandidates(ctx, CandidateFilters{EntityType: &et})
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	if items[0].A.ID == q.ID {
+		require.NotNil(t, items[0].A.WorkStatus)
+		assert.Equal(t, model.WorkStatusQuarantine, *items[0].A.WorkStatus)
+	} else {
+		require.NotNil(t, items[0].B.WorkStatus)
+		assert.Equal(t, model.WorkStatusQuarantine, *items[0].B.WorkStatus)
+	}
+
+	outcome, err := testQueues.DecideCandidate(ctx, CandidateDecision{
+		EntityType: model.EntityTypeWork, AID: min(live.ID, q.ID), BID: max(live.ID, q.ID),
+		Action: "reject", DecidedBy: 9,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []int64{q.ID}, outcome.Released)
+
+	var got model.CatalogWork
+	require.NoError(t, testDB.First(&got, q.ID).Error)
+	assert.Equal(t, model.WorkStatusLive, got.Status)
+
+	var n int64
+	require.NoError(t, testDB.Model(&model.CatalogRevision{}).
+		Where("entity_type = ? AND entity_id = ? AND action = ?",
+			model.EntityTypeWork, q.ID, model.RevisionActionUpdated).Count(&n).Error)
+	assert.Equal(t, int64(1), n)
+}
+
+func TestDecideCandidateRejectHoldsUntilLastOpenCandidate(t *testing.T) {
+	cleanTables(t)
+	ctx := t.Context()
+
+	q := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusQuarantine, "隔離")
+	live1 := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "公開1")
+	live2 := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "公開2")
+	fileWorkCandidate(t, q.ID, live1.ID, model.CandidateStatusPending)
+	fileWorkCandidate(t, q.ID, live2.ID, model.CandidateStatusNeedsManual)
+
+	first, err := testQueues.DecideCandidate(ctx, CandidateDecision{
+		EntityType: model.EntityTypeWork, AID: min(q.ID, live1.ID), BID: max(q.ID, live1.ID),
+		Action: "reject", DecidedBy: 9,
+	})
+	require.NoError(t, err)
+	assert.Empty(t, first.Released)
+	var still model.CatalogWork
+	require.NoError(t, testDB.First(&still, q.ID).Error)
+	assert.Equal(t, model.WorkStatusQuarantine, still.Status)
+
+	second, err := testQueues.DecideCandidate(ctx, CandidateDecision{
+		EntityType: model.EntityTypeWork, AID: min(q.ID, live2.ID), BID: max(q.ID, live2.ID),
+		Action: "reject", DecidedBy: 9,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []int64{q.ID}, second.Released)
+	var got model.CatalogWork
+	require.NoError(t, testDB.First(&got, q.ID).Error)
+	assert.Equal(t, model.WorkStatusLive, got.Status)
+}
+
+func TestReleaseWork(t *testing.T) {
+	cleanTables(t)
+	ctx := t.Context()
+
+	live := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "公開")
+	err := testQueues.ReleaseWork(ctx, live.ID, 9, "no")
+	require.ErrorIs(t, err, ErrProposalState)
+
+	q := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusQuarantine, "隔離")
+	require.NoError(t, testQueues.ReleaseWork(ctx, q.ID, 9, "escape"))
+	var got model.CatalogWork
+	require.NoError(t, testDB.First(&got, q.ID).Error)
+	assert.Equal(t, model.WorkStatusLive, got.Status)
+
+	err = testQueues.ReleaseWork(ctx, 999999, 9, "")
+	require.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestDecideCandidateAcceptDoesNotReleaseQuarantine(t *testing.T) {
+	cleanTables(t)
+	ctx := t.Context()
+
+	live := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "公開")
+	q := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusQuarantine, "隔離")
+	fileWorkCandidate(t, live.ID, q.ID, model.CandidateStatusPending)
+
+	outcome, err := testQueues.DecideCandidate(ctx, CandidateDecision{
+		EntityType: model.EntityTypeWork, AID: min(live.ID, q.ID), BID: max(live.ID, q.ID),
+		Action: "accept", SourceID: q.ID, TargetID: live.ID, Note: "same work", DecidedBy: 9,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, outcome.Proposal)
+	assert.Empty(t, outcome.Released)
+
+	var got model.CatalogWork
+	require.NoError(t, testDB.First(&got, q.ID).Error)
+	assert.Equal(t, model.WorkStatusQuarantine, got.Status)
+}

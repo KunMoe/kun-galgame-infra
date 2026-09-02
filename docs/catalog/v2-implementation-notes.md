@@ -314,6 +314,8 @@ The first two are the same defect shape in a different env var. They are deliber
 
 103. **Listing `total` values are served through a 60-second in-process cache** (2026-09-01). Works list, labels/tags/engines/series, and the entity list faces all go through `taxonomyTotal`. That helper now caches by the full filter signature (table + WHERE clauses + bound args) for 60s, so `total` may lag writes by up to 60 seconds. Cursor predicates stay outside the key: the pre-existing "total counted before the cursor" property is preserved and strengthened — the total is now also stable across pages within the TTL.
 
+104. **`GET /v2/store/prices/{id}` and `GET /v2/store/prices?ids=`** (2026-09-01). Storefront price quotes live in the store domain (`store_price_quotes` in the infra database), not the catalog registry. The catalog side only answers which exact live release-level DLsite/Steam anchors a visible galgame work has. Quotes are cached observations: a cold miss is fetched lazily, batched and coalesced per (storefront, region); the single-work face waits up to 1.5s, the batch face never waits. TTL is 6h, capped by a published sale end when that is sooner; a not-found row lasts 24h; a transport error writes `unavailable` for 15m so a down storefront is not hammered; a background loop refreshes rows requested in the last 7 days. The face is keyless (`v2Security` returns empty before the `/v2/store/` arm) and does not opt into `isPublicPath`, so Cache-Control stays the v2 default `private, no-store`. Visibility is the work-sub predicate minus nsfw: prices are content-neutral numbers, so an r18 work's quotes are served to everyone. Money is stored as int64 minor units (×100, including JPY) and published as a two-fraction decimal string (`amount`) plus ISO 4217 `currency`. FANZA/DMM and Getchu are out of this wave: the platform holds no FANZA affiliate credentials, and Getchu is HTML-only; anchors of a source without a fetcher are dropped and produce no quote row.
+
 ## Stage 6 write
 
 | Route | Bind |
@@ -387,6 +389,8 @@ Four new operations, and the last v1-only reads that had no v2 answer are gone.
 | `DELETE /v2/me/claims/{id}` | Deletes a draft the caller owns. A live or pending claim must be withdrawn to draft first (`PATCH state=withdrawn`). Soft-deletes the `catalog_work` row and writes **no** claim event, matching v1's executor. Keyed on owner uid, not site |
 | `GET /v2/store/purchase-links/{product_id}` | v1 `/v1/store/purchase-links/:product_id` with RFC 9457 problems and no envelope |
 | `GET /v2/store/stats` | v1 `/v1/store/me/stats`. The bearer *application* is the subject, so the path drops the `me/` segment that only made sense next to a user face |
+| `GET /v2/store/prices/{id}` | Keyless cached storefront quotes for one catalog work. 404 if the work is not a live galgame; 503 if the price service is off. R18 prices are not fenced |
+| `GET /v2/store/prices` | Batch `ids=` lane, at most 100. Unknown ids go to `missing[]`; never 404. Does not wait on a cold miss |
 
 `claim_events:read` is **operator-granted, never self-service** (`selfServiceScopes`
 stays `[catalog:read, store:read]`): events carry decline reasons and the

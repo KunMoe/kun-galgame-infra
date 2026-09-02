@@ -41,6 +41,7 @@ export const FACES = [
         path.startsWith('/v2/problems') ||
         path.startsWith('/v2/vocabularies') ||
         path.startsWith('/v2/news') ||
+        path.startsWith('/v2/store/prices') ||
         path === '/v2/catalog/stats' ||
         path.startsWith('/v2/catalog/schemas/')
       ) {
@@ -88,5 +89,5 @@ export const USER_TOKEN_AUTH = {
 }
 
 export const EXPECTED_OPERATION_COUNTS = {
-  v2: 88
+  v2: 90
 }

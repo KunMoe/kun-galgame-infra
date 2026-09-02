@@ -28,6 +28,7 @@ import (
 	"api/internal/platform/settings"
 	"api/internal/platform/settings/keys"
 	siteRepo "api/internal/platform/site/repository"
+	"api/internal/platform/store/price"
 	storeService "api/internal/platform/store/service"
 	"api/internal/platform/store/shortener"
 	"api/pkg/config"
@@ -279,6 +280,17 @@ func setupPublicCatalog(
 		AffTemplateManiax: cfg.Store.AffTemplateManiax,
 		AffTemplatePro:    cfg.Store.AffTemplatePro,
 	})
+	var priceSvc *price.Service
+	if cfg.Store.PriceEnabled {
+		ua := cfg.Store.PriceUserAgent
+		priceSvc = price.New(oauthDB, []price.Fetcher{
+			price.NewDLsite(ua, cfg.Store.PriceDLsiteCurrencies, ""),
+			price.NewSteam(ua, cfg.Store.PriceSteamRegions, ""),
+		}, price.Options{})
+		priceSvc.Start()
+	} else {
+		slog.Warn("store price face: disabled — /v2/store/prices answers 503 (KUN_STORE_PRICE_ENABLED=false)")
+	}
 
 	// Wave R3 moved the metering here from the v1 groups. Deleting the v1 faces
 	// removed every writer of developer_api_usage and every TouchLastUsed call,
@@ -340,6 +352,7 @@ func setupPublicCatalog(
 			EditHistory: service.NewEditHistoryService(catalogDB.DB()),
 			Uploads:     v2handler.EditImageUpload(editUpload),
 			Store:       storeSvc,
+			Prices:      priceSvc,
 
 			SiteOfAppClient: siteOfClient,
 		},
@@ -371,6 +384,9 @@ func setupPublicCatalog(
 		}
 	}()
 	application.Fiber.Hooks().OnPreShutdown(func() error {
+		if priceSvc != nil {
+			priceSvc.Stop()
+		}
 		close(flushDone)
 		if err := usageRec.Flush(context.Background()); err != nil {
 			slog.Warn("devapi final usage flush failed", "err", err)

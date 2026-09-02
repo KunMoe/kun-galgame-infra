@@ -266,6 +266,11 @@ func getAllModels() []any {
 		&storeModel.Campaign{},
 		&storeModel.LinkDailyStat{},
 
+		// store_price_quotes (2026-09-01). Brand-new table, no rows to convert:
+		// the catalog service's price fetch writes observed storefront quotes
+		// and the /v2/store/prices face reads them.
+		&storeModel.PriceQuote{},
+
 		// Job registry observability
 		&jobsModel.JobRun{},
 	}
