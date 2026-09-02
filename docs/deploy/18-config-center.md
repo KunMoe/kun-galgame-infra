@@ -15,14 +15,31 @@
 | 2. 环境变量地板 | 键声明的 `EnvVar`(和 15-environment 里的同名变量) | 进程启动时读一次 | 面板 / compose + 重部署 |
 | 3. 数据库覆盖值 | 主库 `kun_galgame_infra` 的 `setting_overrides` | 写入后 30 秒内所有服务生效(oauth / image / artifact 经 Redis 推送为毫秒级) | 控制台 `/settings`,需 `settings.write` |
 
-读取是进程内原子指针,请求路径零网络;每个服务每 30 秒向主库拉一次全表(几十行)。
+第 3 层有两种行:**平台行**(所有服务读的那一份)和**站点行**(`scope=site:<sites.id>`,只对声明了
+「可按站点覆盖」的键存在,只被 S2S 读面与控制台读,进程内 `keys.X.Get()` 不看它)。
+
+读取是进程内原子指针,请求路径零网络;每个服务每 30 秒向主库拉一次平台行(几十行)。
 刷新失败沿用上一份;启动时连续失败则只带 1+2 两层运行并打 `settings: initial load failed` 的
 ERROR 日志。数据库里的一行若类型不符、越界或枚举外,会被忽略并退回 2/1 层,日志有 WARN。
 
 **边界**:配置中心只收运行期可调项(开关、阈值、TTL、配额)。密钥、host/port/dsn/bucket、S3
 path style、PG 连接池、OIDC 签名算法、aff URL 模板等启动期接线永远留在环境变量里。
 
-## 18.1 现有键(W1,18 个)
+## 18.1 现有键(44 个:platform 2 + W1 18 + jobs 24)
+
+### 平台策略(`platform`,W2)
+
+没有环境变量地板;没有仓内消费者——它们是下发给各站点的契约,读面见 18.7。
+
+| 键 | 类型 | 默认 | 公开 | 可按站点覆盖 | 站点必须做什么 |
+|---|---|---|---|---|---|
+| `platform.read_only` | bool | false | 是 | 是 | 拒绝一切写操作并展示提示;为整机搬迁的只读窗口准备 |
+| `platform.notice` | string(≤ 500,单行) | 空 | 是 | 是 | 页面顶部展示这行公告 |
+
+### 运行期可调项(W1,18 个)
+
+`image.upload_enabled` 与 `artifact.upload_enabled` 同时是**公开键**(随读面下发,站点据此隐藏上传入口),
+但不可按站点覆盖:执法是平台级的,站点行只会撒谎。
 
 | 键 | 类型 | 默认 | 环境变量地板 | 生效位置 |
 |---|---|---|---|---|
@@ -47,6 +64,28 @@ path style、PG 连接池、OIDC 签名算法、aff URL 模板等启动期接线
 
 单位写在键名里,环境变量的写法与迁入前完全一致。
 
+### 后台任务(`jobs`,W2,12 × 2)
+
+oauth 上的调度器(`internal/jobs`)每个任务两把键,没有环境变量地板,默认值就是迁入前 `all.go`
+里写死的时刻;详见 18.6。
+
+| 任务 | `jobs.<n>.enabled` 默认 | `jobs.<n>.schedule` 默认 |
+|---|---|---|
+| `image-gc` | true | `daily@03:30` |
+| `galgame-image-refping` | true | `daily@04:00` |
+| `catalog-image-refping` | true | `daily@04:15` |
+| `news-image-refping` | true | `daily@04:20` |
+| `user-avatar-refping` | true | `daily@04:30` |
+| `image-ref-audit` | true | `daily@04:45` |
+| `artifact-gc` | true | `daily@05:30` |
+| `prune-developer-usage` | true | `daily@06:00` |
+| `ymgal-news-poll` | true | `every:10m` |
+| `ymgal-news-sweep` | true | `daily@04:05` |
+| `store-stats-sync` | true | `every:1h` |
+| `news-moderate` | true | `every:5m` |
+
+键名里的 `<n>` 是任务名把 `-` 换成 `_`(`jobs.image_gc.schedule`)。
+
 ## 18.2 怎么改
 
 控制台 `oauth.kungal.com` → 侧栏「配置中心」(`/settings`)。页面按域列出全部键:生效值、来源
@@ -54,17 +93,22 @@ path style、PG 连接池、OIDC 签名算法、aff URL 模板等启动期接线
 (默认只有 ren;可在权限矩阵委派给 admin)的人可「编辑」或「撤销覆盖」,每次变更记审计
 (旧值 → 新值 + 备注),页面底部可见。
 
+页面顶部的「作用域」默认是「平台(全局)」;选中某个站点后只列出可按站点覆盖的键,来源多一种
+`站点覆盖`,没有站点行的键显示它继承的平台生效值。站点行只影响 18.7 的读面,不影响任何服务进程。
+
 页面显示的「来源」不含环境变量:oauth 进程看不见其他容器的环境。所以当某键显示「默认」而所属
 服务的 compose 里仍设着同名变量时,该服务实际用的是变量值。真值看 18.3。
 
 API(供脚本):
 ```
-GET    /api/v1/admin/settings                总览(domains[].keys[]:key/kind/default/effective/source/override)
-GET    /api/v1/admin/settings/audit?limit=   最近变更
-PUT    /api/v1/admin/settings/{key}          {"value": <json>, "note": "...", "version": <上次看到的 version,可选>}
-DELETE /api/v1/admin/settings/{key}?note=    撤销覆盖
+GET    /api/v1/admin/settings                总览(domains[].keys[]:key/kind/default/effective/source/override/site_scoped/public)
+GET    /api/v1/admin/settings?site=<id>      某站点的总览(只含可按站点覆盖的键;source 可为 site;inherited = 平台生效值)
+GET    /api/v1/admin/settings/audit?limit=   最近变更(含 scope_kind / scope_id)
+PUT    /api/v1/admin/settings/{key}[?site=]  {"value": <json>, "note": "...", "version": <上次看到的 version,可选>}
+DELETE /api/v1/admin/settings/{key}?note=[&site=]   撤销覆盖
 ```
-`version` 不符返回 409;类型/范围/枚举不符返回 400 并带原因。
+`version` 不符返回 409;类型/范围/枚举不符返回 400 并带原因;对不可按站点覆盖的键带 `site` 写入返回
+400「该配置不支持按站点覆盖」;`site` 不存在返回 404。
 
 ## 18.3 怎么验证真的生效了
 
@@ -89,10 +133,35 @@ docker logs --since 2m <container> 2>&1 | rg 'settings: (loaded|applied|initial 
 ## 18.5 怎么新增一个键
 
 1. 在 `internal/platform/settings/keys/keys.go` 对应域声明(`settings.Bool/Int/Float/String/Enum/StringList`),
-   给默认值、范围/枚举、中英说明;要保留环境变量地板就填 `EnvVar`。
+   给默认值、范围/枚举、中英说明;要保留环境变量地板就填 `EnvVar`;要随读面下发给站点就标 `Public`,
+   允许站点单独覆盖就标 `SiteScoped`(两者都是契约,加了就不能撤)。新的定时任务不在这里声明,
+   而是在 `keys/jobs.go` 的表里加一行(见 18.6)。
 2. 把它加进该域的 `Keys` 列表;`TestLiveRegistryIsWellFormed` 的 golden 表补一行。
 3. 消费处在**使用时**读 `keys.X.Get()`,不要在构造时读进结构体字段(那正是迁走的东西)。
 4. 测试里用 `settings.Override(t, keys.X, v)` 注入,cleanup 自动还原。
 5. 不需要迁移、不需要改控制台:注册表即界面。
 
 不进配置中心的:密钥与接线(见 18.0 边界)、一次性 cmd 工具专用的 `KUN_*`(它们仍直接读 env)。
+
+## 18.6 后台任务的开关与时刻
+
+调度器只跑在 oauth 上。每个任务的 `jobs.<n>.enabled` / `jobs.<n>.schedule` 由调度循环每 30 秒重读:
+改了 `schedule`,下一次触发时刻按新值重算;`enabled=false` 到点时跳过并记一行
+`jobs: skipped, disabled`,再前进到下一个时刻;控制台「立即运行」不看 `enabled`。
+
+`schedule` 只有两种写法:`daily@HH:MM`(进程本地时间,生产容器是 UTC)与 `every:<N>m` / `every:<N>h`
+(N ≥ 1 的整数)。控制台按这个正则拦截其它写法;直接改库写了坏值,该任务空转并打
+`jobs: bad schedule` 的 ERROR,改回来即恢复。
+
+新增一个定时任务:`internal/jobs/all.go` 里 `Register`,并在 `internal/platform/settings/keys/jobs.go`
+的表里加 `{"<name>", "<默认 schedule>"}` 一行。漏了后者,进程启动即 panic,单元测试也会指名。
+
+## 18.7 下发给站点的读面
+
+`GET /api/v1/settings`(OAuth Client Basic Auth)返回调用方站点应遵守的全部公开键,带强 `ETag`,
+`If-None-Match` 相同回 304。站点每 30–60 秒轮询,内存快照,失败沿用上一份。契约与参考客户端见
+[docs/integration/oauth/14-settings.md](../integration/oauth/14-settings.md)。
+
+读面报告的是 oauth 进程看到的值(数据库行,否则代码默认),看不见其它服务的环境变量地板——这也是
+18.4「先建行再拔 env」的另一个理由。
+

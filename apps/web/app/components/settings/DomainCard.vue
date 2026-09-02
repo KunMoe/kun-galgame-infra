@@ -8,10 +8,18 @@ import {
   SOURCE_LABELS,
   SOURCE_COLORS,
   ENV_FLOOR_NOTE,
+  PUBLIC_BADGE,
+  PUBLIC_NOTE,
+  SITE_SCOPED_BADGE,
+  SITE_SCOPED_NOTE,
   formatSettingValue
 } from '~/constants/settings'
 
-defineProps<{ domain: SettingsDomainView; writable: boolean }>()
+defineProps<{
+  domain: SettingsDomainView
+  writable: boolean
+  scopeKind: 'platform' | 'site'
+}>()
 const emit = defineEmits<{
   edit: [row: SettingsKeyView]
   reset: [row: SettingsKeyView]
@@ -25,6 +33,9 @@ const rangeText = (row: SettingsKeyView): string => {
   if (row.max != null) return `≤ ${row.max}`
   return ''
 }
+
+const ownSource = (scopeKind: 'platform' | 'site') =>
+  scopeKind === 'site' ? 'site' : 'db'
 </script>
 
 <template>
@@ -60,6 +71,29 @@ const rangeText = (row: SettingsKeyView): string => {
                 </span>
               </KunTooltip>
               <p class="text-default-500 mt-0.5">{{ row.desc_zh }}</p>
+              <div
+                v-if="row.public || row.site_scoped"
+                class="mt-0.5 flex flex-wrap items-center gap-1"
+              >
+                <KunTooltip
+                  v-if="row.public"
+                  :text="PUBLIC_NOTE"
+                  position="top"
+                >
+                  <KunChip color="info" variant="flat" size="xs">
+                    {{ PUBLIC_BADGE }}
+                  </KunChip>
+                </KunTooltip>
+                <KunTooltip
+                  v-if="row.site_scoped"
+                  :text="SITE_SCOPED_NOTE"
+                  position="top"
+                >
+                  <KunChip color="secondary" variant="flat" size="xs">
+                    {{ SITE_SCOPED_BADGE }}
+                  </KunChip>
+                </KunTooltip>
+              </div>
             </td>
 
             <td class="px-3 py-2">
@@ -87,8 +121,17 @@ const rangeText = (row: SettingsKeyView): string => {
               <span class="text-foreground font-mono break-all">
                 {{ formatSettingValue(row.kind, row.effective) }}
               </span>
-              <p v-if="row.source === 'db'" class="text-default-400 mt-0.5">
+              <p
+                v-if="scopeKind === 'platform' && row.source === 'db'"
+                class="text-default-400 mt-0.5"
+              >
                 默认 {{ formatSettingValue(row.kind, row.default) }}
+              </p>
+              <p
+                v-else-if="scopeKind === 'site' && row.source === 'site'"
+                class="text-default-400 mt-0.5"
+              >
+                平台 {{ formatSettingValue(row.kind, row.inherited) }}
               </p>
             </td>
 
@@ -102,7 +145,9 @@ const rangeText = (row: SettingsKeyView): string => {
                   {{ SOURCE_LABELS[row.source] }}
                 </KunChip>
                 <KunChip
-                  v-if="row.override && row.source === 'default'"
+                  v-if="
+                    row.override != null && row.source !== ownSource(scopeKind)
+                  "
                   color="danger"
                   variant="flat"
                   size="xs"

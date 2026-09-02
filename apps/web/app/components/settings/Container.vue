@@ -6,18 +6,56 @@ import type {
   SettingKind,
   SettingValue
 } from '~~/shared/types/settings'
-import { AUDIT_LIST_LIMIT } from '~/constants/settings'
+import {
+  AUDIT_LIST_LIMIT,
+  PLATFORM_SCOPE_LABEL,
+  SITE_SCOPE_HINT
+} from '~/constants/settings'
 
 const CONFLICT_MESSAGE = '该配置已被其他人修改,请刷新后重试'
 
 const api = useApi()
+
+const siteId = ref(0)
+
+const { data: sitesData } = await useApiFetch<Site[]>('/sites')
+const sites = computed(() => sitesData.value ?? [])
+
+const scopeOptions = computed(() => [
+  { value: 0, label: PLATFORM_SCOPE_LABEL },
+  ...sites.value.map((site) => ({
+    value: site.id,
+    label: `${site.name} · ${site.domain}`
+  }))
+])
+
+const siteName = computed(() => {
+  if (siteId.value <= 0) return ''
+  return sites.value.find((site) => site.id === siteId.value)?.name ?? ''
+})
+
+const siteNames = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const site of sites.value) {
+    map[String(site.id)] = site.name
+  }
+  return map
+})
+
+const scopeKind = computed<'platform' | 'site'>(() =>
+  siteId.value > 0 ? 'site' : 'platform'
+)
 
 const {
   data: overviewData,
   status,
   refresh: refreshOverview,
   error
-} = await useApiFetch<SettingsOverview>('/admin/settings')
+} = await useApiFetch<SettingsOverview>('/admin/settings', {
+  query: computed(() => ({
+    ...(siteId.value > 0 ? { site: siteId.value } : {})
+  }))
+})
 
 const {
   data: auditData,
@@ -29,23 +67,34 @@ const {
 
 const overview = computed(() => overviewData.value)
 const auditEntries = computed(() => auditData.value ?? [])
-const isLoading = computed(() => status.value === 'pending')
+const isLoading = computed(
+  () => status.value === 'pending' && !overviewData.value
+)
 const writable = computed(() => overview.value?.writable ?? false)
 
-const kinds = computed<Record<string, SettingKind>>(() => {
-  const map: Record<string, SettingKind> = {}
-  for (const domain of overview.value?.domains ?? []) {
-    for (const row of domain.keys) {
-      map[row.key] = row.kind
+const kinds = ref<Record<string, SettingKind>>({})
+watch(
+  overviewData,
+  (data) => {
+    for (const domain of data?.domains ?? []) {
+      for (const row of domain.keys) {
+        kinds.value[row.key] = row.kind
+      }
     }
-  }
-  return map
-})
+  },
+  { immediate: true }
+)
 
 const editOpen = ref(false)
 const resetOpen = ref(false)
 const pendingRow = ref<SettingsKeyView | null>(null)
 const submitting = ref(false)
+
+watch(siteId, () => {
+  editOpen.value = false
+  resetOpen.value = false
+  pendingRow.value = null
+})
 
 const settingPath = (key: string) =>
   `/admin/settings/${encodeURIComponent(key)}`
@@ -87,7 +136,11 @@ const saveOverride = async (value: SettingValue, note: string) => {
     if (row.override != null) {
       body.version = row.override.version
     }
-    const response = await api.put<SettingsKeyView>(settingPath(row.key), body)
+    const path =
+      siteId.value > 0
+        ? `${settingPath(row.key)}?site=${siteId.value}`
+        : settingPath(row.key)
+    const response = await api.put<SettingsKeyView>(path, body)
     if (response.code === 0) {
       useKunMessage('已保存', 'success')
       editOpen.value = false
@@ -107,7 +160,8 @@ const confirmReset = async (note: string) => {
   submitting.value = true
   try {
     const response = await api.delete<SettingsKeyView>(settingPath(row.key), {
-      note
+      note,
+      ...(siteId.value > 0 ? { site: siteId.value } : {})
     })
     if (response.code === 0) {
       useKunMessage('已撤销覆盖', 'success')
@@ -124,12 +178,25 @@ const confirmReset = async (note: string) => {
 
 <template>
   <div class="space-y-6">
-    <div>
-      <h1 class="text-foreground text-2xl font-bold">配置中心</h1>
-      <p class="text-default-500 mt-1">
-        生效顺序是代码默认 → 环境变量地板 → 这里的覆盖值；30
-        秒内生效；密钥与接线不在这里。
-      </p>
+    <div
+      class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+    >
+      <div>
+        <h1 class="text-foreground text-2xl font-bold">配置中心</h1>
+        <p class="text-default-500 mt-1">
+          生效顺序是代码默认 → 环境变量地板 → 这里的覆盖值；30
+          秒内生效；密钥与接线不在这里。
+        </p>
+        <p v-if="scopeKind === 'site'" class="text-default-500 mt-1">
+          {{ SITE_SCOPE_HINT }}
+        </p>
+      </div>
+      <KunSelect
+        v-model="siteId"
+        label="作用域"
+        :options="scopeOptions"
+        class-name="w-full shrink-0 sm:w-72"
+      />
     </div>
 
     <CommonFetchError v-if="error" @retry="refreshOverview" />
@@ -147,6 +214,7 @@ const confirmReset = async (note: string) => {
         :key="domain.name"
         :domain="domain"
         :writable="writable"
+        :scope-kind="scopeKind"
         @edit="askEdit"
         @reset="askReset"
       />
@@ -155,6 +223,7 @@ const confirmReset = async (note: string) => {
         :entries="auditEntries"
         :has-error="Boolean(auditError)"
         :kinds="kinds"
+        :site-names="siteNames"
         @retry="refreshAudit"
       />
 
@@ -162,6 +231,8 @@ const confirmReset = async (note: string) => {
         v-model:open="editOpen"
         :row="pendingRow"
         :submitting="submitting"
+        :scope-kind="scopeKind"
+        :site-name="siteName"
         @save="saveOverride"
       />
 
@@ -169,6 +240,7 @@ const confirmReset = async (note: string) => {
         v-model:open="resetOpen"
         :row="pendingRow"
         :submitting="submitting"
+        :scope-kind="scopeKind"
         @confirm="confirmReset"
       />
     </template>

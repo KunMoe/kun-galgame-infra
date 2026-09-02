@@ -6,7 +6,7 @@ export type SettingKind =
   | 'enum'
   | 'string_list'
 
-export type SettingSource = 'db' | 'default'
+export type SettingSource = 'db' | 'default' | 'site'
 
 export type SettingValue = boolean | number | string | string[]
 
@@ -33,6 +33,9 @@ export interface SettingsKeyView {
   effective: SettingValue
   source: SettingSource
   override: SettingsOverrideView | null
+  site_scoped: boolean
+  public: boolean
+  inherited?: SettingValue
 }
 
 export interface SettingsDomainView {
@@ -42,6 +45,7 @@ export interface SettingsDomainView {
 }
 
 export interface SettingsOverview {
+  scope: { kind: 'platform' | 'site'; site_id?: number }
   domains: SettingsDomainView[]
   writable: boolean
 }
@@ -58,4 +62,6 @@ export interface SettingsAuditEntry {
   new_value: SettingValue | null
   note: string
   created_at: string
+  scope_kind: 'platform' | 'site'
+  scope_id: string
 }

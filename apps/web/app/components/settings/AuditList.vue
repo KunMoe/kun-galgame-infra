@@ -10,6 +10,7 @@ defineProps<{
   entries: SettingsAuditEntry[]
   hasError: boolean
   kinds: Record<string, SettingKind>
+  siteNames: Record<string, string>
 }>()
 const emit = defineEmits<{ retry: [] }>()
 
@@ -17,6 +18,14 @@ const formatTime = (iso: string) => new Date(iso).toLocaleString()
 
 const kindOf = (kinds: Record<string, SettingKind>, key: string): SettingKind =>
   kinds[key] ?? 'string'
+
+const scopeLabel = (
+  entry: SettingsAuditEntry,
+  names: Record<string, string>
+) =>
+  entry.scope_kind === 'site'
+    ? names[entry.scope_id] || `站点 #${entry.scope_id}`
+    : '平台'
 </script>
 
 <template>
@@ -26,12 +35,13 @@ const kindOf = (kinds: Record<string, SettingKind>, key: string): SettingKind =>
     <CommonFetchError v-if="hasError" @retry="emit('retry')" />
 
     <div v-else class="overflow-x-auto">
-      <table class="w-full min-w-[52rem] text-sm">
+      <table class="w-full min-w-[60rem] text-sm">
         <thead class="text-default-500">
           <tr>
             <th class="px-3 py-2 text-left font-medium">时间</th>
             <th class="px-3 py-2 text-left font-medium">操作者</th>
             <th class="px-3 py-2 text-left font-medium">动作</th>
+            <th class="px-3 py-2 text-left font-medium">作用域</th>
             <th class="px-3 py-2 text-left font-medium">键</th>
             <th class="px-3 py-2 text-left font-medium">旧值 → 新值</th>
             <th class="px-3 py-2 text-left font-medium">备注</th>
@@ -58,6 +68,9 @@ const kindOf = (kinds: Record<string, SettingKind>, key: string): SettingKind =>
                 {{ AUDIT_ACTION_LABELS[entry.action] || entry.action }}
               </KunChip>
             </td>
+            <td class="text-foreground px-3 py-2">
+              {{ scopeLabel(entry, siteNames) }}
+            </td>
             <td class="text-foreground px-3 py-2 font-mono break-all">
               {{ entry.key }}
             </td>
@@ -75,7 +88,7 @@ const kindOf = (kinds: Record<string, SettingKind>, key: string): SettingKind =>
             </td>
           </tr>
           <tr v-if="!entries.length">
-            <td colspan="6" class="text-default-400 px-3 py-8 text-center">
+            <td colspan="7" class="text-default-400 px-3 py-8 text-center">
               暂无配置变更
             </td>
           </tr>

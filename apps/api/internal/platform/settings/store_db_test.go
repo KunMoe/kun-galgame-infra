@@ -80,7 +80,7 @@ func TestStoreSetResetVersionAndAudit(t *testing.T) {
 	store := settings.NewStore(testDB)
 	key := "t.count"
 
-	row, err := store.Set(ctx, key, json.RawMessage(`15`), "first", nil, 7)
+	row, err := store.Set(ctx, settings.PlatformScope, key, json.RawMessage(`15`), "first", nil, 7)
 	if err != nil {
 		t.Fatalf("first set: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestStoreSetResetVersionAndAudit(t *testing.T) {
 		t.Errorf("first new_value = %q, want 15", entries[0].NewValue)
 	}
 
-	row, err = store.Set(ctx, key, json.RawMessage(`16`), "second", nil, 7)
+	row, err = store.Set(ctx, settings.PlatformScope, key, json.RawMessage(`16`), "second", nil, 7)
 	if err != nil {
 		t.Fatalf("second set: %v", err)
 	}
@@ -125,10 +125,10 @@ func TestStoreSetResetVersionAndAudit(t *testing.T) {
 	}
 
 	v1 := int64(1)
-	if _, err := store.Set(ctx, key, json.RawMessage(`17`), "stale", &v1, 7); err != settings.ErrVersionConflict {
+	if _, err := store.Set(ctx, settings.PlatformScope, key, json.RawMessage(`17`), "stale", &v1, 7); err != settings.ErrVersionConflict {
 		t.Errorf("stale version = %v, want ErrVersionConflict", err)
 	}
-	got, err := store.Values(ctx)
+	got, err := store.Values(ctx, settings.PlatformScope)
 	if err != nil {
 		t.Fatalf("values after conflict: %v", err)
 	}
@@ -137,17 +137,17 @@ func TestStoreSetResetVersionAndAudit(t *testing.T) {
 	}
 
 	v99 := int64(99)
-	if _, err := store.Set(ctx, "t.missing", json.RawMessage(`1`), "", &v99, 7); err != settings.ErrVersionConflict {
+	if _, err := store.Set(ctx, settings.PlatformScope, "t.missing", json.RawMessage(`1`), "", &v99, 7); err != settings.ErrVersionConflict {
 		t.Errorf("non-zero expectVersion on missing = %v, want ErrVersionConflict", err)
 	}
 
-	if err := store.Reset(ctx, key, "undo", 7); err != nil {
+	if err := store.Reset(ctx, settings.PlatformScope, key, "undo", 7); err != nil {
 		t.Fatalf("reset: %v", err)
 	}
-	if _, err := store.Values(ctx); err != nil {
+	if _, err := store.Values(ctx, settings.PlatformScope); err != nil {
 		t.Fatalf("values after reset: %v", err)
 	}
-	got, _ = store.Values(ctx)
+	got, _ = store.Values(ctx, settings.PlatformScope)
 	if _, ok := got[key]; ok {
 		t.Errorf("reset left a value: %s", got[key])
 	}
@@ -166,11 +166,11 @@ func TestStoreSetResetVersionAndAudit(t *testing.T) {
 		t.Errorf("reset new_value = %q, want JSON null", entries[0].NewValue)
 	}
 
-	if err := store.Reset(ctx, key, "", 7); err != settings.ErrNoOverride {
+	if err := store.Reset(ctx, settings.PlatformScope, key, "", 7); err != settings.ErrNoOverride {
 		t.Errorf("reset missing = %v, want ErrNoOverride", err)
 	}
 
-	overrides, err := store.Overrides(ctx)
+	overrides, err := store.Overrides(ctx, settings.PlatformScope)
 	if err != nil {
 		t.Fatalf("overrides after reset: %v", err)
 	}
@@ -178,11 +178,11 @@ func TestStoreSetResetVersionAndAudit(t *testing.T) {
 		t.Errorf("overrides after reset = %+v", overrides)
 	}
 
-	_, err = store.Set(ctx, key, json.RawMessage(`1`), "named", nil, 7)
+	_, err = store.Set(ctx, settings.PlatformScope, key, json.RawMessage(`1`), "named", nil, 7)
 	if err != nil {
 		t.Fatalf("set for name join: %v", err)
 	}
-	overrides, err = store.Overrides(ctx)
+	overrides, err = store.Overrides(ctx, settings.PlatformScope)
 	if err != nil {
 		t.Fatalf("overrides: %v", err)
 	}

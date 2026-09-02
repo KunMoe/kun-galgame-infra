@@ -30,17 +30,17 @@ func TestServiceSetUnknownAndInvalid(t *testing.T) {
 	ctx := context.Background()
 	svc, _, _ := serviceHarness(t)
 
-	_, err := svc.Set(ctx, 7, "nope.key", json.RawMessage(`1`), "", nil)
+	_, err := svc.Set(ctx, 7, settings.PlatformScope, "nope.key", json.RawMessage(`1`), "", nil)
 	if !errors.Is(err, settings.ErrUnknownKey) {
 		t.Errorf("unknown key = %v, want ErrUnknownKey", err)
 	}
 
-	_, err = svc.Set(ctx, 7, "svc.count", json.RawMessage(`true`), "", nil)
+	_, err = svc.Set(ctx, 7, settings.PlatformScope, "svc.count", json.RawMessage(`true`), "", nil)
 	if !errors.Is(err, settings.ErrInvalidValue) {
 		t.Errorf("wrong kind = %v, want ErrInvalidValue", err)
 	}
 
-	_, err = svc.Set(ctx, 7, "svc.count", json.RawMessage(`99`), "", nil)
+	_, err = svc.Set(ctx, 7, settings.PlatformScope, "svc.count", json.RawMessage(`99`), "", nil)
 	if !errors.Is(err, settings.ErrInvalidValue) {
 		t.Errorf("out of bounds = %v, want ErrInvalidValue", err)
 	}
@@ -58,7 +58,7 @@ func TestServiceSetResetRefreshAndOverview(t *testing.T) {
 	ctx := context.Background()
 	svc, count, _ := serviceHarness(t)
 
-	view, err := svc.Set(ctx, 7, count.Name(), json.RawMessage(`8`), "up", nil)
+	view, err := svc.Set(ctx, 7, settings.PlatformScope, count.Name(), json.RawMessage(`8`), "up", nil)
 	if err != nil {
 		t.Fatalf("set: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestServiceSetResetRefreshAndOverview(t *testing.T) {
 		t.Errorf("set view = %+v", view)
 	}
 
-	ov, err := svc.Overview(ctx, true)
+	ov, err := svc.Overview(ctx, true, settings.PlatformScope)
 	if err != nil {
 		t.Fatalf("overview: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestServiceSetResetRefreshAndOverview(t *testing.T) {
 		t.Errorf("overview after set = %+v", kv)
 	}
 
-	view, err = svc.Reset(ctx, 7, count.Name(), "undo")
+	view, err = svc.Reset(ctx, 7, settings.PlatformScope, count.Name(), "undo")
 	if err != nil {
 		t.Fatalf("reset: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestServiceSetResetRefreshAndOverview(t *testing.T) {
 		t.Errorf("reset view = %+v", view)
 	}
 
-	ov, err = svc.Overview(ctx, false)
+	ov, err = svc.Overview(ctx, false, settings.PlatformScope)
 	if err != nil {
 		t.Fatalf("overview after reset: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestServiceOverviewKeepsInvalidOverride(t *testing.T) {
 		t.Fatalf("seed invalid row: %v", err)
 	}
 
-	ov, err := svc.Overview(ctx, false)
+	ov, err := svc.Overview(ctx, false, settings.PlatformScope)
 	if err != nil {
 		t.Fatalf("overview: %v", err)
 	}

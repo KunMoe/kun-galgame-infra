@@ -2,6 +2,23 @@ package keys
 
 import "api/internal/platform/settings"
 
+var PlatformReadOnly = settings.Bool(settings.Meta{
+	Name:       "platform.read_only",
+	DescEN:     "Tells every site to refuse writes (posting, editing, uploads) and show a maintenance notice; used during platform-wide maintenance such as a database move.",
+	DescZH:     "通知所有站点拒绝写操作(发帖/编辑/上传)并展示维护提示,用于数据库迁移等全平台维护窗口。",
+	SiteScoped: true,
+	Public:     true,
+}, false)
+
+var PlatformNotice = settings.String(settings.Meta{
+	Name:       "platform.notice",
+	DescEN:     "A one-line notice every site should show at the top of its pages; empty shows nothing.",
+	DescZH:     "各站点应在页面顶部展示的一行公告,留空则不展示。",
+	Pattern:    `^[^\n]{0,500}$`,
+	SiteScoped: true,
+	Public:     true,
+}, "")
+
 var AuthVerificationCodeTTLMinutes = settings.Int(settings.Meta{
 	Name:   "auth.verification_code_ttl_minutes",
 	EnvVar: "KUN_AUTH_VERIFICATION_CODE_TTL_MINUTES",
@@ -16,6 +33,7 @@ var ImageUploadEnabled = settings.Bool(settings.Meta{
 	EnvVar: "KUN_IMAGE_UPLOAD_ENABLED",
 	DescEN: "Master switch for accepting new image uploads; off rejects every upload.",
 	DescZH: "图床上传总开关,关闭后拒绝所有新上传。",
+	Public: true,
 }, false)
 
 var ArtifactUploadEnabled = settings.Bool(settings.Meta{
@@ -23,6 +41,7 @@ var ArtifactUploadEnabled = settings.Bool(settings.Meta{
 	EnvVar: "KUN_ARTIFACT_UPLOAD_ENABLED",
 	DescEN: "Master switch for accepting new artifact uploads; off rejects every upload.",
 	DescZH: "文件存储上传总开关,关闭后拒绝所有新上传。",
+	Public: true,
 }, false)
 
 var ArtifactMultipartThresholdBytes = settings.Int(settings.Meta{
@@ -156,6 +175,11 @@ var StoreLinkQuotaPerClient = settings.Int(settings.Meta{
 
 var live = settings.NewRegistry(
 	settings.Domain{
+		Name:    "platform",
+		TitleZH: "平台策略",
+		Keys:    []settings.Entry{PlatformReadOnly, PlatformNotice},
+	},
+	settings.Domain{
 		Name:    "auth",
 		TitleZH: "账号与验证",
 		Keys:    []settings.Entry{AuthVerificationCodeTTLMinutes},
@@ -203,6 +227,7 @@ var live = settings.NewRegistry(
 		TitleZH: "DLsite 分销",
 		Keys:    []settings.Entry{StoreLinkQuotaPerClient},
 	},
+	jobsDomain,
 )
 
 func Live() *settings.Registry { return live }

@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { jobStatusMeta, jobTriggerLabel } from '~/constants/jobs'
+import {
+  jobStatusMeta,
+  jobTriggerLabel,
+  formatJobSchedule,
+  JOB_DISABLED_LABEL
+} from '~/constants/jobs'
 import type { JobInfo } from '~~/shared/types/jobs'
 
 const api = useApi()
@@ -32,7 +37,8 @@ const openHistory = (name: string) => {
   historyOpen.value = true
 }
 
-const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString('zh-CN') : '—')
+const fmt = (s?: string | null) =>
+  s ? new Date(s).toLocaleString('zh-CN') : '—'
 
 const duration = (run: JobInfo['latest_run']): string => {
   if (!run || !run.finished_at) return ''
@@ -42,9 +48,6 @@ const duration = (run: JobInfo['latest_run']): string => {
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
   return `${Math.floor(ms / 60_000)}m${Math.round((ms % 60_000) / 1000)}s`
 }
-
-const scheduleLabel = (job: JobInfo) =>
-  job.daily_at ? `每日 ${job.daily_at}` : job.auto ? '定时' : '手动'
 </script>
 
 <template>
@@ -53,7 +56,10 @@ const scheduleLabel = (job: JobInfo) =>
       <div>
         <h1 class="text-foreground text-2xl font-bold">后台任务</h1>
         <p class="text-default-500 mt-1">
-          调度状态、最近执行与手动触发 · 共 {{ jobs.length }} 个任务
+          调度状态、最近执行与手动触发 · 共 {{ jobs.length }} 个任务 ·
+          <NuxtLink to="/settings" class="text-primary hover:underline">
+            调度与开关在配置中心的「后台任务」域修改
+          </NuxtLink>
         </p>
       </div>
       <KunButton variant="flat" :disabled="isLoading" @click="() => refresh()">
@@ -97,9 +103,19 @@ const scheduleLabel = (job: JobInfo) =>
               {{ job.name }}
             </p>
           </div>
-          <KunChip color="default" variant="flat" size="xs" class="shrink-0">
-            {{ scheduleLabel(job) }}
-          </KunChip>
+          <div class="flex shrink-0 flex-wrap items-center justify-end gap-1">
+            <KunChip color="default" variant="flat" size="xs">
+              {{ formatJobSchedule(job.schedule) }}
+            </KunChip>
+            <KunChip
+              v-if="!job.enabled"
+              color="warning"
+              variant="flat"
+              size="xs"
+            >
+              {{ JOB_DISABLED_LABEL }}
+            </KunChip>
+          </div>
         </div>
 
         <div class="text-default-500 mt-3 space-y-1 text-sm">
@@ -113,10 +129,7 @@ const scheduleLabel = (job: JobInfo) =>
                 · {{ jobTriggerLabel(job.latest_run.trigger) }}触发
               </span>
             </p>
-            <p
-              v-if="job.latest_run.error"
-              class="text-danger-600 break-words"
-            >
+            <p v-if="job.latest_run.error" class="text-danger-600 break-words">
               {{ job.latest_run.error }}
             </p>
             <p

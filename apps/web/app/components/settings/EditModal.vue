@@ -5,12 +5,20 @@ import { PROPAGATION_NOTE, formatSettingValue } from '~/constants/settings'
 const props = defineProps<{
   row: SettingsKeyView | null
   submitting: boolean
+  scopeKind: 'platform' | 'site'
+  siteName: string
 }>()
 const emit = defineEmits<{
   save: [value: SettingValue, note: string]
 }>()
 
 const open = defineModel<boolean>('open', { required: true })
+
+const title = computed(() =>
+  props.scopeKind === 'site'
+    ? `编辑(站点:${props.siteName})`
+    : (props.row?.key ?? '编辑配置')
+)
 
 const boolValue = ref(false)
 const numberValue = ref<number | null>(null)
@@ -122,12 +130,21 @@ const emitSave = () => {
 </script>
 
 <template>
-  <KunModal v-model="open" size="lg" :aria-label="row?.key ?? '编辑配置'">
+  <KunModal v-model="open" size="lg" :aria-label="title">
     <div v-if="row" class="space-y-4">
       <div>
-        <h2 class="text-foreground font-mono text-xl font-bold break-all">
-          {{ row.key }}
+        <h2
+          class="text-foreground text-xl font-bold"
+          :class="{ 'font-mono break-all': scopeKind !== 'site' }"
+        >
+          {{ title }}
         </h2>
+        <p
+          v-if="scopeKind === 'site'"
+          class="text-foreground mt-1 font-mono break-all"
+        >
+          {{ row.key }}
+        </p>
         <p class="text-default-500 mt-1">{{ row.desc_zh }}</p>
       </div>
 

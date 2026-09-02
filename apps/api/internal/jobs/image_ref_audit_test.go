@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"api/internal/platform/catalog/imagerefs"
+	"api/internal/platform/settings/keys"
 )
 
 // The whole point of the diff is that an already-known breakage must NOT
@@ -62,7 +63,15 @@ func TestImageRefAuditRunsAfterGCAndRefpings(t *testing.T) {
 
 	at := map[string]string{}
 	for _, j := range r.List() {
-		at[j.Name] = j.Schedule.DailyAt
+		jk, ok := keys.Job(j.Name)
+		if !ok {
+			t.Fatalf("%s has no settings keys", j.Name)
+		}
+		s, err := ParseSchedule(jk.Schedule.Default().(string))
+		if err != nil {
+			t.Fatalf("%s: %v", j.Name, err)
+		}
+		at[j.Name] = s.DailyAt
 	}
 
 	audit, ok := at[JobImageRefAudit]

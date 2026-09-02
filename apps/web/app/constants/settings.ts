@@ -25,12 +25,14 @@ export const KIND_LABELS: Record<SettingKind, string> = {
 
 export const SOURCE_LABELS: Record<SettingSource, string> = {
   db: '已覆盖',
-  default: '默认'
+  default: '默认',
+  site: '站点覆盖'
 }
 
 export const SOURCE_COLORS: Record<SettingSource, SettingsChipColor> = {
   db: 'primary',
-  default: 'default'
+  default: 'default',
+  site: 'secondary'
 }
 
 export const AUDIT_ACTION_LABELS: Record<SettingsAuditAction, string> = {
@@ -52,6 +54,19 @@ export const PROPAGATION_NOTE = '保存后所有服务在 30 秒内生效'
 
 export const ENV_FLOOR_NOTE =
   '若所属服务的环境里设置了该变量,它会覆盖默认值,直到这里设置了覆盖值'
+
+export const PLATFORM_SCOPE_LABEL = '平台(全局)'
+
+export const PUBLIC_BADGE = '公开'
+
+export const PUBLIC_NOTE = '通过 GET /api/v1/settings 下发给各站点(S2S 读面)'
+
+export const SITE_SCOPED_BADGE = '可按站点'
+
+export const SITE_SCOPED_NOTE = '选中某个站点后可单独覆盖'
+
+export const SITE_SCOPE_HINT =
+  '仅列出可按站点覆盖的键;没有站点覆盖值的键显示平台生效值'
 
 export const formatSettingValue = (
   kind: SettingKind,
