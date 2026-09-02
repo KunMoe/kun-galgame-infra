@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -35,7 +37,7 @@ func TestDLsiteFetch(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	f := NewDLsite("Test-UA/1.0", []string{"CNY", "USD", "TWD", "HKD", "KRW", "EUR"}, srv.URL)
+	f := NewDLsite("Test-UA/1.0", []string{"CNY", "USD", "TWD", "HKD", "KRW", "EUR"}, srv.URL, nil)
 	out, err := f.Fetch(context.Background(), "jp", []string{"RJ00000001", "RJ01402486"})
 	require.NoError(t, err)
 	require.Equal(t, "/maniax/product/info/ajax", gotPath)
@@ -66,7 +68,7 @@ func TestDLsiteOnSaleZero(t *testing.T) {
 		})
 	}))
 	t.Cleanup(srv.Close)
-	f := NewDLsite("Test-UA/1.0", nil, srv.URL)
+	f := NewDLsite("Test-UA/1.0", nil, srv.URL, nil)
 	out, err := f.Fetch(context.Background(), "jp", []string{"RJ149770"})
 	require.NoError(t, err)
 	up, ok := out["RJ149770"]
@@ -74,8 +76,35 @@ func TestDLsiteOnSaleZero(t *testing.T) {
 	require.False(t, up.Found)
 }
 
+func TestDLsiteFetchViaProxy(t *testing.T) {
+	var originHits atomic.Int32
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		originHits.Add(1)
+		http.Error(w, "must not be reached directly", http.StatusTeapot)
+	}))
+	t.Cleanup(origin.Close)
+	var proxied string
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxied = r.URL.String()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"RJ149770": map[string]any{"price": 100, "official_price": 100, "discount_rate": 0, "on_sale": 1, "currency_price": map[string]any{}},
+		})
+	}))
+	t.Cleanup(proxy.Close)
+	proxyURL, err := url.Parse(proxy.URL)
+	require.NoError(t, err)
+
+	f := NewDLsite("Test-UA/1.0", nil, origin.URL, proxyURL)
+	out, err := f.Fetch(context.Background(), "jp", []string{"RJ149770"})
+	require.NoError(t, err)
+	require.True(t, out["RJ149770"].Found)
+	require.Equal(t, origin.URL+"/maniax/product/info/ajax?product_id=RJ149770", proxied)
+	require.Zero(t, originHits.Load())
+}
+
 func TestDLsiteAccepts(t *testing.T) {
-	f := NewDLsite("", nil, "")
+	f := NewDLsite("", nil, "", nil)
 	require.False(t, f.Accepts("RE149770"))
 	require.True(t, f.Accepts("RJ149770"))
 	require.True(t, f.Accepts("VJ012345"))
@@ -93,7 +122,7 @@ func TestDLsiteTimesaleTLayout(t *testing.T) {
 		})
 	}))
 	t.Cleanup(srv.Close)
-	f := NewDLsite("Test-UA/1.0", nil, srv.URL)
+	f := NewDLsite("Test-UA/1.0", nil, srv.URL, nil)
 	out, err := f.Fetch(context.Background(), "jp", []string{"RJ149770"})
 	require.NoError(t, err)
 	up := out["RJ149770"]

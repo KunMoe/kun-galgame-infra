@@ -82,6 +82,8 @@ type StoreConfig struct {
 	PriceUserAgent        string
 	PriceSteamRegions     []string
 	PriceDLsiteCurrencies []string
+	PriceDLsiteBase       string
+	PriceDLsiteProxy      string
 }
 
 type AIClientConfig struct {
@@ -563,6 +565,8 @@ func Load() (*Config, error) {
 		PriceUserAgent:        getEnv("KUN_STORE_PRICE_USER_AGENT", "NextMoe-PriceBot/1.0 (+https://www.kungal.com)"),
 		PriceSteamRegions:     steamRegions,
 		PriceDLsiteCurrencies: dlsiteCurrencies,
+		PriceDLsiteBase:       getEnv("KUN_STORE_PRICE_DLSITE_BASE", ""),
+		PriceDLsiteProxy:      getEnv("KUN_STORE_PRICE_DLSITE_PROXY", ""),
 	}
 
 	cfg.NewsModeration = NewsModerationConfig{
