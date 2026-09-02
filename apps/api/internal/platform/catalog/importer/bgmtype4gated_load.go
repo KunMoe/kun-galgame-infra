@@ -66,6 +66,7 @@ func (im *Importer) loadExistingWorkTitleNorms() (map[string]wtNorm, error) {
 	}
 	if err := collect(
 		`SELECT title_norm, work_id, title FROM catalog_work_title t
+		 JOIN catalog_work w ON w.id = t.work_id AND w.deleted_at IS NULL
 		 WHERE ` + service.WorkDupeNormEligibleSQL("title_norm") + ` AND ` + editspec.NotSuppressedWorkTitleSQL("t"),
 	); err != nil {
 		return nil, err

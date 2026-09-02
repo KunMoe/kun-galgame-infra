@@ -208,6 +208,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/catalog/works/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release a quarantined work to live (the reject-without-merge exit of the mint gate) */
+        post: operations["releaseCatalogWork"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -263,6 +280,7 @@ export interface components {
              * @description Set when a merge-candidate accept opened a proposal
              */
             proposal_id?: number;
+            released?: number[] | null;
         };
         DecideCandidateInputBody: {
             /**
@@ -334,6 +352,8 @@ export interface components {
             id: number;
             /** Format: int32 */
             source_id?: number;
+            /** Format: int32 */
+            work_status?: number;
         };
         EnvelopeClaimActionResult: {
             /**
@@ -465,6 +485,18 @@ export interface components {
             /** Format: int64 */
             code: number;
             data?: components["schemas"]["RefActionData"];
+            message: string;
+        };
+        EnvelopeReleaseWorkData: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/EnvelopeReleaseWorkData.json
+             */
+            readonly $schema?: string;
+            /** Format: int64 */
+            code: number;
+            data?: components["schemas"]["ReleaseWorkData"];
             message: string;
         };
         HouseError: {
@@ -622,6 +654,26 @@ export interface components {
             reason: string;
             /** Format: int32 */
             source_id: number;
+        };
+        ReleaseWorkData: {
+            /** Format: int32 */
+            status: number;
+            /** Format: int64 */
+            work_id: number;
+        };
+        ReleaseWorkInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/ReleaseWorkInputBody.json
+             */
+            readonly $schema?: string;
+            note?: string;
+            /**
+             * Format: int64
+             * @description The quarantined work to release to live
+             */
+            work_id: number;
         };
         StaffClaimActionRequest: {
             /**
@@ -1045,6 +1097,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EnvelopeRefActionData"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseError"];
+                };
+            };
+        };
+    };
+    releaseCatalogWork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseWorkInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeReleaseWorkData"];
                 };
             };
             /** @description Error */

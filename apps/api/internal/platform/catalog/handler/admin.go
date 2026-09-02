@@ -51,6 +51,10 @@ func (s *AdminServer) register(api huma.API) {
 		Summary: "Decide a match candidate: accept (credit_name → link a person; else opens a merge proposal), reject (kept forever) or defer", Tags: tags,
 	}, s.decideCandidate)
 	huma.Register(api, huma.Operation{
+		OperationID: "releaseCatalogWork", Method: http.MethodPost, Path: "/api/v1/admin/catalog/works/release",
+		Summary: "Release a quarantined work to live (the reject-without-merge exit of the mint gate)", Tags: tags,
+	}, s.releaseWork)
+	huma.Register(api, huma.Operation{
 		OperationID: "detachCatalogName", Method: http.MethodPost, Path: "/api/v1/admin/catalog/names/detach",
 		Summary: "Detach a credit name from its person (reverses a person link; removes the person if it empties)", Tags: tags,
 	}, s.detachName)
@@ -199,11 +203,12 @@ type decideCandidateInput struct {
 }
 
 type decideCandidateData struct {
-	Decided       bool   `json:"decided"`
-	ProposalID    *int64 `json:"proposal_id,omitempty" doc:"Set when a merge-candidate accept opened a proposal"`
-	PersonID      *int64 `json:"person_id,omitempty"`
-	PersonCreated bool   `json:"person_created,omitempty"`
-	NeedsManual   bool   `json:"needs_manual,omitempty"`
+	Decided       bool    `json:"decided"`
+	ProposalID    *int64  `json:"proposal_id,omitempty" doc:"Set when a merge-candidate accept opened a proposal"`
+	PersonID      *int64  `json:"person_id,omitempty"`
+	PersonCreated bool    `json:"person_created,omitempty"`
+	NeedsManual   bool    `json:"needs_manual,omitempty"`
+	Released      []int64 `json:"released,omitempty"`
 }
 
 type decideCandidateOutput struct {
@@ -229,7 +234,7 @@ func (s *AdminServer) decideCandidate(ctx context.Context, in *decideCandidateIn
 		slog.Error("catalog admin decide candidate", "err", err)
 		return nil, apiErr(http.StatusInternalServerError, errors.ErrInternalServer)
 	}
-	data := decideCandidateData{Decided: true}
+	data := decideCandidateData{Decided: true, Released: outcome.Released}
 	if outcome.Proposal != nil {
 		data.ProposalID = &outcome.Proposal.ID
 	}

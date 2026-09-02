@@ -44,19 +44,27 @@ func tallySignals(st *BgmGatedStats, p, t, x bool) {
 }
 
 func collide(r poolRow, wt map[string]wtNorm) (BgmGatedCollision, bool) {
-	for _, n := range []string{r.NameNorm, r.NameCNNorm} {
+	n, w, ok := firstCorpusHit(wt, r.NameNorm, r.NameCNNorm)
+	if !ok {
+		return BgmGatedCollision{}, false
+	}
+	return BgmGatedCollision{
+		SubjectID: r.ID, Name: r.Name, NameCN: r.NameCN,
+		CollidedNorm: n, WorkID: w.workID, WorkTitle: w.title,
+	}, true
+}
+
+func firstCorpusHit(wt map[string]wtNorm, norms ...string) (string, wtNorm, bool) {
+	for _, n := range norms {
 		folded, ok := foldedGateKey(n)
 		if !ok {
 			continue
 		}
 		if w, hit := wt[folded]; hit {
-			return BgmGatedCollision{
-				SubjectID: r.ID, Name: r.Name, NameCN: r.NameCN,
-				CollidedNorm: n, WorkID: w.workID, WorkTitle: w.title,
-			}, true
+			return n, w, true
 		}
 	}
-	return BgmGatedCollision{}, false
+	return "", wtNorm{}, false
 }
 
 // foldedGateKey reports the space-folded comparison key for a source norm, and

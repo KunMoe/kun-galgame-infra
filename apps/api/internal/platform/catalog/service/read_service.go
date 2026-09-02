@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	stderrors "errors"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -722,12 +723,14 @@ func (s *ReadService) LabelWorks(ctx context.Context, labelID int64, limit, offs
 	if h.ID != 0 {
 		head = &h
 	}
-	if err = db.Raw(`SELECT count(*) FROM catalog_work_label WHERE label_id = ?`, labelID).Scan(&total).Error; err != nil {
+	if err = db.Raw(`SELECT count(*) FROM catalog_work_label wl JOIN catalog_work w ON w.id = wl.work_id
+		WHERE wl.label_id = ? AND w.deleted_at IS NULL AND w.status = ?`, labelID, model.WorkStatusLive).Scan(&total).Error; err != nil {
 		return nil, nil, 0, err
 	}
 	err = db.Raw(`SELECT w.id AS work_id, w.display_name, w.medium_id, w.content_rating, w.status, wl.kind
 		FROM catalog_work_label wl JOIN catalog_work w ON w.id = wl.work_id
-		WHERE wl.label_id = ? ORDER BY w.id LIMIT ? OFFSET ?`, labelID, limit, offset).Scan(&items).Error
+		WHERE wl.label_id = ? AND w.deleted_at IS NULL AND w.status = ? ORDER BY w.id LIMIT ? OFFSET ?`,
+		labelID, model.WorkStatusLive, limit, offset).Scan(&items).Error
 	return head, items, total, err
 }
 
@@ -761,7 +764,7 @@ func (s *ReadService) SearchWorks(ctx context.Context, q string, mediumID int16,
 	}
 
 	var hits []WorkSearchHit
-	args := []any{model.WorkStatusMerged, mediumID, mediumID}
+	args := []any{model.WorkStatusLive, mediumID, mediumID}
 	args = append(args, claimArgs...)
 	args = append(args, siteArgs...)
 	args = append(args, q, limit)
@@ -770,7 +773,7 @@ func (s *ReadService) SearchWorks(ctx context.Context, q string, mediumID int16,
 		       w.status, COALESCE(w.site, '') AS site
 		FROM catalog_work w
 		WHERE w.deleted_at IS NULL
-		  AND w.status <> ?
+		  AND w.status = ?
 		  AND (? <= 0 OR w.medium_id = ?)`+claimGate+siteGate+`
 		  AND EXISTS (
 		      SELECT 1 FROM catalog_work_title t
@@ -834,7 +837,7 @@ func (s *ReadService) workBriefs(ctx context.Context, ids []int64) (map[int64]Wo
 	var rows []WorkBriefRow
 	if err := s.db.WithContext(ctx).Raw(`
 		SELECT id AS work_id, display_name, medium_id, content_rating, status, COALESCE(site, '') AS site
-		FROM catalog_work WHERE id IN ? AND deleted_at IS NULL`, ids).Scan(&rows).Error; err != nil {
+		FROM catalog_work WHERE id IN ? AND deleted_at IS NULL AND status = ?`, ids, model.WorkStatusLive).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	m := make(map[int64]WorkBriefRow, len(rows))
@@ -868,7 +871,12 @@ type SiblingNameRow struct {
 // nameWorkScope is shared by NameWorks' total and its page: a total of 40 that
 // pages out 38 is a defect on its own.
 var nameWorkScope = `FROM catalog_credit c WHERE c.credit_name_id = ? AND ` +
-	editspec.NotSuppressedCreditSQL("c")
+	editspec.NotSuppressedCreditSQL("c") + ` AND ` + liveWorkSQL("c.work_id")
+
+func liveWorkSQL(workCol string) string {
+	return fmt.Sprintf(`EXISTS (SELECT 1 FROM catalog_work lw WHERE lw.id = %s AND lw.deleted_at IS NULL AND lw.status = %d)`,
+		workCol, model.WorkStatusLive)
+}
 
 type NameWorkRoleRow struct {
 	WorkID      int64   `gorm:"column:work_id"`
@@ -969,9 +977,9 @@ func (s *ReadService) NameWorks(ctx context.Context, nameID int64, limit, offset
 // carries the character: charter ruling 2 (read paths exclude suppressed rows
 // uniformly) is not given an exemption for the union's existence half.
 var unionWorks = `SELECT wc.work_id FROM catalog_work_character wc WHERE wc.character_id = ? AND ` +
-	editspec.NotSuppressedRosterSQL("wc") + `
+	editspec.NotSuppressedRosterSQL("wc") + ` AND ` + liveWorkSQL("wc.work_id") + `
 	UNION SELECT c.work_id FROM catalog_credit c WHERE c.character_id = ? AND ` +
-	editspec.NotSuppressedCreditSQL("c")
+	editspec.NotSuppressedCreditSQL("c") + ` AND ` + liveWorkSQL("c.work_id")
 
 type CharacterHeadRow struct {
 	ID          int64  `gorm:"column:id"`
