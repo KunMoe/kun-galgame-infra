@@ -24,9 +24,19 @@ type dlsite struct {
 	jst        *time.Location
 }
 
-func NewDLsite(userAgent string, currencies []string, base string) Fetcher {
+// proxy is the lane's egress. DLsite answers the prod box's German egress with
+// `302 → https://www.google.com/` on every path, so the first deploy decoded
+// Google's HTML and every quote came back unavailable; the same request from a
+// Tokyo host returns the JSON.
+func NewDLsite(userAgent string, currencies []string, base string, proxy *url.URL) Fetcher {
 	if base == "" {
 		base = dlsiteDefaultBase
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	if proxy != nil {
+		tr := http.DefaultTransport.(*http.Transport).Clone()
+		tr.Proxy = http.ProxyURL(proxy)
+		client.Transport = tr
 	}
 	want := make(map[string]struct{}, len(currencies))
 	for _, c := range currencies {
@@ -43,7 +53,7 @@ func NewDLsite(userAgent string, currencies []string, base string) Fetcher {
 		ua:         userAgent,
 		currencies: want,
 		base:       strings.TrimRight(base, "/"),
-		http:       &http.Client{Timeout: 10 * time.Second},
+		http:       client,
 		jst:        loc,
 	}
 }

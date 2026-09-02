@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"time"
 
@@ -283,8 +284,18 @@ func setupPublicCatalog(
 	var priceSvc *price.Service
 	if cfg.Store.PriceEnabled {
 		ua := cfg.Store.PriceUserAgent
+		var dlsiteProxy *url.URL
+		if raw := cfg.Store.PriceDLsiteProxy; raw != "" {
+			u, err := url.Parse(raw)
+			if err != nil || u.Host == "" {
+				slog.Error("store price: KUN_STORE_PRICE_DLSITE_PROXY is not a proxy URL (scheme://host:port)", "error", err)
+				os.Exit(1)
+			}
+			dlsiteProxy = u
+			slog.Info("store price: dlsite lane egresses via proxy", "scheme", u.Scheme, "host", u.Host)
+		}
 		priceSvc = price.New(oauthDB, []price.Fetcher{
-			price.NewDLsite(ua, cfg.Store.PriceDLsiteCurrencies, ""),
+			price.NewDLsite(ua, cfg.Store.PriceDLsiteCurrencies, cfg.Store.PriceDLsiteBase, dlsiteProxy),
 			price.NewSteam(ua, cfg.Store.PriceSteamRegions, ""),
 		}, price.Options{})
 		priceSvc.Start()
