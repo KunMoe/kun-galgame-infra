@@ -47,6 +47,7 @@ export const SIDEBAR_MENU: SidebarItem[] = [
     ],
   },
   { icon: 'lucide:shield-check', label: '权限矩阵', to: '/permission', adminOnly: true },
+  { icon: 'lucide:settings-2', label: '配置中心', to: '/settings', adminOnly: true },
   { icon: 'lucide:user', label: '个人信息', to: '/profile' },
 ]
 
