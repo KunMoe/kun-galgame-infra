@@ -409,9 +409,36 @@ services:
       KUN_ARTIFACT_HOST: 0.0.0.0
       KUN_ARTIFACT_PORT: "9279"
       KUN_ARTIFACT_UPLOAD_ENABLED: "true"
-    # Internal only — moyu/forum backends reach it at http://artifact:9279 over
-    # dokploy-network (browsers PUT straight to B2; no public domain needed).
+    # In-cluster consumers (moyu/forum backends) still reach it at
+    # http://artifact:9279 over dokploy-network. The one public path is the S2S
+    # upload face routed below: letmoe-resource-forge runs off-box and cannot
+    # join dokploy-network. Bytes still never cross this face — clients PUT
+    # straight to B2 with presigned URLs, so the routed traffic is JSON only.
     expose: ["9279"]
+    labels:
+      # Traefik routing for the artifact S2S UPLOAD FACE on api.nextmoe.dev —
+      # OWNED HERE, not in the Dokploy domain panel. Compose-level labels REPLACE
+      # Dokploy's injected domain labels on a service (see the catalog block for
+      # how oauth learned that). This service had zero labels and no panel
+      # domain, so there was nothing to preserve — but from now on every route it
+      # serves must live in this block.
+      #
+      # ONLY PathPrefix(`/api/v1/artifacts`) is routed. The admin face
+      # (/api/v1/admin/artifact/*), /healthz and /openapi.json are deliberately
+      # absent. Everything routed here sits behind the service's ClientAuth:
+      # Basic client_id:secret, plus artifact_enabled and a non-empty
+      # artifact_site_key on the oauth_clients row.
+      traefik.enable: "true"
+      traefik.docker.network: dokploy-network
+      traefik.http.routers.infra-artifact-s2s.rule: Host(`api.nextmoe.dev`) && PathPrefix(`/api/v1/artifacts`)
+      traefik.http.routers.infra-artifact-s2s.entrypoints: websecure
+      traefik.http.routers.infra-artifact-s2s.tls.certresolver: letsencrypt
+      traefik.http.routers.infra-artifact-s2s.service: infra-artifact-s2s
+      # No http->https twin, unlike every other block here: this face carries
+      # credentials on every request, and a redirect fires only after the client
+      # has already put the Basic header on the wire in plaintext. Port 80
+      # answering Traefik's 404 is the correct answer to a missing scheme.
+      traefik.http.services.infra-artifact-s2s.loadbalancer.server.port: "9279"
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
