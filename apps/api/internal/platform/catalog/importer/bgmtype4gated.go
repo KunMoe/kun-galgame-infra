@@ -9,6 +9,7 @@ import (
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -54,9 +55,11 @@ type BgmGatedStats struct {
 
 	GatedTotal            int
 	SkippedASCIIXOnly     int
-	SkippedTitleCollision int
+	TitleCollisions       int
 	SkippedIntraCollision int
 	ToCreate              int
+	ToQuarantine          int
+	Quarantined           int
 
 	WorksCreated     int
 	TitlesCreated    int
@@ -104,8 +107,9 @@ type wtNorm struct {
 }
 
 type candidate struct {
-	row     poolRow
-	signals string
+	row            poolRow
+	signals        string
+	collidedWorkID int64
 }
 
 func (im *Importer) RunBgmType4Gated(dlsiteDB *gorm.DB) (BgmGatedStats, error) {
@@ -128,6 +132,7 @@ func (im *Importer) RunBgmType4Gated(dlsiteDB *gorm.DB) (BgmGatedStats, error) {
 	}
 
 	var toCreate []candidate
+	var toQuarantine []candidate
 	for _, r := range pool {
 		st.PoolTotal++
 		if r.Excluded {
@@ -173,10 +178,13 @@ func (im *Importer) RunBgmType4Gated(dlsiteDB *gorm.DB) (BgmGatedStats, error) {
 		}
 		st.GatedTotal++
 		if col, ok := collide(r, wt); ok {
-			st.SkippedTitleCollision++
+			st.TitleCollisions++
 			if len(st.CollisionSamples) < bgmCollisionSample {
 				st.CollisionSamples = append(st.CollisionSamples, col)
 			}
+			toQuarantine = append(toQuarantine, candidate{
+				row: r, signals: signalString(p, t, x), collidedWorkID: col.WorkID,
+			})
 			continue
 		}
 		toCreate = append(toCreate, candidate{row: r, signals: signalString(p, t, x)})
@@ -184,29 +192,42 @@ func (im *Importer) RunBgmType4Gated(dlsiteDB *gorm.DB) (BgmGatedStats, error) {
 
 	toCreate = dropIntraCollisions(toCreate, &st)
 	st.ToCreate = len(toCreate)
+	st.ToQuarantine = len(toQuarantine)
 	st.RandomSample = pickRandomSample(toCreate)
 
 	if im.dryRun {
 		logBgmGated(&st, true)
 		return st, nil
 	}
-	createSet := toCreate
-	if im.limit > 0 && im.limit < len(createSet) {
-		createSet = createSet[:im.limit]
+	createLive := toCreate
+	createQ := toQuarantine
+	if im.limit > 0 {
+		if len(createLive) > im.limit {
+			createLive = createLive[:im.limit]
+			createQ = createQ[:0]
+		} else {
+			remain := im.limit - len(createLive)
+			if remain < len(createQ) {
+				createQ = createQ[:remain]
+			}
+		}
 	}
-	if err := im.createGatedWorks(createSet, &st); err != nil {
+	if err := im.createGatedWorks(createLive, &st, model.WorkStatusLive); err != nil {
+		return st, err
+	}
+	if err := im.createGatedWorks(createQ, &st, model.WorkStatusQuarantine); err != nil {
 		return st, err
 	}
 	logBgmGated(&st, false)
 	return st, nil
 }
 
-func (im *Importer) createGatedWorks(cands []candidate, st *BgmGatedStats) error {
+func (im *Importer) createGatedWorks(cands []candidate, st *BgmGatedStats, status int16) error {
 	for start := 0; start < len(cands); start += bgmGatedChunk {
 		end := min(start+bgmGatedChunk, len(cands))
 		chunk := cands[start:end]
 		if err := im.catalog.Transaction(func(tx *gorm.DB) error {
-			return im.createGatedChunk(tx, chunk, st)
+			return im.createGatedChunk(tx, chunk, st, status)
 		}); err != nil {
 			return err
 		}
@@ -214,7 +235,7 @@ func (im *Importer) createGatedWorks(cands []candidate, st *BgmGatedStats) error
 	return nil
 }
 
-func (im *Importer) createGatedChunk(tx *gorm.DB, chunk []candidate, st *BgmGatedStats) error {
+func (im *Importer) createGatedChunk(tx *gorm.DB, chunk []candidate, st *BgmGatedStats, status int16) error {
 	works := make([]model.CatalogWork, len(chunk))
 	for i, c := range chunk {
 		display := c.row.Name
@@ -229,7 +250,7 @@ func (im *Importer) createGatedChunk(tx *gorm.DB, chunk []candidate, st *BgmGate
 		}
 		works[i] = model.CatalogWork{
 			MediumID: mediumGalgame, OLang: olang, DisplayName: display,
-			ContentRating: cr, Status: model.WorkStatusLive,
+			ContentRating: cr, Status: status,
 			Extra: datatypes.JSON(`{}`), FieldProvenance: datatypes.JSON(`{}`),
 		}
 	}
@@ -266,6 +287,30 @@ func (im *Importer) createGatedChunk(tx *gorm.DB, chunk []candidate, st *BgmGate
 		return err
 	}
 
+	if status == model.WorkStatusQuarantine {
+		var cands []model.CatalogMatchCandidate
+		for i, c := range chunk {
+			if c.collidedWorkID == 0 {
+				continue
+			}
+			a, b := works[i].ID, c.collidedWorkID
+			if b < a {
+				a, b = b, a
+			}
+			cands = append(cands, model.CatalogMatchCandidate{
+				EntityType: model.EntityTypeWork, AID: a, BID: b,
+				Reason: model.CandidateReasonNameNormEqual,
+				Status: model.CandidateStatusPending,
+			})
+		}
+		if len(cands) > 0 {
+			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&cands).Error; err != nil {
+				return err
+			}
+		}
+		st.Quarantined += len(works)
+	}
+
 	st.WorksCreated += len(works)
 	st.TitlesCreated += len(titles)
 	st.AnchorsCreated += len(refs)
@@ -280,7 +325,8 @@ func logBgmGated(st *BgmGatedStats, dry bool) {
 		"gated_total", st.GatedTotal, "p_and_t", st.PT, "p_and_x", st.PX, "t_and_x", st.TX, "all_three", st.All3,
 		"p_only", st.POnly, "t_only", st.TOnly, "x_only", st.XOnly,
 		"skipped_ascii_xonly", st.SkippedASCIIXOnly,
-		"skipped_title_collision", st.SkippedTitleCollision, "skipped_intra_collision", st.SkippedIntraCollision,
-		"to_create", st.ToCreate, "works_created", st.WorksCreated, "titles_created", st.TitlesCreated,
+		"title_collisions", st.TitleCollisions, "skipped_intra_collision", st.SkippedIntraCollision,
+		"to_create", st.ToCreate, "to_quarantine", st.ToQuarantine, "quarantined", st.Quarantined,
+		"works_created", st.WorksCreated, "titles_created", st.TitlesCreated,
 		"anchors_created", st.AnchorsCreated, "revisions_created", st.RevisionsCreated)
 }

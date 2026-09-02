@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+
+	"api/internal/platform/catalog/model"
 )
 
 type WorkRelationRow struct {
@@ -24,7 +26,7 @@ func (s *ReadService) loadWorkRelations(ctx context.Context, workID int64) ([]Wo
 		       w.medium_id, w.content_rating, w.status, w.site, w.product_work_id, w.claim_state
 		FROM catalog_work_relation r
 		JOIN catalog_relation_type rt ON rt.id = r.relation_type_id
-		JOIN catalog_work w ON w.id = r.b_work_id AND w.deleted_at IS NULL
+		JOIN catalog_work w ON w.id = r.b_work_id AND w.deleted_at IS NULL AND w.status = ?
 		WHERE r.a_work_id = ?
 		UNION ALL
 		SELECT rt.key,
@@ -33,9 +35,9 @@ func (s *ReadService) loadWorkRelations(ctx context.Context, workID int64) ([]Wo
 		       w.medium_id, w.content_rating, w.status, w.site, w.product_work_id, w.claim_state
 		FROM catalog_work_relation r
 		JOIN catalog_relation_type rt ON rt.id = r.relation_type_id
-		JOIN catalog_work w ON w.id = r.a_work_id AND w.deleted_at IS NULL
+		JOIN catalog_work w ON w.id = r.a_work_id AND w.deleted_at IS NULL AND w.status = ?
 		WHERE r.b_work_id = ?
-		ORDER BY key, other_id`, workID, workID).Scan(&rows).Error; err != nil {
+		ORDER BY key, other_id`, model.WorkStatusLive, workID, model.WorkStatusLive, workID).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	return rows, nil
@@ -76,9 +78,9 @@ func (s *ReadService) loadSeriesSiblings(ctx context.Context, workID int64) ([]S
 		)
 		SELECT w.id AS work_id, w.display_name, w.medium_id, w.content_rating, w.status, w.site, w.product_work_id, w.claim_state
 		FROM catalog_work w
-		WHERE w.id IN (SELECT node FROM reach WHERE node <> ?) AND w.deleted_at IS NULL
+		WHERE w.id IN (SELECT node FROM reach WHERE node <> ?) AND w.deleted_at IS NULL AND w.status = ?
 		ORDER BY w.id`,
-		workID, seriesRelationTypeID, seriesRelationTypeID, workID).Scan(&rows).Error; err != nil {
+		workID, seriesRelationTypeID, seriesRelationTypeID, workID, model.WorkStatusLive).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	return rows, nil

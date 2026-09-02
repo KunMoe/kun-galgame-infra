@@ -86,6 +86,19 @@ func (s *MergeService) ExecuteMerge(ctx context.Context, proposalID int64, execu
 		if err := writeRevision(tx, et, src, model.RevisionActionMergedSource, sourceSnap, nil, executedBy, note); err != nil {
 			return err
 		}
+		if et == model.EntityTypeWork {
+			res := tx.Exec(`UPDATE catalog_work SET status = ? WHERE id = ? AND status = ?`,
+				model.WorkStatusLive, dst, model.WorkStatusQuarantine)
+			if res.Error != nil {
+				return res.Error
+			}
+			if res.RowsAffected > 0 {
+				if changed == nil {
+					changed = map[string]any{}
+				}
+				changed["status"] = model.WorkStatusLive
+			}
+		}
 		targetSnap, err := takeSnapshot(tx, et, dst)
 		if err != nil {
 			return fmt.Errorf("snapshot target: %w", err)

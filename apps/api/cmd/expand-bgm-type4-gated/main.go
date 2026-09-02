@@ -57,8 +57,9 @@ func main() {
 		"pool_total", st.PoolTotal, "excluded_console_mobile", st.ExcludedConsoleMobile, "eligible_pool", st.EligiblePool,
 		"sig_p", st.SigP, "sig_t", st.SigT, "sig_x", st.SigX, "gated_total", st.GatedTotal,
 		"skipped_ascii_xonly", st.SkippedASCIIXOnly,
-		"skipped_title_collision", st.SkippedTitleCollision, "skipped_intra_collision", st.SkippedIntraCollision,
-		"to_create", st.ToCreate, "works_created", st.WorksCreated, "titles_created", st.TitlesCreated,
+		"title_collisions", st.TitleCollisions, "skipped_intra_collision", st.SkippedIntraCollision,
+		"to_create", st.ToCreate, "to_quarantine", st.ToQuarantine, "quarantined", st.Quarantined,
+		"works_created", st.WorksCreated, "titles_created", st.TitlesCreated,
 		"anchors_created", st.AnchorsCreated, "revisions_created", st.RevisionsCreated)
 	slog.Info("bgm-type4-gated overlap matrix",
 		"p_and_t", st.PT, "p_and_x", st.PX, "t_and_x", st.TX, "all_three", st.All3,

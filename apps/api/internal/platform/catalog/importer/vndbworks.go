@@ -5,12 +5,14 @@ import (
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
-	ruleVNDBWork    = "rule:vndb-work-import"
-	vndbWorksChunk  = 500
-	vndbLangEnglish = "en"
+	ruleVNDBWork        = "rule:vndb-work-import"
+	vndbWorksChunk      = 500
+	vndbLangEnglish     = "en"
+	vndbCollisionSample = 20
 )
 
 const (
@@ -19,11 +21,19 @@ const (
 )
 
 type VNDBWorkPlan struct {
-	VID     string
-	OLang   string
-	Title   string
-	ENTitle string
-	R18     bool
+	VID            string
+	OLang          string
+	Title          string
+	ENTitle        string
+	R18            bool
+	CollidedWorkID int64
+}
+
+type VNDBWorkCollision struct {
+	VID       string
+	Title     string
+	WorkID    int64
+	WorkTitle string
 }
 
 type VNDBWorksStats struct {
@@ -33,6 +43,9 @@ type VNDBWorksStats struct {
 	Planned             int
 	PlannedR18          int
 	CappedByLimit       int
+	TitleCollisions     int
+	ToQuarantine        int
+	Quarantined         int
 
 	WorksCreated     int
 	TitlesCreated    int
@@ -40,16 +53,19 @@ type VNDBWorksStats struct {
 	RevisionsCreated int
 	Errors           int
 
-	Plans []VNDBWorkPlan
+	Plans            []VNDBWorkPlan
+	CollisionSamples []VNDBWorkCollision
 }
 
 type vndbWorkRow struct {
-	VID       string `gorm:"column:vid"`
-	OLang     string `gorm:"column:olang"`
-	Devstatus int16  `gorm:"column:devstatus"`
-	Title     string `gorm:"column:title"`
-	ENTitle   string `gorm:"column:en_title"`
-	R18       bool   `gorm:"column:r18"`
+	VID         string `gorm:"column:vid"`
+	OLang       string `gorm:"column:olang"`
+	Devstatus   int16  `gorm:"column:devstatus"`
+	Title       string `gorm:"column:title"`
+	ENTitle     string `gorm:"column:en_title"`
+	TitleNorm   string `gorm:"column:title_norm"`
+	ENTitleNorm string `gorm:"column:en_title_norm"`
+	R18         bool   `gorm:"column:r18"`
 }
 
 // buildVNDBWorkPoolQuery lists every VN that no catalog_external_ref points at,
@@ -68,6 +84,8 @@ func buildVNDBWorkPoolQuery() string {
 	return `SELECT v.id AS vid, v.olang AS olang, v.devstatus AS devstatus,
 			coalesce(t.title, '') AS title,
 			coalesce(en.title, '') AS en_title,
+			coalesce(lower(normalize(t.title, NFKC)), '') AS title_norm,
+			coalesce(lower(normalize(en.title, NFKC)), '') AS en_title_norm,
 			EXISTS (SELECT 1 FROM src_vndb.releases_vn rv
 				JOIN src_vndb.releases r ON r.id = rv.id
 				WHERE rv.vid = v.id AND r.patch = false
@@ -82,6 +100,11 @@ func buildVNDBWorkPoolQuery() string {
 
 func (im *Importer) RunVNDBWorks() (VNDBWorksStats, error) {
 	var st VNDBWorksStats
+
+	wt, err := im.loadExistingWorkTitleNorms()
+	if err != nil {
+		return st, err
+	}
 
 	var pool []vndbWorkRow
 	if err := im.catalog.Raw(buildVNDBWorkPoolQuery(), model.EntityTypeWork, vndbSource).Scan(&pool).Error; err != nil {
@@ -102,6 +125,15 @@ func (im *Importer) RunVNDBWorks() (VNDBWorksStats, error) {
 		if r.OLang != vndbLangEnglish && r.ENTitle != "" {
 			p.ENTitle = r.ENTitle
 		}
+		if _, w, ok := firstCorpusHit(wt, r.TitleNorm, r.ENTitleNorm); ok {
+			p.CollidedWorkID = w.workID
+			st.TitleCollisions++
+			if len(st.CollisionSamples) < vndbCollisionSample {
+				st.CollisionSamples = append(st.CollisionSamples, VNDBWorkCollision{
+					VID: r.VID, Title: r.Title, WorkID: w.workID, WorkTitle: w.title,
+				})
+			}
+		}
 		st.Plans = append(st.Plans, p)
 	}
 	if im.limit > 0 && im.limit < len(st.Plans) {
@@ -112,6 +144,9 @@ func (im *Importer) RunVNDBWorks() (VNDBWorksStats, error) {
 	for _, p := range st.Plans {
 		if p.R18 {
 			st.PlannedR18++
+		}
+		if p.CollidedWorkID != 0 {
+			st.ToQuarantine++
 		}
 	}
 
@@ -156,9 +191,13 @@ func (im *Importer) createVNDBWorkChunk(tx *gorm.DB, chunk []VNDBWorkPlan, st *V
 		if p.R18 {
 			cr = model.ContentRatingR18
 		}
+		status := model.WorkStatusLive
+		if p.CollidedWorkID != 0 {
+			status = model.WorkStatusQuarantine
+		}
 		works[i] = model.CatalogWork{
 			MediumID: mediumGalgame, OLang: p.OLang, DisplayName: p.Title,
-			ContentRating: cr, Status: model.WorkStatusLive,
+			ContentRating: cr, Status: status,
 			Extra: datatypes.JSON(`{}`), FieldProvenance: datatypes.JSON(`{}`),
 		}
 	}
@@ -197,6 +236,28 @@ func (im *Importer) createVNDBWorkChunk(tx *gorm.DB, chunk []VNDBWorkPlan, st *V
 	}
 	if err := im.batchRefsRevs(tx, refs, revs); err != nil {
 		return err
+	}
+
+	var cands []model.CatalogMatchCandidate
+	for i, p := range chunk {
+		if p.CollidedWorkID == 0 {
+			continue
+		}
+		a, b := works[i].ID, p.CollidedWorkID
+		if b < a {
+			a, b = b, a
+		}
+		cands = append(cands, model.CatalogMatchCandidate{
+			EntityType: model.EntityTypeWork, AID: a, BID: b,
+			Reason: model.CandidateReasonNameNormEqual,
+			Status: model.CandidateStatusPending,
+		})
+		st.Quarantined++
+	}
+	if len(cands) > 0 {
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&cands).Error; err != nil {
+			return err
+		}
 	}
 
 	st.WorksCreated += len(works)

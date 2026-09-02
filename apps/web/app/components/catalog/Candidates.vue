@@ -7,7 +7,9 @@ import {
   CANDIDATE_STATUS,
   CANDIDATE_STATUS_LABELS,
   CANDIDATE_STATUS_COLORS,
-  CANDIDATE_REASON_LABELS
+  CANDIDATE_REASON_LABELS,
+  WORK_STATUS,
+  WORK_STATUS_LABELS
 } from '~/constants/catalog'
 import type {
   CatalogCandidateItem,
@@ -18,6 +20,29 @@ import type {
 
 const isPersonLink = (c: CatalogCandidateItem) =>
   c.entity_type === CATALOG_ENTITY_TYPE.creditName
+
+const isDecidable = (c: CatalogCandidateItem) =>
+  (
+    [
+      CANDIDATE_STATUS.pending,
+      CANDIDATE_STATUS.deferred,
+      CANDIDATE_STATUS.needsManual
+    ] as number[]
+  ).includes(c.status)
+
+const quarantinedIds = (c: CatalogCandidateItem) =>
+  [
+    { id: c.a_id, s: c.a },
+    { id: c.b_id, s: c.b }
+  ]
+    .filter(({ s }) => s.work_status === WORK_STATUS.QUARANTINE)
+    .map(({ id }) => id)
+
+const quarantinedSide = (c: CatalogCandidateItem) => {
+  if (c.a.work_status === WORK_STATUS.QUARANTINE) return 'a' as const
+  if (c.b.work_status === WORK_STATUS.QUARANTINE) return 'b' as const
+  return null
+}
 
 const api = useApi('catalog')
 
@@ -83,7 +108,8 @@ const keyOf = (c: CatalogCandidateItem) =>
 const toggleExpand = (c: CatalogCandidateItem) => {
   const key = keyOf(c)
   expandedKey.value = expandedKey.value === key ? '' : key
-  direction.value = ''
+  const side = quarantinedSide(c)
+  direction.value = side === 'a' ? 'ab' : side === 'b' ? 'ba' : ''
   note.value = ''
 }
 
@@ -129,9 +155,33 @@ const decide = async (
           `已建合并提案 #${res.data?.proposal_id ?? ''}，请到提案桶审批`,
           'success'
         )
+      } else if (res.data?.released?.length) {
+        useKunMessage(
+          res.data.released.map((id) => `已放行 #${id}`).join('、'),
+          'success'
+        )
       } else {
         useKunMessage(action === 'reject' ? '已拒绝（永久保留）' : '已搁置', 'success')
       }
+      expandedKey.value = ''
+      await refresh()
+    } else {
+      useKunMessage(res.message || '操作失败', 'error')
+    }
+  } finally {
+    deciding.value = false
+  }
+}
+
+const releaseWork = async (workId: number) => {
+  deciding.value = true
+  try {
+    const res = await api.post<{ work_id: number; status: number }>(
+      '/admin/catalog/works/release',
+      { work_id: workId }
+    )
+    if (res.code === 0) {
+      useKunMessage(`已放行 #${workId}`, 'success')
       expandedKey.value = ''
       await refresh()
     } else {
@@ -247,16 +297,26 @@ const sourceLabel = (id: number | null | undefined) =>
               class="border-default-200 rounded-lg border p-3"
             >
               <p class="text-default-400 text-xs">{{ side.tag }} · #{{ side.s.id }}</p>
-              <p
-                class="text-lg font-medium"
-                :class="
-                  c.a.display_name !== c.b.display_name
-                    ? 'text-warning-600'
-                    : 'text-foreground'
-                "
-              >
-                {{ side.s.display_name || '（无显示名）' }}
-              </p>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <p
+                  class="text-lg font-medium"
+                  :class="
+                    c.a.display_name !== c.b.display_name
+                      ? 'text-warning-600'
+                      : 'text-foreground'
+                  "
+                >
+                  {{ side.s.display_name || '（无显示名）' }}
+                </p>
+                <KunChip
+                  v-if="side.s.work_status === WORK_STATUS.QUARANTINE"
+                  color="warning"
+                  variant="flat"
+                  size="sm"
+                >
+                  {{ WORK_STATUS_LABELS[WORK_STATUS.QUARANTINE] }}
+                </KunChip>
+              </div>
               <div
                 v-if="isPersonLink(c)"
                 class="mt-1 flex flex-wrap items-center gap-1.5"
@@ -276,7 +336,7 @@ const sourceLabel = (id: number | null | undefined) =>
             </div>
           </div>
 
-          <template v-if="isPersonLink(c) && (c.status === 0 || c.status === 3)">
+          <template v-if="isPersonLink(c) && isDecidable(c)">
             <div class="flex flex-wrap gap-2">
               <KunButton
                 color="success"
@@ -309,7 +369,7 @@ const sourceLabel = (id: number | null | undefined) =>
             </div>
           </template>
 
-          <template v-else-if="c.status === 0 || c.status === 3">
+          <template v-else-if="isDecidable(c)">
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-default-500 text-sm">合并方向：</span>
               <KunButton
@@ -349,7 +409,7 @@ const sourceLabel = (id: number | null | undefined) =>
                 :disabled="deciding"
                 @click="decide(c, 'reject')"
               >
-                拒绝（永久保留）
+                {{ quarantinedSide(c) ? '拒绝并放行' : '拒绝（永久保留）' }}
               </KunButton>
               <KunButton
                 color="default"
@@ -378,6 +438,16 @@ const sourceLabel = (id: number | null | undefined) =>
               @click="detachLink(c)"
             >
               撤销关联（摘离双方名义）
+            </KunButton>
+            <KunButton
+              v-for="id in quarantinedIds(c)"
+              :key="id"
+              color="warning"
+              variant="flat"
+              :disabled="deciding"
+              @click="releaseWork(id)"
+            >
+              放行 #{{ id }}
             </KunButton>
           </div>
         </div>

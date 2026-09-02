@@ -156,9 +156,10 @@ const (
 )
 
 const (
-	WorkStatusLive   int16 = 0
-	WorkStatusStub   int16 = 1
-	WorkStatusMerged int16 = 2
+	WorkStatusLive       int16 = 0
+	WorkStatusStub       int16 = 1
+	WorkStatusMerged     int16 = 2
+	WorkStatusQuarantine int16 = 3
 )
 
 const (

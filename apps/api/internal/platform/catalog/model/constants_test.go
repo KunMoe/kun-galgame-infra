@@ -31,7 +31,7 @@ func TestConstantGroupsHaveUniqueValues(t *testing.T) {
 		},
 		"relation_domain": {RelationDomainWork, RelationDomainEntity},
 		"content_rating":  {ContentRatingAllAges, ContentRatingSensitive, ContentRatingR18},
-		"work_status":     {WorkStatusLive, WorkStatusStub, WorkStatusMerged},
+		"work_status":     {WorkStatusLive, WorkStatusStub, WorkStatusMerged, WorkStatusQuarantine},
 		"work_title_kind": {
 			WorkTitleKindOfficial, WorkTitleKindAlias,
 			WorkTitleKindAbbreviation, WorkTitleKindSearchHint,
@@ -47,7 +47,7 @@ func TestConstantGroupsHaveUniqueValues(t *testing.T) {
 		},
 		"candidate_status": {
 			CandidateStatusPending, CandidateStatusAccepted,
-			CandidateStatusRejected, CandidateStatusDeferred,
+			CandidateStatusRejected, CandidateStatusDeferred, CandidateStatusNeedsManual,
 		},
 		"proposal_status": {
 			ProposalStatusOpen, ProposalStatusApproved, ProposalStatusExecuted,
@@ -135,4 +135,11 @@ func TestEntityTypeValuesArePinned(t *testing.T) {
 	assert.Equal(t, int16(6), EntityTypeRelease)
 	assert.Equal(t, int16(7), EntityTypeTag)
 	assert.Equal(t, int16(8), EntityTypeEngine)
+}
+
+func TestWorkStatusValuesArePinned(t *testing.T) {
+	assert.Equal(t, int16(0), WorkStatusLive)
+	assert.Equal(t, int16(1), WorkStatusStub)
+	assert.Equal(t, int16(2), WorkStatusMerged)
+	assert.Equal(t, int16(3), WorkStatusQuarantine)
 }
