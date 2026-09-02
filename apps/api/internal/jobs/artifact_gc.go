@@ -25,7 +25,7 @@ func DefaultArtifactGCOpts() ArtifactGCOpts {
 	return ArtifactGCOpts{
 		OrphanTTL:     time.Duration(keys.ArtifactOrphanTTLHours.Get()) * time.Hour,
 		SoftDeleteTTL: time.Duration(keys.ArtifactSoftDeleteTTLHours.Get()) * time.Hour,
-		MaxPerRun:     10000,
+		MaxPerRun:     int(keys.ArtifactGCMaxPerRun.Get()),
 	}
 }
 
@@ -35,7 +35,7 @@ func RunArtifactGC(ctx context.Context, cfg *config.Config, opts ArtifactGCOpts)
 	}
 
 	if opts.MaxPerRun <= 0 {
-		opts.MaxPerRun = 10000
+		opts.MaxPerRun = int(keys.ArtifactGCMaxPerRun.Get())
 	}
 
 	db, err := database.NewPostgresDB(cfg.ArtifactsDatabase)

@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"api/internal/platform/settings/keys"
 )
 
 type OmniClient struct {
@@ -31,7 +33,14 @@ func (c *OmniClient) Configured() bool {
 	return c.baseURL != "" && c.token != ""
 }
 
-func (c *OmniClient) Model() string { return c.model }
+func (c *OmniClient) Model() string { return c.resolveModel() }
+
+func (c *OmniClient) resolveModel() string {
+	if c.model != "" {
+		return c.model
+	}
+	return keys.AIOmniModel.Get()
+}
 
 type OmniResult struct {
 	Flagged        bool
@@ -58,7 +67,7 @@ type omniResponse struct {
 }
 
 func (c *OmniClient) Moderate(ctx context.Context, input string) (OmniResult, error) {
-	raw, err := json.Marshal(omniRequest{Model: c.model, Input: input})
+	raw, err := json.Marshal(omniRequest{Model: c.resolveModel(), Input: input})
 	if err != nil {
 		return OmniResult{}, err
 	}
@@ -93,7 +102,7 @@ func (c *OmniClient) Moderate(ctx context.Context, input string) (OmniResult, er
 	}
 	channel := or.Model
 	if channel == "" {
-		channel = c.model
+		channel = c.resolveModel()
 	}
 	return OmniResult{
 		Flagged:        or.Results[0].Flagged,

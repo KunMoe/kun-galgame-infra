@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	skeys "api/internal/platform/settings/keys"
 )
 
 const steamDefaultBase = "https://store.steampowered.com"
@@ -17,13 +19,12 @@ const steamDefaultBase = "https://store.steampowered.com"
 var steamIDRe = regexp.MustCompile(`^[0-9]{1,12}$`)
 
 type steam struct {
-	ua      string
 	regions []string
 	base    string
 	http    *http.Client
 }
 
-func NewSteam(userAgent string, regions []string, base string) Fetcher {
+func NewSteam(regions []string, base string) Fetcher {
 	if base == "" {
 		base = steamDefaultBase
 	}
@@ -35,7 +36,6 @@ func NewSteam(userAgent string, regions []string, base string) Fetcher {
 		}
 	}
 	return &steam{
-		ua:      userAgent,
 		regions: out,
 		base:    strings.TrimRight(base, "/"),
 		http:    &http.Client{Timeout: 10 * time.Second},
@@ -69,7 +69,7 @@ func (s *steam) Fetch(ctx context.Context, region string, ids []string) (map[str
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", s.ua)
+	req.Header.Set("User-Agent", skeys.StorePriceUserAgent.Get())
 	resp, err := s.http.Do(req)
 	if err != nil {
 		return nil, err

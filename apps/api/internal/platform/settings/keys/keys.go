@@ -195,7 +195,13 @@ var live = settings.NewRegistry(
 	settings.Domain{
 		Name:    "image",
 		TitleZH: "图床",
-		Keys:    []settings.Entry{ImageUploadEnabled},
+		Keys: []settings.Entry{
+			ImageUploadEnabled,
+			ImageGCColdAfterDays,
+			ImageGCSoftDeleteAfterDays,
+			ImageGCHardDeleteAfterDays,
+			ImageGCMaxPerRun,
+		},
 	},
 	settings.Domain{
 		Name:    "artifact",
@@ -209,6 +215,7 @@ var live = settings.NewRegistry(
 			ArtifactOrphanTTLHours,
 			ArtifactSoftDeleteTTLHours,
 			ArtifactReclaimMinIdleSeconds,
+			ArtifactGCMaxPerRun,
 		},
 	},
 	settings.Domain{
@@ -236,12 +243,22 @@ var live = settings.NewRegistry(
 			AINegativeSampleRate,
 			AIForceEscalate,
 			AIModerateMaxTokens,
+			AIUpstreamModel,
+			AIOmniModel,
 		},
 	},
 	settings.Domain{
 		Name:    "store",
-		TitleZH: "DLsite 分销",
-		Keys:    []settings.Entry{StoreLinkQuotaPerClient},
+		TitleZH: "商店与分销",
+		Keys: []settings.Entry{
+			StoreLinkQuotaPerClient,
+			StorePriceEnabled,
+			StorePriceUserAgent,
+			StorePriceSteamRegions,
+			StorePriceDLsiteCurrencies,
+			StorePriceWaitOnMissMs,
+			StorePriceFreshForHours,
+		},
 	},
 	apiv2Domain,
 	catalogDomain,

@@ -6,14 +6,13 @@ import (
 	"sync"
 	"time"
 
+	skeys "api/internal/platform/settings/keys"
 	"api/internal/platform/store/model"
 
 	"gorm.io/gorm"
 )
 
 type Options struct {
-	WaitOnMiss   time.Duration
-	FreshFor     time.Duration
 	NegativeFor  time.Duration
 	ErrorFor     time.Duration
 	HotWindow    time.Duration
@@ -35,12 +34,6 @@ type Service struct {
 }
 
 func New(db *gorm.DB, fetchers []Fetcher, opts Options) *Service {
-	if opts.WaitOnMiss == 0 {
-		opts.WaitOnMiss = 1500 * time.Millisecond
-	}
-	if opts.FreshFor == 0 {
-		opts.FreshFor = 6 * time.Hour
-	}
 	if opts.NegativeFor == 0 {
 		opts.NegativeFor = 24 * time.Hour
 	}
@@ -228,7 +221,7 @@ func (s *Service) expiry(fetched time.Time, up Upstream) time.Time {
 	if !up.Found {
 		return fetched.Add(s.opts.NegativeFor)
 	}
-	exp := fetched.Add(s.opts.FreshFor)
+	exp := fetched.Add(time.Duration(skeys.StorePriceFreshForHours.Get()) * time.Hour)
 	if up.SaleEndsAt != nil && up.SaleEndsAt.After(fetched) && up.SaleEndsAt.Before(exp) {
 		return *up.SaleEndsAt
 	}
