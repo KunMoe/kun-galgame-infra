@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 
+	"api/internal/platform/settings/keys"
 	"api/internal/platform/trust/model"
 
 	"gorm.io/gorm"
@@ -33,7 +34,7 @@ func WithReportPolicy(p *PolicyService) ReportServiceOption {
 
 func (s *ReportService) aggregateThresholdFor(site string) float32 {
 	if s.policy == nil {
-		return aggregateThreshold
+		return DefaultAggregateThreshold()
 	}
 	return s.policy.Resolve(site).AggregateThreshold
 }
@@ -85,11 +86,11 @@ func (s *ReportService) Submit(ctx context.Context, p ReportParams) (ReportResul
 
 	var recent int64
 	if err := s.db.WithContext(ctx).Model(&model.TrustReport{}).
-		Where("reporter_id = ? AND created_at > ?", p.ReporterID, time.Now().Add(-rateLimitWindow)).
+		Where("reporter_id = ? AND created_at > ?", p.ReporterID, time.Now().Add(-time.Duration(keys.TrustReportRateWindowMinutes.Get())*time.Minute)).
 		Count(&recent).Error; err != nil {
 		return ReportResult{}, err
 	}
-	if recent >= rateLimitMax {
+	if recent >= keys.TrustReportRateMaxPerWindow.Get() {
 		return ReportResult{}, ErrRateLimited
 	}
 

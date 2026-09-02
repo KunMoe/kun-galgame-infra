@@ -117,7 +117,6 @@ func TestTermCacheTTLRefresh(t *testing.T) {
 	cleanTables(t)
 	clock := time.Unix(1_700_000_000, 0)
 	svc := NewTermService(testDB, nil)
-	svc.ttl = 60 * time.Second
 	svc.now = func() time.Time { return clock }
 
 	if r := check(t, svc, tSite, "ttlword"); r.Decision != DecisionAllow {

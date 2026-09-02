@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"api/internal/platform/settings/keys"
 	"api/pkg/errors"
 	"api/pkg/response"
 
@@ -17,11 +18,7 @@ import (
 
 const credLocalsKey = "devapi_cred"
 
-const (
-	credCachePosTTL = 60 * time.Second
-	credCacheNegTTL = 10 * time.Second
-	credCacheNeg    = byte('-')
-)
+const credCacheNeg = byte('-')
 
 type Middleware struct {
 	repo  *Repository
@@ -104,11 +101,11 @@ func (m *Middleware) resolve(ctx context.Context, raw string) (*Credential, erro
 		return nil, err
 	}
 	if cred == nil {
-		_ = m.store.Set(ctx, cacheKey, []byte{credCacheNeg}, credCacheNegTTL)
+		_ = m.store.Set(ctx, cacheKey, []byte{credCacheNeg}, time.Duration(keys.DeveloperCredentialCacheNegativeTTLSeconds.Get())*time.Second)
 		return nil, nil
 	}
 	if b, err := json.Marshal(cred); err == nil {
-		_ = m.store.Set(ctx, cacheKey, b, credCachePosTTL)
+		_ = m.store.Set(ctx, cacheKey, b, time.Duration(keys.DeveloperCredentialCacheTTLSeconds.Get())*time.Second)
 	}
 	return cred, nil
 }

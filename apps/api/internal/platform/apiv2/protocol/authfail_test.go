@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/settings/keys"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
@@ -47,7 +48,7 @@ func TestAuthRejectionsAreRateLimited(t *testing.T) {
 	status, _, _ := do(t, app, http.MethodGet, "/v2/catalog/works", good, "")
 	require.Equal(t, 200, status, "positive control: an authorized caller is served")
 
-	for i := 0; i < AuthFailPerMinute-1; i++ {
+	for i := 0; i < int(keys.APIV2AuthFailPerMinute.Get())-1; i++ {
 		status, _, _ := do(t, app, http.MethodGet, "/v2/catalog/works", nil, "")
 		require.Equal(t, 401, status, "below the budget an auth failure stays an auth failure")
 	}
@@ -78,7 +79,7 @@ func TestAuthorizedRefusalsDoNotSpendTheAuthFailureBudget(t *testing.T) {
 		return problem.WriteFiberError(c, problem.New(problem.CodePermissionRequired,
 			problem.RequestID(c), problem.Instance(c), "nope."))
 	})
-	for i := 0; i < AuthFailPerMinute+5; i++ {
+	for i := 0; i < int(keys.APIV2AuthFailPerMinute.Get())+5; i++ {
 		status, _, _ := do(t, app, http.MethodGet, "/v2/catalog/works", nil, "")
 		require.Equal(t, 403, status)
 	}

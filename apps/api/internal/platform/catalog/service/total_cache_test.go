@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"api/internal/platform/settings/keys"
 )
 
 func TestTotalsCacheMissOnEmpty(t *testing.T) {
@@ -33,7 +35,7 @@ func TestTotalsCacheExpiry(t *testing.T) {
 		t.Fatalf("before expiry get = %d, %v, want 3, true", v, ok)
 	}
 
-	now = t0.Add(totalsTTL + time.Nanosecond)
+	now = t0.Add(time.Duration(keys.CatalogTotalsCacheTTLSeconds.Get())*time.Second + time.Nanosecond)
 	if v, ok := c.get("exp"); ok || v != 0 {
 		t.Fatalf("after expiry get = %d, %v, want miss", v, ok)
 	}

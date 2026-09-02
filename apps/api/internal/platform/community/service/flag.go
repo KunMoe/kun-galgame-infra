@@ -5,12 +5,9 @@ import (
 
 	"api/internal/platform/community/model"
 	"api/internal/platform/community/repository"
+	"api/internal/platform/settings/keys"
 
 	"gorm.io/gorm"
-)
-
-const (
-	flagHideThreshold float32 = 3.0
 )
 
 var flagBaseByLevel = [...]float32{1.0, 1.2, 1.5, 2.0, 2.5}
@@ -102,7 +99,7 @@ func (s *FlagService) shouldHide(tx *gorm.DB, reporter *model.CommunityTrust, au
 	if err != nil {
 		return false, err
 	}
-	return sum >= flagHideThreshold, nil
+	return sum >= float32(keys.CommunityFlagHideThreshold.Get()), nil
 }
 
 func flagBase(level int16) float32 {

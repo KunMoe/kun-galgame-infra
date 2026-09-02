@@ -6,14 +6,10 @@ import (
 	"time"
 
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/settings/keys"
 	"api/pkg/routepath"
 
 	"github.com/gofiber/fiber/v3"
-)
-
-const (
-	RatePerMinute = 100
-	QuotaPerDay   = 10000
 )
 
 const localsPastAuth = "v2_past_auth"
@@ -39,7 +35,10 @@ func RateLimit(store Store, ident IdentityFunc) fiber.Handler {
 			return c.Next()
 		}
 		c.Locals(localsPastAuth, true)
-		id := LimitIdentity{Rate: RatePerMinute, Quota: QuotaPerDay}
+		id := LimitIdentity{
+			Rate:  int(keys.APIV2DefaultRatePerMinute.Get()),
+			Quota: int(keys.APIV2DefaultQuotaPerDay.Get()),
+		}
 		if ident != nil {
 			if ki, ok := ident(c); ok {
 				id = ki

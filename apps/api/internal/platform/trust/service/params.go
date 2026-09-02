@@ -2,16 +2,7 @@ package service
 
 import "time"
 
-const (
-	rateLimitWindow = time.Hour
-	rateLimitMax    = 10
-
-	aggregateThreshold float32 = 3.0
-
-	foldWindow = 30 * 24 * time.Hour
-
-	newAccountAge = 7 * 24 * time.Hour
-)
+const foldWindow = 30 * 24 * time.Hour
 
 var callbackBackoff = []time.Duration{
 	1 * time.Minute,
@@ -35,7 +26,3 @@ const (
 
 	scanSamplePriority float32 = 0.05
 )
-
-const policyCacheTTL = 60 * time.Second
-
-const termCacheTTL = 60 * time.Second

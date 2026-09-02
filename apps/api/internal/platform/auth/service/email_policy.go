@@ -1,38 +1,12 @@
 package service
 
 import (
+	"slices"
 	"strings"
 
+	"api/internal/platform/settings/keys"
 	"api/pkg/errors"
 )
-
-var allowedEmailDomains = map[string]struct{}{
-	"qq.com":         {},
-	"foxmail.com":    {},
-	"163.com":        {},
-	"126.com":        {},
-	"yeah.net":       {},
-	"sina.com":       {},
-	"sina.cn":        {},
-	"sohu.com":       {},
-	"aliyun.com":     {},
-	"139.com":        {},
-	"189.cn":         {},
-	"gmail.com":      {},
-	"googlemail.com": {},
-	"outlook.com":    {},
-	"hotmail.com":    {},
-	"live.com":       {},
-	"msn.com":        {},
-	"icloud.com":     {},
-	"me.com":         {},
-	"mac.com":        {},
-	"yahoo.com":      {},
-	"yahoo.co.jp":    {},
-	"proton.me":      {},
-	"protonmail.com": {},
-	"pm.me":          {},
-}
 
 func checkEmailDomainAllowed(email string) error {
 	at := strings.LastIndexByte(email, '@')
@@ -40,7 +14,7 @@ func checkEmailDomainAllowed(email string) error {
 		return errors.NewWithCode(errors.ErrAuthInvalidEmail)
 	}
 	domain := strings.ToLower(strings.TrimSpace(email[at+1:]))
-	if _, ok := allowedEmailDomains[domain]; !ok {
+	if !slices.Contains(keys.AuthAllowedEmailDomains.Get(), domain) {
 		return errors.NewWithCode(errors.ErrAuthEmailDomainNotAllowed)
 	}
 	return nil

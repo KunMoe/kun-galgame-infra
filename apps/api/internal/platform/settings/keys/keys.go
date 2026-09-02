@@ -182,7 +182,15 @@ var live = settings.NewRegistry(
 	settings.Domain{
 		Name:    "auth",
 		TitleZH: "账号与验证",
-		Keys:    []settings.Entry{AuthVerificationCodeTTLMinutes},
+		Keys: []settings.Entry{
+			AuthVerificationCodeTTLMinutes,
+			AuthIPRatePerMinute,
+			AuthTokenEndpointRatePerMinute,
+			AuthStrictRatePerMinute,
+			AuthAllowedEmailDomains,
+			AuthVerificationResendCooldownSeconds,
+			AuthRegisterGiftPoints,
+		},
 	},
 	settings.Domain{
 		Name:    "image",
@@ -211,6 +219,13 @@ var live = settings.NewRegistry(
 			TrustCheckEnabled,
 			TrustScanMode,
 			TrustScanSampleRate,
+			TrustReportRateWindowMinutes,
+			TrustReportRateMaxPerWindow,
+			TrustAggregateThreshold,
+			TrustNewAccountAgeDays,
+			TrustNewAccountReporterWeight,
+			TrustPolicyCacheTTLSeconds,
+			TrustTermCacheTTLSeconds,
 		},
 	},
 	settings.Domain{
@@ -220,6 +235,7 @@ var live = settings.NewRegistry(
 			AIEscalateThreshold,
 			AINegativeSampleRate,
 			AIForceEscalate,
+			AIModerateMaxTokens,
 		},
 	},
 	settings.Domain{
@@ -227,6 +243,10 @@ var live = settings.NewRegistry(
 		TitleZH: "DLsite 分销",
 		Keys:    []settings.Entry{StoreLinkQuotaPerClient},
 	},
+	apiv2Domain,
+	catalogDomain,
+	communityDomain,
+	developerDomain,
 	jobsDomain,
 )
 

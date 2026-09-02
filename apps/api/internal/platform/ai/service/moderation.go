@@ -121,23 +121,6 @@ func moderateSystemPrompt(site string) string {
 	return ModerateSystemPrompt + siteModerationContext[site]
 }
 
-// moderateMaxTokens caps the reply. The verdict object itself is ~40 tokens, so
-// this looks generous — but it is a CEILING, not a budget: a model that answers
-// in 40 tokens is billed for 40 whichever ceiling is set, so raising it costs
-// nothing on the replies that already fit and rescues the ones that did not.
-//
-// It was 256, which silently destroyed half of all escalated verdicts between
-// 2026-07-22 and 2026-08-07. Reasoning-style models (the Tier2 channel was
-// @cf/zai-org/glm-5.2) emit their working before the JSON; past 256 the object
-// was cut mid-token and came back as "unexpected end of JSON input", which
-// fail-open turned into an allow. The evidence was unambiguous once looked at:
-// successful calls had a median of 132 completion tokens, failed calls a median
-// of exactly 256, with 73% pinned to the ceiling.
-//
-// Tighten this only against measured completion_tokens in ai_usage, never by
-// eyeballing the size of the verdict — the verdict is not what fills the budget.
-const moderateMaxTokens = 1024
-
 // moderateRetryDelay waits out a 429 burst before the single retry. Every
 // observed prod 429 landed at :35-:36 past the minute — a scheduled caller, not
 // a person waiting on a form — so seconds here cost no user latency. It is 3s
@@ -216,7 +199,8 @@ func (s *ModerationService) moderateViaLLM(ctx context.Context, p ModerateParams
 		return failOpen(routeName, "", spec), nil
 	}
 
-	res, err := s.llm.ChatJSON(ctx, moderateSystemPrompt(p.contentSite()), p.Text, moderateMaxTokens)
+	maxTokens := int(keys.AIModerateMaxTokens.Get())
+	res, err := s.llm.ChatJSON(ctx, moderateSystemPrompt(p.contentSite()), p.Text, maxTokens)
 	if err != nil && upstream.IsRateLimited(err) {
 		// The Cloudflare inference bucket is per-minute and shared with every
 		// other caller on the account, so a 429 here is contention, not a
@@ -233,7 +217,7 @@ func (s *ModerationService) moderateViaLLM(ctx context.Context, p ModerateParams
 		case <-ctx.Done():
 			timer.Stop()
 		case <-timer.C:
-			res, err = s.llm.ChatJSON(ctx, moderateSystemPrompt(p.contentSite()), p.Text, moderateMaxTokens)
+			res, err = s.llm.ChatJSON(ctx, moderateSystemPrompt(p.contentSite()), p.Text, maxTokens)
 		}
 	}
 	if err != nil {
@@ -249,8 +233,8 @@ func (s *ModerationService) moderateViaLLM(ctx context.Context, p ModerateParams
 		status := model.StatusUpstreamError
 		if res.FinishReason == "length" {
 			status = model.StatusTruncated
-			slog.Warn("ai moderate-text reply truncated at the token ceiling — fail-open allow; raise moderateMaxTokens",
-				"site", p.Site, "channel", res.Channel, "max_tokens", moderateMaxTokens,
+			slog.Warn("ai moderate-text reply truncated at the token ceiling — fail-open allow; raise ai.moderate_max_tokens",
+				"site", p.Site, "channel", res.Channel, "max_tokens", maxTokens,
 				"completion_tokens", res.CompletionTokens)
 		} else {
 			slog.Warn("ai moderate-text unparseable upstream reply — fail-open allow",
