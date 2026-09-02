@@ -12,7 +12,7 @@ import (
 )
 
 func TestAdminHuma_RenGate_Forbidden(t *testing.T) {
-	s := &AdminHumaServer{h: NewAdmin(nil, nil, nil, 0)}
+	s := &AdminHumaServer{h: NewAdmin(nil, nil, nil)}
 	ctx := context.Background()
 
 	assert403 := func(name string, err error) {
@@ -40,7 +40,7 @@ func TestRequireRen(t *testing.T) {
 }
 
 func TestSetupAdmin_RegistersOperations(t *testing.T) {
-	api := SetupAdmin(fiber.New(), NewAdmin(nil, nil, nil, 0))
+	api := SetupAdmin(fiber.New(), NewAdmin(nil, nil, nil))
 	paths := api.OpenAPI().Paths
 	for _, p := range []string{
 		"/api/v1/admin/artifact/list",

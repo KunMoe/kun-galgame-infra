@@ -30,6 +30,9 @@ import (
 	"api/internal/platform/devapi"
 	devapiPerm "api/internal/platform/devapi/perm"
 	"api/internal/platform/permissions"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
+	settingsPerm "api/internal/platform/settings/perm"
 
 	imgHandler "api/internal/platform/image/handler"
 	imgRepoPkg "api/internal/platform/image/repository"
@@ -327,6 +330,17 @@ func setupRoutes(a *app.App, cfg *config.Config, cleanupCtx context.Context) {
 	permH := permissions.NewHandler(permissions.NewService(permReg, permissions.NewStore(db), permDist))
 	permH.Register(admin)
 
+	settingsReg := keys.Live()
+	settingsDist := settings.NewDistributor(db, settingsReg, a.Cache)
+	settingsDist.Start(cleanupCtx)
+	settingsH := settings.NewHandler(
+		settings.NewService(settingsReg, settings.NewStore(db), settingsDist),
+		func(roles []string) bool { return settingsPerm.Resolver.Can(roles, settingsPerm.Write) },
+	)
+	settingsH.Register(admin,
+		middleware.RequirePermission(settingsPerm.Resolver, settingsPerm.View),
+		middleware.RequirePermission(settingsPerm.Resolver, settingsPerm.Write))
+
 	registerImageAdmin(a, cfg, admin)
 	registerArtifactAdmin(a, cfg, authSvc)
 
@@ -435,7 +449,7 @@ func registerArtifactAdmin(a *app.App, cfg *config.Config, authSvc *authService.
 			store = c
 		}
 	}
-	adminH := artifactHandler.NewAdmin(artifactsDB.DB(), statsRepo, store, cfg.ArtifactService.ReclaimMinIdle)
+	adminH := artifactHandler.NewAdmin(artifactsDB.DB(), statsRepo, store)
 
 	a.Fiber.Use("/api/v1/admin/artifact", middleware.Auth(authSvc), middleware.RequirePermission(sitePerm.Resolver, sitePerm.AdminAccess))
 	artifactHandler.SetupAdmin(a.Fiber, adminH)

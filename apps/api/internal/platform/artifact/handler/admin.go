@@ -11,22 +11,19 @@ import (
 	"api/internal/platform/artifact/model"
 	"api/internal/platform/artifact/repository"
 	"api/internal/platform/artifact/storage"
+	"api/internal/platform/settings/keys"
 
 	"gorm.io/gorm"
 )
 
 type AdminHandler struct {
-	db             *gorm.DB
-	statsRepo      *repository.StatsRepository
-	store          *storage.Client
-	reclaimMinIdle time.Duration
+	db        *gorm.DB
+	statsRepo *repository.StatsRepository
+	store     *storage.Client
 }
 
-func NewAdmin(db *gorm.DB, statsRepo *repository.StatsRepository, store *storage.Client, reclaimMinIdle time.Duration) *AdminHandler {
-	if reclaimMinIdle <= 0 {
-		reclaimMinIdle = time.Hour
-	}
-	return &AdminHandler{db: db, statsRepo: statsRepo, store: store, reclaimMinIdle: reclaimMinIdle}
+func NewAdmin(db *gorm.DB, statsRepo *repository.StatsRepository, store *storage.Client) *AdminHandler {
+	return &AdminHandler{db: db, statsRepo: statsRepo, store: store}
 }
 
 var (
@@ -187,8 +184,9 @@ func (h *AdminHandler) Reclaim(ctx context.Context, uuid string) error {
 	if a.Status != model.StatusUploading {
 		return errReclaimNotUploading
 	}
-	if idle := time.Since(a.UpdatedAt); idle < h.reclaimMinIdle {
-		return fmt.Errorf("%w (idle %s < min %s)", errReclaimActive, idle.Round(time.Second), h.reclaimMinIdle)
+	minIdle := time.Duration(keys.ArtifactReclaimMinIdleSeconds.Get()) * time.Second
+	if idle := time.Since(a.UpdatedAt); idle < minIdle {
+		return fmt.Errorf("%w (idle %s < min %s)", errReclaimActive, idle.Round(time.Second), minIdle)
 	}
 
 	claim := h.db.WithContext(ctx).Unscoped().

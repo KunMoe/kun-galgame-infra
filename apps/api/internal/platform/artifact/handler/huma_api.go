@@ -9,6 +9,7 @@ import (
 	"api/internal/platform/artifact/dto"
 	artMW "api/internal/platform/artifact/middleware"
 	"api/internal/platform/artifact/service"
+	"api/internal/platform/settings/keys"
 	siteModel "api/internal/platform/site/model"
 	"api/pkg/errors"
 	"api/pkg/utils"
@@ -102,11 +103,10 @@ type completeInput struct {
 }
 
 type HumaServer struct {
-	svc           *service.Service
-	uploadEnabled bool
+	svc *service.Service
 }
 
-func Setup(app *fiber.App, svc *service.Service, uploadEnabled bool) huma.API {
+func Setup(app *fiber.App, svc *service.Service) huma.API {
 	InstallErrorEnvelope()
 
 	cfg := huma.DefaultConfig("KUN Artifact Service", "1.0.0")
@@ -117,7 +117,7 @@ func Setup(app *fiber.App, svc *service.Service, uploadEnabled bool) huma.API {
 	api := humafiber.New(app, cfg)
 	api.UseMiddleware(AuthBridge)
 
-	s := &HumaServer{svc: svc, uploadEnabled: uploadEnabled}
+	s := &HumaServer{svc: svc}
 	s.register(api)
 	return api
 }
@@ -203,7 +203,7 @@ func (s *HumaServer) download(ctx context.Context, in *uuidInput) (*downloadOutp
 }
 
 func (s *HumaServer) resumeUpload(ctx context.Context, in *uuidInput) (*resumeOutput, error) {
-	if !s.uploadEnabled {
+	if !keys.ArtifactUploadEnabled.Get() {
 		return nil, apiErr(http.StatusServiceUnavailable, errors.ErrArtifactUploadDisabled)
 	}
 	site := siteFromCtx(ctx)
@@ -244,7 +244,7 @@ func (s *HumaServer) delete(ctx context.Context, in *uuidInput) (*deleteOutput, 
 }
 
 func (s *HumaServer) initUpload(ctx context.Context, in *initInput) (*initOutput, error) {
-	if !s.uploadEnabled {
+	if !keys.ArtifactUploadEnabled.Get() {
 		return nil, apiErr(http.StatusServiceUnavailable, errors.ErrArtifactUploadDisabled)
 	}
 	site := siteFromCtx(ctx)
@@ -287,7 +287,7 @@ func (s *HumaServer) initUpload(ctx context.Context, in *initInput) (*initOutput
 }
 
 func (s *HumaServer) completeUpload(ctx context.Context, in *completeInput) (*artifactOutput, error) {
-	if !s.uploadEnabled {
+	if !keys.ArtifactUploadEnabled.Get() {
 		return nil, apiErr(http.StatusServiceUnavailable, errors.ErrArtifactUploadDisabled)
 	}
 	site := siteFromCtx(ctx)

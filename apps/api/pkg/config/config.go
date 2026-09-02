@@ -22,7 +22,6 @@ type Config struct {
 	ImagesDatabase          DatabaseConfig
 	Redis                   RedisConfig
 	JWT                     JWTConfig
-	Auth                    AuthConfig
 	OIDC                    OIDCConfig
 	Mail                    MailConfig
 	OpenSearch              OpenSearchConfig
@@ -33,10 +32,6 @@ type Config struct {
 	TrustClient             TrustClientConfig
 	TrustCallbackSecret     string
 	TrustForwarderClientIDs []string
-	TrustScanEnabled        bool
-	TrustCheckEnabled       bool
-	TrustScanMode           string
-	TrustScanSampleRate     float64
 	DevPortalClientIDs      []string
 	// GalgameImageClient is a SECOND image client identity, used only by the
 	// galgame-image-refping job. The job runs in the oauth container (central
@@ -83,7 +78,6 @@ type StoreConfig struct {
 	ShortlinkAPIKey       string
 	AffTemplateManiax     string
 	AffTemplatePro        string
-	LinkQuotaPerClient    int
 	PriceEnabled          bool
 	PriceUserAgent        string
 	PriceSteamRegions     []string
@@ -122,12 +116,9 @@ type AIUpstreamConfig struct {
 }
 
 type AIOmniConfig struct {
-	BaseURL            string
-	Token              string
-	Model              string
-	EscalateThreshold  float32
-	NegativeSampleRate float64
-	ForceEscalate      string
+	BaseURL string
+	Token   string
+	Model   string
 }
 
 type TrustServiceConfig struct {
@@ -148,19 +139,6 @@ type CatalogServiceConfig struct {
 type ArtifactServiceConfig struct {
 	Host string
 	Port int
-
-	UploadEnabled bool
-
-	MultipartThreshold int64
-	PartSize           int64
-
-	PresignUploadTTL   time.Duration
-	PresignDownloadTTL time.Duration
-
-	OrphanTTL     time.Duration
-	SoftDeleteTTL time.Duration
-
-	ReclaimMinIdle time.Duration
 
 	CleanupAccessKey string
 	CleanupSecretKey string
@@ -199,8 +177,6 @@ type ImageServiceConfig struct {
 	Port        int
 	CDNBase     string
 	PresetsPath string
-
-	UploadEnabled bool
 }
 
 type S3Config struct {
@@ -285,10 +261,6 @@ type OIDCConfig struct {
 	KeyEncKey      string
 	SignAsymmetric bool
 	JWKSURL        string
-}
-
-type AuthConfig struct {
-	VerificationCodeTTL time.Duration
 }
 
 func Load() (*Config, error) {
@@ -402,14 +374,6 @@ func Load() (*Config, error) {
 		JWKSURL:        getEnv("KUN_OIDC_JWKS_URL", ""),
 	}
 
-	codeTTLMinutes, _ := strconv.Atoi(getEnv("KUN_AUTH_VERIFICATION_CODE_TTL_MINUTES", "15"))
-	if codeTTLMinutes < 1 {
-		codeTTLMinutes = 1
-	}
-	cfg.Auth = AuthConfig{
-		VerificationCodeTTL: time.Duration(codeTTLMinutes) * time.Minute,
-	}
-
 	mailPort, _ := strconv.Atoi(getEnv("KUN_VISUAL_NOVEL_EMAIL_PORT", "587"))
 	cfg.Mail = MailConfig{
 		From:     getEnv("KUN_VISUAL_NOVEL_EMAIL_FROM", "鲲 Galgame OAuth"),
@@ -435,13 +399,11 @@ func Load() (*Config, error) {
 	}
 
 	imagePort, _ := strconv.Atoi(getEnv("KUN_IMAGE_SERVICE_PORT", "9278"))
-	imageUploadEnabled, _ := strconv.ParseBool(getEnv("KUN_IMAGE_UPLOAD_ENABLED", "false"))
 	cfg.ImageService = ImageServiceConfig{
-		Host:          getEnv("KUN_IMAGE_SERVICE_HOST", "127.0.0.1"),
-		Port:          imagePort,
-		CDNBase:       getEnv("KUN_IMAGE_PUBLIC_BASE_URL", "http://127.0.0.1:9000/kun-images-dev"),
-		PresetsPath:   getEnv("KUN_IMAGE_PRESETS_PATH", "apps/api/configs/image_presets.yaml"),
-		UploadEnabled: imageUploadEnabled,
+		Host:        getEnv("KUN_IMAGE_SERVICE_HOST", "127.0.0.1"),
+		Port:        imagePort,
+		CDNBase:     getEnv("KUN_IMAGE_PUBLIC_BASE_URL", "http://127.0.0.1:9000/kun-images-dev"),
+		PresetsPath: getEnv("KUN_IMAGE_PRESETS_PATH", "apps/api/configs/image_presets.yaml"),
 	}
 
 	s3UsePathStyle, _ := strconv.ParseBool(getEnv("KUN_IMAGE_S3_FORCE_PATH_STYLE", "true"))
@@ -475,10 +437,6 @@ func Load() (*Config, error) {
 	cfg.TrustCallbackSecret = getEnv("KUN_TRUST_CALLBACK_SECRET", "")
 	cfg.TrustForwarderClientIDs = splitCSV(getEnv("KUN_TRUST_FORWARDER_CLIENT_IDS", ""))
 	cfg.DevPortalClientIDs = splitCSV(getEnv("KUN_DEV_PORTAL_CLIENT_IDS", ""))
-	cfg.TrustScanEnabled, _ = strconv.ParseBool(getEnv("KUN_TRUST_SCAN_ENABLED", "false"))
-	cfg.TrustCheckEnabled, _ = strconv.ParseBool(getEnv("KUN_TRUST_CHECK_ENABLED", "false"))
-	cfg.TrustScanMode = getEnv("KUN_TRUST_SCAN_MODE", "shadow")
-	cfg.TrustScanSampleRate, _ = strconv.ParseFloat(getEnv("KUN_TRUST_SCAN_SAMPLE_RATE", "0"), 64)
 
 	cfg.GalgameImageClient = ImageClientConfig{
 		BaseURL:      getEnv("KUN_GALGAME_IMAGE_CLIENT_BASE_URL", cfg.ImageClient.BaseURL),
@@ -534,20 +492,11 @@ func Load() (*Config, error) {
 	}
 
 	artifactPort, _ := strconv.Atoi(getEnv("KUN_ARTIFACT_PORT", "9279"))
-	artifactUploadEnabled, _ := strconv.ParseBool(getEnv("KUN_ARTIFACT_UPLOAD_ENABLED", "false"))
 	cfg.ArtifactService = ArtifactServiceConfig{
-		Host:               getEnv("KUN_ARTIFACT_HOST", "127.0.0.1"),
-		Port:               artifactPort,
-		UploadEnabled:      artifactUploadEnabled,
-		MultipartThreshold: getEnvInt64("KUN_ARTIFACT_MULTIPART_THRESHOLD", 50*1024*1024),
-		PartSize:           getEnvInt64("KUN_ARTIFACT_PART_SIZE", 16*1024*1024),
-		PresignUploadTTL:   time.Duration(getEnvInt64("KUN_ARTIFACT_PRESIGN_UPLOAD_TTL_SECONDS", 3600)) * time.Second,
-		PresignDownloadTTL: time.Duration(getEnvInt64("KUN_ARTIFACT_PRESIGN_DOWNLOAD_TTL_SECONDS", 86400)) * time.Second,
-		OrphanTTL:          time.Duration(getEnvInt64("KUN_ARTIFACT_ORPHAN_TTL_HOURS", 24)) * time.Hour,
-		SoftDeleteTTL:      time.Duration(getEnvInt64("KUN_ARTIFACT_SOFTDELETE_TTL_HOURS", 168)) * time.Hour,
-		ReclaimMinIdle:     time.Duration(getEnvInt64("KUN_ARTIFACT_RECLAIM_MIN_IDLE_SECONDS", 3600)) * time.Second,
-		CleanupAccessKey:   getEnv("KUN_ARTIFACT_S3_CLEANUP_ACCESS_KEY", ""),
-		CleanupSecretKey:   getEnv("KUN_ARTIFACT_S3_CLEANUP_SECRET_KEY", ""),
+		Host:             getEnv("KUN_ARTIFACT_HOST", "127.0.0.1"),
+		Port:             artifactPort,
+		CleanupAccessKey: getEnv("KUN_ARTIFACT_S3_CLEANUP_ACCESS_KEY", ""),
+		CleanupSecretKey: getEnv("KUN_ARTIFACT_S3_CLEANUP_SECRET_KEY", ""),
 	}
 
 	catalogPort, _ := strconv.Atoi(getEnv("KUN_CATALOG_PORT", "9281"))
@@ -579,21 +528,10 @@ func Load() (*Config, error) {
 		Model:   getEnv("KUN_AI_UPSTREAM_MODEL", "deepseek-chat"),
 	}
 
-	omniEscalate, err := strconv.ParseFloat(getEnv("KUN_AI_ESCALATE_THRESHOLD", "0.4"), 32)
-	if err != nil {
-		omniEscalate = 0.4
-	}
-	omniSampleRate, err := strconv.ParseFloat(getEnv("KUN_AI_NEGATIVE_SAMPLE_RATE", "0.05"), 64)
-	if err != nil {
-		omniSampleRate = 0.05
-	}
 	cfg.AIOmni = AIOmniConfig{
-		BaseURL:            getEnv("KUN_AI_OMNI_BASE_URL", "https://api.openai.com"),
-		Token:              getEnv("KUN_AI_OMNI_TOKEN", ""),
-		Model:              getEnv("KUN_AI_OMNI_MODEL", "omni-moderation-latest"),
-		EscalateThreshold:  float32(omniEscalate),
-		NegativeSampleRate: omniSampleRate,
-		ForceEscalate:      getEnv("KUN_AI_FORCE_ESCALATE", ""),
+		BaseURL: getEnv("KUN_AI_OMNI_BASE_URL", "https://api.openai.com"),
+		Token:   getEnv("KUN_AI_OMNI_TOKEN", ""),
+		Model:   getEnv("KUN_AI_OMNI_MODEL", "omni-moderation-latest"),
 	}
 
 	cfg.AIClient = AIClientConfig{
@@ -621,7 +559,6 @@ func Load() (*Config, error) {
 		// minting face answer 503 instead, which the caller retries.
 		AffTemplateManiax:     getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX", ""),
 		AffTemplatePro:        getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_PRO", ""),
-		LinkQuotaPerClient:    int(getEnvInt64("KUN_STORE_LINK_QUOTA_PER_CLIENT", 5000)),
 		PriceEnabled:          priceEnabled,
 		PriceUserAgent:        getEnv("KUN_STORE_PRICE_USER_AGENT", "NextMoe-PriceBot/1.0 (+https://www.kungal.com)"),
 		PriceSteamRegions:     steamRegions,

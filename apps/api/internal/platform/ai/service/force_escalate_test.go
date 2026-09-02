@@ -7,9 +7,13 @@ import (
 
 	"api/internal/platform/ai/model"
 	"api/internal/platform/ai/upstream"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 )
 
 func TestForcedEscalationDialsLLMBelowThreshold(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
+	settings.Override(t, keys.AIForceEscalate, []string{"kungal:forum_topic"})
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
 		Flagged:        false,
@@ -21,10 +25,7 @@ func TestForcedEscalationDialsLLMBelowThreshold(t *testing.T) {
 		Content: `{"flagged": true, "categories": ["spam"], "score": 0.97}`,
 		Channel: "deepseek-chat",
 	}}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{
-		EscalateThreshold: 0.4,
-		ForceEscalate:     "kungal:forum_topic",
-	})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{
 		Site: "kungal", Text: "classified ad", SubjectKind: "forum_topic",
@@ -63,6 +64,9 @@ func TestForcedEscalationDialsLLMBelowThreshold(t *testing.T) {
 // client, so the binding site is always "trust" — the first ship keyed the
 // pair match and the site prompt off it and neither ever fired in prod.
 func TestForcedEscalationKeysOffSubjectSite(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
+	settings.Override(t, keys.AINegativeSampleRate, 0)
+	settings.Override(t, keys.AIForceEscalate, []string{"kungal:forum_topic"})
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
 		Flagged:        false,
@@ -74,10 +78,7 @@ func TestForcedEscalationKeysOffSubjectSite(t *testing.T) {
 		Content: `{"flagged": true, "categories": ["spam"], "score": 0.97}`,
 		Channel: "deepseek-chat",
 	}}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{
-		EscalateThreshold: 0.4,
-		ForceEscalate:     "kungal:forum_topic",
-	})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{
 		Site: "trust", SubjectSite: "kungal", Text: "classified ad", SubjectKind: "forum_topic",
@@ -107,6 +108,9 @@ func TestForcedEscalationKeysOffSubjectSite(t *testing.T) {
 }
 
 func TestForcedEscalationIgnoresUnlistedPair(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
+	settings.Override(t, keys.AINegativeSampleRate, 0)
+	settings.Override(t, keys.AIForceEscalate, []string{"kungal:forum_topic"})
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
 		Flagged:        false,
@@ -116,11 +120,7 @@ func TestForcedEscalationIgnoresUnlistedPair(t *testing.T) {
 	}}
 	llm := &fakeUpstream{configured: true, model: "deepseek-chat",
 		result: upstream.ChatResult{Content: `{"flagged": true, "categories": ["spam"], "score": 0.97}`, Channel: "deepseek-chat"}}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{
-		EscalateThreshold:  0.4,
-		NegativeSampleRate: 0,
-		ForceEscalate:      "kungal:forum_topic",
-	})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{
 		Site: "letmoe", Text: "hi", SubjectKind: "forum_topic",
@@ -156,6 +156,8 @@ func TestForcedEscalationIgnoresUnlistedPair(t *testing.T) {
 }
 
 func TestForcedEscalationFallsBackWhenLLMUnconfigured(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
+	settings.Override(t, keys.AIForceEscalate, []string{"kungal:forum_topic"})
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
 		Flagged:        false,
@@ -164,10 +166,7 @@ func TestForcedEscalationFallsBackWhenLLMUnconfigured(t *testing.T) {
 		Channel:        omniModel,
 	}}
 	llm := &fakeUpstream{configured: false}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{
-		EscalateThreshold: 0.4,
-		ForceEscalate:     "kungal:forum_topic",
-	})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{
 		Site: "kungal", Text: "classified ad", SubjectKind: "forum_topic",
@@ -191,20 +190,20 @@ func TestForcedEscalationFallsBackWhenLLMUnconfigured(t *testing.T) {
 
 func TestParseForceEscalate(t *testing.T) {
 	cases := []struct {
-		name string
-		raw  string
-		want []string
+		name  string
+		items []string
+		want  []string
 	}{
-		{"mixed case and spaces", " Kungal:Forum_Topic , kungal:forum_reply ", []string{"kungal:forum_topic", "kungal:forum_reply"}},
-		{"no colon", "kungal", nil},
-		{"empty site", ":x", nil},
-		{"empty kind", "x:", nil},
-		{"empty token", "kungal:forum_topic,,", []string{"kungal:forum_topic"}},
-		{"empty string", "", nil},
+		{"mixed case and spaces", []string{" Kungal:Forum_Topic ", " kungal:forum_reply "}, []string{"kungal:forum_topic", "kungal:forum_reply"}},
+		{"no colon", []string{"kungal"}, nil},
+		{"empty site", []string{":x"}, nil},
+		{"empty kind", []string{"x:"}, nil},
+		{"empty token", []string{"kungal:forum_topic", ""}, []string{"kungal:forum_topic"}},
+		{"empty list", nil, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := parseForceEscalate(c.raw)
+			got := parseForceEscalate(c.items)
 			if len(got) != len(c.want) {
 				t.Fatalf("len=%d want %d; set=%v", len(got), len(c.want), got)
 			}

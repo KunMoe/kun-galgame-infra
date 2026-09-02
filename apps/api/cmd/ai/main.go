@@ -15,6 +15,8 @@ import (
 	"api/internal/platform/ai/service"
 	"api/internal/platform/ai/upstream"
 	"api/internal/platform/permissions"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 	siteRepo "api/internal/platform/site/repository"
 	"api/pkg/config"
 	"api/pkg/health"
@@ -41,6 +43,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	permCtx, cancelPerm := context.WithCancel(context.Background())
+	defer cancelPerm()
+	settings.NewDistributor(application.DB.DB(), keys.Live(), nil).Start(permCtx)
+
 	aiDB, err := database.NewPostgresDB(cfg.AIDatabase)
 	if err != nil {
 		slog.Error("ai db connect", "error", err)
@@ -57,18 +63,14 @@ func main() {
 	omni := upstream.NewOmniClient(cfg.AIOmni.BaseURL, cfg.AIOmni.Token, cfg.AIOmni.Model)
 	if omni.Configured() {
 		slog.Info("ai omni (tier1) configured", "base_url", cfg.AIOmni.BaseURL, "model", cfg.AIOmni.Model,
-			"escalate_threshold", cfg.AIOmni.EscalateThreshold, "negative_sample_rate", cfg.AIOmni.NegativeSampleRate)
+			"escalate_threshold", keys.AIEscalateThreshold.Get(), "negative_sample_rate", keys.AINegativeSampleRate.Get())
 	} else {
 		slog.Warn("ai omni (tier1) NOT configured — moderate-text runs the Tier2 LLM path only")
 	}
 
-	moderationSvc := service.NewModerationService(aiDB.DB(), omni, up, service.ModerationOptions{
-		EscalateThreshold:  cfg.AIOmni.EscalateThreshold,
-		NegativeSampleRate: cfg.AIOmni.NegativeSampleRate,
-		ForceEscalate:      cfg.AIOmni.ForceEscalate,
-	})
-	if cfg.AIOmni.ForceEscalate != "" {
-		slog.Info("ai cascade forced escalation", "pairs", cfg.AIOmni.ForceEscalate)
+	moderationSvc := service.NewModerationService(aiDB.DB(), omni, up, service.ModerationOptions{})
+	if pairs := keys.AIForceEscalate.Get(); len(pairs) > 0 {
+		slog.Info("ai cascade forced escalation", "pairs", pairs)
 	}
 	statsSvc := service.NewStatsService(aiDB.DB())
 	budgetSvc := service.NewBudgetService(aiDB.DB())
@@ -99,8 +101,6 @@ func main() {
 		return c.Send(b)
 	})
 
-	permCtx, cancelPerm := context.WithCancel(context.Background())
-	defer cancelPerm()
 	permissions.NewDistributor(application.DB.DB(), permissions.Live(), nil).Start(permCtx)
 
 	slog.Info("ai service starting",

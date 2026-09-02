@@ -11,6 +11,7 @@ import (
 	"api/internal/platform/ai/model"
 	"api/internal/platform/ai/route"
 	"api/internal/platform/ai/upstream"
+	"api/internal/platform/settings/keys"
 
 	"gorm.io/gorm"
 )
@@ -32,18 +33,12 @@ type ModerationService struct {
 	omni omniClient
 	llm  upstreamClient
 
-	escalateThreshold  float32
-	negativeSampleRate float64
-	rand               func() float64
-	retryDelay         time.Duration
-	forceEscalate      map[string]struct{}
+	rand       func() float64
+	retryDelay time.Duration
 }
 
 type ModerationOptions struct {
-	EscalateThreshold  float32
-	NegativeSampleRate float64
-	Rand               func() float64
-	ForceEscalate      string
+	Rand func() float64
 }
 
 func NewModerationService(db *gorm.DB, omni omniClient, llm upstreamClient, opts ModerationOptions) *ModerationService {
@@ -52,20 +47,17 @@ func NewModerationService(db *gorm.DB, omni omniClient, llm upstreamClient, opts
 		r = rand.Float64
 	}
 	return &ModerationService{
-		db:                 db,
-		omni:               omni,
-		llm:                llm,
-		escalateThreshold:  opts.EscalateThreshold,
-		negativeSampleRate: opts.NegativeSampleRate,
-		rand:               r,
-		retryDelay:         moderateRetryDelay,
-		forceEscalate:      parseForceEscalate(opts.ForceEscalate),
+		db:         db,
+		omni:       omni,
+		llm:        llm,
+		rand:       r,
+		retryDelay: moderateRetryDelay,
 	}
 }
 
-func parseForceEscalate(raw string) map[string]struct{} {
+func parseForceEscalate(items []string) map[string]struct{} {
 	set := map[string]struct{}{}
-	for _, pair := range strings.Split(raw, ",") {
+	for _, pair := range items {
 		pair = strings.ToLower(strings.TrimSpace(pair))
 		site, kind, ok := strings.Cut(pair, ":")
 		if !ok || site == "" || kind == "" {
@@ -80,7 +72,7 @@ func (s *ModerationService) forceEscalated(site, kind string) bool {
 	if kind == "" {
 		return false
 	}
-	_, ok := s.forceEscalate[strings.ToLower(site)+":"+strings.ToLower(kind)]
+	_, ok := parseForceEscalate(keys.AIForceEscalate.Get())[strings.ToLower(site)+":"+strings.ToLower(kind)]
 	return ok
 }
 
@@ -192,7 +184,7 @@ func (s *ModerationService) Moderate(ctx context.Context, p ModerateParams) (Mod
 		return s.moderateViaLLM(ctx, p, routeName, spec)
 	}
 
-	if rel >= s.escalateThreshold {
+	if rel >= float32(keys.AIEscalateThreshold.Get()) {
 		if s.llm.Configured() {
 			return s.moderateViaLLM(ctx, p, routeName, spec)
 		}
@@ -284,10 +276,11 @@ func (s *ModerationService) moderateViaLLM(ctx context.Context, p ModerateParams
 }
 
 func (s *ModerationService) sampleHit() bool {
-	if s.negativeSampleRate <= 0 {
+	rate := keys.AINegativeSampleRate.Get()
+	if rate <= 0 {
 		return false
 	}
-	return s.rand() < s.negativeSampleRate
+	return s.rand() < rate
 }
 
 func failOpen(routeName, channel string, _ route.Spec) ModerateResult {

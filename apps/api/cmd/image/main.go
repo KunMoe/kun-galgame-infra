@@ -17,6 +17,8 @@ import (
 	"api/internal/platform/image/repository"
 	"api/internal/platform/image/service"
 	"api/internal/platform/image/storage"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 	siteRepo "api/internal/platform/site/repository"
 	"api/pkg/config"
 	"api/pkg/errors"
@@ -48,6 +50,10 @@ func main() {
 		slog.Error("app init", "error", err)
 		os.Exit(1)
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	settings.NewDistributor(application.DB.DB(), keys.Live(), application.Cache).Start(ctx)
 
 	imagesDB, err := database.NewPostgresDB(cfg.ImagesDatabase)
 	if err != nil {
@@ -95,14 +101,9 @@ func main() {
 
 	application.Fiber.Use(middleware.CORS(cfg.Server.CORSOrigin))
 
-	if cfg.ImageService.UploadEnabled {
-		application.Fiber.Post("/image/upload",
-			imgMW.ClientAuth(clientRepo, cfg),
-			h.Upload,
-		)
-	} else {
-		application.Fiber.Post("/image/upload", uploadDisabled)
-		slog.Warn("upload disabled (set KUN_IMAGE_UPLOAD_ENABLED=true to allow); other endpoints still serve")
+	application.Fiber.Post("/image/upload", uploadGate, imgMW.ClientAuth(clientRepo, cfg), h.Upload)
+	if !keys.ImageUploadEnabled.Get() {
+		slog.Warn("image upload disabled at boot (image.upload_enabled=false); other endpoints still serve")
 	}
 
 	img := application.Fiber.Group("/image", imgMW.ClientAuth(clientRepo, cfg))
@@ -129,6 +130,13 @@ func main() {
 		slog.Error("run", "error", err)
 		os.Exit(1)
 	}
+}
+
+func uploadGate(c fiber.Ctx) error {
+	if !keys.ImageUploadEnabled.Get() {
+		return uploadDisabled(c)
+	}
+	return c.Next()
 }
 
 func uploadDisabled(c fiber.Ctx) error {

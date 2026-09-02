@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"api/internal/platform/community/model"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 	"api/pkg/trustclient"
 )
 
@@ -56,7 +58,9 @@ func reviewItemsForPost(t *testing.T, postID int64) []model.CommunityReviewItem 
 	return items
 }
 
-func checkWiring(f *fakeChecker, sink EventSink) (*ThreadService, *PostService) {
+func checkWiring(t *testing.T, f *fakeChecker, sink EventSink) (*ThreadService, *PostService) {
+	t.Helper()
+	settings.Override(t, keys.TrustCheckEnabled, true)
 	chk := NewCheckService(f)
 	ts := NewThreadService(testDB, sink, WithThreadChecker(chk))
 	ps := NewPostService(testDB, sink, WithPostChecker(chk))
@@ -105,7 +109,7 @@ func TestCheckDenyBlocksAllWritePaths(t *testing.T) {
 	cleanTables(t)
 	ctx := context.Background()
 	fake := &fakeChecker{decision: checkDeny}
-	ts, ps := checkWiring(fake, NoopSink{})
+	ts, ps := checkWiring(t, fake, NoopSink{})
 
 	seedTrust(t, 100, model.TrustLevelBasic, 0)
 	_, _, err := ts.OpenTopic(ctx, OpenThreadParams{
@@ -160,6 +164,7 @@ func TestCheckDenyBlocksAllWritePaths(t *testing.T) {
 }
 
 func TestCheckHoldEnqueuesSuspectOnce(t *testing.T) {
+	settings.Override(t, keys.TrustCheckEnabled, true)
 	cleanTables(t)
 	ctx := context.Background()
 	fake := &fakeChecker{decision: checkHold}
@@ -200,6 +205,7 @@ func TestCheckHoldEnqueuesSuspectOnce(t *testing.T) {
 }
 
 func TestCheckFailOpen(t *testing.T) {
+	settings.Override(t, keys.TrustCheckEnabled, true)
 	cleanTables(t)
 	ctx := context.Background()
 	fake := &fakeChecker{fail: true}
@@ -238,7 +244,7 @@ func TestCheckFirstPostTitleComposition(t *testing.T) {
 	cleanTables(t)
 	ctx := context.Background()
 	fake := &fakeChecker{decision: checkAllow}
-	ts, ps := checkWiring(fake, NoopSink{})
+	ts, ps := checkWiring(t, fake, NoopSink{})
 
 	seedTrust(t, 100, model.TrustLevelBasic, 0)
 	th, _, err := ts.OpenTopic(ctx, OpenThreadParams{

@@ -18,6 +18,7 @@
 | 3 | [03-bootstrap.md](./03-bootstrap.md) | **首次启动**:基础设施、建库、跨仓迁移顺序、OAuth 客户端注册 |
 | 16 | [16-data-cutover.md](./16-data-cutover.md) | **带数据上线**:从 dump 起,服务器容器化逐条命令(`*-tools` 镜像)把老库数据迁进新 5 库;本地 `go run` ↔ 容器对照表、校验、回滚(03-bootstrap §B 的可抄命令版) |
 | 17 | [17-go-live-checklist.md](./17-go-live-checklist.md) | **上线 Checklist**:Dokploy 装好后到三站上线的勾选清单,每步标注**在哪(面板/`docker/*.env`)配什么环境变量** + 密钥一致性铁律 + 验收/烟雾测试 |
+| 18 | [18-config-center.md](./18-config-center.md) | **配置中心**:运行期可调项(开关/阈值/TTL/配额)的三层解析(代码默认 → 环境变量地板 → 数据库覆盖值)、控制台 `/settings` 与 API、日志验证、从环境变量迁入的顺序、新增键的做法 |
 | 4 | [04-run.md](./04-run.md) | 日常启停:增量启动 / 伞状编排、kungal 的 infra override |
 | 5 | [05-configuration.md](./05-configuration.md) | 配置参考:各服务 env、前端 public 配置烘焙、密钥(上线速查) |
 | 15 | [15-environment.md](./15-environment.md) | **环境变量大全**:三仓每个变量 + 构建参数 + CI secrets + 生产/Dokploy 注入 + Cloudflare/R2;分层模型、命名规律、跨服务一致性铁律、必改清单(配置层底层全集) |

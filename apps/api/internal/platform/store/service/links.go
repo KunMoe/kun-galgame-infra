@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"api/internal/platform/settings/keys"
 	"api/internal/platform/store/model"
 	"api/internal/platform/store/shortener"
 
@@ -38,9 +39,6 @@ type Options struct {
 	// deployment (00-workflow §1.11).
 	AffTemplateManiax string
 	AffTemplatePro    string
-	// LinkQuotaPerClient caps how many distinct products one calling site may
-	// mint links for, so a site feeding us junk ids cannot flood the alias space.
-	LinkQuotaPerClient int
 }
 
 type Service struct {
@@ -50,9 +48,6 @@ type Service struct {
 }
 
 func New(db *gorm.DB, minter Minter, opts Options) *Service {
-	if opts.LinkQuotaPerClient <= 0 {
-		opts.LinkQuotaPerClient = 5000
-	}
 	return &Service{db: db, minter: minter, opts: opts}
 }
 
@@ -133,7 +128,9 @@ func (s *Service) purchaseLink(ctx context.Context, clientID, productID string) 
 		Where("client_id = ?", clientID).Count(&minted).Error; err != nil {
 		return nil, err
 	}
-	if minted >= int64(s.opts.LinkQuotaPerClient) {
+	// Caps how many distinct products one calling site may mint links for, so a
+	// site feeding us junk ids cannot flood the alias space.
+	if minted >= int64(keys.StoreLinkQuotaPerClient.Get()) {
 		return nil, ErrQuotaExceeded
 	}
 

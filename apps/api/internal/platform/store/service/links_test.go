@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 	"api/internal/platform/store/model"
 	"api/internal/platform/store/storetest"
 
@@ -38,12 +40,12 @@ func newFixture(t *testing.T, quota int) (*Service, *storetest.FakeShortener) {
 	if err := storetest.Truncate(testDB); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
+	settings.Override(t, keys.StoreLinkQuotaPerClient, int64(quota))
 	fake := storetest.NewFakeShortener()
 	t.Cleanup(fake.Close)
 	svc := New(testDB, fake.Client("slk_test"), Options{
-		AffTemplateManiax:  tmplManiax,
-		AffTemplatePro:     tmplPro,
-		LinkQuotaPerClient: quota,
+		AffTemplateManiax: tmplManiax,
+		AffTemplatePro:    tmplPro,
 	})
 	return svc, fake
 }
@@ -126,7 +128,7 @@ func TestACollapsedAliasIsRefusedNotQuietlyShared(t *testing.T) {
 	t.Cleanup(fakeCollapsed.Close)
 	fakeCollapsed.StickyAlias = first.Alias
 	collapsed := New(testDB, fakeCollapsed.Client("slk_test"), Options{
-		AffTemplateManiax: tmplManiax, AffTemplatePro: tmplPro, LinkQuotaPerClient: 5000,
+		AffTemplateManiax: tmplManiax, AffTemplatePro: tmplPro,
 	})
 
 	if _, err := collapsed.PurchaseLinks(ctx, "site-b", "RJ100001"); err == nil {

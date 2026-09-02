@@ -24,11 +24,13 @@ type ResolvedPolicy struct {
 	AutoHideEnabled    bool
 }
 
+type DefaultsSource func() PlatformDefaults
+
 type PolicyService struct {
-	db       *gorm.DB
-	defaults PlatformDefaults
-	ttl      time.Duration
-	now      func() time.Time
+	db  *gorm.DB
+	src DefaultsSource
+	ttl time.Duration
+	now func() time.Time
 
 	mu       sync.Mutex
 	cache    map[string]model.TrustSitePolicy
@@ -39,22 +41,27 @@ type PolicyService struct {
 func DefaultAggregateThreshold() float32 { return aggregateThreshold }
 
 func NewPolicyService(db *gorm.DB, defaults PlatformDefaults) *PolicyService {
+	return NewPolicyServiceFrom(db, func() PlatformDefaults { return defaults })
+}
+
+func NewPolicyServiceFrom(db *gorm.DB, src DefaultsSource) *PolicyService {
 	return &PolicyService{
-		db:       db,
-		defaults: defaults,
-		ttl:      policyCacheTTL,
-		now:      time.Now,
+		db:  db,
+		src: src,
+		ttl: policyCacheTTL,
+		now: time.Now,
 	}
 }
 
-func (s *PolicyService) Defaults() PlatformDefaults { return s.defaults }
+func (s *PolicyService) Defaults() PlatformDefaults { return s.src() }
 
 func (s *PolicyService) Resolve(site string) ResolvedPolicy {
+	d := s.Defaults()
 	resolved := ResolvedPolicy{
-		ScanMode:           s.defaults.ScanMode,
-		SampleRate:         s.defaults.SampleRate,
-		AggregateThreshold: s.defaults.AggregateThreshold,
-		AutoHideEnabled:    s.defaults.AutoHideEnabled,
+		ScanMode:           d.ScanMode,
+		SampleRate:         d.SampleRate,
+		AggregateThreshold: d.AggregateThreshold,
+		AutoHideEnabled:    d.AutoHideEnabled,
 	}
 	row, ok := s.lookup(site)
 	if !ok {

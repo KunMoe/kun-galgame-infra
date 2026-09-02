@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"api/internal/platform/community/repository"
+	"api/internal/platform/settings/keys"
 	"api/pkg/trustclient"
 
 	"gorm.io/gorm"
@@ -26,7 +27,7 @@ func NewScanService(db *gorm.DB, sc Scanner) *ScanService {
 	return &ScanService{db: db, sc: sc}
 }
 
-func (s *ScanService) Enabled() bool { return s.sc != nil }
+func (s *ScanService) Enabled() bool { return s.sc != nil && keys.TrustScanEnabled.Get() }
 
 func (s *ScanService) ScanPostBg(postID int64) {
 	if err := s.scanPost(context.Background(), postID); err != nil {

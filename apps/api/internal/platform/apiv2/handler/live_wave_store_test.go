@@ -12,6 +12,8 @@ import (
 
 	"api/internal/platform/apiv2/problem"
 	"api/internal/platform/devapi"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 	storemodel "api/internal/platform/store/model"
 	storesvc "api/internal/platform/store/service"
 	"api/internal/platform/store/storetest"
@@ -73,11 +75,11 @@ func liveStoreApp(t *testing.T, svc *storesvc.Service) *fiber.App {
 func liveStoreFixture(t *testing.T, quota int) (*fiber.App, *storetest.FakeShortener) {
 	t.Helper()
 	db := liveStoreDB(t)
+	settings.Override(t, keys.StoreLinkQuotaPerClient, int64(quota))
 	fake := storetest.NewFakeShortener()
 	t.Cleanup(fake.Close)
 	svc := storesvc.New(db, fake.Client("slk_test"), storesvc.Options{
 		AffTemplateManiax: liveStoreManiax, AffTemplatePro: liveStorePro,
-		LinkQuotaPerClient: quota,
 	})
 	return liveStoreApp(t, svc), fake
 }

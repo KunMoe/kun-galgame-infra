@@ -25,6 +25,7 @@ import (
 	authModel "api/internal/platform/auth/model"
 	"api/internal/platform/devapi"
 	"api/internal/platform/permissions"
+	"api/internal/platform/settings"
 	siteModel "api/internal/platform/site/model"
 	storeModel "api/internal/platform/store/model"
 
@@ -247,6 +248,11 @@ func getAllModels() []any {
 		// role's permissions but never cut below the code floor.
 		&permissions.RolePermissionOverride{},
 		&permissions.PermissionAuditLog{},
+
+		// Runtime configuration overrides on top of code defaults, and their
+		// audit trail (2026-09-02). Brand-new tables, no existing rows to convert.
+		&settings.SettingOverride{},
+		&settings.SettingAuditLog{},
 
 		// DLsite distribution face (/v1/store, wave 02 of the store track,
 		// 2026-08-25). Four brand-new tables, no pre-existing rows to convert:

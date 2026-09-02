@@ -13,6 +13,8 @@ import (
 	"api/internal/middleware"
 	commHandler "api/internal/platform/community/handler"
 	"api/internal/platform/community/service"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 	siteRepo "api/internal/platform/site/repository"
 	"api/pkg/config"
 	"api/pkg/health"
@@ -41,6 +43,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	settings.NewDistributor(application.DB.DB(), keys.Live(), nil).Start(ctx)
+
 	communityDB, err := database.NewPostgresDB(cfg.CommunityDatabase)
 	if err != nil {
 		slog.Error("community db connect", "error", err)
@@ -63,25 +69,25 @@ func main() {
 	}
 
 	var scanner service.Scanner
-	if cfg.TrustScanEnabled && trustCli != nil {
+	if trustCli != nil {
 		scanner = trustCli
 	}
 	scanSvc := service.NewScanService(communityDB.DB(), scanner)
 	if scanSvc.Enabled() {
 		slog.Info("community trust scanning enabled", "base_url", cfg.TrustClient.BaseURL)
 	} else {
-		slog.Info("community trust scanning disabled (KUN_TRUST_SCAN_ENABLED off or KUN_TRUST_CLIENT_* unset)")
+		slog.Info("community trust scanning disabled (trust.scan_enabled off or KUN_TRUST_CLIENT_* unset)")
 	}
 
 	var checker service.Checker
-	if cfg.TrustCheckEnabled && trustCli != nil {
+	if trustCli != nil {
 		checker = trustCli
 	}
 	checkSvc := service.NewCheckService(checker)
 	if checkSvc.Enabled() {
 		slog.Info("community trust check enabled (synchronous word-list gate)", "base_url", cfg.TrustClient.BaseURL)
 	} else {
-		slog.Info("community trust check disabled (KUN_TRUST_CHECK_ENABLED off or KUN_TRUST_CLIENT_* unset)")
+		slog.Info("community trust check disabled (trust.check_enabled off or KUN_TRUST_CLIENT_* unset)")
 	}
 
 	sink := service.NewScanningSink(service.NewForwardingSink(service.NoopSink{}, forwardSvc), scanSvc)
@@ -108,8 +114,6 @@ func main() {
 
 	api := commHandler.Setup(application.Fiber, threadSvc, postSvc, reactionSvc, feedbackSvc, flagSvc, trustSvc, reviewSvc)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	go runOutboxTicker(ctx, forwardSvc)
 
 	application.Fiber.Get("/openapi.json", func(c fiber.Ctx) error {

@@ -6,11 +6,15 @@ import (
 
 	"api/internal/platform/ai/model"
 	"api/internal/platform/ai/upstream"
+	"api/internal/platform/settings"
+	"api/internal/platform/settings/keys"
 )
 
 const omniModel = "omni-moderation-latest"
 
 func TestCascadeOmniCleanBelowThreshold(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
+	settings.Override(t, keys.AINegativeSampleRate, 0)
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
 		Flagged:        false,
@@ -20,7 +24,7 @@ func TestCascadeOmniCleanBelowThreshold(t *testing.T) {
 	}}
 	llm := &fakeUpstream{configured: true, model: "deepseek-chat",
 		result: upstream.ChatResult{Content: `{"flagged": true}`, Channel: "deepseek-chat"}}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{EscalateThreshold: 0.4, NegativeSampleRate: 0})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{Site: "letmoe", Text: "hi"})
 	if err != nil {
@@ -51,6 +55,7 @@ func TestCascadeOmniCleanBelowThreshold(t *testing.T) {
 }
 
 func TestCascadeEscalatesToLLM(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
 		Flagged:        true,
@@ -62,7 +67,7 @@ func TestCascadeEscalatesToLLM(t *testing.T) {
 		Content: `{"flagged": true, "categories": ["abuse"], "score": 0.88}`,
 		Channel: "deepseek-chat", PromptTokens: 30, CompletionTokens: 6,
 	}}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{EscalateThreshold: 0.4})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{Site: "letmoe", Text: "you idiot"})
 	if err != nil {
@@ -93,6 +98,7 @@ func TestCascadeEscalatesToLLM(t *testing.T) {
 }
 
 func TestCascadeOmniConvictsAloneWhenNoLLM(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
 		Flagged:        true,
@@ -101,7 +107,7 @@ func TestCascadeOmniConvictsAloneWhenNoLLM(t *testing.T) {
 		Channel:        omniModel,
 	}}
 	llm := &fakeUpstream{configured: false}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{EscalateThreshold: 0.4})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{Site: "letmoe", Text: "graphic"})
 	if err != nil {
@@ -132,12 +138,13 @@ func TestCascadeOmniConvictsAloneWhenNoLLM(t *testing.T) {
 }
 
 func TestCascadeOmniErrorFallsThroughToLLM(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, err: context.DeadlineExceeded}
 	llm := &fakeUpstream{configured: true, model: "deepseek-chat", result: upstream.ChatResult{
 		Content: `{"flagged": false, "score": 0.2}`, Channel: "deepseek-chat",
 	}}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{EscalateThreshold: 0.4})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{Site: "letmoe", Text: "hello"})
 	if err != nil {
@@ -165,6 +172,8 @@ func TestCascadeOmniErrorFallsThroughToLLM(t *testing.T) {
 }
 
 func TestCascadeIgnoresSexualCategory(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
+	settings.Override(t, keys.AINegativeSampleRate, 0)
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
 		Flagged:        true,
@@ -174,7 +183,7 @@ func TestCascadeIgnoresSexualCategory(t *testing.T) {
 	}}
 	llm := &fakeUpstream{configured: true, model: "deepseek-chat",
 		result: upstream.ChatResult{Content: `{"flagged": true}`, Channel: "deepseek-chat"}}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{EscalateThreshold: 0.4, NegativeSampleRate: 0})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{Site: "letmoe", Text: "adult"})
 	if err != nil {
@@ -198,6 +207,7 @@ func TestCascadeIgnoresSexualCategory(t *testing.T) {
 }
 
 func TestCascadeAdoptsSexualMinors(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
 	cleanTables(t)
 	omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
 		Flagged:        true,
@@ -206,7 +216,7 @@ func TestCascadeAdoptsSexualMinors(t *testing.T) {
 		Channel:        omniModel,
 	}}
 	llm := &fakeUpstream{configured: false}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{EscalateThreshold: 0.4})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{Site: "letmoe", Text: "illegal"})
 	if err != nil {
@@ -227,6 +237,8 @@ func TestCascadeAdoptsSexualMinors(t *testing.T) {
 }
 
 func TestCascadeNegativeSamplingSeam(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
+	settings.Override(t, keys.AINegativeSampleRate, 0.05)
 	build := func(randVal float64) (*fakeOmni, *fakeUpstream, *ModerationService) {
 		omni := &fakeOmni{configured: true, model: omniModel, result: upstream.OmniResult{
 			Flagged:        false,
@@ -236,9 +248,7 @@ func TestCascadeNegativeSamplingSeam(t *testing.T) {
 		llm := &fakeUpstream{configured: true, model: "deepseek-chat",
 			result: upstream.ChatResult{Content: `{"flagged": true, "score": 0.7}`, Channel: "deepseek-chat"}}
 		s := NewModerationService(testDB, omni, llm, ModerationOptions{
-			EscalateThreshold:  0.4,
-			NegativeSampleRate: 0.05,
-			Rand:               func() float64 { return randVal },
+			Rand: func() float64 { return randVal },
 		})
 		return omni, llm, s
 	}
@@ -277,10 +287,11 @@ func TestCascadeNegativeSamplingSeam(t *testing.T) {
 }
 
 func TestCascadeBothTiersUnconfiguredDegraded(t *testing.T) {
+	settings.Override(t, keys.AIEscalateThreshold, 0.4)
 	cleanTables(t)
 	omni := &fakeOmni{configured: false}
 	llm := &fakeUpstream{configured: false}
-	s := NewModerationService(testDB, omni, llm, ModerationOptions{EscalateThreshold: 0.4})
+	s := NewModerationService(testDB, omni, llm, ModerationOptions{})
 
 	res, err := s.Moderate(context.Background(), ModerateParams{Site: "letmoe", Text: "x"})
 	if err != nil {

@@ -32,6 +32,7 @@
 | **C. 编排插值** | compose 里 `${VAR:?}` / `${VAR:-default}`(**三仓 prod compose 都用**) | `docker compose up` 时 | 否 | **Dokploy 各应用的 Environment 面板**(只填密钥) |
 | **D. 前端 public** | infra:**A 层烤镜像**;kungal/moyu:**prod compose `environment:` 写死 https 域名** | 见 [§15.5](#155-前端-public-配置infra-烤镜像-vs-下游运行期) | infra 是 / 下游 否 | infra 改 CI build-args 重构;kungal/moyu 改 prod compose 的 `NUXT_PUBLIC_*` |
 | **E. 平台 secret** | `${{ secrets.* }}` | CI 运行时 | 否 | **GitHub → 仓库 Settings → Secrets** |
+| **F. 运行期配置中心** | 主库 `setting_overrides` 表,压在 B 层同名变量之上 | 写入后 30 秒内,不重部署 | 否 | 控制台 `/settings`,见 [18-config-center](./18-config-center.md);只收开关/阈值/TTL/配额,密钥与接线永远在 B/C 层 |
 
 **两条最关键的事实**:
 
