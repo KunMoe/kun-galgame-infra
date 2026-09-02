@@ -1,4 +1,3 @@
-
 export type JobStatus = 'running' | 'success' | 'failed' | 'skipped'
 export type JobTrigger = 'schedule' | 'admin'
 
@@ -17,7 +16,7 @@ export interface JobRun {
 export interface JobInfo {
   name: string
   desc: string
-  daily_at?: string
-  auto: boolean
+  schedule: string
+  enabled: boolean
   latest_run: JobRun | null
 }

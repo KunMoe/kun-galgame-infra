@@ -5,6 +5,7 @@ import { formatSettingValue } from '~/constants/settings'
 const props = defineProps<{
   row: SettingsKeyView | null
   submitting: boolean
+  scopeKind: 'platform' | 'site'
 }>()
 const emit = defineEmits<{ confirm: [note: string] }>()
 
@@ -24,7 +25,13 @@ watch([open, () => props.row], ([isOpen]) => {
       <h2 class="text-foreground text-xl font-bold">撤销覆盖</h2>
 
       <div v-if="row" class="space-y-2 text-sm">
-        <p class="text-default-500">
+        <p v-if="scopeKind === 'site'" class="text-default-500">
+          将删除站点覆盖值,该键回退到平台生效值
+          <span class="text-foreground font-mono">
+            {{ formatSettingValue(row.kind, row.inherited) }}
+          </span>
+        </p>
+        <p v-else class="text-default-500">
           将删除
           <span class="text-foreground font-mono font-semibold break-all">
             {{ row.key }}
