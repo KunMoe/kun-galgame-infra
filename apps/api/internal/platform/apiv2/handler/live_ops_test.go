@@ -119,6 +119,8 @@ var liveReadsNotSwept = map[string]string{
 	"/v2/catalog/search":                    "the live env binds no OpenSearch, so this face is 503 here",
 	"/v2/store/purchase-links/{product_id}": "the live env binds no store service",
 	"/v2/store/stats":                       "the live env binds no store service",
+	"/v2/store/prices/{id}":                 "the live env binds no price service; live_wave_prices_test.go mounts one over fake fetchers",
+	"/v2/store/prices":                      "the live env binds no price service; live_wave_prices_test.go mounts one over fake fetchers",
 }
 
 func liveReadURL(t *testing.T, tmpl string, fx liveFix) string {

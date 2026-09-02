@@ -468,6 +468,10 @@ services:
       KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX: ${KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX:-}
       KUN_STORE_DLSITE_AFF_URL_TMPL_PRO: ${KUN_STORE_DLSITE_AFF_URL_TMPL_PRO:-}
       KUN_STORE_LINK_QUOTA_PER_CLIENT: ${KUN_STORE_LINK_QUOTA_PER_CLIENT:-5000}
+      KUN_STORE_PRICE_ENABLED: ${KUN_STORE_PRICE_ENABLED:-true}
+      KUN_STORE_PRICE_USER_AGENT: "${KUN_STORE_PRICE_USER_AGENT:-NextMoe-PriceBot/1.0 (+https://www.kungal.com)}"
+      KUN_STORE_PRICE_STEAM_REGIONS: ${KUN_STORE_PRICE_STEAM_REGIONS:-jp,cn,us}
+      KUN_STORE_PRICE_DLSITE_CURRENCIES: ${KUN_STORE_PRICE_DLSITE_CURRENCIES:-CNY,USD,TWD,HKD,KRW,EUR}
     # S2S read/admin face stays internal — product backends (wiki/forum/moyu)
     # reach it at http://catalog:9281 over dokploy-network. The ONLY public path
     # is the open-API /v1/catalog projection routed by the labels block below.

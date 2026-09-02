@@ -66,5 +66,5 @@ type LinkDailyStat struct {
 func (LinkDailyStat) TableName() string { return "store_link_daily_stats" }
 
 func AllModels() []any {
-	return []any{&PurchaseLink{}, &CouponLink{}, &Campaign{}, &LinkDailyStat{}}
+	return []any{&PurchaseLink{}, &CouponLink{}, &Campaign{}, &LinkDailyStat{}, &PriceQuote{}}
 }

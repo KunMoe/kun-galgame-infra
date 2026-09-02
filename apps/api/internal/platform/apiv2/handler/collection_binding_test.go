@@ -282,6 +282,7 @@ func TestProposalListFieldVocabulary(t *testing.T) {
 // live fixture binds no OpenSearch.
 var batchUnobservable = map[string]string{
 	"/v2/catalog/search": "feedNoBatch(\"search\") sits behind the unbound-service 503 in this fixture",
+	"/v2/store/prices":   "the live env binds no price service, so the lane answers 503 here; TestLiveStorePrices covers missing[] over fake fetchers",
 }
 
 func TestDeclaredBatchLaneIsHonouredOrRefused(t *testing.T) {
