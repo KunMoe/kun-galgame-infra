@@ -101,7 +101,7 @@ func main() {
 
 	application.Fiber.Use(middleware.CORS(cfg.Server.CORSOrigin))
 
-	application.Fiber.Post("/image/upload", uploadGate, imgMW.ClientAuth(clientRepo, cfg), h.Upload)
+	application.Fiber.Post("/image/upload", imgMW.ClientAuth(clientRepo, cfg), uploadGate, h.Upload)
 	if !keys.ImageUploadEnabled.Get() {
 		slog.Warn("image upload disabled at boot (image.upload_enabled=false); other endpoints still serve")
 	}
@@ -133,6 +133,12 @@ func main() {
 }
 
 func uploadGate(c fiber.Ctx) error {
+	if client := imgMW.ClientFromCtx(c); client != nil && client.SiteID != nil {
+		if !keys.ImageUploadEnabled.ForSite(*client.SiteID) {
+			return uploadDisabled(c)
+		}
+		return c.Next()
+	}
 	if !keys.ImageUploadEnabled.Get() {
 		return uploadDisabled(c)
 	}

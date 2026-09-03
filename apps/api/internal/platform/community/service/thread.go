@@ -8,6 +8,7 @@ import (
 	"api/internal/platform/community/model"
 	"api/internal/platform/community/repository"
 	"api/internal/platform/community/sanitize"
+	"api/internal/platform/settings/keys"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -69,11 +70,11 @@ func (s *ThreadService) openWithFirstPost(ctx context.Context, kind int16, p Ope
 		return nil, nil, err
 	}
 	if isSandboxed(level) {
-		n, err := s.threads.CountOpenedByCreatorSince(p.AuthorID, time.Now().Add(-sandboxWindow))
+		n, err := s.threads.CountOpenedByCreatorSince(p.AuthorID, time.Now().Add(-time.Duration(keys.CommunitySandboxWindowHours.Get())*time.Hour))
 		if err != nil {
 			return nil, nil, err
 		}
-		if n >= tl0MaxTopicsPerDay {
+		if n >= keys.CommunitySandboxMaxTopicsPerDay.Get() {
 			return nil, nil, &SandboxError{Reason: "daily topic limit"}
 		}
 	}

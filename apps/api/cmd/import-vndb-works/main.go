@@ -71,6 +71,8 @@ func main() {
 		"pool_unanchored", st.PoolUnanchored,
 		"planned", st.Planned,
 		"planned_r18", st.PlannedR18,
+		"to_quarantine", st.ToQuarantine,
+		"quarantined", st.Quarantined,
 		"works_created", st.WorksCreated,
 		"titles_created", st.TitlesCreated,
 		"anchors_created", st.AnchorsCreated,

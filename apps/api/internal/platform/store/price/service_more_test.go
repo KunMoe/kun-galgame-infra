@@ -32,7 +32,7 @@ func TestQuotesSaleEndCapsExpiry(t *testing.T) {
 			Converted: map[string]int64{},
 		},
 	}}
-	svc := newTestService(t, []Fetcher{fake}, Options{FreshFor: 6 * time.Hour})
+	svc := newTestService(t, []Fetcher{fake}, Options{})
 	quotes, err := svc.Quotes(context.Background(), []Anchor{{Source: "dlsite", ExternalID: "RJ149770"}}, 2*time.Second)
 	require.NoError(t, err)
 	require.Len(t, quotes, 1)
@@ -43,7 +43,7 @@ func TestQuotesSaleEndCapsExpiry(t *testing.T) {
 
 func TestRefreshPicksHotRowsOnly(t *testing.T) {
 	fake := &fakeFetcher{}
-	svc := newTestService(t, []Fetcher{fake}, Options{HotWindow: 7 * 24 * time.Hour, FreshFor: 6 * time.Hour})
+	svc := newTestService(t, []Fetcher{fake}, Options{HotWindow: 7 * 24 * time.Hour})
 	require.NotNil(t, svc)
 	now := time.Now()
 	expired := now.Add(-time.Hour)

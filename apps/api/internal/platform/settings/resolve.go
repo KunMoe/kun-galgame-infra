@@ -83,3 +83,44 @@ func Resolve(reg *Registry, rows map[string]json.RawMessage, env map[string]any)
 	}
 	return changes
 }
+
+type SiteChange struct {
+	Key      string
+	SiteID   uint
+	Old, New any
+}
+
+func ResolveSites(reg *Registry, rows map[string]map[uint]json.RawMessage) []SiteChange {
+	var changes []SiteChange
+	for _, e := range reg.Entries() {
+		m := e.Meta()
+		if !m.SiteScoped {
+			continue
+		}
+		next := map[uint]any{}
+		for siteID, raw := range rows[m.Name] {
+			v, err := e.Decode(raw)
+			if err == nil {
+				err = e.Validate(v)
+			}
+			if err != nil {
+				slog.Warn("settings: site override row ignored", "key", m.Name, "site", siteID, "err", err)
+				continue
+			}
+			next[siteID] = v
+		}
+		prev := e.siteValues()
+		for siteID, v := range next {
+			if old, ok := prev[siteID]; !ok || !reflect.DeepEqual(old, v) {
+				changes = append(changes, SiteChange{Key: m.Name, SiteID: siteID, Old: prev[siteID], New: v})
+			}
+		}
+		for siteID, old := range prev {
+			if _, ok := next[siteID]; !ok {
+				changes = append(changes, SiteChange{Key: m.Name, SiteID: siteID, Old: old, New: nil})
+			}
+		}
+		e.applySites(next)
+	}
+	return changes
+}

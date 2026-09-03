@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"api/internal/platform/settings/keys"
 	"api/internal/platform/trust/actrie"
 	"api/internal/platform/trust/model"
 	"api/internal/platform/trust/norm"
@@ -23,7 +24,6 @@ const (
 type TermService struct {
 	db        *gorm.DB
 	allowlist map[string]bool
-	ttl       time.Duration
 	now       func() time.Time
 
 	mu       sync.Mutex
@@ -90,13 +90,12 @@ func buildSnapshot(terms []activeTerm) *termSnapshot {
 }
 
 func NewTermService(db *gorm.DB, allowlist map[string]bool) *TermService {
-	return &TermService{db: db, allowlist: allowlist, ttl: termCacheTTL, now: time.Now}
+	return &TermService{db: db, allowlist: allowlist, now: time.Now}
 }
 
 func (s *TermService) allowed(clientID string) bool {
 	return clientID != "" && s.allowlist[clientID]
 }
-
 
 type CheckParams struct {
 	CallerClientID string
@@ -167,7 +166,7 @@ func (snap *termSnapshot) match(site, normText string) (string, []string) {
 func (s *TermService) snapshot(ctx context.Context) (*termSnapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.loaded && s.now().Sub(s.loadedAt) < s.ttl {
+	if s.loaded && s.now().Sub(s.loadedAt) < time.Duration(keys.TrustTermCacheTTLSeconds.Get())*time.Second {
 		return s.cache, nil
 	}
 	var rows []model.TrustTerm
@@ -194,7 +193,6 @@ func (s *TermService) invalidate() {
 	s.loaded = false
 	s.mu.Unlock()
 }
-
 
 type TermFilters struct {
 	Site              string

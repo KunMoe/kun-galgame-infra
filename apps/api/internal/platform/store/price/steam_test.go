@@ -29,7 +29,7 @@ func TestSteamFetch(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	f := NewSteam("Test-UA/1.0", []string{"jp"}, srv.URL)
+	f := NewSteam([]string{"jp"}, srv.URL)
 	out, err := f.Fetch(context.Background(), "jp", []string{"1680880", "2598690", "999999999"})
 	require.NoError(t, err)
 	require.Equal(t, "/api/appdetails", gotPath)

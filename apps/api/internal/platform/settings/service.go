@@ -133,12 +133,10 @@ func (s *Service) Set(ctx context.Context, actorID uint, scope Scope, key string
 	if _, err := s.store.Set(ctx, scope, key, raw, note, expectVersion, actorID); err != nil {
 		return nil, err
 	}
-	if scope.IsPlatform() {
-		if err := s.dist.Refresh(ctx); err != nil {
-			return nil, err
-		}
-		s.dist.Announce(ctx)
+	if err := s.dist.Refresh(ctx); err != nil {
+		return nil, err
 	}
+	s.dist.Announce(ctx)
 	return s.viewFor(ctx, e, scope)
 }
 
@@ -156,12 +154,10 @@ func (s *Service) Reset(ctx context.Context, actorID uint, scope Scope, key stri
 	if err := s.store.Reset(ctx, scope, key, note, actorID); err != nil {
 		return nil, err
 	}
-	if scope.IsPlatform() {
-		if err := s.dist.Refresh(ctx); err != nil {
-			return nil, err
-		}
-		s.dist.Announce(ctx)
+	if err := s.dist.Refresh(ctx); err != nil {
+		return nil, err
 	}
+	s.dist.Announce(ctx)
 	return s.viewFor(ctx, e, scope)
 }
 

@@ -379,7 +379,6 @@ services:
       <<: *infra-env
       KUN_IMAGE_SERVICE_HOST: 0.0.0.0
       KUN_IMAGE_SERVICE_PORT: "9278"
-      KUN_IMAGE_UPLOAD_ENABLED: "true"
     expose: ["9278"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -408,7 +407,6 @@ services:
       # come from *infra-env — shared with the oauth process (artifact-gc/reclaim).
       KUN_ARTIFACT_HOST: 0.0.0.0
       KUN_ARTIFACT_PORT: "9279"
-      KUN_ARTIFACT_UPLOAD_ENABLED: "true"
     # In-cluster consumers (moyu/forum backends) still reach it at
     # http://artifact:9279 over dokploy-network. The one public path is the S2S
     # upload face routed below: letmoe-resource-forge runs off-box and cannot
@@ -494,7 +492,6 @@ services:
       # two the first fix happened to need.
       KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX: ${KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX:-}
       KUN_STORE_DLSITE_AFF_URL_TMPL_PRO: ${KUN_STORE_DLSITE_AFF_URL_TMPL_PRO:-}
-      KUN_STORE_LINK_QUOTA_PER_CLIENT: ${KUN_STORE_LINK_QUOTA_PER_CLIENT:-5000}
       KUN_STORE_PRICE_ENABLED: ${KUN_STORE_PRICE_ENABLED:-true}
       KUN_STORE_PRICE_USER_AGENT: "${KUN_STORE_PRICE_USER_AGENT:-NextMoe-PriceBot/1.0 (+https://www.kungal.com)}"
       KUN_STORE_PRICE_STEAM_REGIONS: ${KUN_STORE_PRICE_STEAM_REGIONS:-jp,cn,us}
@@ -648,19 +645,6 @@ services:
       KUN_TRUST_CLIENT_ID: "ac2b8856594baed9c9ee6792eec082e3"
       KUN_TRUST_CLIENT_SECRET: ${KUN_TRUST_CLIENT_SECRET:-}
       KUN_TRUST_CALLBACK_SECRET: ${KUN_TRUST_CALLBACK_SECRET:-}
-      # Shadow-scan sink (step 04) — INDEPENDENT switch. ON since 2026-07-16
-      # (Tier0 power-on): every post create/edit feeds /trust/scan; rows drain to
-      # degraded while the AI gateway is unprovisioned, with tier0_matched still
-      # recorded (calibration corpus). Prereqs in place: kungal/community_post
-      # registered + the client id above in KUN_TRUST_FORWARDER_CLIENT_IDS.
-      KUN_TRUST_SCAN_ENABLED: "true"
-      # Synchronous pre-write word-list gate (step 06) — INDEPENDENT switch. ON
-      # since 2026-07-16 (Tier0 power-on): deny (banned term) blocks the write
-      # with 422, hold (suspect term) publishes + enqueues a review item; any
-      # check error/timeout fails OPEN (a down trust never blocks posting). With
-      # an empty banned list this gate allows everything — risk is carried by the
-      # term list, which is curated in the /trust/terms admin UI.
-      KUN_TRUST_CHECK_ENABLED: "true"
     # Internal only — product backends (letmoe/...) reach it at
     # http://community:9282 over dokploy-network.
     expose: ["9282"]
@@ -705,20 +689,15 @@ services:
       KUN_AI_CLIENT_BASE_URL: http://ai:9284
       KUN_AI_CLIENT_ID: "ba21dfba94274c134e01ede5eaa7c391"
       KUN_AI_CLIENT_SECRET: ${KUN_AI_CLIENT_SECRET:-}
-      # Wave 07: what the scan worker DOES with a flagged verdict. "shadow" (the
-      # default, and what any unrecognised value degrades to) only records it;
-      # "live" also opens a trust review item and queues the hide callback.
-      # It has to be named HERE — compose forwards only the variables it lists,
-      # so setting this in the Dokploy panel alone never reaches the container
-      # (2026-08-06: a panel-only KUN_TRUST_SCAN_MODE=live was a silent no-op).
-      KUN_TRUST_SCAN_MODE: ${KUN_TRUST_SCAN_MODE:-shadow}
       # Share of CLEAN verdicts drawn into the human queue as calibration items
       # (source=6). This is the ONLY instrument that measures false negatives —
       # what the pipeline misses is otherwise invisible, since a subject nobody
       # flags produces no evidence of its own. Default 0 (off): it spends human
       # review capacity, so turning it on is a deliberate act. Capped at 0.05 in
-      # code; anything higher or negative degrades to off. Same reason as
-      # SCAN_MODE above: it must be named here to reach the container at all.
+      # code; anything higher or negative degrades to off. It must be named here
+      # to reach the container at all — compose forwards only the variables it
+      # lists (2026-08-06: a panel-only KUN_TRUST_SCAN_MODE=live was a silent
+      # no-op).
       KUN_TRUST_SCAN_SAMPLE_RATE: ${KUN_TRUST_SCAN_SAMPLE_RATE:-0}
     # Internal only — product backends reach it at http://trust:9283 over
     # dokploy-network.
@@ -767,11 +746,6 @@ services:
       # negative rate for shadow calibration (only when the LLM tier is configured).
       KUN_AI_ESCALATE_THRESHOLD: ${KUN_AI_ESCALATE_THRESHOLD:-0.4}
       KUN_AI_NEGATIVE_SAMPLE_RATE: ${KUN_AI_NEGATIVE_SAMPLE_RATE:-0.05}
-      # Per-face forced escalation: comma-separated site:kind pairs (e.g.
-      # "kungal:forum_topic,kungal:forum_reply") whose texts always get Tier2
-      # final adjudication — omni has no spam category, so classified-ad spam
-      # scores ~0 and the threshold can never catch it.
-      KUN_AI_FORCE_ESCALATE: ${KUN_AI_FORCE_ESCALATE:-}
     # Internal only — product/platform backends reach it at http://ai:9284 over
     # dokploy-network.
     expose: ["9284"]

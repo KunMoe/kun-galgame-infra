@@ -29,19 +29,21 @@ var AuthVerificationCodeTTLMinutes = settings.Int(settings.Meta{
 }, 15)
 
 var ImageUploadEnabled = settings.Bool(settings.Meta{
-	Name:   "image.upload_enabled",
-	EnvVar: "KUN_IMAGE_UPLOAD_ENABLED",
-	DescEN: "Master switch for accepting new image uploads; off rejects every upload.",
-	DescZH: "图床上传总开关,关闭后拒绝所有新上传。",
-	Public: true,
+	Name:       "image.upload_enabled",
+	EnvVar:     "KUN_IMAGE_UPLOAD_ENABLED",
+	DescEN:     "Master switch for accepting new image uploads; off rejects every upload.",
+	DescZH:     "图床上传总开关,关闭后拒绝所有新上传。",
+	SiteScoped: true,
+	Public:     true,
 }, false)
 
 var ArtifactUploadEnabled = settings.Bool(settings.Meta{
-	Name:   "artifact.upload_enabled",
-	EnvVar: "KUN_ARTIFACT_UPLOAD_ENABLED",
-	DescEN: "Master switch for accepting new artifact uploads; off rejects every upload.",
-	DescZH: "文件存储上传总开关,关闭后拒绝所有新上传。",
-	Public: true,
+	Name:       "artifact.upload_enabled",
+	EnvVar:     "KUN_ARTIFACT_UPLOAD_ENABLED",
+	DescEN:     "Master switch for accepting new artifact uploads; off rejects every upload.",
+	DescZH:     "文件存储上传总开关,关闭后拒绝所有新上传。",
+	SiteScoped: true,
+	Public:     true,
 }, false)
 
 var ArtifactMultipartThresholdBytes = settings.Int(settings.Meta{
@@ -182,12 +184,26 @@ var live = settings.NewRegistry(
 	settings.Domain{
 		Name:    "auth",
 		TitleZH: "账号与验证",
-		Keys:    []settings.Entry{AuthVerificationCodeTTLMinutes},
+		Keys: []settings.Entry{
+			AuthVerificationCodeTTLMinutes,
+			AuthIPRatePerMinute,
+			AuthTokenEndpointRatePerMinute,
+			AuthStrictRatePerMinute,
+			AuthAllowedEmailDomains,
+			AuthVerificationResendCooldownSeconds,
+			AuthRegisterGiftPoints,
+		},
 	},
 	settings.Domain{
 		Name:    "image",
 		TitleZH: "图床",
-		Keys:    []settings.Entry{ImageUploadEnabled},
+		Keys: []settings.Entry{
+			ImageUploadEnabled,
+			ImageGCColdAfterDays,
+			ImageGCSoftDeleteAfterDays,
+			ImageGCHardDeleteAfterDays,
+			ImageGCMaxPerRun,
+		},
 	},
 	settings.Domain{
 		Name:    "artifact",
@@ -201,6 +217,7 @@ var live = settings.NewRegistry(
 			ArtifactOrphanTTLHours,
 			ArtifactSoftDeleteTTLHours,
 			ArtifactReclaimMinIdleSeconds,
+			ArtifactGCMaxPerRun,
 		},
 	},
 	settings.Domain{
@@ -211,6 +228,13 @@ var live = settings.NewRegistry(
 			TrustCheckEnabled,
 			TrustScanMode,
 			TrustScanSampleRate,
+			TrustReportRateWindowMinutes,
+			TrustReportRateMaxPerWindow,
+			TrustAggregateThreshold,
+			TrustNewAccountAgeDays,
+			TrustNewAccountReporterWeight,
+			TrustPolicyCacheTTLSeconds,
+			TrustTermCacheTTLSeconds,
 		},
 	},
 	settings.Domain{
@@ -220,13 +244,28 @@ var live = settings.NewRegistry(
 			AIEscalateThreshold,
 			AINegativeSampleRate,
 			AIForceEscalate,
+			AIModerateMaxTokens,
+			AIUpstreamModel,
+			AIOmniModel,
 		},
 	},
 	settings.Domain{
 		Name:    "store",
-		TitleZH: "DLsite 分销",
-		Keys:    []settings.Entry{StoreLinkQuotaPerClient},
+		TitleZH: "商店与分销",
+		Keys: []settings.Entry{
+			StoreLinkQuotaPerClient,
+			StorePriceEnabled,
+			StorePriceUserAgent,
+			StorePriceSteamRegions,
+			StorePriceDLsiteCurrencies,
+			StorePriceWaitOnMissMs,
+			StorePriceFreshForHours,
+		},
 	},
+	apiv2Domain,
+	catalogDomain,
+	communityDomain,
+	developerDomain,
 	jobsDomain,
 )
 

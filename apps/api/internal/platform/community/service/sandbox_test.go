@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"api/internal/platform/community/model"
+	"api/internal/platform/settings/keys"
 )
 
 func TestSandbox_ContentLimits(t *testing.T) {
@@ -62,7 +63,7 @@ func TestSandbox_DailyLimits(t *testing.T) {
 
 	author := int64(600)
 	seedTrust(t, author, model.TrustLevelNew, 0)
-	for i := range tl0MaxTopicsPerDay {
+	for i := range keys.CommunitySandboxMaxTopicsPerDay.Get() {
 		if _, _, err := ts.OpenTopic(context.Background(), OpenThreadParams{
 			Site: "letmoe", AuthorID: author, AnchorKind: model.AnchorKindBoard, AnchorID: fmt.Sprintf("b%d", i),
 			Title: "t", ContentRating: model.ContentRatingAll, BodyRaw: "x",
@@ -80,7 +81,7 @@ func TestSandbox_DailyLimits(t *testing.T) {
 	th := openTopic(t, ts, "letmoe", 100, "host", "opening")
 	replier := int64(700)
 	seedTrust(t, replier, model.TrustLevelNew, 0)
-	for i := range tl0MaxRepliesPerDay {
+	for i := range keys.CommunitySandboxMaxRepliesPerDay.Get() {
 		if _, err := ps.Reply(context.Background(), ReplyParams{ThreadID: th.ID, AuthorID: replier, BodyRaw: "r"}); err != nil {
 			t.Fatalf("reply %d should pass: %v", i, err)
 		}

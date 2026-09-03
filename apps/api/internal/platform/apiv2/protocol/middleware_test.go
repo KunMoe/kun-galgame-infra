@@ -5,10 +5,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
 	"api/internal/platform/apiv2/problem"
+	"api/internal/platform/settings/keys"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
@@ -71,7 +73,7 @@ func TestProtocolHeadersOnSuccess(t *testing.T) {
 	require.NotEmpty(t, h.Get("ETag"))
 	require.Equal(t, "*", h.Get("Access-Control-Allow-Origin"))
 	require.Contains(t, h.Get("Access-Control-Expose-Headers"), "ETag")
-	require.Contains(t, h.Get("RateLimit-Policy"), "100;w=60")
+	require.Contains(t, h.Get("RateLimit-Policy"), strconv.Itoa(int(keys.APIV2DefaultRatePerMinute.Get()))+";w=60")
 	require.Contains(t, string(body), `"object"`)
 }
 
@@ -141,7 +143,7 @@ func TestRateLimit429(t *testing.T) {
 	app.Get("/v2/problems", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"object": "list"})
 	})
-	for i := 0; i < RatePerMinute; i++ {
+	for i := 0; i < int(keys.APIV2DefaultRatePerMinute.Get()); i++ {
 		status, _, _ := do(t, app, http.MethodGet, "/v2/problems", nil, "")
 		require.Equal(t, 200, status)
 	}
@@ -196,7 +198,7 @@ func TestRateLimitKeyQuota(t *testing.T) {
 
 func TestRateLimitUnlimitedTier(t *testing.T) {
 	app := keyedApp(t, LimitIdentity{Key: "k9", Unlimited: true}, true)
-	for i := 0; i < RatePerMinute+5; i++ {
+	for i := 0; i < int(keys.APIV2DefaultRatePerMinute.Get())+5; i++ {
 		status, h, _ := do(t, app, http.MethodGet, "/v2/catalog/works", nil, "")
 		require.Equal(t, 200, status)
 		require.Empty(t, h.Get("X-RateLimit-Limit"))

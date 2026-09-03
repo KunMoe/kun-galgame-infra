@@ -71,19 +71,14 @@ type Config struct {
 // StoreConfig is the DLsite distribution face: how the platform reaches the
 // link shortener, and the affiliate URL templates the short links point at.
 // The aff id lives inside the templates because it is a commercial value the
-// deployment supplies, never a constant in the source. PriceEnabled and its
-// siblings configure the lazy storefront price cache on /v2/store/prices.
+// deployment supplies, never a constant in the source.
 type StoreConfig struct {
-	ShortlinkBaseURL      string
-	ShortlinkAPIKey       string
-	AffTemplateManiax     string
-	AffTemplatePro        string
-	PriceEnabled          bool
-	PriceUserAgent        string
-	PriceSteamRegions     []string
-	PriceDLsiteCurrencies []string
-	PriceDLsiteBase       string
-	PriceDLsiteProxy      string
+	ShortlinkBaseURL  string
+	ShortlinkAPIKey   string
+	AffTemplateManiax string
+	AffTemplatePro    string
+	PriceDLsiteBase   string
+	PriceDLsiteProxy  string
 }
 
 type AIClientConfig struct {
@@ -114,13 +109,11 @@ type AIServiceConfig struct {
 type AIUpstreamConfig struct {
 	BaseURL string
 	Token   string
-	Model   string
 }
 
 type AIOmniConfig struct {
 	BaseURL string
 	Token   string
-	Model   string
 }
 
 type TrustServiceConfig struct {
@@ -527,13 +520,11 @@ func Load() (*Config, error) {
 	cfg.AIUpstream = AIUpstreamConfig{
 		BaseURL: getEnv("KUN_AI_UPSTREAM_BASE_URL", ""),
 		Token:   getEnv("KUN_AI_UPSTREAM_TOKEN", ""),
-		Model:   getEnv("KUN_AI_UPSTREAM_MODEL", "deepseek-chat"),
 	}
 
 	cfg.AIOmni = AIOmniConfig{
 		BaseURL: getEnv("KUN_AI_OMNI_BASE_URL", "https://api.openai.com"),
 		Token:   getEnv("KUN_AI_OMNI_TOKEN", ""),
-		Model:   getEnv("KUN_AI_OMNI_MODEL", "omni-moderation-latest"),
 	}
 
 	cfg.AIClient = AIClientConfig{
@@ -542,15 +533,6 @@ func Load() (*Config, error) {
 		ClientSecret: getEnv("KUN_AI_CLIENT_SECRET", ""),
 	}
 
-	priceEnabled, _ := strconv.ParseBool(getEnv("KUN_STORE_PRICE_ENABLED", "true"))
-	steamRegions := splitCSV(getEnv("KUN_STORE_PRICE_STEAM_REGIONS", "jp,cn,us"))
-	for i := range steamRegions {
-		steamRegions[i] = strings.ToLower(steamRegions[i])
-	}
-	dlsiteCurrencies := splitCSV(getEnv("KUN_STORE_PRICE_DLSITE_CURRENCIES", "CNY,USD,TWD,HKD,KRW,EUR"))
-	for i := range dlsiteCurrencies {
-		dlsiteCurrencies[i] = strings.ToUpper(dlsiteCurrencies[i])
-	}
 	cfg.Store = StoreConfig{
 		ShortlinkBaseURL: getEnv("KUN_STORE_SHORTLINK_BASE_URL", ""),
 		ShortlinkAPIKey:  getEnv("KUN_STORE_SHORTLINK_API_KEY", ""),
@@ -559,14 +541,10 @@ func Load() (*Config, error) {
 		// unconfigured deployment minted real short links crediting nobody, and
 		// a minted alias is pinned to its destination forever. Empty makes the
 		// minting face answer 503 instead, which the caller retries.
-		AffTemplateManiax:     getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX", ""),
-		AffTemplatePro:        getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_PRO", ""),
-		PriceEnabled:          priceEnabled,
-		PriceUserAgent:        getEnv("KUN_STORE_PRICE_USER_AGENT", "NextMoe-PriceBot/1.0 (+https://www.kungal.com)"),
-		PriceSteamRegions:     steamRegions,
-		PriceDLsiteCurrencies: dlsiteCurrencies,
-		PriceDLsiteBase:       getEnv("KUN_STORE_PRICE_DLSITE_BASE", ""),
-		PriceDLsiteProxy:      getEnv("KUN_STORE_PRICE_DLSITE_PROXY", ""),
+		AffTemplateManiax: getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_MANIAX", ""),
+		AffTemplatePro:    getEnv("KUN_STORE_DLSITE_AFF_URL_TMPL_PRO", ""),
+		PriceDLsiteBase:   getEnv("KUN_STORE_PRICE_DLSITE_BASE", ""),
+		PriceDLsiteProxy:  getEnv("KUN_STORE_PRICE_DLSITE_PROXY", ""),
 	}
 
 	cfg.NewsModeration = NewsModerationConfig{

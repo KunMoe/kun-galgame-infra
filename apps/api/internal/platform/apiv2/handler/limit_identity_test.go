@@ -7,6 +7,7 @@ import (
 
 	"api/internal/platform/apiv2/protocol"
 	"api/internal/platform/devapi"
+	"api/internal/platform/settings/keys"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
@@ -34,8 +35,8 @@ func TestLimitIdentityUserTokenGetsOwnBucket(t *testing.T) {
 	})
 	require.True(t, ok)
 	require.Equal(t, "u7", id.Key)
-	require.Equal(t, protocol.RatePerMinute, id.Rate)
-	require.Equal(t, protocol.QuotaPerDay, id.Quota)
+	require.Equal(t, int(keys.APIV2DefaultRatePerMinute.Get()), id.Rate)
+	require.Equal(t, int(keys.APIV2DefaultQuotaPerDay.Get()), id.Quota)
 	require.False(t, id.Unlimited)
 
 	id, ok = limitIdentityFor(t, func(c fiber.Ctx) {

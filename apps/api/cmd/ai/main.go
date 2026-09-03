@@ -53,16 +53,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	up := upstream.NewClient(cfg.AIUpstream.BaseURL, cfg.AIUpstream.Token, cfg.AIUpstream.Model)
+	up := upstream.NewClient(cfg.AIUpstream.BaseURL, cfg.AIUpstream.Token, "")
 	if up.Configured() {
-		slog.Info("ai llm (tier2) configured", "base_url", cfg.AIUpstream.BaseURL, "model", cfg.AIUpstream.Model)
+		slog.Info("ai llm (tier2) configured", "base_url", cfg.AIUpstream.BaseURL, "model", up.Model())
 	} else {
 		slog.Warn("ai llm (tier2) NOT configured — moderate-text runs Tier1 alone / degraded")
 	}
 
-	omni := upstream.NewOmniClient(cfg.AIOmni.BaseURL, cfg.AIOmni.Token, cfg.AIOmni.Model)
+	omni := upstream.NewOmniClient(cfg.AIOmni.BaseURL, cfg.AIOmni.Token, "")
 	if omni.Configured() {
-		slog.Info("ai omni (tier1) configured", "base_url", cfg.AIOmni.BaseURL, "model", cfg.AIOmni.Model,
+		slog.Info("ai omni (tier1) configured", "base_url", cfg.AIOmni.BaseURL, "model", omni.Model(),
 			"escalate_threshold", keys.AIEscalateThreshold.Get(), "negative_sample_rate", keys.AINegativeSampleRate.Get())
 	} else {
 		slog.Warn("ai omni (tier1) NOT configured — moderate-text runs the Tier2 LLM path only")

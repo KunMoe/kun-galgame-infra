@@ -56,6 +56,8 @@ type Entry interface {
 	ParseEnv(s string) (any, error)
 	Validate(v any) error
 	apply(v any, src Source)
+	applySites(vals map[uint]any)
+	siteValues() map[uint]any
 }
 
 type snapshot[T any] struct {
@@ -67,11 +69,21 @@ type Key[T any] struct {
 	meta    Meta
 	def     T
 	current atomic.Pointer[snapshot[T]]
+	sites   atomic.Pointer[map[uint]T]
 	pattern *regexp.Regexp
 }
 
 func (k *Key[T]) Get() T {
 	return k.current.Load().value
+}
+
+func (k *Key[T]) ForSite(siteID uint) T {
+	if m := k.sites.Load(); m != nil {
+		if v, ok := (*m)[siteID]; ok {
+			return v
+		}
+	}
+	return k.Get()
 }
 
 func (k *Key[T]) Name() string { return k.meta.Name }
@@ -94,6 +106,28 @@ func (k *Key[T]) apply(v any, src Source) {
 		panic(fmt.Sprintf("settings: %s: apply got %T, want %T", k.meta.Name, v, *new(T)))
 	}
 	k.current.Store(&snapshot[T]{value: typed, src: src})
+}
+
+func (k *Key[T]) applySites(vals map[uint]any) {
+	m := make(map[uint]T, len(vals))
+	for id, v := range vals {
+		typed, ok := v.(T)
+		if !ok {
+			panic(fmt.Sprintf("settings: %s: applySites got %T, want %T", k.meta.Name, v, *new(T)))
+		}
+		m[id] = typed
+	}
+	k.sites.Store(&m)
+}
+
+func (k *Key[T]) siteValues() map[uint]any {
+	out := map[uint]any{}
+	if m := k.sites.Load(); m != nil {
+		for id, v := range *m {
+			out[id] = v
+		}
+	}
+	return out
 }
 
 var keyNameRe = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9_]*)+$`)

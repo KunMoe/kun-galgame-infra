@@ -30,8 +30,6 @@ type emailChangeData struct {
 	NewEmail string `json:"new_email"`
 }
 
-const registerGiftPoints = 7
-
 func verificationCodeTTL() time.Duration {
 	return time.Duration(keys.AuthVerificationCodeTTLMinutes.Get()) * time.Minute
 }
@@ -93,8 +91,6 @@ func NewAuthServiceFull(
 	}
 }
 
-const resendCodeCooldown = 60 * time.Second
-
 func (s *AuthService) SendRegisterCode(ctx context.Context, name, email string) error {
 	if err := checkEmailDomainAllowed(email); err != nil {
 		return err
@@ -134,7 +130,7 @@ func (s *AuthService) SendRegisterCode(ctx context.Context, name, email string) 
 	if err := s.cache.Set(redisKey, []byte(code), ttl); err != nil {
 		return err
 	}
-	if err := s.cache.Set(cooldownKey, []byte("1"), resendCodeCooldown); err != nil {
+	if err := s.cache.Set(cooldownKey, []byte("1"), time.Duration(keys.AuthVerificationResendCooldownSeconds.Get())*time.Second); err != nil {
 		return err
 	}
 
@@ -223,7 +219,7 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 	if s.moemoepointSvc != nil {
 		res, gErr := s.moemoepointSvc.Adjust(ctx, AdjustParams{
 			UserID:         user.ID,
-			Delta:          registerGiftPoints,
+			Delta:          int(keys.AuthRegisterGiftPoints.Get()),
 			Reason:         model.MoemoepointReasonRegisterGift,
 			SourceApp:      "oauth",
 			IdempotencyKey: fmt.Sprintf("oauth:register_gift:%d", user.ID),
@@ -719,7 +715,7 @@ func (s *AuthService) SendEmailChangeCode(ctx context.Context, userUUID, newEmai
 		if err := s.cache.Set(redisKey, data, ttl); err != nil {
 			return err
 		}
-		if err := s.cache.Set(cooldownKey, []byte("1"), resendCodeCooldown); err != nil {
+		if err := s.cache.Set(cooldownKey, []byte("1"), time.Duration(keys.AuthVerificationResendCooldownSeconds.Get())*time.Second); err != nil {
 			return err
 		}
 	}
