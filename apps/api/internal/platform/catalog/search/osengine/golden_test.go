@@ -27,8 +27,8 @@ func TestIndexBodiesGolden(t *testing.T) {
 	require.NoError(t, err)
 	var want map[string]any
 	require.NoError(t, json.Unmarshal(raw, &want))
-	require.Len(t, want, 5)
-	require.Len(t, IndexUIDs, 5)
+	require.Len(t, want, 8)
+	require.Len(t, IndexUIDs, 8)
 	for _, uid := range IndexUIDs {
 		require.Contains(t, want, uid)
 		got, err := IndexBody(uid)

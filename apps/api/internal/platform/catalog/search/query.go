@@ -12,6 +12,12 @@ func IndexForType(t string) (uid string, ok bool) {
 		return IndexWorks, true
 	case "tags":
 		return IndexTags, true
+	case "series":
+		return IndexSeries, true
+	case "engines":
+		return IndexEngines, true
+	case "traits":
+		return IndexTraits, true
 	default:
 		return "", false
 	}

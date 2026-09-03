@@ -13,7 +13,7 @@ import (
 type searchInput struct {
 	CollectionInput
 	Q      string `query:"q" maxLength:"512" doc:"Search string. Empty runs a popularity-ordered listing of that family."`
-	Object string `query:"object" maxLength:"32" doc:"Required family: work, character, credit_name, company, tag."`
+	Object string `query:"object" maxLength:"32" doc:"Required family: work, character, credit_name, company, tag, series, engine, trait."`
 	Locale string `query:"locale" maxLength:"8" doc:"zh or ja. Ignored for works. Must not be used as a discriminant."`
 }
 
@@ -27,7 +27,7 @@ func registerCatalogSearch(api huma.API, cat *Catalog) {
 		Method:             http.MethodGet,
 		Path:               "/v2/catalog/search",
 		Summary:            "Search catalog entities",
-		Description:        "Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= and ids= are not accepted.",
+		Description:        "Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= pages the hits. ids= is not accepted.",
 		Tags:               []string{"catalog"},
 		Errors:             collectionErrors(http.StatusUnauthorized, http.StatusForbidden, http.StatusServiceUnavailable),
 		SkipValidateParams: true,

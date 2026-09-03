@@ -6,6 +6,9 @@ const (
 	IndexLabels      = "catalog_labels"
 	IndexWorks       = "catalog_works"
 	IndexTags        = "catalog_tags"
+	IndexSeries      = "catalog_series"
+	IndexEngines     = "catalog_engines"
+	IndexTraits      = "catalog_traits"
 )
 
 var WorksFilterableAttributes = []string{

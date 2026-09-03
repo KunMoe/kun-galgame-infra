@@ -13,7 +13,7 @@
 
 Search catalog entities
 
-Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= and ids= are not accepted.
+Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= pages the hits. ids= is not accepted.
 
 - 所属 API：Public API v2（/v2）
 - 鉴权：Authorization: Bearer nmk_live_…
@@ -33,7 +33,7 @@ Cross-entity search. object= selects the family. Hits are search_result rows wit
 | `sort` | query | 否 | string | Closed per-collection sort key. |
 | `nsfw` | query | 否 | string | true includes r18. false or absent hides r18. Only true or false. |
 | `q` | query | 否 | string | Search string. Empty runs a popularity-ordered listing of that family. |
-| `object` | query | 否 | string | Required family: work, character, credit_name, company, tag. |
+| `object` | query | 否 | string | Required family: work, character, credit_name, company, tag, series, engine, trait. |
 | `locale` | query | 否 | string | zh or ja. Ignored for works. Must not be used as a discriminant. |
 
 ```bash

@@ -5453,6 +5453,11 @@ components:
           minLength: 1
           pattern: ^[0-9]+$
           type: string
+        is_sexual:
+          description: Set on trait hits. null otherwise.
+          type:
+            - boolean
+            - "null"
         latin:
           description: null if unrecorded. Must not be used as a discriminant.
           maxLength: 512
@@ -5492,6 +5497,9 @@ components:
             - credit_name
             - company
             - tag
+            - series
+            - engine
+            - trait
           type: string
           x-vocabulary-closed: true
         tier:
@@ -5515,6 +5523,7 @@ components:
         - content_rating
         - tier
         - tag_kind
+        - is_sexual
       type: object
     Series:
       additionalProperties: true
@@ -6626,7 +6635,7 @@ components:
 info:
   description: "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no approval required. The shape evolves additively; a breaking change to this document fails CI."
   title: NextMoe Public API v2
-  version: 2.3.0
+  version: 2.4.0
   x-stability: stable
 openapi: 3.1.0
 paths:
@@ -9879,7 +9888,7 @@ paths:
         - catalog
   /v2/catalog/search:
     get:
-      description: Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= and ids= are not accepted.
+      description: Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= pages the hits. ids= is not accepted.
       operationId: searchCatalog
       parameters:
         - description: Opaque keyset cursor from a prior next_cursor. Must start with cur_.
@@ -9978,12 +9987,12 @@ paths:
             description: Search string. Empty runs a popularity-ordered listing of that family.
             maxLength: 512
             type: string
-        - description: "Required family: work, character, credit_name, company, tag."
+        - description: "Required family: work, character, credit_name, company, tag, series, engine, trait."
           explode: false
           in: query
           name: object
           schema:
-            description: "Required family: work, character, credit_name, company, tag."
+            description: "Required family: work, character, credit_name, company, tag, series, engine, trait."
             maxLength: 32
             type: string
         - description: zh or ja. Ignored for works. Must not be used as a discriminant.

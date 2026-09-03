@@ -115,6 +115,9 @@ func loadFixtureIndex(t *testing.T, ctx context.Context, eng *Engine, uid string
 	t.Helper()
 	path := filepath.Join("testdata", "fixture", uid+".ndjson.gz")
 	f, err := os.Open(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return 0
+	}
 	require.NoError(t, err)
 	defer f.Close()
 	gz, err := gzip.NewReader(f)

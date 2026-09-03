@@ -14,7 +14,7 @@ import (
 	"api/internal/platform/catalog/search/spec"
 )
 
-var searchObjects = []string{"work", "character", "credit_name", "company", "tag"}
+var searchObjects = []string{"work", "character", "credit_name", "company", "tag", "series", "engine", "trait"}
 
 func (c *Catalog) Search(ctx context.Context, q collect.Query, object, query, locale string) (repr.List[repr.SearchHit], error) {
 	if c == nil || c.Searcher == nil {
@@ -23,17 +23,20 @@ func (c *Catalog) Search(ctx context.Context, q collect.Query, object, query, lo
 	if q.Batch {
 		return repr.List[repr.SearchHit]{}, feedNoBatch("search")
 	}
+	page := 1
 	if q.Cursor != "" {
-		p := problem.New(problem.CodeInvalidParameter, "", "", "search does not paginate with cursor.")
-		p.Errors = []problem.FieldError{{Parameter: "cursor", Reason: problem.ReasonInvalidFormat, Detail: "omit cursor on this collection"}}
-		return repr.List[repr.SearchHit]{}, p
+		n, err := strconv.Atoi(q.Cursor)
+		if err != nil || n < 1 {
+			return repr.List[repr.SearchHit]{}, collectInvalidCursor()
+		}
+		page = n
 	}
 	rawObject := strings.TrimSpace(object)
 	object, err := parse.Enum(rawObject, "object", searchObjects)
 	if err != nil {
 		if rawObject == "" {
 			p := problem.New(problem.CodeInvalidParameter, "", "", "object is required.")
-			p.Errors = []problem.FieldError{{Parameter: "object", Reason: problem.ReasonRequired, Detail: "one of work, character, credit_name, company, tag"}}
+			p.Errors = []problem.FieldError{{Parameter: "object", Reason: problem.ReasonRequired, Detail: "one of work, character, credit_name, company, tag, series, engine, trait"}}
 			return repr.List[repr.SearchHit]{}, p
 		}
 		return repr.List[repr.SearchHit]{}, err
@@ -45,6 +48,7 @@ func (c *Catalog) Search(ctx context.Context, q collect.Query, object, query, lo
 	}
 	eq := spec.EntityQuery{
 		Q:       query,
+		Page:    page,
 		Limit:   limit,
 		Locales: catsearch.LocalesForUI(uid, locale),
 	}
@@ -88,6 +92,9 @@ func (c *Catalog) Search(ctx context.Context, q collect.Query, object, query, lo
 				}
 			}
 		}
+		if object == "trait" {
+			hit.IsSexual = d.Sexual
+		}
 		items = append(items, hit)
 		ids = append(ids, id)
 	}
@@ -96,7 +103,12 @@ func (c *Catalog) Search(ctx context.Context, q collect.Query, object, query, lo
 			return repr.List[repr.SearchHit]{}, fillErr
 		}
 	}
-	out := finishList(items, nil, res.Total, q, nil)
+	var next *string
+	if int64(page)*int64(limit) < res.Total && len(items) > 0 {
+		enc := strconv.Itoa(page + 1)
+		next = &enc
+	}
+	out := finishList(items, next, res.Total, q, nil)
 	return out, nil
 }
 
@@ -141,6 +153,15 @@ func searchIndex(object string) (uid, v1Type string) {
 	case "tag":
 		uid, _ = catsearch.IndexForType("tags")
 		return uid, "tag"
+	case "series":
+		uid, _ = catsearch.IndexForType("series")
+		return uid, "series"
+	case "engine":
+		uid, _ = catsearch.IndexForType("engines")
+		return uid, "engine"
+	case "trait":
+		uid, _ = catsearch.IndexForType("traits")
+		return uid, "trait"
 	default:
 		return "", ""
 	}

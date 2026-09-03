@@ -167,6 +167,23 @@ func TestWorksSearchBodySortLanes(t *testing.T) {
 	}), canonJSON(t, relevance["sort"]))
 }
 
+func TestEntitySearchBodyPagination(t *testing.T) {
+	page2, drop := entitySearchBody(spec.EntityQuery{Page: 2, Limit: 10})
+	require.False(t, drop)
+	require.Equal(t, 10, page2["from"])
+	require.Equal(t, 10, page2["size"])
+
+	page0, drop := entitySearchBody(spec.EntityQuery{Page: 0, Limit: 20})
+	require.False(t, drop)
+	require.Equal(t, 0, page0["from"])
+	require.Equal(t, 20, page0["size"])
+
+	clamped, drop := entitySearchBody(spec.EntityQuery{Page: 25001, Limit: 20})
+	require.True(t, drop)
+	require.Equal(t, 499980, clamped["from"])
+	require.Equal(t, 20, clamped["size"])
+}
+
 func TestWorksSearchBodyAggs(t *testing.T) {
 	body, _ := worksSearchBody(spec.WorksQuery{
 		Limit:      8,
@@ -300,6 +317,32 @@ func TestSearchEntitiesKeepsSource(t *testing.T) {
 	bq := gotBody["query"].(map[string]any)["bool"].(map[string]any)
 	require.NotNil(t, bq["filter"])
 	require.NotNil(t, bq["should"])
+	require.Equal(t, float64(0), gotBody["from"])
+	require.Equal(t, float64(8), gotBody["size"])
+}
+
+func TestSearchEntitiesAbsurdPageEmptyHits(t *testing.T) {
+	var from any
+	eng := testEngine(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		from = body["from"]
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{
+			"hits": {
+				"total": {"value": 99, "relation": "eq"},
+				"hits": [{"_id": "c9", "_source": {"id": "c9"}}]
+			}
+		}`)
+	})
+	res, err := eng.SearchEntities(t.Context(), IndexCharacters, spec.EntityQuery{
+		Page:  25001,
+		Limit: 20,
+	})
+	require.NoError(t, err)
+	require.Equal(t, float64(499980), from)
+	require.Empty(t, res.Hits)
+	require.Equal(t, int64(99), res.Total)
 }
 
 func TestCheckPluginsNamesMissing(t *testing.T) {

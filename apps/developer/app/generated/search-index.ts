@@ -844,7 +844,7 @@ export const searchIndex: SearchEntry[] = [
     "t": "搜索 catalog 实体",
     "s": "端点 · 目录",
     "d": "GET /v2/catalog/search",
-    "b": "searchCatalog /v2/catalog/search get Search catalog entities Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= and ids= are not accepted. 跨实体搜索。object= 选择族。命中为带 target_object 的 search_result 行。需要应用密钥。不接受 cursor= 与 ids=。 catalog:read cursor limit view include fields ids refs include_total facets sort nsfw q object locale"
+    "b": "searchCatalog /v2/catalog/search get Search catalog entities Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= pages the hits. ids= is not accepted. 跨实体搜索。object= 选择族。命中为带 target_object 的 search_result 行。需要应用密钥。cursor= 翻页。不接受 ids=。 catalog:read cursor limit view include fields ids refs include_total facets sort nsfw q object locale"
   },
   {
     "r": "/docs/v2/listCatalogSeries",
