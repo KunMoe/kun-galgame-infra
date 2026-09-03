@@ -21,6 +21,18 @@ func TestSearchIndexMapping(t *testing.T) {
 	if uid != catsearch.IndexWorks || v1 != "work" {
 		t.Fatalf("work %s %s", uid, v1)
 	}
+	uid, v1 = searchIndex("series")
+	if uid != catsearch.IndexSeries || v1 != "series" {
+		t.Fatalf("series %s %s", uid, v1)
+	}
+	uid, v1 = searchIndex("engine")
+	if uid != catsearch.IndexEngines || v1 != "engine" {
+		t.Fatalf("engine %s %s", uid, v1)
+	}
+	uid, v1 = searchIndex("trait")
+	if uid != catsearch.IndexTraits || v1 != "trait" {
+		t.Fatalf("trait %s %s", uid, v1)
+	}
 }
 
 func TestStripSearchID(t *testing.T) {
@@ -42,7 +54,7 @@ func TestSearchUnboundAndCursor(t *testing.T) {
 	c := &Catalog{Searcher: &catsearch.Indexer{}}
 	_, err = c.Search(t.Context(), collect.Query{Cursor: "x"}, "work", "foo", "")
 	p, ok = err.(*problem.Problem)
-	if !ok || p.Code != problem.CodeInvalidParameter {
+	if !ok || p.Code != problem.CodeInvalidCursor {
 		t.Fatalf("cursor %v", err)
 	}
 	_, err = c.Search(t.Context(), collect.Query{}, "", "foo", "")

@@ -198,15 +198,19 @@ func (e *Engine) SearchWorks(ctx context.Context, q spec.WorksQuery) (WorksResul
 }
 
 func (e *Engine) SearchEntities(ctx context.Context, uid string, q spec.EntityQuery) (EntityResult, error) {
-	body := entitySearchBody(q)
+	body, dropHits := entitySearchBody(q)
 	var resp osSearchResponse
 	if err := e.client.Do(ctx, http.MethodPost, "/"+e.client.IndexName(uid)+"/_search", body, &resp); err != nil {
 		return EntityResult{}, err
 	}
 	out := EntityResult{
-		Hits:  make([]json.RawMessage, 0, len(resp.Hits.Hits)),
+		Hits:  []json.RawMessage{},
 		Total: parseTotal(resp.Hits.Total),
 	}
+	if dropHits {
+		return out, nil
+	}
+	out.Hits = make([]json.RawMessage, 0, len(resp.Hits.Hits))
 	for _, h := range resp.Hits.Hits {
 		if len(h.Source) == 0 || string(h.Source) == "null" {
 			continue
@@ -253,18 +257,33 @@ func worksSearchBody(q spec.WorksQuery) (map[string]any, bool) {
 	return body, dropHits
 }
 
-func entitySearchBody(q spec.EntityQuery) map[string]any {
+func entitySearchBody(q spec.EntityQuery) (map[string]any, bool) {
 	text := spec.SanitizeQuery(q.Q)
+	page := q.Page
+	if page < 1 {
+		page = 1
+	}
+	size := q.Limit
+	from := (page - 1) * size
+	dropHits := false
+	if from+size > maxResultWindow {
+		from = maxResultWindow - size
+		if from < 0 {
+			from = 0
+		}
+		dropHits = true
+	}
 	var filters []any
 	if q.ContentRatingNot != nil {
 		filters = append(filters, mustNotTerm("content_rating", *q.ContentRatingNot))
 	}
 	return map[string]any{
 		"query":            buildQuery(text, false, true, filters),
-		"size":             q.Limit,
+		"from":             from,
+		"size":             size,
 		"sort":             searchSort("", text != ""),
 		"track_total_hits": true,
-	}
+	}, dropHits
 }
 
 func buildQuery(text string, searchIntro, entity bool, filters []any) any {

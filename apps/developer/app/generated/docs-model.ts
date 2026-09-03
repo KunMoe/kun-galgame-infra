@@ -34645,7 +34645,7 @@ export const docsModel: DocsModel = {
               "method": "get",
               "path": "/v2/catalog/search",
               "summary": "Search catalog entities",
-              "description": "Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= and ids= are not accepted.",
+              "description": "Cross-entity search. object= selects the family. Hits are search_result rows with target_object. Requires an application key. cursor= pages the hits. ids= is not accepted.",
               "scope": "catalog:read",
               "params": [
                 {
@@ -34737,7 +34737,7 @@ export const docsModel: DocsModel = {
                   "in": "query",
                   "required": false,
                   "type": "string",
-                  "doc": "Required family: work, character, credit_name, company, tag."
+                  "doc": "Required family: work, character, credit_name, company, tag, series, engine, trait."
                 },
                 {
                   "name": "locale",
@@ -34820,6 +34820,13 @@ export const docsModel: DocsModel = {
                               "type": "string"
                             },
                             {
+                              "name": "is_sexual",
+                              "required": true,
+                              "nullable": true,
+                              "doc": "Set on trait hits. null otherwise.",
+                              "type": "boolean"
+                            },
+                            {
                               "name": "latin",
                               "required": true,
                               "nullable": true,
@@ -34887,7 +34894,10 @@ export const docsModel: DocsModel = {
                                 "character",
                                 "credit_name",
                                 "company",
-                                "tag"
+                                "tag",
+                                "series",
+                                "engine",
+                                "trait"
                               ],
                               "type": "string"
                             },

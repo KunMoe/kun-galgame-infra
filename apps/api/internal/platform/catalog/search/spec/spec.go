@@ -50,6 +50,7 @@ type WorksQuery struct {
 
 type EntityQuery struct {
 	Q                string
+	Page             int
 	Limit            int
 	Locales          []string
 	ContentRatingNot *int16

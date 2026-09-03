@@ -307,7 +307,7 @@ func SearchSpec() Spec {
 		FullSet: []string{},
 		Fields: []string{
 			"object", "target_object", "id", "display_name", "latin", "localized",
-			"sources", "content_rating", "tier", "tag_kind",
+			"sources", "content_rating", "tier", "tag_kind", "is_sexual",
 		},
 	}
 }

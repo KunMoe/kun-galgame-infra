@@ -18,6 +18,9 @@ const (
 	IndexLabels      = "catalog_labels"
 	IndexWorks       = "catalog_works"
 	IndexTags        = "catalog_tags"
+	IndexSeries      = "catalog_series"
+	IndexEngines     = "catalog_engines"
+	IndexTraits      = "catalog_traits"
 )
 
 var IndexUIDs = []string{
@@ -26,6 +29,9 @@ var IndexUIDs = []string{
 	IndexLabels,
 	IndexWorks,
 	IndexTags,
+	IndexSeries,
+	IndexEngines,
+	IndexTraits,
 }
 
 var (
@@ -85,7 +91,9 @@ func propertiesFor(uid string) (map[string]any, error) {
 	case IndexTags:
 		props["kind"] = map[string]any{"type": "integer"}
 		props["tier"] = map[string]any{"type": "integer"}
-	case IndexCharacters:
+	case IndexCharacters, IndexSeries, IndexEngines:
+	case IndexTraits:
+		props["sexual"] = map[string]any{"type": "boolean"}
 	default:
 		return nil, fmt.Errorf("unknown index %q", uid)
 	}

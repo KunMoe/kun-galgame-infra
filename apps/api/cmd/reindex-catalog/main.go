@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	indexFlag := flag.String("index", "catalog_credit_names,catalog_characters,catalog_labels,catalog_works,catalog_tags", "comma-separated index uids")
+	indexFlag := flag.String("index", "catalog_credit_names,catalog_characters,catalog_labels,catalog_works,catalog_tags,catalog_series,catalog_engines,catalog_traits", "comma-separated index uids")
 	batch := flag.Int("batch", 5000, "batch size per search upsert")
 	recreate := flag.Bool("recreate", false, "drop and recreate each named index (opensearch only)")
 	flag.Parse()
@@ -59,7 +59,7 @@ func main() {
 		for _, t := range indexes {
 			t = strings.TrimSpace(t)
 			switch t {
-			case catalogSearch.IndexCreditNames, catalogSearch.IndexCharacters, catalogSearch.IndexLabels, catalogSearch.IndexWorks, catalogSearch.IndexTags:
+			case catalogSearch.IndexCreditNames, catalogSearch.IndexCharacters, catalogSearch.IndexLabels, catalogSearch.IndexWorks, catalogSearch.IndexTags, catalogSearch.IndexSeries, catalogSearch.IndexEngines, catalogSearch.IndexTraits:
 				if err := idx.RecreateIndex(ctx, t); err != nil {
 					slog.Error("recreate failed", "index", t, "error", err)
 					os.Exit(1)
@@ -93,6 +93,12 @@ func main() {
 			err = reindexWorks(ctx, db.DB(), idx, *batch)
 		case catalogSearch.IndexTags:
 			err = reindexTags(ctx, db.DB(), idx, *batch)
+		case catalogSearch.IndexSeries:
+			err = reindexSeries(ctx, db.DB(), idx, *batch)
+		case catalogSearch.IndexEngines:
+			err = reindexEngines(ctx, db.DB(), idx, *batch)
+		case catalogSearch.IndexTraits:
+			err = reindexTraits(ctx, db.DB(), idx, *batch)
 		case "":
 			continue
 		default:

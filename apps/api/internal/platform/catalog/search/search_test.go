@@ -134,3 +134,74 @@ func TestDeleteBatchRemovesTombstones(t *testing.T) {
 	require.NoError(t, idx.DeleteBatch(ctx, IndexLabels, []string{"b96"}))
 	require.NoError(t, idx.DeleteBatch(ctx, IndexLabels, nil))
 }
+
+func TestSeriesEngineTraitSearchable(t *testing.T) {
+	idx := ensureSearchIndexes(t, IndexSeries, IndexEngines, IndexTraits)
+
+	s1 := EntityDoc{ID: "s1", EntityType: "series", NameOther: "Clannad", NameZh: "CLANNAD", Popularity: 2}
+	s2 := EntityDoc{ID: "s2", EntityType: "series", NameOther: "Kanon", Popularity: 1}
+	putDocs(t, IndexSeries, []EntityDoc{s1, s2})
+	res, err := idx.SearchEntities(t.Context(), IndexSeries, spec.EntityQuery{Q: "Clannad", Limit: 20})
+	require.NoError(t, err)
+	if assert.Len(t, res.Hits, 1) {
+		assert.Equal(t, "s1", res.Hits[0].ID)
+	}
+
+	e1 := EntityDoc{ID: "e1", EntityType: "engine", NameOther: "KiriKiri", AliasesOther: []string{"吉里吉里"}, Popularity: 2}
+	e2 := EntityDoc{ID: "e2", EntityType: "engine", NameOther: "Ren'Py", Popularity: 1}
+	putDocs(t, IndexEngines, []EntityDoc{e1, e2})
+	res, err = idx.SearchEntities(t.Context(), IndexEngines, spec.EntityQuery{Q: "吉里吉里", Limit: 20})
+	require.NoError(t, err)
+	if assert.Len(t, res.Hits, 1) {
+		assert.Equal(t, "e1", res.Hits[0].ID)
+	}
+
+	sexual := true
+	tr1 := EntityDoc{ID: "f1", EntityType: "trait", NameOther: "Loli", NameZh: "萝莉", Sexual: &sexual, Popularity: 2}
+	tr2 := EntityDoc{ID: "f2", EntityType: "trait", NameOther: "Tsundere", NameZh: "傲娇", Popularity: 1}
+	putDocs(t, IndexTraits, []EntityDoc{tr1, tr2})
+	res, err = idx.SearchEntities(t.Context(), IndexTraits, spec.EntityQuery{Q: "萝莉", Limit: 20})
+	require.NoError(t, err)
+	if assert.Len(t, res.Hits, 1) {
+		assert.Equal(t, "f1", res.Hits[0].ID)
+		require.NotNil(t, res.Hits[0].Sexual)
+		assert.True(t, *res.Hits[0].Sexual)
+	}
+
+	uid, ok := IndexForType("series")
+	assert.True(t, ok)
+	assert.Equal(t, IndexSeries, uid)
+	uid, ok = IndexForType("engines")
+	assert.True(t, ok)
+	assert.Equal(t, IndexEngines, uid)
+	uid, ok = IndexForType("traits")
+	assert.True(t, ok)
+	assert.Equal(t, IndexTraits, uid)
+}
+
+func TestEntitySearchPagination(t *testing.T) {
+	idx := ensureSearchIndexes(t, IndexSeries)
+
+	docs := make([]EntityDoc, 0, 5)
+	for i := 1; i <= 5; i++ {
+		docs = append(docs, EntityDoc{
+			ID: "s" + string(rune('0'+i)), EntityType: "series",
+			NameOther: "Series" + string(rune('A'+i-1)), Popularity: float64(6 - i),
+		})
+	}
+	putDocs(t, IndexSeries, docs)
+
+	p1, err := idx.SearchEntities(t.Context(), IndexSeries, spec.EntityQuery{Q: "", Limit: 2, Page: 1})
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, p1.Total)
+	require.Len(t, p1.Hits, 2)
+	p2, err := idx.SearchEntities(t.Context(), IndexSeries, spec.EntityQuery{Q: "", Limit: 2, Page: 2})
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, p2.Total)
+	require.Len(t, p2.Hits, 2)
+	assert.NotEqual(t, p1.Hits[0].ID, p2.Hits[0].ID)
+	assert.NotEqual(t, p1.Hits[1].ID, p2.Hits[1].ID)
+	seen := map[string]bool{p1.Hits[0].ID: true, p1.Hits[1].ID: true}
+	assert.False(t, seen[p2.Hits[0].ID])
+	assert.False(t, seen[p2.Hits[1].ID])
+}

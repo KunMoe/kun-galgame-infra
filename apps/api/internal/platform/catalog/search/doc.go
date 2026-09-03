@@ -33,6 +33,7 @@ type EntityDoc struct {
 	ReleasedOrd  int64   `json:"released_ord,omitempty"`
 	UpdatedTS    int64   `json:"updated_ts,omitempty"`
 	Tier         *int16  `json:"tier,omitempty"`
+	Sexual       *bool   `json:"sexual,omitempty"`
 
 	IntroJa    string `json:"intro_ja,omitempty"`
 	IntroZh    string `json:"intro_zh,omitempty"`
