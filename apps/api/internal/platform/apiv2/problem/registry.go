@@ -94,6 +94,7 @@ const (
 	ReasonUnknownReference = "UNKNOWN_REFERENCE"
 	ReasonImmutable        = "IMMUTABLE"
 	ReasonInconsistentWith = "INCONSISTENT_WITH"
+	ReasonNotPermitted     = "NOT_PERMITTED"
 )
 
 var Codes = []Def{
@@ -153,6 +154,7 @@ var Reasons = []ReasonDef{
 	{ReasonUnknownReference, "Unknown reference", "The value refers to an entity that is not visible. Absence, merge, and visibility filtering are not distinguished."},
 	{ReasonImmutable, "Immutable", "This field cannot be changed in the current state."},
 	{ReasonInconsistentWith, "Inconsistent with", "The value contradicts another field. detail names that field's pointer."},
+	{ReasonNotPermitted, "Not permitted", "The caller is not allowed to act on this position. Unlike IMMUTABLE this is about the actor, not the field's state."},
 }
 
 var (

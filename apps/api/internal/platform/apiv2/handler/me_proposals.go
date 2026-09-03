@@ -568,12 +568,14 @@ func proposalErr(err error) error {
 	}
 	var perm *editing.PermissionError
 	if errors.As(err, &perm) {
-		return problem.New(problem.CodePermissionRequired, "", "", perm.Error())
+		p := problem.New(problem.CodePermissionRequired, "", "", perm.Error())
+		p.Errors = []problem.FieldError{{Pointer: "/patch/" + perm.Key, Reason: problem.ReasonNotPermitted, Detail: perm.Error()}}
+		return p
 	}
 	var val *editing.ValidationError
 	if errors.As(err, &val) {
 		p := problem.New(problem.CodeValidationFailed, "", "", val.Error())
-		p.Errors = []problem.FieldError{{Pointer: "/" + val.Key, Reason: problem.ReasonUnknownValue, Detail: val.Error()}}
+		p.Errors = []problem.FieldError{{Pointer: "/patch/" + val.Key, Reason: problem.ReasonUnknownValue, Detail: val.Error()}}
 		return p
 	}
 	return err

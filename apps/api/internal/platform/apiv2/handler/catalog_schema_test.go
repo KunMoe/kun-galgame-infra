@@ -51,7 +51,9 @@ func TestGetSchemaWorkAndRelease(t *testing.T) {
 		t.Fatalf("include/full_set %+v %+v", s.Include, s.FullSet)
 	}
 	foundTitles, foundKind := false, false
+	capByKey := map[string]int{}
 	for _, f := range s.Fields {
+		capByKey[f.Key] = f.MaxSuppressed
 		if f.Key == editspec.FieldWorkTitles {
 			foundTitles = true
 			if f.FieldType != string(editing.KindList) {
@@ -67,6 +69,23 @@ func TestGetSchemaWorkAndRelease(t *testing.T) {
 	}
 	if !foundTitles {
 		t.Fatal("missing catalog.work.titles")
+	}
+	// titles declares no cap of its own, so a raw read published 0 here while
+	// the companion enforced the 200 default — max_suppressed must always be
+	// the effective limit, equal on parent and companion.
+	suppressed := 0
+	for key, parentCap := range capByKey {
+		companionCap, ok := capByKey[key+editing.SuppressedFieldSuffix]
+		if !ok {
+			continue
+		}
+		suppressed++
+		if parentCap != companionCap || parentCap <= 0 {
+			t.Fatalf("%s max_suppressed %d != companion %d", key, parentCap, companionCap)
+		}
+	}
+	if suppressed < 3 {
+		t.Fatalf("expected titles, credits and roster companions, saw %d", suppressed)
 	}
 	if foundKind {
 		t.Fatal("kind must not appear as a field key or field_type")
