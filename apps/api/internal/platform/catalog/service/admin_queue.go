@@ -45,6 +45,14 @@ type EntitySummary struct {
 	CreditCount *int64 `json:"credit_count,omitempty"`
 	SourceID    *int16 `json:"source_id,omitempty"`
 	WorkStatus  *int16 `json:"work_status,omitempty"`
+
+	MediumID      *int16             `json:"medium_id,omitempty"`
+	OLang         string             `json:"olang,omitempty"`
+	ContentRating *int16             `json:"content_rating,omitempty"`
+	Site          string             `json:"site,omitempty"`
+	ClaimState    *int16             `json:"claim_state,omitempty"`
+	ReleaseYear   *int16             `json:"release_year,omitempty"`
+	Refs          []EntityRefSummary `json:"refs,omitempty"`
 }
 
 func entitySummary(db *gorm.DB, entityType int16, id int64) EntitySummary {
@@ -115,6 +123,7 @@ func (s *AdminQueueService) ListCandidates(ctx context.Context, f CandidateFilte
 		}
 	}
 	s.enrichCreditNameContext(ctx, items)
+	s.enrichWorkContext(ctx, items)
 	return items, total, nil
 }
 

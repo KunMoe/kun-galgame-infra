@@ -1,16 +1,27 @@
 <script setup lang="ts">
-import { CANDIDATE_STATUS, PROPOSAL_STATUS } from '~/constants/catalog'
+import {
+  CANDIDATE_STATUS,
+  CATALOG_QUEUE_SUMMARY_KEY,
+  PROPOSAL_STATUS
+} from '~/constants/catalog'
 import type {
-  CatalogCandidatePage,
   CatalogProposalPage,
-  CatalogProbableRefPage
+  CatalogQueueSummary
 } from '~~/shared/types/catalog'
 
 const route = useRoute()
 
-const { data: pendingCandidates } = await useApiFetch<CatalogCandidatePage>(
-  '/admin/catalog/candidates',
-  { query: { status: CANDIDATE_STATUS.pending, limit: 1 } },
+// The badge used to count status=pending only, which reported 67 while ~6.4k
+// work pairs sat in needsManual — the queue the console exists to drain was
+// invisible from the nav.
+const OPEN_CANDIDATE_STATUSES = [
+  CANDIDATE_STATUS.pending,
+  CANDIDATE_STATUS.needsManual
+] as number[]
+
+const { data: summary } = await useApiFetch<CatalogQueueSummary>(
+  '/admin/catalog/candidates/summary',
+  { key: CATALOG_QUEUE_SUMMARY_KEY },
   'catalog'
 )
 const { data: openProposals } = await useApiFetch<CatalogProposalPage>(
@@ -18,10 +29,14 @@ const { data: openProposals } = await useApiFetch<CatalogProposalPage>(
   { query: { status: PROPOSAL_STATUS.open, limit: 1 } },
   'catalog'
 )
-const { data: probableRefs } = await useApiFetch<CatalogProbableRefPage>(
-  '/admin/catalog/refs/probable',
-  { query: { limit: 1 } },
-  'catalog'
+
+const openCandidates = computed(() =>
+  (summary.value?.candidates ?? [])
+    .filter((b) => OPEN_CANDIDATE_STATUSES.includes(b.status))
+    .reduce((sum, b) => sum + b.count, 0)
+)
+const probableRefs = computed(() =>
+  (summary.value?.probable_refs ?? []).reduce((sum, b) => sum + b.count, 0)
 )
 
 const tabs = computed(() => [
@@ -29,7 +44,7 @@ const tabs = computed(() => [
     to: '/catalog/candidates',
     label: '候选',
     icon: 'lucide:git-compare',
-    count: pendingCandidates.value?.total ?? 0
+    count: openCandidates.value
   },
   {
     to: '/catalog/proposals',
@@ -41,7 +56,7 @@ const tabs = computed(() => [
     to: '/catalog/refs',
     label: '外链确认',
     icon: 'lucide:link',
-    count: probableRefs.value?.total ?? 0
+    count: probableRefs.value
   }
 ])
 </script>
