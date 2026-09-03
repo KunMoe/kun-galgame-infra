@@ -24,8 +24,8 @@ const waveTagW1 = "rule:work-dedup w1"
 const exitNewPairs = 3
 
 func main() {
-	mode := flag.String("mode", "census", "census | seed | propose | execute | watch")
-	actor := flag.Int64("actor", 0, "operator user id recorded on candidates/proposals (required for seed/propose/execute)")
+	mode := flag.String("mode", "census", "census | seed | propose | execute | watch | crossmedium")
+	actor := flag.Int64("actor", 0, "operator user id recorded on candidates/proposals (required for seed/propose/execute/crossmedium)")
 	run := flag.Bool("run", false, "write (default: dry-run preview)")
 	limit := flag.Int("limit", 0, "propose: max merge groups this run; execute: max proposals this run (0 = all)")
 	note := flag.String("note", waveTagW1, "wave note tag stamped on proposals and matched by -mode execute")
@@ -34,9 +34,9 @@ func main() {
 	failOnNew := flag.Bool("fail-on-new", false, fmt.Sprintf("watch: exit %d when undecided new pairs exist", exitNewPairs))
 	flag.Parse()
 
-	writes := *mode == "seed" || *mode == "propose" || *mode == "execute"
+	writes := *mode == "seed" || *mode == "propose" || *mode == "execute" || *mode == "crossmedium"
 	if writes && *actor <= 0 {
-		fmt.Fprintln(os.Stderr, "-actor <user-id> is required for seed/propose/execute")
+		fmt.Fprintln(os.Stderr, "-actor <user-id> is required for seed/propose/execute/crossmedium")
 		os.Exit(2)
 	}
 
@@ -65,6 +65,8 @@ func main() {
 		if err == nil && *failOnNew && fresh > 0 {
 			os.Exit(exitNewPairs)
 		}
+	case "crossmedium":
+		err = runCrossMedium(ctx, db, os.Stdout, *actor, *run)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown mode %q\n", *mode)
 		os.Exit(2)

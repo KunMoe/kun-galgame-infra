@@ -529,3 +529,135 @@ func TestWorkDedupCensusWidening(t *testing.T) {
 		assert.Equal(t, bucketDateClash, verdict)
 	})
 }
+
+func catalogMedium(t *testing.T, key string) int16 {
+	t.Helper()
+	var id int16
+	require.NoError(t, testDB.Raw(`SELECT id FROM catalog_medium WHERE key = ?`, key).Scan(&id).Error)
+	require.NotZero(t, id, "%s medium is not seeded", key)
+	return id
+}
+
+func mkCandidate(t *testing.T, a, b int64, status int16, decidedBy *int64) {
+	t.Helper()
+	require.NoError(t, testDB.Create(&model.CatalogMatchCandidate{
+		EntityType: model.EntityTypeWork, AID: min(a, b), BID: max(a, b),
+		Reason: model.CandidateReasonNameNormEqual, Status: status,
+		DecidedBy: decidedBy,
+	}).Error)
+}
+
+func TestWorkDedupCensusMediumGate(t *testing.T) {
+	requireDB(t)
+	ctx := context.Background()
+
+	t.Run("title_collision", func(t *testing.T) {
+		cleanPipeline(t)
+		gal := galgameMedium(t)
+		anime := catalogMedium(t, "anime")
+
+		crossA := mkWork(t, gal, "クロスメディアエイ作品テスト", nil)
+		crossB := mkWork(t, anime, "クロスメディアビー作品テスト", nil)
+		mkTitle(t, crossA, "クロスメディア重複タイトル検証")
+		mkTitle(t, crossB, "クロスメディア重複タイトル検証")
+
+		sameA := mkWork(t, gal, "同メディアエイ作品テスト", nil)
+		sameB := mkWork(t, gal, "同メディアビー作品テスト", nil)
+		mkTitle(t, sameA, "同メディア重複タイトル検証")
+		mkTitle(t, sameB, "同メディア重複タイトル検証")
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		assert.False(t, hasPair(c, crossA, crossB), "cross-medium title collision must not pair")
+		assert.True(t, hasPair(c, sameA, sameB), "same-medium title collision must pair")
+	})
+
+	t.Run("ref_collision", func(t *testing.T) {
+		cleanPipeline(t)
+		gal := galgameMedium(t)
+		anime := catalogMedium(t, "anime")
+		const officialSite int16 = 9
+
+		crossA := mkWork(t, gal, "クロスメディア参照エイ作品", nil)
+		crossB := mkWork(t, anime, "クロスメディア参照ビー作品", nil)
+		mkRef(t, crossA, officialSite, "www.example.com/medium/gate", model.LinkKindExact, nil)
+		mkRef(t, crossB, officialSite, "www.example.com/medium/gate", model.LinkKindProbable, nil)
+
+		sameA := mkWork(t, gal, "同メディア参照エイ作品テスト", nil)
+		sameB := mkWork(t, gal, "同メディア参照ビー作品テスト", nil)
+		mkRef(t, sameA, officialSite, "www.example.com/medium/gate-same", model.LinkKindExact, nil)
+		mkRef(t, sameB, officialSite, "www.example.com/medium/gate-same", model.LinkKindProbable, nil)
+
+		c, err := buildCensus(ctx, testDB)
+		require.NoError(t, err)
+		assert.False(t, hasPair(c, crossA, crossB), "cross-medium ref collision must not pair")
+		assert.True(t, hasPair(c, sameA, sameB), "same-medium ref collision must pair")
+	})
+}
+
+func TestCrossMediumRejectsOnlyOpenCrossMediumRows(t *testing.T) {
+	requireDB(t)
+	cleanPipeline(t)
+	ctx := context.Background()
+	gal := galgameMedium(t)
+	anime := catalogMedium(t, "anime")
+	const actor = int64(4242)
+
+	pendingA := mkWork(t, gal, "クロスメディア未決エイ作品", nil)
+	pendingB := mkWork(t, anime, "クロスメディア未決ビー作品", nil)
+	mkCandidate(t, pendingA, pendingB, model.CandidateStatusPending, nil)
+
+	deferredA := mkWork(t, gal, "クロスメディア保留エイ作品", nil)
+	deferredB := mkWork(t, anime, "クロスメディア保留ビー作品", nil)
+	mkCandidate(t, deferredA, deferredB, model.CandidateStatusDeferred, nil)
+
+	manualA := mkWork(t, gal, "クロスメディア手動エイ作品", nil)
+	manualB := mkWork(t, anime, "クロスメディア手動ビー作品", nil)
+	mkCandidate(t, manualA, manualB, model.CandidateStatusNeedsManual, nil)
+
+	prior := int64(7)
+	rejectedA := mkWork(t, gal, "クロスメディア既決エイ作品", nil)
+	rejectedB := mkWork(t, anime, "クロスメディア既決ビー作品", nil)
+	mkCandidate(t, rejectedA, rejectedB, model.CandidateStatusRejected, &prior)
+
+	sameA := mkWork(t, gal, "同メディア未決エイ作品テスト", nil)
+	sameB := mkWork(t, gal, "同メディア未決ビー作品テスト", nil)
+	mkCandidate(t, sameA, sameB, model.CandidateStatusPending, nil)
+
+	goneA := mkWork(t, gal, "削除クロスメディアエイ作品", nil)
+	goneB := mkWork(t, anime, "削除クロスメディアビー作品", nil)
+	mkCandidate(t, goneA, goneB, model.CandidateStatusPending, nil)
+	require.NoError(t, testDB.Delete(&model.CatalogWork{}, goneA).Error)
+
+	var out bytes.Buffer
+	require.NoError(t, runCrossMedium(ctx, testDB, &out, actor, false))
+	assert.Contains(t, out.String(), "DRY-RUN")
+	assert.Contains(t, out.String(), "n=4")
+	assert.Equal(t, model.CandidateStatusPending, candidateStatus(t, pendingA, pendingB))
+	assert.Equal(t, model.CandidateStatusDeferred, candidateStatus(t, deferredA, deferredB))
+	assert.Equal(t, model.CandidateStatusNeedsManual, candidateStatus(t, manualA, manualB))
+	assert.Equal(t, model.CandidateStatusRejected, candidateStatus(t, rejectedA, rejectedB))
+	assert.Equal(t, model.CandidateStatusPending, candidateStatus(t, sameA, sameB))
+	assert.Equal(t, model.CandidateStatusPending, candidateStatus(t, goneA, goneB))
+
+	out.Reset()
+	require.NoError(t, runCrossMedium(ctx, testDB, &out, actor, true))
+	assert.Contains(t, out.String(), "APPLIED")
+	assert.Contains(t, out.String(), "rejected=4")
+
+	assert.Equal(t, model.CandidateStatusRejected, candidateStatus(t, pendingA, pendingB))
+	assert.Equal(t, model.CandidateStatusRejected, candidateStatus(t, deferredA, deferredB))
+	assert.Equal(t, model.CandidateStatusRejected, candidateStatus(t, manualA, manualB))
+	assert.Equal(t, model.CandidateStatusRejected, candidateStatus(t, goneA, goneB))
+	assert.Equal(t, model.CandidateStatusPending, candidateStatus(t, sameA, sameB),
+		"same-medium row must be untouched")
+	gotRej := candidateOf(t, rejectedA, rejectedB)
+	assert.Equal(t, model.CandidateStatusRejected, gotRej.Status)
+	require.NotNil(t, gotRej.DecidedBy)
+	assert.Equal(t, prior, *gotRej.DecidedBy, "already-rejected row must keep its original actor")
+
+	gotPending := candidateOf(t, pendingA, pendingB)
+	require.NotNil(t, gotPending.DecidedBy)
+	assert.Equal(t, actor, *gotPending.DecidedBy)
+	require.NotNil(t, gotPending.DecidedAt)
+}

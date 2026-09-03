@@ -66,7 +66,10 @@ func WorkDupeCorpusSQL() string {
 // recordWorkDupeSuspects files a pending match candidate for every live work
 // sharing a folded identity norm with the freshly minted work. It never
 // blocks the mint — same-name distinct works are real, so the receipt goes
-// to the reconciliation queue instead of the submitter.
+// to the reconciliation queue instead of the submitter. Works of a different
+// medium never pair: the bangumi cross-media import deliberately mints an
+// adaptation under the same title, and title-only suspects had filed ~1.3k
+// cross-medium receipts before the medium predicate was added.
 func recordWorkDupeSuspects(tx *gorm.DB, workID int64) error {
 	var hits []int64
 	err := tx.Raw(`
@@ -74,6 +77,8 @@ func recordWorkDupeSuspects(tx *gorm.DB, workID int64) error {
 		SELECT DISTINCT o.work_id
 		FROM corpus mine
 		JOIN corpus o ON o.n = mine.n AND o.work_id <> mine.work_id
+		JOIN catalog_work wm ON wm.id = mine.work_id
+		JOIN catalog_work wo ON wo.id = o.work_id AND wo.medium_id = wm.medium_id
 		WHERE mine.work_id = ? AND `+WorkDupeNormEligibleSQL("mine.n")+`
 		ORDER BY o.work_id`, workID).Scan(&hits).Error
 	if err != nil || len(hits) == 0 {
