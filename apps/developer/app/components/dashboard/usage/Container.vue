@@ -87,7 +87,7 @@ const peak = computed(() =>
     <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
       <ChartStatTile
         label="总请求"
-        :value="fmt(total)"
+        :value="total"
         :spark="daily.map((d) => d.count)"
         :hint="`最近 ${days} 天`"
       />
@@ -102,13 +102,13 @@ const peak = computed(() =>
       />
       <ChartStatTile
         label="4xx"
-        :value="fmt(total4xx)"
+        :value="total4xx"
         :tone="total4xx > 0 ? 'warning' : 'muted'"
         hint="请求本身被拒"
       />
       <ChartStatTile
         label="5xx"
-        :value="fmt(total5xx)"
+        :value="total5xx"
         :tone="total5xx > 0 ? 'danger' : 'muted'"
         hint="服务端故障"
       />

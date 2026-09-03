@@ -89,7 +89,7 @@ const handleCreated = () => {
       <NuxtLink
         v-for="app in apps"
         :key="app.client_id"
-        :to="`/dashboard/apps/`"
+        :to="`/dashboard/apps/${app.client_id}`"
         class="group"
       >
         <KunCard

@@ -108,13 +108,13 @@ const peak = computed(() =>
       <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
         <ChartStatTile
           label="去重点击"
-          :value="fmt(uniques)"
+          :value="uniques"
           :spark="daily.map((d) => d.uniques)"
           :hint="`最近 ${days} 天`"
         />
         <ChartStatTile
           label="总点击"
-          :value="fmt(total)"
+          :value="total"
           :spark="daily.map((d) => d.total)"
           :hint="`含重复 ${fmt(total - uniques)}`"
         />
@@ -126,7 +126,7 @@ const peak = computed(() =>
         />
         <ChartStatTile
           label="单日峰值"
-          :value="fmt(peak.uniques)"
+          :value="peak.uniques"
           tone="foreground"
           :hint="peak.day ? peak.day : '—'"
         />

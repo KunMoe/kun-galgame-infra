@@ -30,6 +30,7 @@ const path = computed(() => {
     :viewBox="`0 -1 ${width} ${height + 2}`"
     :width="width"
     :height="height + 2"
+    preserveAspectRatio="none"
     fill="none"
     aria-hidden="true"
     class="text-primary overflow-visible"
