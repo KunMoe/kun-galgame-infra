@@ -167,9 +167,23 @@ jobs:
       - name: Trigger Dokploy redeploy
         env:
           WEBHOOK: ${{ secrets.DOKPLOY_WEBHOOK_INFRA }}
+          TITLE: ${{ github.event.head_commit.message || github.sha }}
         run: |
           if [ -z "$WEBHOOK" ]; then
             echo "DOKPLOY_WEBHOOK_INFRA not set — images pushed to GHCR, skipping redeploy trigger."
             exit 0
           fi
-          curl -fsS -X POST "$WEBHOOK"
+          # Dokploy's compose webhook is not a bare trigger: the compose is
+          # sourceType=github, so the handler branch-matches the request as if it
+          # were a GitHub push event. A bodyless `curl -X POST` gets 301 "Branch
+          # Not Match" — which `curl -f` treats as success, silently skipping the
+          # deploy (and 400 here means the compose's Auto Deploy toggle is off,
+          # not a bad token — a bad token would be 404). Masquerade as a push and
+          # require an actual 200.
+          body=$(jq -n --arg ref "$GITHUB_REF" --arg sha "$GITHUB_SHA" --arg title "$TITLE" \
+            '{ref: $ref, head_commit: {id: $sha, message: $title}}')
+          code=$(curl -sS -o response.json -w '%{http_code}' -X POST "$WEBHOOK" \
+            -H 'content-type: application/json' -H 'x-github-event: push' \
+            --data-raw "$body")
+          cat response.json; echo
+          [ "$code" = "200" ]
