@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import { DASHBOARD_NAV } from '~/constants/nav'
+import { DASHBOARD_NAV, isDashboardNavActive } from '~/constants/nav'
 
 const auth = useAuth()
 const route = useRoute()
-
-const isActive = (item: (typeof DASHBOARD_NAV)[number]) =>
-  item.match.some((m) => route.path === m || route.path.startsWith(`${m}/`))
 
 const handleLogout = async () => {
   await auth.logout()
@@ -33,7 +30,7 @@ const handleLogout = async () => {
                 :to="item.to"
                 class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
                 :class="
-                  isActive(item)
+                  isDashboardNavActive(item, route.path)
                     ? 'bg-primary-50 text-primary'
                     : 'text-default-500 hover:bg-default-100 hover:text-foreground'
                 "

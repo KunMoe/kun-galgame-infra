@@ -30,15 +30,15 @@ export const searchIndex: SearchEntry[] = [
     "b": "dashboard 控制台 应用 密钥 key app"
   },
   {
-    "r": "/usage",
+    "r": "/dashboard/usage",
     "t": "用量",
     "s": "站点",
     "d": "按应用与端点看调用量、错误率与限流",
     "b": "usage 用量 统计 配额 quota 限流"
   },
   {
-    "r": "/store",
-    "t": "购买链接",
+    "r": "/dashboard/store",
+    "t": "分销链接",
     "s": "站点",
     "d": "商店联盟链接的铸造与点击统计",
     "b": "store 商店 购买 联盟 affiliate dlsite"

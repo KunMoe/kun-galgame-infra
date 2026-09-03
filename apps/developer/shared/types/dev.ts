@@ -1,4 +1,3 @@
-
 export type DevAppReviewStatus = '' | 'approved' | 'pending' | 'declined'
 
 export interface DevApp {
@@ -67,6 +66,17 @@ export interface DevUsageFace {
   status_5xx: number
 }
 
+// The shape the console's breakdown chart+table renders, normalised from the
+// by-app and by-face slices so one component serves both.
+export interface DevBreakdownRow {
+  key: string
+  label: string
+  to?: string
+  count: number
+  status_4xx: number
+  status_5xx: number
+}
+
 export interface DevLiveKey {
   app_name: string
   key_id: number
@@ -100,5 +110,3 @@ export interface User {
   roles: string[]
   created_at: string
 }
-
-

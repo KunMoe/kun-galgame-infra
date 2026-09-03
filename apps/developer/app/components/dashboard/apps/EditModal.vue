@@ -31,7 +31,10 @@ const handleSubmit = async () => {
       name: name.value.trim(),
       description: description.value.trim()
     }
-    const res = await api.patch<DevApp>(`/dev/apps/${props.app.client_id}`, body)
+    const res = await api.patch<DevApp>(
+      `/dev/apps/${props.app.client_id}`,
+      body
+    )
     if (res.code === 0 && res.data) {
       useKunMessage('已保存', 'success')
       open.value = false
@@ -48,7 +51,7 @@ const handleSubmit = async () => {
 <template>
   <KunModal v-model="open" size="md" aria-label="编辑应用">
     <div class="space-y-4">
-      <h2 class="text-xl font-bold text-foreground">编辑应用</h2>
+      <h2 class="text-foreground text-xl font-bold">编辑应用</h2>
 
       <KunInput v-model="name" label="应用名称" required />
       <KunInput
@@ -57,7 +60,7 @@ const handleSubmit = async () => {
         placeholder="一句话描述用途,最多 100 字"
       />
 
-      <div v-if="error" class="rounded-lg bg-danger-50 p-3 text-sm text-danger">
+      <div v-if="error" class="bg-danger-50 text-danger rounded-lg p-3 text-sm">
         {{ error }}
       </div>
 

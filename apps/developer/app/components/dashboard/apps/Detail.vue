@@ -14,8 +14,7 @@ import type {
   DevApp,
   DevKey,
   DevKeyMinted,
-  DevPolicies,
-  DevUsageDayFace
+  DevPolicies
 } from '~~/shared/types/dev'
 
 const route = useRoute()
@@ -31,14 +30,10 @@ const { data: appData, refresh: refreshApp } = await useApiFetch<DevApp>(
 const { data: keysData, refresh: refreshKeys } = await useApiFetch<DevKey[]>(
   () => `/dev/apps/${clientId.value}/keys`
 )
-const { data: usageData } = await useApiFetch<DevUsageDayFace[]>(
-  () => `/dev/apps/${clientId.value}/usage?days=7`
-)
 const { data: policiesData } = await useApiFetch<DevPolicies>('/dev/policies')
 
 const app = computed(() => appData.value)
 const keys = computed(() => keysData.value ?? [])
-const usage = computed(() => usageData.value ?? [])
 
 const policy = (capability: string) =>
   policiesData.value?.[capability] ?? 'self_service'
@@ -247,11 +242,11 @@ const askDeleteApp = () => {
       >
         <KunIcon name="lucide:arrow-left" class="size-5" />
       </KunButton>
-      <h1 class="text-2xl font-bold text-foreground">应用详情</h1>
+      <h1 class="text-foreground text-2xl font-bold">应用详情</h1>
     </div>
 
     <KunCard v-if="!app" content-class="p-10">
-      <p class="text-center text-default-400">
+      <p class="text-default-400 text-center">
         未找到该应用（可能已删除或不存在）。
       </p>
     </KunCard>
@@ -261,7 +256,7 @@ const askDeleteApp = () => {
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-lg font-semibold text-foreground">
+              <h2 class="text-foreground text-lg font-semibold">
                 {{ app.name }}
               </h2>
               <KunChip
@@ -280,11 +275,11 @@ const askDeleteApp = () => {
                 {{ reviewChip.label }}
               </KunChip>
             </div>
-            <p v-if="app.description" class="mt-1 text-sm text-default-500">
+            <p v-if="app.description" class="text-default-500 mt-1 text-sm">
               {{ app.description }}
             </p>
             <div class="mt-2 flex items-center gap-2">
-              <p class="truncate font-mono text-sm text-default-400">
+              <p class="text-default-400 truncate font-mono text-sm">
                 {{ app.client_id }}
               </p>
               <KunCopy :text="app.client_id" size="sm" />
@@ -330,45 +325,45 @@ const askDeleteApp = () => {
 
         <p
           v-if="isDeclined && app.review_note"
-          class="mt-3 rounded-lg bg-danger-50 p-3 text-sm text-danger"
+          class="bg-danger-50 text-danger mt-3 rounded-lg p-3 text-sm"
         >
           未通过审核：{{ app.review_note }}
         </p>
         <p
           v-else-if="reviewStatus === 'pending'"
-          class="mt-3 rounded-lg bg-warning-50 p-3 text-sm text-warning"
+          class="bg-warning-50 text-warning mt-3 rounded-lg p-3 text-sm"
         >
           已提交，等待平台审核。通过后应用即启用，届时可铸造密钥。
         </p>
         <p
           v-else-if="manageDisabled"
-          class="mt-3 rounded-lg bg-default-100 p-3 text-sm text-default-500"
+          class="bg-default-100 text-default-500 mt-3 rounded-lg p-3 text-sm"
         >
           {{ DEV_DISABLED_HINT }}：应用的编辑与删除暂由平台代为处理。
         </p>
 
         <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
-            <p class="text-xs text-default-400">分层</p>
-            <p class="mt-0.5 text-sm text-foreground">
+            <p class="text-default-400 text-xs">分层</p>
+            <p class="text-foreground mt-0.5 text-sm">
               {{ DEV_TIER_LABELS[app.tier] ?? app.tier }}
             </p>
           </div>
           <div>
-            <p class="text-xs text-default-400">限流</p>
-            <p class="mt-0.5 text-sm text-foreground">
+            <p class="text-default-400 text-xs">限流</p>
+            <p class="text-foreground mt-0.5 text-sm">
               {{ limitLabel(app.rate_per_min, '次/分') }}
             </p>
           </div>
           <div>
-            <p class="text-xs text-default-400">日配额</p>
-            <p class="mt-0.5 text-sm text-foreground">
+            <p class="text-default-400 text-xs">日配额</p>
+            <p class="text-foreground mt-0.5 text-sm">
               {{ limitLabel(app.quota_daily, '次/日') }}
             </p>
           </div>
           <div>
-            <p class="text-xs text-default-400">创建时间</p>
-            <p class="mt-0.5 text-sm text-foreground">
+            <p class="text-default-400 text-xs">创建时间</p>
+            <p class="text-foreground mt-0.5 text-sm">
               {{ formatDate(app.created_at, { isShowYear: true }) }}
             </p>
           </div>
@@ -376,7 +371,7 @@ const askDeleteApp = () => {
       </KunCard>
 
       <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-foreground">API 密钥</h2>
+        <h2 class="text-foreground text-lg font-semibold">API 密钥</h2>
         <KunButton
           color="primary"
           size="sm"
@@ -390,13 +385,13 @@ const askDeleteApp = () => {
 
       <p
         v-if="underReview"
-        class="rounded-lg bg-default-100 p-3 text-sm text-default-500"
+        class="bg-default-100 text-default-500 rounded-lg p-3 text-sm"
       >
         审核通过后可铸造密钥。
       </p>
       <p
         v-else-if="mintDisabled"
-        class="rounded-lg bg-default-100 p-3 text-sm text-default-500"
+        class="bg-default-100 text-default-500 rounded-lg p-3 text-sm"
       >
         {{ DEV_DISABLED_HINT }}：暂不能铸造或轮换密钥；已有密钥仍可随时吊销。
       </p>
@@ -410,15 +405,10 @@ const askDeleteApp = () => {
         @delete="askDeleteKey"
       />
 
-      <div>
-        <h2 class="mb-3 text-lg font-semibold text-foreground">
-          用量（最近 7 天）
-        </h2>
-        <UsageTable :rows="usage" />
-      </div>
+      <DashboardAppsUsage :client-id="clientId" />
     </template>
 
-    <AppsEditModal
+    <DashboardAppsEditModal
       v-if="app"
       v-model:open="showEditModal"
       :app="app"
@@ -443,10 +433,10 @@ const askDeleteApp = () => {
       :aria-label="confirmDialog?.title ?? '确认'"
     >
       <div v-if="confirmDialog" class="space-y-4">
-        <h2 class="text-xl font-bold text-foreground">
+        <h2 class="text-foreground text-xl font-bold">
           {{ confirmDialog.title }}
         </h2>
-        <p class="text-sm text-default-500">{{ confirmDialog.body }}</p>
+        <p class="text-default-500 text-sm">{{ confirmDialog.body }}</p>
         <div class="flex justify-end gap-3">
           <KunButton
             color="default"

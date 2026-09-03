@@ -66,15 +66,51 @@ export default defineNuxtConfig({
   routeRules: {
     '/explore': { headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/explore/**': { headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
-    '/relay/**': { headers: { 'X-Robots-Tag': 'noindex, nofollow' } }
+    '/relay/**': { headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+
+    // The console is behind a login and renders charts off the signed-in
+    // account's own numbers, so there is nothing for the server to prerender
+    // and every SSR pass was work thrown away. `ssr: false` also means the
+    // page's own `robots: 'noindex'` meta never reaches a crawler that does
+    // not run scripts — the header below is what actually keeps it out.
+    '/dashboard': {
+      ssr: false,
+      headers: { 'X-Robots-Tag': 'noindex, nofollow' }
+    },
+    '/dashboard/**': {
+      ssr: false,
+      headers: { 'X-Robots-Tag': 'noindex, nofollow' }
+    },
+
+    // The console moved under /dashboard on 2026-09-03. These were live,
+    // bookmarkable routes, and the redirect only fires for a document request
+    // — in-app navigation goes through the updated constants in nav.ts.
+    '/usage': { redirect: { to: '/dashboard/usage', statusCode: 301 } },
+    '/store': { redirect: { to: '/dashboard/store', statusCode: 301 } },
+    '/apps/**': { redirect: { to: '/dashboard/apps/**', statusCode: 301 } }
   },
 
   modules: [
     '@nuxt/eslint',
     '@nuxtjs/color-mode',
     '@pinia/nuxt',
-    'pinia-plugin-persistedstate/nuxt'
+    'pinia-plugin-persistedstate/nuxt',
+    'nuxt-echarts'
   ],
+
+  // Tree-shaken ECharts: only the charts and components the console actually
+  // mounts are bundled. Adding a chart type to a .vue file is not enough — it
+  // renders blank until its module is listed here.
+  echarts: {
+    renderer: 'canvas',
+    charts: ['BarChart'],
+    components: [
+      'GridComponent',
+      'TooltipComponent',
+      'LegendComponent',
+      'MarkLineComponent'
+    ]
+  },
 
   devServer: {
     host: '127.0.0.1',

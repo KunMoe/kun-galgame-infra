@@ -28,7 +28,10 @@ const cannotCreate = computed(() => atLimit.value || createDisabled.value)
 const reviewChip = (app: DevApp) => {
   const status = app.review_status
   if (status !== 'pending' && status !== 'declined') return null
-  return { label: DEV_APP_REVIEW_LABELS[status], color: DEV_APP_REVIEW_COLORS[status] }
+  return {
+    label: DEV_APP_REVIEW_LABELS[status],
+    color: DEV_APP_REVIEW_COLORS[status]
+  }
 }
 
 const handleCreated = () => {
@@ -40,8 +43,8 @@ const handleCreated = () => {
   <div class="space-y-6">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-foreground">我的应用</h1>
-        <p class="mt-1 text-sm text-default-500">
+        <h1 class="text-foreground text-2xl font-bold">我的应用</h1>
+        <p class="text-default-500 mt-1 text-sm">
           管理你的开放 API 应用与密钥 · 每个账号最多
           {{ MAX_APPS_PER_ACCOUNT }} 个应用
         </p>
@@ -58,7 +61,7 @@ const handleCreated = () => {
 
     <div
       v-if="createDisabled"
-      class="rounded-lg bg-danger-50 p-3 text-sm text-danger"
+      class="bg-danger-50 text-danger rounded-lg p-3 text-sm"
     >
       <KunIcon name="lucide:info" class="mr-1 inline size-4" />
       {{ DEV_DISABLED_HINT }}：平台暂不接受新应用注册，已有应用不受影响。
@@ -66,7 +69,7 @@ const handleCreated = () => {
 
     <div
       v-else-if="needsApproval"
-      class="rounded-lg bg-warning-50 p-3 text-sm text-warning"
+      class="bg-warning-50 text-warning rounded-lg p-3 text-sm"
     >
       <KunIcon name="lucide:info" class="mr-1 inline size-4" />
       新应用需经平台审核后才会启用，审核通过前无法铸造密钥。
@@ -74,17 +77,19 @@ const handleCreated = () => {
 
     <div
       v-if="atLimit"
-      class="rounded-lg bg-warning-50 p-3 text-sm text-warning"
+      class="bg-warning-50 text-warning rounded-lg p-3 text-sm"
     >
       <KunIcon name="lucide:info" class="mr-1 inline size-4" />
-      已达到应用数量上限（{{ MAX_APPS_PER_ACCOUNT }}）。如需更多，请删除不再使用的应用以归还名额。
+      已达到应用数量上限（{{
+        MAX_APPS_PER_ACCOUNT
+      }}）。如需更多，请删除不再使用的应用以归还名额。
     </div>
 
     <div v-if="apps.length" class="grid gap-4 sm:grid-cols-2">
       <NuxtLink
         v-for="app in apps"
         :key="app.client_id"
-        :to="`/apps/${app.client_id}`"
+        :to="`/dashboard/apps/`"
         class="group"
       >
         <KunCard
@@ -94,7 +99,7 @@ const handleCreated = () => {
         >
           <div class="flex w-full items-start justify-between gap-3">
             <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-base font-semibold text-foreground">
+              <h2 class="text-foreground text-base font-semibold">
                 {{ app.name }}
               </h2>
               <KunChip
@@ -115,22 +120,22 @@ const handleCreated = () => {
             </div>
             <KunIcon
               name="lucide:arrow-up-right"
-              class="size-4 shrink-0 text-default-300 transition-colors group-hover:text-primary"
+              class="text-default-300 group-hover:text-primary size-4 shrink-0 transition-colors"
             />
           </div>
 
           <p
             v-if="app.description"
-            class="mt-1 line-clamp-2 text-sm text-default-500"
+            class="text-default-500 mt-1 line-clamp-2 text-sm"
           >
             {{ app.description }}
           </p>
 
-          <p class="mt-3 truncate font-mono text-xs text-default-400">
+          <p class="text-default-400 mt-3 truncate font-mono text-xs">
             {{ app.client_id }}
           </p>
 
-          <div class="mt-3 flex items-center gap-4 text-xs text-default-400">
+          <div class="text-default-400 mt-3 flex items-center gap-4 text-xs">
             <span class="flex items-center gap-1">
               <KunIcon name="lucide:key-round" class="size-3.5" />
               {{ app.key_count }} 个密钥
@@ -147,12 +152,12 @@ const handleCreated = () => {
     <KunCard v-else content-class="p-12" class-name="border-dashed">
       <div class="text-center">
         <div
-          class="mx-auto flex size-12 items-center justify-center rounded-full bg-default-100"
+          class="bg-default-100 mx-auto flex size-12 items-center justify-center rounded-full"
         >
-          <KunIcon name="lucide:boxes" class="size-6 text-default-400" />
+          <KunIcon name="lucide:boxes" class="text-default-400 size-6" />
         </div>
-        <p class="mt-4 font-medium text-foreground">还没有应用</p>
-        <p class="mt-1 text-sm text-default-500">
+        <p class="text-foreground mt-4 font-medium">还没有应用</p>
+        <p class="text-default-500 mt-1 text-sm">
           创建第一个应用,即可领取密钥并调用开放 API。
         </p>
         <KunButton

@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { cn } from '@kungal/ui-core'
-import { DASHBOARD_NAV, SITE_NAV, isDashboardRoute } from '~/constants/nav'
+import {
+  DASHBOARD_NAV,
+  SITE_NAV,
+  isDashboardNavActive,
+  isDashboardRoute
+} from '~/constants/nav'
 
 const route = useRoute()
 const open = ref(false)
@@ -80,7 +85,7 @@ const linkClass = (active: boolean) =>
             v-for="item in DASHBOARD_NAV"
             :key="item.to"
             :to="item.to"
-            :class="linkClass(isActive(item.to))"
+            :class="linkClass(isDashboardNavActive(item, route.path))"
           >
             <KunIcon :name="item.icon" class="size-4 shrink-0" />
             {{ item.label }}

@@ -1,4 +1,3 @@
-
 export const DEV_TIER_COLORS: Record<
   string,
   'default' | 'primary' | 'success'
@@ -54,6 +53,8 @@ export const API_CODE_VALIDATION_FAILED = 7
 export const DEV_DISABLED_HINT = '该功能当前已由平台关闭'
 
 export const MAX_APPS_PER_ACCOUNT = 5
+
+export const DEV_USAGE_DAY_OPTIONS = [7, 14, 30]
 export const MAX_ACTIVE_KEYS_PER_APP = 5
 
 export const API_BASE_URL = 'https://api.nextmoe.dev/v2'
