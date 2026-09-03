@@ -277,6 +277,14 @@ func (r *Registry) Register(spec EntityTypeSpec) error {
 		if parent.Identity == nil {
 			return fmt.Errorf("editing: field %q suppresses %q, which declares no Identity", f.Key, parent.Key)
 		}
+		// SuppressedFieldSpec resolved the effective cap (parent's declaration or
+		// the 200 default) into the companion before registration. A parent that
+		// declared nothing kept 0, and both schema faces published that 0 as "no
+		// suppression set" while the companion enforced 200 — copy the resolved
+		// cap back so MaxSuppressed reads as the effective limit everywhere.
+		if parent.MaxSuppressed <= 0 {
+			parent.MaxSuppressed = f.MaxSuppressed
+		}
 	}
 	for site, overlay := range spec.SiteOverlays {
 		for key, p := range overlay {
