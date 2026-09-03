@@ -141,7 +141,7 @@ func (s *Service) Quotes(ctx context.Context, anchors []Anchor, wait time.Durati
 		if row, ok := rows[k]; ok {
 			r := row
 			sl.row = &r
-			if !now.Before(row.ExpiresAt) {
+			if !now.Before(row.ExpiresAt) && dueForAttempt(row, now) {
 				if b := s.batcherFor(k); b != nil {
 					b.enqueue(k.ExternalID)
 				}
@@ -209,6 +209,10 @@ func (s *Service) expand(anchors []Anchor) []Key {
 		}
 	}
 	return keys
+}
+
+func dueForAttempt(row model.PriceQuote, now time.Time) bool {
+	return row.NextAttemptAt == nil || !now.Before(*row.NextAttemptAt)
 }
 
 func (s *Service) batcherFor(k Key) *batcher {
