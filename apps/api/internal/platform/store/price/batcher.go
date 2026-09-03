@@ -215,9 +215,11 @@ func (b *batcher) writeErrors(ctx context.Context, ids []string, now time.Time) 
 		return
 	}
 	var rows []model.PriceQuote
+	var kept []Key
 	for _, id := range ids {
 		k := Key{Source: b.fetch.Source(), ExternalID: id, Region: b.region}
 		if _, ok := have[k]; ok {
+			kept = append(kept, k)
 			continue
 		}
 		rows = append(rows, model.PriceQuote{
@@ -231,6 +233,10 @@ func (b *batcher) writeErrors(ctx context.Context, ids []string, now time.Time) 
 			ExpiresAt:       now.Add(b.svc.opts.ErrorFor),
 			LastRequestedAt: now,
 		})
+	}
+	if err := b.svc.deferRetry(ctx, kept, now.Add(b.svc.opts.ErrorFor)); err != nil {
+		slog.Warn("store price: defer retry after fetch error failed",
+			"source", b.fetch.Source(), "region", b.region, "count", len(kept), "error", err)
 	}
 	if err := b.svc.upsert(ctx, rows); err != nil {
 		slog.Warn("store price: upsert failed",

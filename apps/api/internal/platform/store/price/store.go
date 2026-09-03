@@ -41,6 +41,7 @@ func (s *Service) upsert(ctx context.Context, rows []model.PriceQuote) error {
 		DoUpdates: clause.AssignmentColumns([]string{
 			"quote_state", "url", "currency", "list_minor", "current_minor",
 			"discount_percent", "sale_ends_at", "converted", "fetched_at", "expires_at",
+			"next_attempt_at",
 		}),
 	}).Create(&rows).Error
 }
@@ -54,11 +55,25 @@ func (s *Service) touchRequested(ctx context.Context, ids []int64, now time.Time
 		Update("last_requested_at", now).Error
 }
 
+func (s *Service) deferRetry(ctx context.Context, keys []Key, until time.Time) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	tuples := make([][]any, len(keys))
+	for i, k := range keys {
+		tuples[i] = []any{k.Source, k.ExternalID, k.Region}
+	}
+	return s.db.WithContext(ctx).Model(&model.PriceQuote{}).
+		Where("(source, external_id, region) IN ?", tuples).
+		Update("next_attempt_at", until).Error
+}
+
 func (s *Service) dueForRefresh(ctx context.Context, now time.Time, hot time.Duration, limit int) ([]Key, error) {
 	var rows []model.PriceQuote
 	q := s.db.WithContext(ctx).Model(&model.PriceQuote{}).
 		Select("source", "external_id", "region").
-		Where("expires_at < ? AND last_requested_at > ?", now, now.Add(-hot)).
+		Where("expires_at < ? AND last_requested_at > ? AND (next_attempt_at IS NULL OR next_attempt_at <= ?)",
+			now, now.Add(-hot), now).
 		Order("expires_at")
 	if limit > 0 {
 		q = q.Limit(limit)
