@@ -178,6 +178,10 @@ docker logs --since 2m <container> 2>&1 | rg 'settings: (loaded|applied|initial 
 4. 确认各服务日志出现 `applied ... source=db` 后,再从 compose 拔掉这些环境变量行。**先建行再拔
    env**,反过来会有一段上传被关闭的窗口。
 
+生产已于 2026-09-03 走完这四步(W3-e):控制台建了 7 行(上传两开关 / trust 三键 /
+`ai.force_escalate` / `store.link_quota_per_client`),`docker-compose.prod.yml` 里这 7 键的
+env 行已拔。此后删掉某行 DB 值,回落的是**代码默认**(不再有 env 地板)。
+
 ## 18.5 怎么新增一个键
 
 1. 在 `internal/platform/settings/keys` 里对应域的文件声明(`settings.Bool/Int/Float/String/Enum/StringList`),
