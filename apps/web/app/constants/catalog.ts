@@ -1,5 +1,6 @@
-
 export const CATALOG_FILTER_ALL = -1
+
+export const CATALOG_QUEUE_SUMMARY_KEY = 'catalog-queue-summary'
 
 export const CATALOG_ENTITY_TYPES: Record<number, string> = {
   0: '人物',
@@ -12,7 +13,13 @@ export const CATALOG_ENTITY_TYPES: Record<number, string> = {
 }
 
 export const CATALOG_ENTITY_TYPE = {
-  creditName: 1
+  person: 0,
+  creditName: 1,
+  organization: 2,
+  label: 3,
+  character: 4,
+  work: 5,
+  release: 6
 } as const
 
 export const CANDIDATE_STATUS = {
@@ -116,7 +123,107 @@ export const CATALOG_SOURCE_LABELS: Record<number, string> = {
   8: 'Steam',
   9: '官网',
   10: 'Twitter',
-  11: 'Pixiv'
+  11: 'Pixiv',
+  12: '策展',
+  13: '超分',
+  14: 'Ci-en',
+  15: 'DMM',
+  16: '网页',
+  17: 'Getchu',
+  18: '派生',
+  19: 'NextMoe',
+  20: 'HowLongToBeat'
+}
+
+export const CATALOG_SOURCE = {
+  user: 1,
+  vndb: 2,
+  bangumi: 3,
+  dlsite: 4,
+  erogamescape: 5,
+  anilist: 6,
+  mal: 7,
+  steam: 8,
+  officialSite: 9,
+  twitter: 10,
+  pixiv: 11,
+  curated: 12,
+  upscale: 13,
+  cien: 14,
+  dmm: 15,
+  web: 16,
+  getchu: 17,
+  derived: 18,
+  nextmoe: 19,
+  howlongtobeat: 20
+} as const
+
+export const CATALOG_LINK_KIND = {
+  exact: 0,
+  probable: 1,
+  related: 2
+} as const
+
+export const CATALOG_MEDIUM_LABELS: Record<number, string> = {
+  1: 'Galgame',
+  2: '漫画',
+  3: '小说',
+  4: '动画',
+  5: 'ASMR'
+}
+
+export const CATALOG_MEDIUM_COLORS: Record<number, CatalogChipColor> = {
+  1: 'primary',
+  2: 'warning',
+  3: 'info',
+  4: 'secondary',
+  5: 'default'
+}
+
+export const CONTENT_RATING_LABELS: Record<number, string> = {
+  0: '全年龄',
+  1: '敏感',
+  2: 'R18'
+}
+
+export const CONTENT_RATING_COLORS: Record<number, CatalogChipColor> = {
+  0: 'success',
+  1: 'warning',
+  2: 'danger'
+}
+
+export const CLAIM_STATE_LABELS: Record<number, string> = {
+  0: '已上线',
+  1: '草稿',
+  2: '隐藏',
+  3: '待审核',
+  4: '已拒绝'
+}
+
+const startsWithLetter = (externalId: string) => /^[A-Za-z]/.test(externalId)
+
+export const catalogExternalUrl = (
+  sourceId: number,
+  externalId: string,
+  entityType?: number
+): string | null => {
+  const id = externalId.trim()
+  if (!id) return null
+  switch (sourceId) {
+    case CATALOG_SOURCE.vndb: {
+      if (startsWithLetter(id)) return `https://vndb.org/${id}`
+      const prefix = entityType === CATALOG_ENTITY_TYPE.release ? 'r' : 'v'
+      return `https://vndb.org/${prefix}${id}`
+    }
+    case CATALOG_SOURCE.bangumi:
+      return `https://bangumi.tv/subject/${id}`
+    case CATALOG_SOURCE.steam:
+      return `https://store.steampowered.com/app/${id}`
+    case CATALOG_SOURCE.howlongtobeat:
+      return `https://howlongtobeat.com/game/${id}`
+    default:
+      return null
+  }
 }
 
 export const CATALOG_IMAGE_REF_KIND_LABELS: Record<string, string> = {
