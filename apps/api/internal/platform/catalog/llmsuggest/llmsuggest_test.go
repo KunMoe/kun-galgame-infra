@@ -89,7 +89,7 @@ func testCatalogDB(t *testing.T) *gorm.DB {
 		dbtest.Skipf(t, "no test database: %v", err)
 	}
 	require.NoError(t, EnsureSchema(db))
-	require.NoError(t, db.Exec("TRUNCATE src_llm.name_pair_judgment, src_llm.run RESTART IDENTITY").Error)
+	require.NoError(t, db.Exec("TRUNCATE src_llm.name_pair_judgment, src_llm.queue_verdict, src_llm.run RESTART IDENTITY").Error)
 	return db
 }
 
