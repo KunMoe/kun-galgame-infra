@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -14,6 +15,7 @@ import (
 type Client struct {
 	baseURL string
 	model   string
+	apiKey  string
 	http    *http.Client
 }
 
@@ -21,7 +23,14 @@ func NewClient(baseURL, model string) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		model:   model,
+		apiKey:  os.Getenv("KUN_LLM_API_KEY"),
 		http:    &http.Client{Timeout: 180 * time.Second},
+	}
+}
+
+func (c *Client) applyAuth(req *http.Request) {
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	}
 }
 
@@ -87,6 +96,7 @@ func (c *Client) ChatJSON(ctx context.Context, system, user, schemaName string, 
 		return ChatResult{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	c.applyAuth(req)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -122,6 +132,7 @@ func (c *Client) Ping(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.applyAuth(req)
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, err

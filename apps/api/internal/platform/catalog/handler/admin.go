@@ -47,6 +47,10 @@ func (s *AdminServer) register(api huma.API) {
 		Summary: "List match candidates (the ambiguity bucket)", Tags: tags,
 	}, s.listCandidates)
 	huma.Register(api, huma.Operation{
+		OperationID: "catalogQueueSummary", Method: http.MethodGet, Path: "/api/v1/admin/catalog/candidates/summary",
+		Summary: "Queue depth: candidates grouped by entity type × status, probable refs grouped by entity type", Tags: tags,
+	}, s.queueSummary)
+	huma.Register(api, huma.Operation{
 		OperationID: "decideCatalogCandidate", Method: http.MethodPost, Path: "/api/v1/admin/catalog/candidates/decide",
 		Summary: "Decide a match candidate: accept (credit_name → link a person; else opens a merge proposal), reject (kept forever) or defer", Tags: tags,
 	}, s.decideCandidate)
@@ -188,6 +192,19 @@ func (s *AdminServer) listCandidates(ctx context.Context, in *candidatesInput) (
 		return nil, apiErr(http.StatusInternalServerError, errors.ErrInternalServer)
 	}
 	return &candidatesOutput{Body: okEnvelope(dto.Page[service.CandidateItem]{Items: items, Total: total})}, nil
+}
+
+type queueSummaryOutput struct {
+	Body Envelope[service.QueueSummary]
+}
+
+func (s *AdminServer) queueSummary(ctx context.Context, _ *struct{}) (*queueSummaryOutput, error) {
+	summary, err := s.queues.QueueSummary(ctx)
+	if err != nil {
+		slog.Error("catalog admin queue summary", "err", err)
+		return nil, apiErr(http.StatusInternalServerError, errors.ErrInternalServer)
+	}
+	return &queueSummaryOutput{Body: okEnvelope(summary)}, nil
 }
 
 type decideCandidateInput struct {

@@ -23,7 +23,15 @@ type PriceQuote struct {
 	FetchedAt       time.Time      `gorm:"not null"`
 	ExpiresAt       time.Time      `gorm:"not null;index"`
 	LastRequestedAt time.Time      `gorm:"not null;index"`
-	CreatedAt       time.Time
+	// A failed fetch must not overwrite the cached row (a stale price beats
+	// none), so expires_at stayed in the past and dueForRefresh, which orders by
+	// it, handed the same failing rows back every tick forever: the DLsite lane
+	// retried two rows every 60s for 23h in 2026-09, and once a failing set
+	// reaches the tick budget it also starves every healthy lane behind it.
+	// next_attempt_at is the retry schedule; expires_at stays the content's
+	// freshness, which is what `stale` on the face reports.
+	NextAttemptAt *time.Time `gorm:"index"`
+	CreatedAt     time.Time
 }
 
 func (PriceQuote) TableName() string { return "store_price_quotes" }

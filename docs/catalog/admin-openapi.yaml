@@ -1,5 +1,22 @@
 components:
   schemas:
+    CandidateBucketCount:
+      additionalProperties: false
+      properties:
+        count:
+          format: int64
+          type: integer
+        entity_type:
+          format: int32
+          type: integer
+        status:
+          format: int32
+          type: integer
+      required:
+        - entity_type
+        - status
+        - count
+      type: object
     CandidateItem:
       additionalProperties: false
       properties:
@@ -227,9 +244,31 @@ components:
       required:
         - credit_name_id
       type: object
+    EntityRefSummary:
+      additionalProperties: false
+      properties:
+        external_id:
+          type: string
+        link_kind:
+          format: int32
+          type: integer
+        source_id:
+          format: int32
+          type: integer
+      required:
+        - source_id
+        - external_id
+        - link_kind
+      type: object
     EntitySummary:
       additionalProperties: false
       properties:
+        claim_state:
+          format: int32
+          type: integer
+        content_rating:
+          format: int32
+          type: integer
         credit_count:
           format: int64
           type: integer
@@ -238,6 +277,22 @@ components:
         id:
           format: int64
           type: integer
+        medium_id:
+          format: int32
+          type: integer
+        olang:
+          type: string
+        refs:
+          items:
+            $ref: "#/components/schemas/EntityRefSummary"
+          type:
+            - array
+            - "null"
+        release_year:
+          format: int32
+          type: integer
+        site:
+          type: string
         source_id:
           format: int32
           type: integer
@@ -458,6 +513,27 @@ components:
         - code
         - message
       type: object
+    EnvelopeQueueSummary:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/EnvelopeQueueSummary.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          format: int64
+          type: integer
+        data:
+          $ref: "#/components/schemas/QueueSummary"
+        message:
+          type: string
+      required:
+        - code
+        - message
+      type: object
     EnvelopeRefActionData:
       additionalProperties: false
       properties:
@@ -647,6 +723,19 @@ components:
         - product_work_id
         - submitted_event_id
       type: object
+    ProbableRefBucketCount:
+      additionalProperties: false
+      properties:
+        count:
+          format: int64
+          type: integer
+        entity_type:
+          format: int32
+          type: integer
+      required:
+        - entity_type
+        - count
+      type: object
     ProbableRefItem:
       additionalProperties: false
       properties:
@@ -787,6 +876,25 @@ components:
         - execute_after
         - executed_at
         - note
+      type: object
+    QueueSummary:
+      additionalProperties: false
+      properties:
+        candidates:
+          items:
+            $ref: "#/components/schemas/CandidateBucketCount"
+          type:
+            - array
+            - "null"
+        probable_refs:
+          items:
+            $ref: "#/components/schemas/ProbableRefBucketCount"
+          type:
+            - array
+            - "null"
+      required:
+        - candidates
+        - probable_refs
       type: object
     RefActionData:
       additionalProperties: false
@@ -995,6 +1103,25 @@ paths:
                 $ref: "#/components/schemas/HouseError"
           description: Error
       summary: "Decide a match candidate: accept (credit_name → link a person; else opens a merge proposal), reject (kept forever) or defer"
+      tags:
+        - catalog-admin
+  /api/v1/admin/catalog/candidates/summary:
+    get:
+      operationId: catalogQueueSummary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeQueueSummary"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseError"
+          description: Error
+      summary: "Queue depth: candidates grouped by entity type × status, probable refs grouped by entity type"
       tags:
         - catalog-admin
   /api/v1/admin/catalog/claims/pending:

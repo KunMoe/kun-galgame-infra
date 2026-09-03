@@ -2,12 +2,15 @@
 import {
   CATALOG_FILTER_ALL,
   CATALOG_ENTITY_TYPES,
+  CATALOG_QUEUE_SUMMARY_KEY,
   CATALOG_SOURCE_LABELS,
-  MATCHED_BY_KINDS
+  MATCHED_BY_KINDS,
+  catalogExternalUrl
 } from '~/constants/catalog'
 import type {
   CatalogProbableRefItem,
   CatalogProbableRefPage,
+  CatalogQueueSummary,
   CatalogRefActionData
 } from '~~/shared/types/catalog'
 
@@ -21,19 +24,34 @@ watch([sourceID, entityType], () => {
   page.value = 1
 })
 
-const { data, status: fetchStatus, refresh, error } =
-  await useApiFetch<CatalogProbableRefPage>(
-    '/admin/catalog/refs/probable',
-    {
-      query: computed(() => ({
-        page: page.value,
-        limit,
-        source_id: sourceID.value,
-        entity_type: entityType.value
-      }))
-    },
+const { data: summary, refresh: refreshSummary } =
+  await useApiFetch<CatalogQueueSummary>(
+    '/admin/catalog/candidates/summary',
+    { key: CATALOG_QUEUE_SUMMARY_KEY },
     'catalog'
   )
+
+const entityBuckets = computed(() =>
+  [...(summary.value?.probable_refs ?? [])].sort((a, b) => b.count - a.count)
+)
+
+const {
+  data,
+  status: fetchStatus,
+  refresh,
+  error
+} = await useApiFetch<CatalogProbableRefPage>(
+  '/admin/catalog/refs/probable',
+  {
+    query: computed(() => ({
+      page: page.value,
+      limit,
+      source_id: sourceID.value,
+      entity_type: entityType.value
+    }))
+  },
+  'catalog'
+)
 const items = computed(() => data.value?.items ?? [])
 const total = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit)))
@@ -57,6 +75,9 @@ const entityTypeOptions = computed(() => [
 const matchedByKind = (matchedBy: string) =>
   MATCHED_BY_KINDS.find((k) => matchedBy.startsWith(k.prefix))
 
+const externalUrl = (r: CatalogProbableRefItem) =>
+  catalogExternalUrl(r.source_id, r.external_id, r.entity_type)
+
 const keyBody = (r: CatalogProbableRefItem) => ({
   entity_type: r.entity_type,
   entity_id: r.entity_id,
@@ -70,6 +91,10 @@ const refKey = (r: CatalogProbableRefItem) =>
 const acting = ref('')
 const conflictHint = ref('')
 
+const afterWrite = async () => {
+  await Promise.all([refresh(), refreshSummary()])
+}
+
 const confirmRef = async (r: CatalogProbableRefItem) => {
   acting.value = refKey(r)
   conflictHint.value = ''
@@ -80,7 +105,7 @@ const confirmRef = async (r: CatalogProbableRefItem) => {
     )
     if (res.code === 0) {
       useKunMessage('已确认为 exact', 'success')
-      await refresh()
+      await afterWrite()
     } else {
       useKunMessage(res.message || '确认失败', 'error')
       conflictHint.value = `${res.message}。若两者可能是同一实体，请到候选桶为它们建立候选后走合并流程。`
@@ -109,14 +134,17 @@ const confirmReject = async () => {
   }
   acting.value = refKey(r)
   try {
-    const res = await api.post<CatalogRefActionData>('/admin/catalog/refs/reject', {
-      ...keyBody(r),
-      reason: rejectReason.value.trim()
-    })
+    const res = await api.post<CatalogRefActionData>(
+      '/admin/catalog/refs/reject',
+      {
+        ...keyBody(r),
+        reason: rejectReason.value.trim()
+      }
+    )
     if (res.code === 0) {
       useKunMessage('已拒绝并记录负知识', 'success')
       rejectOpen.value = false
-      await refresh()
+      await afterWrite()
     } else {
       useKunMessage(res.message || '拒绝失败', 'error')
     }
@@ -130,6 +158,29 @@ const confirmReject = async () => {
   <div class="space-y-4">
     <h1 class="text-foreground text-2xl font-bold">目录人审队列</h1>
     <CatalogSubNav />
+
+    <div v-if="entityBuckets.length" class="flex flex-wrap items-center gap-2">
+      <span class="text-default-500 text-sm">待确认分布：</span>
+      <KunButton
+        :color="entityType === CATALOG_FILTER_ALL ? 'primary' : 'default'"
+        :variant="entityType === CATALOG_FILTER_ALL ? 'solid' : 'flat'"
+        size="xs"
+        @click="entityType = CATALOG_FILTER_ALL"
+      >
+        全部
+      </KunButton>
+      <KunButton
+        v-for="bucket in entityBuckets"
+        :key="bucket.entity_type"
+        :color="entityType === bucket.entity_type ? 'primary' : 'default'"
+        :variant="entityType === bucket.entity_type ? 'solid' : 'flat'"
+        size="xs"
+        @click="entityType = bucket.entity_type"
+      >
+        {{ CATALOG_ENTITY_TYPES[bucket.entity_type] ?? bucket.entity_type }}
+        <span class="ml-1 font-mono">{{ bucket.count }}</span>
+      </KunButton>
+    </div>
 
     <div class="flex flex-wrap items-center gap-2">
       <KunSelect
@@ -166,7 +217,7 @@ const confirmReject = async () => {
         <tbody>
           <tr
             v-for="r in items"
-            :key="`${r.entity_type}:${r.entity_id}:${r.source_id}:${r.external_id}`"
+            :key="refKey(r)"
             class="border-default-200 border-t align-top"
           >
             <td class="px-3 py-2">
@@ -176,12 +227,26 @@ const confirmReject = async () => {
               <span class="text-foreground">
                 {{ r.entity.display_name || `#${r.entity_id}` }}
               </span>
+              <span class="text-default-400 ml-1 font-mono text-xs">
+                #{{ r.entity_id }}
+              </span>
             </td>
             <td class="px-3 py-2">
               {{ CATALOG_SOURCE_LABELS[r.source_id] ?? r.source_id }}
             </td>
             <td class="px-3 py-2">
-              <span class="font-mono">{{ r.external_id }}</span>
+              <KunLink
+                v-if="externalUrl(r)"
+                :href="externalUrl(r) || ''"
+                target="_blank"
+                underline="hover"
+                color="primary"
+                class-name="font-mono"
+                is-show-anchor-icon
+              >
+                {{ r.external_id }}
+              </KunLink>
+              <span v-else class="font-mono">{{ r.external_id }}</span>
               <KunCopy :text="r.external_id" />
             </td>
             <td class="px-3 py-2">
@@ -239,7 +304,9 @@ const confirmReject = async () => {
         <p class="text-default-500 text-sm">
           将删除
           <span class="text-foreground font-medium">
-            {{ rejectTarget?.entity.display_name || `#${rejectTarget?.entity_id}` }}
+            {{
+              rejectTarget?.entity.display_name || `#${rejectTarget?.entity_id}`
+            }}
           </span>
           ↔
           <span class="font-mono">{{ rejectTarget?.external_id }}</span>

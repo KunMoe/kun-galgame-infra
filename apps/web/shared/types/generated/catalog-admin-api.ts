@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/catalog/candidates/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Queue depth: candidates grouped by entity type × status, probable refs grouped by entity type */
+        get: operations["catalogQueueSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/catalog/claims/pending": {
         parameters: {
             query?: never;
@@ -229,6 +246,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CandidateBucketCount: {
+            /** Format: int64 */
+            count: number;
+            /** Format: int32 */
+            entity_type: number;
+            /** Format: int32 */
+            status: number;
+        };
         CandidateItem: {
             a: components["schemas"]["EntitySummary"];
             /** Format: int64 */
@@ -344,12 +369,30 @@ export interface components {
              */
             credit_name_id: number;
         };
+        EntityRefSummary: {
+            external_id: string;
+            /** Format: int32 */
+            link_kind: number;
+            /** Format: int32 */
+            source_id: number;
+        };
         EntitySummary: {
+            /** Format: int32 */
+            claim_state?: number;
+            /** Format: int32 */
+            content_rating?: number;
             /** Format: int64 */
             credit_count?: number;
             display_name: string;
             /** Format: int64 */
             id: number;
+            /** Format: int32 */
+            medium_id?: number;
+            olang?: string;
+            refs?: components["schemas"]["EntityRefSummary"][] | null;
+            /** Format: int32 */
+            release_year?: number;
+            site?: string;
             /** Format: int32 */
             source_id?: number;
             /** Format: int32 */
@@ -475,6 +518,18 @@ export interface components {
             data?: components["schemas"]["ProposalActionData"];
             message: string;
         };
+        EnvelopeQueueSummary: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/EnvelopeQueueSummary.json
+             */
+            readonly $schema?: string;
+            /** Format: int64 */
+            code: number;
+            data?: components["schemas"]["QueueSummary"];
+            message: string;
+        };
         EnvelopeRefActionData: {
             /**
              * Format: uri
@@ -557,6 +612,12 @@ export interface components {
             /** Format: int64 */
             work_id: number;
         };
+        ProbableRefBucketCount: {
+            /** Format: int64 */
+            count: number;
+            /** Format: int32 */
+            entity_type: number;
+        };
         ProbableRefItem: {
             /** Format: date-time */
             created_at: string;
@@ -619,6 +680,10 @@ export interface components {
             target: components["schemas"]["EntitySummary"];
             /** Format: int64 */
             target_entity_id: number;
+        };
+        QueueSummary: {
+            candidates: components["schemas"]["CandidateBucketCount"][] | null;
+            probable_refs: components["schemas"]["ProbableRefBucketCount"][] | null;
         };
         RefActionData: {
             done: boolean;
@@ -754,6 +819,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EnvelopeDecideCandidateData"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseError"];
+                };
+            };
+        };
+    };
+    catalogQueueSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeQueueSummary"];
                 };
             };
             /** @description Error */

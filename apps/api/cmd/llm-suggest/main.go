@@ -9,6 +9,8 @@ import (
 
 	"api/internal/infrastructure/database"
 	"api/internal/platform/catalog/llmsuggest"
+	"api/internal/platform/catalog/repository"
+	"api/internal/platform/catalog/service"
 	"api/pkg/config"
 	"api/pkg/logger"
 
@@ -19,14 +21,19 @@ import (
 const defaultGoldSet = "internal/platform/catalog/llmsuggest/testdata/goldset.jsonl"
 
 func main() {
-	task := flag.String("task", "", "goldset | residue | sanity")
+	task := flag.String("task", "", "goldset | residue | sanity | queue-creditname | queue-workpair | queue-refs")
+	mode := flag.String("mode", "task", "task | apply | calibrate")
+	queue := flag.String("queue", "", "apply/calibrate: creditname | workpair | ref")
+	actor := flag.Int64("actor", 0, "apply: operator user id stamped on live writes")
+	minConf := flag.Float64("min-confidence", 0.9, "apply: minimum verdict confidence")
+	families := flag.String("families", "all", "queue-refs: chain | llm | all")
 	apply := flag.Bool("apply", false, "write suggestions (default: dry run — sample + print)")
 	limit := flag.Int("limit", 0, "cap items processed (0 = all); dry-run sample size")
 	conc := flag.Int("concurrency", 4, "parallel LLM calls (<=4)")
 	llmBase := flag.String("llm-base", "http://127.0.0.1:8002/v1", "vLLM OpenAI base URL")
 	model := flag.String("model", "qwen3-14b", "served model id")
 	goldPath := flag.String("goldset", defaultGoldSet, "gold set JSONL path")
-	egDSN := flag.String("eg-dsn", "", "erogamescape staging DSN (build-goldset; default: erogamescape on the catalog server)")
+	egDSN := flag.String("eg-dsn", "", "erogamescape staging DSN (default: erogamescape on the catalog server)")
 	buildGold := flag.Bool("build-goldset", false, "regenerate the gold set JSONL from local dumps, then exit")
 	calibrate := flag.Bool("calibrate", false, "print calibration metrics from persisted goldset verdicts, then exit")
 	batch := flag.Bool("batch", false, "goldset: judge in batches (throughput comparison; prompt_version v1-batch)")
@@ -76,6 +83,51 @@ func main() {
 		return
 	}
 
+	opts := llmsuggest.Options{
+		Model: *model, Concurrency: *conc, Limit: *limit, DryRun: !*apply, GoldSetPath: *goldPath, Batch: *batch,
+		Actor: *actor, MinConfidence: *minConf, Families: *families, Queue: *queue,
+	}
+
+	switch *families {
+	case "", llmsuggest.FamiliesAll, llmsuggest.FamiliesChain, llmsuggest.FamiliesLLM:
+	default:
+		fmt.Fprintf(os.Stderr, "unknown --families %q (want chain|llm|all)\n", *families)
+		os.Exit(2)
+	}
+
+	if *mode == "apply" {
+		if *actor <= 0 {
+			fmt.Fprintln(os.Stderr, "--actor <user-id> is required for --mode apply")
+			os.Exit(2)
+		}
+		st, err := llmsuggest.RunApply(ctx, catalogDB.DB(), adminQueue(catalogDB.DB()), opts)
+		fail(err)
+		fmt.Printf("apply queue=%s applied=%d counts=%v dry=%v\n", *queue, st.Applied, st.Counts, opts.DryRun)
+		if opts.DryRun {
+			fmt.Println("[dry run] nothing written — re-run with --apply")
+		}
+		return
+	}
+
+	if *mode == "calibrate" {
+		if *queue != llmsuggest.QueueWorkPair && *queue != llmsuggest.QueueRef {
+			fmt.Fprintln(os.Stderr, "--mode calibrate requires --queue workpair|ref")
+			os.Exit(2)
+		}
+		client := mustLLM(ctx, *llmBase, *model)
+		var egDB *gorm.DB
+		if *queue == llmsuggest.QueueRef {
+			egDB = tryEG(cfg, *egDSN)
+		}
+		metrics, err := llmsuggest.RunCalibrateQueue(ctx, catalogDB.DB(), egDB, client, opts)
+		fail(err)
+		printCalibration(metrics)
+		if opts.DryRun {
+			fmt.Println("[dry run] nothing written — re-run with --apply")
+		}
+		return
+	}
+
 	if *calibrate {
 		metrics, err := llmsuggest.Calibrate(catalogDB.DB(), *model, promptVersion)
 		if err != nil {
@@ -87,20 +139,14 @@ func main() {
 	}
 
 	if *task == "" {
-		slog.Error("no --task given (goldset | residue | bid-audit), or use --build-goldset / --calibrate")
+		slog.Error("no --task given (goldset | residue | sanity | queue-creditname | queue-workpair | queue-refs), or use --build-goldset / --calibrate / --mode apply|calibrate")
 		os.Exit(2)
 	}
 
-	client := llmsuggest.NewClient(*llmBase, *model)
-	models, err := client.Ping(ctx)
-	if err != nil {
-		fmt.Printf("BLOCKED: local vLLM unreachable at %s (%v).\n"+
-			"Start kungal-llm-infra and retry — this is a designed precondition, not a failure.\n", *llmBase, err)
-		os.Exit(3)
+	var client *llmsuggest.Client
+	if needsLLM(*task, *families) {
+		client = mustLLM(ctx, *llmBase, *model)
 	}
-	slog.Info("vLLM reachable", "base", *llmBase, "models", models)
-
-	opts := llmsuggest.Options{Model: *model, Concurrency: *conc, Limit: *limit, DryRun: !*apply, GoldSetPath: *goldPath, Batch: *batch}
 
 	failures := 0
 	switch *task {
@@ -126,6 +172,22 @@ func main() {
 		fail(err)
 		fmt.Printf("sanity: extraction↔parser key overlap = %.3f over %d parse-OK infoboxes\n", mean, sampled)
 		return
+	case "queue-creditname":
+		judged, errs, err := llmsuggest.RunQueueCreditName(ctx, catalogDB.DB(), client, opts)
+		fail(err)
+		failures = errs
+		slog.Info("queue-creditname done", "judged", judged, "errors", errs, "dry", opts.DryRun)
+	case "queue-workpair":
+		judged, errs, err := llmsuggest.RunQueueWorkPair(ctx, catalogDB.DB(), client, opts)
+		fail(err)
+		failures = errs
+		slog.Info("queue-workpair done", "judged", judged, "errors", errs, "dry", opts.DryRun)
+	case "queue-refs":
+		egDB := tryEG(cfg, *egDSN)
+		judged, errs, err := llmsuggest.RunQueueRefs(ctx, catalogDB.DB(), egDB, client, opts)
+		fail(err)
+		failures = errs
+		slog.Info("queue-refs done", "judged", judged, "errors", errs, "families", *families, "dry", opts.DryRun)
 	default:
 		slog.Error("unknown task", "task", *task)
 		os.Exit(2)
@@ -138,7 +200,38 @@ func main() {
 	}
 }
 
+func needsLLM(task, families string) bool {
+	switch task {
+	case "queue-refs":
+		return families != llmsuggest.FamiliesChain
+	case "goldset", "residue", "sanity", "queue-creditname", "queue-workpair":
+		return true
+	default:
+		return false
+	}
+}
+
+func mustLLM(ctx context.Context, base, model string) *llmsuggest.Client {
+	client := llmsuggest.NewClient(base, model)
+	models, err := client.Ping(ctx)
+	if err != nil {
+		fmt.Printf("BLOCKED: local vLLM unreachable at %s (%v).\n"+
+			"Start kungal-llm-infra and retry — this is a designed precondition, not a failure.\n", base, err)
+		os.Exit(3)
+	}
+	slog.Info("vLLM reachable", "base", base, "models", models)
+	return client
+}
+
 func openEG(cfg *config.Config, dsn string) *gorm.DB {
+	db := tryEG(cfg, dsn)
+	if db == nil {
+		os.Exit(1)
+	}
+	return db
+}
+
+func tryEG(cfg *config.Config, dsn string) *gorm.DB {
 	if dsn == "" {
 		egCfg := cfg.CatalogDatabase
 		egCfg.DBName = "erogamescape"
@@ -146,10 +239,17 @@ func openEG(cfg *config.Config, dsn string) *gorm.DB {
 	}
 	db, err := database.OpenJob(dsn)
 	if err != nil {
-		slog.Error("erogamescape connect", "error", err)
-		os.Exit(1)
+		slog.Warn("erogamescape connect", "error", err)
+		return nil
 	}
 	return db
+}
+
+func adminQueue(db *gorm.DB) *service.AdminQueueService {
+	resolve := service.NewResolveService(repository.NewRedirectRepository(db))
+	merge := service.NewMergeService(db, resolve,
+		repository.NewProposalRepository(db), repository.NewRevisionRepository(db))
+	return service.NewAdminQueueService(db, merge)
 }
 
 func printCalibration(metrics []llmsuggest.LayerMetrics) {
