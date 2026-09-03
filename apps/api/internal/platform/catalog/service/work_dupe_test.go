@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const animeMediumID int16 = 4
+
 func TestSubmitWorkFilesSpacingDupeCandidate(t *testing.T) {
 	s := newLifecycle(t)
 	existing := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "既存作品の表示名")
@@ -32,6 +34,24 @@ func TestSubmitWorkFilesSpacingDupeCandidate(t *testing.T) {
 	assert.Equal(t, model.CandidateReasonNameNormEqual, got.Reason)
 	assert.Equal(t, model.CandidateStatusPending, got.Status)
 	assert.Nil(t, got.DecidedBy)
+}
+
+func TestSubmitWorkCrossMediumCollisionFilesNothing(t *testing.T) {
+	s := newLifecycle(t)
+	anime := createWorkX(t, animeMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "既存作品の表示名")
+	require.NoError(t, testDB.Create(&model.CatalogWorkTitle{
+		WorkID: anime.ID, Lang: "ja", Title: "重複検出タイトル", Kind: model.WorkTitleKindOfficial,
+	}).Error)
+
+	_, err := s.SubmitWork(t.Context(), SubmitWorkParams{
+		Site: submitSite, ProductWorkID: 90505, ActorUID: 7,
+		Fields: submitFields("重複 検出 タイトル"),
+	})
+	require.NoError(t, err)
+
+	var filed int64
+	require.NoError(t, testDB.Model(&model.CatalogMatchCandidate{}).Count(&filed).Error)
+	assert.Zero(t, filed, "an anime sharing the title must not pair with a galgame mint")
 }
 
 func TestSubmitWorkWithoutCollisionFilesNothing(t *testing.T) {

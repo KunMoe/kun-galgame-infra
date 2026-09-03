@@ -54,6 +54,27 @@ func printCensus(c *census, w io.Writer) {
 	for _, k := range names {
 		fmt.Fprintf(w, "  lane %-18s %d\n", k, lanes[k])
 	}
+	var both []pairRow
+	for i, r := range c.rows {
+		if c.verdicts[i] == bucketBothKungal {
+			both = append(both, r)
+		}
+	}
+	const bothKungalSamples = 50
+	site := func(p *string) string {
+		if p == nil {
+			return ""
+		}
+		return *p
+	}
+	for i, r := range both {
+		if i >= bothKungalSamples {
+			fmt.Fprintf(w, "  … and %d more\n", len(both)-bothKungalSamples)
+			break
+		}
+		fmt.Fprintf(w, "  both-kungal: %d %d %q %q %q %q\n",
+			r.A, r.B, r.NameA, r.NameB, site(r.SiteA), site(r.SiteB))
+	}
 	for i, g := range c.groups {
 		if i >= 5 {
 			break

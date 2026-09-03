@@ -44,7 +44,7 @@ type pairRow struct {
 func pairQuerySQL() string {
 	return `
 WITH lw AS (
-  SELECT id, site, display_name FROM catalog_work WHERE deleted_at IS NULL
+  SELECT id, site, display_name, medium_id FROM catalog_work WHERE deleted_at IS NULL
 ),
 norms AS (
   SELECT work_id, n, bool_or(official) AS official FROM (` + service.WorkDupeCorpusSQL() + `) c GROUP BY work_id, n
@@ -163,7 +163,7 @@ FROM universe p
 JOIN lane la ON la.id = p.a
 JOIN lane lb ON lb.id = p.b
 JOIN lw wa ON wa.id = p.a
-JOIN lw wb ON wb.id = p.b
+JOIN lw wb ON wb.id = p.b AND wb.medium_id = wa.medium_id
 LEFT JOIN wdate da ON da.work_id = p.a
 LEFT JOIN wdate dbb ON dbb.work_id = p.b
 LEFT JOIN bgmdate ba ON ba.work_id = p.a
