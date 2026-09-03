@@ -30,7 +30,7 @@ const palette = computed(() =>
 const option = computed<EChartsOption>(() => {
   const p = palette.value
   return {
-    grid: { left: 6, right: 14, top: 20, bottom: 6, containLabel: true },
+    grid: { left: 6, right: 14, top: 20, bottom: 6, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     tooltip: {
       trigger: 'axis',
       backgroundColor: p.tipBg,

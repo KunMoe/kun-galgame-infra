@@ -35,7 +35,7 @@ const dailyOption = computed<EChartsOption>(() => {
   const p = palette.value
   const avg = daily.value?.summary.daily_average ?? 0
   return {
-    grid: { left: 6, right: 14, top: 20, bottom: 6, containLabel: true },
+    grid: { left: 6, right: 14, top: 20, bottom: 6, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     tooltip: { trigger: 'axis', backgroundColor: p.tipBg, borderWidth: 0, padding: [6, 10], textStyle: { color: p.tipText, fontSize: 12 }, axisPointer: { type: 'shadow' } },
     xAxis: { type: 'category', data: s.map((d) => d.date.slice(5)), axisTick: { show: false }, axisLine: { lineStyle: { color: p.axis } }, axisLabel: { color: p.text, fontSize: 11, hideOverlap: true } },
     yAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: p.split } }, axisLabel: { color: p.text, fontSize: 11 } },
@@ -55,7 +55,7 @@ const hourlyOption = computed<EChartsOption>(() => {
   const s = hourly.value?.series ?? []
   const p = palette.value
   return {
-    grid: { left: 6, right: 14, top: 16, bottom: 6, containLabel: true },
+    grid: { left: 6, right: 14, top: 16, bottom: 6, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     tooltip: { trigger: 'axis', backgroundColor: p.tipBg, borderWidth: 0, padding: [6, 10], textStyle: { color: p.tipText, fontSize: 12 }, axisPointer: { type: 'shadow' }, formatter: (ps: unknown) => { const x = (ps as { axisValue: string; data: number }[])[0]!; return `${x.axisValue}:00<br/>注册 ${x.data}` } },
     xAxis: { type: 'category', data: hourLabels, axisTick: { show: false }, axisLine: { lineStyle: { color: p.axis } }, axisLabel: { color: p.text, fontSize: 11, interval: 1 } },
     yAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: p.split } }, axisLabel: { color: p.text, fontSize: 11 } },

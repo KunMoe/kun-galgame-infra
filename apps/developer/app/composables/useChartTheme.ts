@@ -8,16 +8,21 @@ import type { EChartsOption } from 'echarts'
  * palette the rest of the page uses the moment @kungal/ui-tokens ships a new
  * ramp. Reading the custom property keeps one source of truth.
  *
- * The canvas round-trip is the normalisation step: getComputedStyle hands back
- * `oklch(...)`, and while a browser canvas accepts that, zrender parses colors
- * itself for hover/opacity variants and does not understand OKLCH — it silently
- * paints black. Assigning to fillStyle and reading it back returns the browser's
- * own `#rrggbb`, which zrender does understand.
+ * The pixel read-back is the normalisation step, and it has to be a read-back.
+ * Assigning to `ctx.fillStyle` and reading the property back does NOT
+ * normalise — Chrome serialises `oklch(...)` right back out. The bars still
+ * looked correct, because a fill goes straight to the canvas, which does
+ * understand OKLCH; zrender does not, and it parses the color itself to derive
+ * a bar's hover fill. `lift()` returned undefined and the hovered bar was
+ * painted with no fill at all — it vanished under the cursor. Only the painted
+ * pixel is guaranteed to come back as sRGB.
  */
 const readTokens = (names: readonly string[]) => {
   const style = getComputedStyle(document.documentElement)
   const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
+  canvas.width = 1
+  canvas.height = 1
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
   const out: Record<string, string> = {}
   for (const name of names) {
     const raw = style.getPropertyValue(name).trim()
@@ -25,9 +30,14 @@ const readTokens = (names: readonly string[]) => {
       out[name] = raw
       continue
     }
-    ctx.fillStyle = '#000'
+    ctx.clearRect(0, 0, 1, 1)
     ctx.fillStyle = raw
-    out[name] = ctx.fillStyle as string
+    ctx.fillRect(0, 0, 1, 1)
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
+    out[name] =
+      a === 255
+        ? `rgb(${r},${g},${b})`
+        : `rgba(${r},${g},${b},${(a! / 255).toFixed(3)})`
   }
   return out
 }
