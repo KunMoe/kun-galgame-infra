@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"testing"
 
+	"api/internal/platform/apiv2/problem"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -176,6 +178,55 @@ func TestLiveEngineCarriesDescriptionAliases(t *testing.T) {
 	require.NoError(t, json.Unmarshal(body, &eng))
 	require.Equal(t, "test", eng.Description)
 	require.NotNil(t, eng.Aliases)
+}
+
+func TestLiveRoleFace(t *testing.T) {
+	env := liveCatalog(t)
+	// The seeded registry sits under this face, so the default page is a full
+	// 20 with a cursor, not the fixture row alone.
+	status, _, body := liveDo(t, env, http.MethodGet, "/v2/catalog/roles", liveAppKey, "")
+	require.Equal(t, 200, status)
+	var list struct {
+		Items []struct {
+			Object      string `json:"object"`
+			ID          string `json:"id"`
+			Key         string `json:"key"`
+			Category    string `json:"category"`
+			DisplayName string `json:"display_name"`
+			Localized   map[string]struct {
+				Value string `json:"value"`
+			} `json:"localized"`
+		} `json:"items"`
+		NextCursor *string `json:"next_cursor"`
+	}
+	require.NoError(t, json.Unmarshal(body, &list), string(body))
+	require.Len(t, list.Items, 20)
+	require.NotNil(t, list.NextCursor)
+	require.Equal(t, "role", list.Items[0].Object)
+
+	status, _, body = liveDo(t, env, http.MethodGet,
+		"/v2/catalog/roles?ids="+idstr(env.fx.Role), liveAppKey, "")
+	require.Equal(t, 200, status)
+	require.NoError(t, json.Unmarshal(body, &list))
+	require.Len(t, list.Items, 1)
+	require.Equal(t, "live原画", list.Items[0].Key)
+	require.Equal(t, "原画", list.Items[0].DisplayName)
+	require.Equal(t, "原画", list.Items[0].Localized["zh-Hans"].Value)
+	require.Equal(t, "原画", list.Items[0].Localized["ja"].Value)
+
+	status, _, body = liveDo(t, env, http.MethodGet, "/v2/catalog/roles/"+idstr(env.fx.Role), liveAppKey, "")
+	require.Equal(t, 200, status)
+	var det struct {
+		Key string `json:"key"`
+	}
+	require.NoError(t, json.Unmarshal(body, &det))
+	require.Equal(t, "live原画", det.Key)
+
+	status, _, body = liveDo(t, env, http.MethodGet, "/v2/catalog/roles/424242", liveAppKey, "")
+	require.Equal(t, 404, status)
+	var p problem.Problem
+	require.NoError(t, json.Unmarshal(body, &p))
+	require.Equal(t, problem.CodeNotFound, p.Code)
 }
 
 func TestLiveCharacterIncludeTraits(t *testing.T) {

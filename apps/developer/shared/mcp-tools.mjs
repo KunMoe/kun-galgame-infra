@@ -56,6 +56,9 @@ const DESCRIPTIONS = {
   getCatalogEngine: '按 id 取引擎记录（名称与跨源 refs）。',
   listCatalogEngines:
     '浏览引擎词表本身——用来发现 engine id 再喂给 listCatalogWorks 的 engine_id=。',
+  getCatalogRole: '按 id 取署名职务注册表的一行。未知 id 为 404。',
+  listCatalogRoles:
+    '浏览署名职务注册表本身（全表约 231 行）——key 与署名组的 role_key 相接。refs= 对它不解析：职务没有外部锚类型。',
   getCatalogSeries:
     '按 id 取系列（身份、源锚与简介）；成员作品用 listCatalogWorks 的 series_id= 取——回答「这个系列按什么顺序玩」。',
   listCatalogSeries:

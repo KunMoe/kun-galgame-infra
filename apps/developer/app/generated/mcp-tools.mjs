@@ -168,6 +168,20 @@ export const mcpTools = [
     ]
   },
   {
+    "name": "getCatalogRole",
+    "method": "GET",
+    "path": "/v2/catalog/roles/{id}",
+    "summary": "Get one role",
+    "needs_key": true,
+    "params": [
+      "id",
+      "nsfw",
+      "view",
+      "include",
+      "fields"
+    ]
+  },
+  {
     "name": "getCatalogSchema",
     "method": "GET",
     "path": "/v2/catalog/schemas/{object}",
@@ -678,6 +692,26 @@ export const mcpTools = [
       "entity_id",
       "site",
       "actor_uid"
+    ]
+  },
+  {
+    "name": "listCatalogRoles",
+    "method": "GET",
+    "path": "/v2/catalog/roles",
+    "summary": "List roles",
+    "needs_key": true,
+    "params": [
+      "cursor",
+      "limit",
+      "view",
+      "include",
+      "fields",
+      "ids",
+      "refs",
+      "include_total",
+      "facets",
+      "sort",
+      "nsfw"
     ]
   },
   {

@@ -42,7 +42,7 @@ type WorkCharacter struct {
 
 type CreditGroup struct {
 	_        struct{}      `json:"-" additionalProperties:"true"`
-	RoleKey  string        `json:"role_key" maxLength:"64" pattern:"^[a-z][a-z0-9_]*$" doc:"Credit role token."`
+	RoleKey  string        `json:"role_key" maxLength:"64" doc:"Registry token; joins /v2/catalog/roles. Not always ASCII: 39 of the ~231 live registry keys are CJK and others start with a digit, so the ascii-slug pattern this once declared rejected most real credit groups. Must not be used as a discriminant."`
 	RoleName string        `json:"role_name" maxLength:"512" doc:"Must not be used as a discriminant."`
 	Credits  []CreditEntry `json:"credits" doc:"Names credited in this role. Empty array, never null."`
 }

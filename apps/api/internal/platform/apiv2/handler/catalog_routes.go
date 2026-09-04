@@ -58,6 +58,9 @@ type getSeriesOutput struct {
 type getEngineOutput struct {
 	Body repr.Engine
 }
+type getRoleOutput struct {
+	Body repr.Role
+}
 type getReleaseOutput struct {
 	Body repr.Release
 }
@@ -153,6 +156,16 @@ func registerCatalog(api huma.API, cat *Catalog) {
 		Errors:             authErrs,
 		SkipValidateParams: true,
 	}, getCatalogEngine(cat))
+	huma.Register(api, huma.Operation{
+		OperationID:        "getCatalogRole",
+		Method:             http.MethodGet,
+		Path:               "/v2/catalog/roles/{id}",
+		Summary:            "Get one role",
+		Description:        "A credit-role registry row. Unknown id is 404 NOT_FOUND. Requires an application key.",
+		Tags:               catalog,
+		Errors:             authErrs,
+		SkipValidateParams: true,
+	}, getCatalogRole(cat))
 	huma.Register(api, huma.Operation{
 		OperationID:        "getCatalogRelease",
 		Method:             http.MethodGet,
@@ -307,6 +320,20 @@ func getCatalogEngine(cat *Catalog) func(context.Context, *ResourceIDInput) (*ge
 			return nil, catalogErr(ctx, gerr)
 		}
 		return &getEngineOutput{Body: rec}, nil
+	}
+}
+
+func getCatalogRole(cat *Catalog) func(context.Context, *ResourceIDInput) (*getRoleOutput, error) {
+	return func(ctx context.Context, in *ResourceIDInput) (*getRoleOutput, error) {
+		id, _, err := parseResource(ctx, in, collect.RoleSpec())
+		if err != nil {
+			return nil, err
+		}
+		rec, gerr := cat.GetRole(ctx, id)
+		if gerr != nil {
+			return nil, catalogErr(ctx, gerr)
+		}
+		return &getRoleOutput{Body: rec}, nil
 	}
 }
 

@@ -23,6 +23,9 @@ type listSeriesOutput struct {
 type listEnginesOutput struct {
 	Body repr.List[repr.Engine]
 }
+type listRolesOutput struct {
+	Body repr.List[repr.Role]
+}
 type listReleasesOutput struct {
 	Body repr.List[repr.Release]
 }
@@ -97,6 +100,16 @@ func registerCatalogLists(api huma.API, cat *Catalog) {
 		Errors:             errs,
 		SkipValidateParams: true,
 	}, listCatalogEngines(cat))
+	huma.Register(api, huma.Operation{
+		OperationID:        "listCatalogRoles",
+		Method:             http.MethodGet,
+		Path:               "/v2/catalog/roles",
+		Summary:            "List roles",
+		Description:        "Keyset-paginated credit-role registry. The full registry is ~231 rows, so a client building a picker can fetch it whole in three pages. key joins the role_key on credit groups; ids= is a batch lane and does not paginate. refs= is not resolved: role has no catalog_external_ref entity_type. Requires an application key.",
+		Tags:               catalog,
+		Errors:             errs,
+		SkipValidateParams: true,
+	}, listCatalogRoles(cat))
 	huma.Register(api, huma.Operation{
 		OperationID:        "listCatalogReleases",
 		Method:             http.MethodGet,
@@ -224,6 +237,20 @@ func listCatalogEngines(cat *Catalog) func(context.Context, *CollectionInput) (*
 			return nil, catalogErr(ctx, lerr)
 		}
 		return &listEnginesOutput{Body: page}, nil
+	}
+}
+
+func listCatalogRoles(cat *Catalog) func(context.Context, *CollectionInput) (*listRolesOutput, error) {
+	return func(ctx context.Context, in *CollectionInput) (*listRolesOutput, error) {
+		q, err := parseCatalogList(ctx, in, collect.RoleSpec())
+		if err != nil {
+			return nil, err
+		}
+		page, lerr := cat.ListRoles(ctx, q)
+		if lerr != nil {
+			return nil, catalogErr(ctx, lerr)
+		}
+		return &listRolesOutput{Body: page}, nil
 	}
 }
 

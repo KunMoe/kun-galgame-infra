@@ -96,6 +96,32 @@ func engineFromListItem(it dto.PublicEngineListItem) repr.Engine {
 	}
 }
 
+// roleFromListItem mirrors the display-name chain credit groups use
+// (public_work_blocks firstNonEmptyPub): name_cn, then name_ja, then key.
+func roleFromListItem(it dto.PublicRoleListItem) repr.Role {
+	display := it.NameCN
+	if display == "" {
+		display = it.NameJA
+	}
+	if display == "" {
+		display = it.Key
+	}
+	localized := map[string]repr.LocalizedText{}
+	if it.NameCN != "" {
+		localized["zh-Hans"] = repr.LocalizedText{Value: it.NameCN}
+	}
+	if it.NameJA != "" {
+		localized["ja"] = repr.LocalizedText{Value: it.NameJA}
+	}
+	if it.NameEN != "" {
+		localized["en"] = repr.LocalizedText{Value: it.NameEN}
+	}
+	return repr.Role{
+		Object: "role", ID: repr.ID(it.ID), Key: it.Key, Category: it.Category,
+		DisplayName: display, Localized: localized, Deprecated: it.Deprecated,
+	}
+}
+
 func tagFromDetail(rec dto.PublicTagDetail, include []string) repr.Tag {
 	out := repr.Tag{
 		Object: "tag", ID: repr.ID(rec.ID), DisplayName: rec.Name,

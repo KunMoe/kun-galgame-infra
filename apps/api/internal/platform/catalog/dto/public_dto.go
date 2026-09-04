@@ -587,6 +587,22 @@ type PublicEnginesListData struct {
 	Total      int64                  `json:"total"`
 }
 
+type PublicRoleListItem struct {
+	ID         int64  `json:"id"`
+	Key        string `json:"key"`
+	Category   string `json:"category"`
+	NameCN     string `json:"name_cn"`
+	NameJA     string `json:"name_ja"`
+	NameEN     string `json:"name_en"`
+	Deprecated bool   `json:"deprecated"`
+}
+
+type PublicRolesListData struct {
+	Items      []PublicRoleListItem `json:"items"`
+	NextCursor *string              `json:"next_cursor"`
+	Total      int64                `json:"total"`
+}
+
 type PublicCalendarData struct {
 	Month      string               `json:"month,omitempty" doc:"YYYY-MM — the month bucket only"`
 	Year       string               `json:"year,omitempty" doc:"YYYY — the pending bucket only"`

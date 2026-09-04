@@ -16,6 +16,7 @@ const (
 	taxonomyLaneTags    = "tags"
 	taxonomyLaneEngines = "engines"
 	taxonomyLaneSeries  = "series"
+	taxonomyLaneRoles   = "roles"
 )
 
 type LabelsListFilter struct {
@@ -36,6 +37,10 @@ type TagsListFilter struct {
 type EnginesListFilter struct {
 	NSFW bool
 	IDs  []int64
+}
+
+type RolesListFilter struct {
+	IDs []int64
 }
 
 func (s *PublicService) LabelsList(ctx context.Context, f LabelsListFilter, cursor string, limit int) (dto.PublicLabelsListData, error) {
@@ -300,6 +305,81 @@ func (s *PublicService) EngineDetail(ctx context.Context, id int64, nsfw bool) (
 		return dto.PublicEngine{}, false, err
 	}
 	return rec, true, nil
+}
+
+func (s *PublicService) RolesList(ctx context.Context, f RolesListFilter, cursor string, limit int) (dto.PublicRolesListData, error) {
+	cur, err := decodePublicCursor(cursor, taxonomyLaneRoles)
+	if err != nil {
+		return dto.PublicRolesListData{}, err
+	}
+	limit = clampBrowseLimit(limit)
+
+	var where []string
+	var args []any
+	if len(f.IDs) > 0 {
+		where = append(where, "id IN ?")
+		args = append(args, f.IDs)
+	}
+	filterWhere, filterArgs := append([]string(nil), where...), append([]any(nil), args...)
+	if cur.ID > 0 {
+		where = append(where, "id > ?")
+		args = append(args, cur.ID)
+	}
+
+	var rows []roleRow
+	q := `SELECT id, key, category, name_cn, name_ja, name_en, is_deprecated FROM catalog_role ` +
+		whereClause(where) + ` ORDER BY id ASC`
+	q, args, paginated := applyBrowseLimit(q, args, limit+taxonomyOverFetch, f.IDs)
+	if err := s.db.WithContext(ctx).Raw(q, args...).Scan(&rows).Error; err != nil {
+		return dto.PublicRolesListData{}, err
+	}
+
+	var more bool
+	if paginated {
+		rows, more = taxonomyTrim(rows, limit)
+	}
+	ids := make([]int64, len(rows))
+	out := dto.PublicRolesListData{Items: make([]dto.PublicRoleListItem, len(rows))}
+	for i, r := range rows {
+		ids[i] = r.ID
+		out.Items[i] = r.item()
+	}
+	if out.Total, err = s.taxonomyTotal(ctx, "catalog_role", filterWhere, filterArgs); err != nil {
+		return dto.PublicRolesListData{}, err
+	}
+	out.NextCursor = taxonomyNextCursor(taxonomyLaneRoles, ids, more)
+	return out, nil
+}
+
+func (s *PublicService) RoleDetail(ctx context.Context, id int64) (dto.PublicRoleListItem, bool, error) {
+	var head roleRow
+	if err := s.db.WithContext(ctx).Raw(
+		`SELECT id, key, category, name_cn, name_ja, name_en, is_deprecated FROM catalog_role WHERE id = ?`,
+		id).Scan(&head).Error; err != nil {
+		return dto.PublicRoleListItem{}, false, err
+	}
+	if head.ID == 0 {
+		return dto.PublicRoleListItem{}, false, nil
+	}
+	return head.item(), true, nil
+}
+
+type roleRow struct {
+	ID           int64  `gorm:"column:id"`
+	Key          string `gorm:"column:key"`
+	Category     string `gorm:"column:category"`
+	NameCN       string `gorm:"column:name_cn"`
+	NameJA       string `gorm:"column:name_ja"`
+	NameEN       string `gorm:"column:name_en"`
+	IsDeprecated bool   `gorm:"column:is_deprecated"`
+}
+
+func (r roleRow) item() dto.PublicRoleListItem {
+	return dto.PublicRoleListItem{
+		ID: r.ID, Key: r.Key, Category: r.Category,
+		NameCN: r.NameCN, NameJA: r.NameJA, NameEN: r.NameEN,
+		Deprecated: r.IsDeprecated,
+	}
 }
 
 var taxonomyLiveClaim = []string{model.ClaimStateKeyLive}
