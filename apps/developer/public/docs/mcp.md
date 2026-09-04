@@ -11,7 +11,7 @@
 
 NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端点 https://mcp.nextmoe.dev/mcp，Streamable HTTP、stateless，带上同一把 API 密钥即可。它是一层纯透传适配——每次工具调用就是一次对公开 /v2 GET 的请求，鉴权、限流、配额与用量与直连毫无区别。工具名就是 OpenAPI operationId，清单由 cmd/gen-v2-portal 从同一份 v2 spec 生成。
 
-## 工具（55 个）
+## 工具（57 个）
 
 - `getCatalogCharacter` `GET /v2/catalog/characters/{id}`：按 id 取角色；view=full 追加性别、生日、三围、血型与 instance_of_id。nsfw 同时控 r18 作品与 sexual 系 traits 的可见性。
 - `getCatalogCharacterAppearances` `GET /v2/catalog/characters/{id}/appearances`：一个角色出演的全部作品，各带 roster_role、剧透等级与配音署名，offset 游标分页。
@@ -25,6 +25,7 @@ NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端�
 - `getCatalogProposal` `GET /v2/catalog/proposals/{id}`：按 id 取单条提案的公开透明视图：提案人、状态、目标实体与时间戳；include=amendments 追加修订链。
 - `getCatalogRelease` `GET /v2/catalog/releases/{id}`：按 id 取单条发售行。被合并的 id 返回 404 ENTITY_MERGED；母作品是 r18 时，不带 nsfw=true 也是 404。
 - `getCatalogRevision` `GET /v2/catalog/revisions/{id}`：按 id 取单条修订；include=diff 追加相对 diff_base（缺省为前一条）的字段级变更集。
+- `getCatalogRole` `GET /v2/catalog/roles/{id}`：按 id 取署名职务注册表的一行。未知 id 为 404。
 - `getCatalogSchema` `GET /v2/catalog/schemas/{object}`（无需密钥）：一个实体家族的可编辑字段 schema 与 include 令牌全集（含 FULL_SET）。无需凭据，且不评估调用方权限——它描述的是形状，不是许可。
 - `getCatalogSeries` `GET /v2/catalog/series/{id}`：按 id 取系列（身份、源锚与简介）；成员作品用 listCatalogWorks 的 series_id= 取——回答「这个系列按什么顺序玩」。
 - `getCatalogStats` `GET /v2/catalog/stats`（无需密钥）：全库计数：各家族 LIVE 实体总量。无参数，无需凭据。
@@ -58,6 +59,7 @@ NextMoe 开放 API 同时以 MCP（Model Context Protocol）server 暴露：端�
 - `listCatalogRedirects` `GET /v2/catalog/redirects`：合并去向流：被合并掉的 id 指向哪个继任者，最旧优先。存下游标增量消费，就能把本地副本里的死 id 换成活的。object= 收敛到单个家族；不接受 ids=。
 - `listCatalogReleases` `GET /v2/catalog/releases`：发售动态的 release 粒度：每一条发售行各自成项，移植版 / 复刻 / 中文化都看得见（月历只把作品放在最早发售月且只显示一次）。缺省按日期倒序。
 - `listCatalogRevisions` `GET /v2/catalog/revisions`：已合入的编辑修订流，缺省最新优先；sort=recorded_asc 按 id 从旧到新走同一个集合，这是镜像与贡献统计该用的姿态（配一条水位线）。object= + entity_id= 收敛到单个实体的历史。
+- `listCatalogRoles` `GET /v2/catalog/roles`：浏览署名职务注册表本身（全表约 231 行）——key 与署名组的 role_key 相接。refs= 对它不解析：职务没有外部锚类型。
 - `listCatalogSeries` `GET /v2/catalog/series`：浏览系列词表本身。系列不进搜索索引，这是发现 series id 的唯一入口；refs= 对它不解析：系列没有外部锚类型。
 - `listCatalogTags` `GET /v2/catalog/tags`：浏览正典标签词表本身——用来发现 tag id 再喂给 listCatalogWorks 的 tag_id=。
 - `listCatalogTraits` `GET /v2/catalog/traits`：浏览角色特征词表本身——用来发现 trait id。refs= 对它不解析：特征没有外部锚类型。

@@ -99,7 +99,7 @@ func mustLiveV2Key() string {
 
 type liveFix struct {
 	Work, Pending, Claimable, Anchored  int64
-	Company, Tag, Series, Engine        int64
+	Company, Tag, Series, Engine, Role  int64
 	Release, Character, Person, Credit  int64
 	Trait, Cover                        int64
 	NewsItem                            int64
@@ -556,6 +556,16 @@ func seedLiveFixtures(db *gorm.DB, claims *catsvc.ClaimLifecycleService) (liveFi
 		return fx, err
 	}
 	fx.Engine = en.ID
+
+	// catalog_role is registry data (seed.Run), deliberately outside the TRUNCATE
+	// above — other packages' fixtures share the table on a shared test DB, so
+	// this row is keyed uniquely and written idempotently. The CJK key is the
+	// point: 39 of the production registry's keys are CJK.
+	role := &model.CatalogRole{ID: 900001, Key: "live原画", Category: "art", NameCN: "原画", NameJA: "原画"}
+	if err := db.Where(model.CatalogRole{Key: role.Key}).FirstOrCreate(role).Error; err != nil {
+		return fx, err
+	}
+	fx.Role = role.ID
 
 	y, m := int16(2024), int16(1)
 	rel := &model.CatalogRelease{WorkID: w.ID, Kind: model.ReleaseKindDefault, ReleasedY: &y, ReleasedM: &m, Extra: empty, FieldProvenance: empty}

@@ -626,7 +626,7 @@ export const searchIndex: SearchEntry[] = [
     "r": "/docs/v2",
     "t": "Public API v2",
     "s": "端点参考",
-    "d": "/v2 · 90 个端点",
+    "d": "/v2 · 92 个端点",
     "b": "v2 /v2 API v2 Public API v2"
   },
   {
@@ -831,6 +831,20 @@ export const searchIndex: SearchEntry[] = [
     "s": "端点 · 目录",
     "d": "GET /v2/catalog/revisions/{id}",
     "b": "getCatalogRevision /v2/catalog/revisions/{id} get One revision include=diff adds the field-level change set against diff_base, or against the preceding revision when diff_base is absent. This id is what POST /v2/moderation/reverts takes. Requires an application key. include=diff 追加相对 diff_base 的字段级变更集；diff_base 缺席时相对前一条修订。此 id 即 POST /v2/moderation/reverts 所取。需要应用密钥。 catalog:read id include view fields diff_base"
+  },
+  {
+    "r": "/docs/v2/listCatalogRoles",
+    "t": "列出署名职务",
+    "s": "端点 · 目录",
+    "d": "GET /v2/catalog/roles",
+    "b": "listCatalogRoles /v2/catalog/roles get List roles Keyset-paginated credit-role registry. The full registry is ~231 rows, so a client building a picker can fetch it whole in three pages. key joins the role_key on credit groups; ids= is a batch lane and does not paginate. refs= is not resolved: role has no catalog_external_ref entity_type. Requires an application key. keyset 分页的署名职务注册表。全表约 231 行，构建选择器的客户端三页即可取完。key 与署名组的 role_key 相接；ids= 是批量车道，不分页。refs= 不解析：职务没有 catalog_external_ref 实体类型。需要应用密钥。 catalog:read cursor limit view include fields ids refs include_total facets sort nsfw"
+  },
+  {
+    "r": "/docs/v2/getCatalogRole",
+    "t": "获取一个署名职务",
+    "s": "端点 · 目录",
+    "d": "GET /v2/catalog/roles/{id}",
+    "b": "getCatalogRole /v2/catalog/roles/{id} get Get one role A credit-role registry row. Unknown id is 404 NOT_FOUND. Requires an application key. 一行署名职务注册表记录。未知 id 为 404 NOT_FOUND。需要应用密钥。 catalog:read id nsfw view include fields"
   },
   {
     "r": "/docs/v2/getCatalogSchema",

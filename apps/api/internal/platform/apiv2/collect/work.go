@@ -266,6 +266,15 @@ func EngineSpec() Spec {
 	}
 }
 
+func RoleSpec() Spec {
+	return Spec{
+		Sort:    []string{"id"},
+		Include: []string{},
+		FullSet: []string{},
+		Fields:  []string{"object", "id", "key", "category", "display_name", "localized", "deprecated"},
+	}
+}
+
 func WorkSubSpec() Spec {
 	return Spec{
 		Include: []string{},

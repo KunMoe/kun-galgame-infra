@@ -140,6 +140,20 @@ func (c *Catalog) GetEngine(ctx context.Context, id int64, nsfw bool) (repr.Engi
 	}, nil
 }
 
+func (c *Catalog) GetRole(ctx context.Context, id int64) (repr.Role, error) {
+	if c == nil || c.Public == nil {
+		return repr.Role{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+	}
+	rec, found, err := c.Public.RoleDetail(ctx, id)
+	if err != nil {
+		return repr.Role{}, err
+	}
+	if !found {
+		return repr.Role{}, problem.New(problem.CodeNotFound, "", "", "role not found.")
+	}
+	return roleFromListItem(rec), nil
+}
+
 func (c *Catalog) GetSeries(ctx context.Context, id int64, nsfw bool, include []string) (repr.Series, error) {
 	if c == nil || c.Public == nil {
 		return repr.Series{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")

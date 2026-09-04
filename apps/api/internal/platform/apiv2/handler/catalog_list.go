@@ -130,6 +130,37 @@ func (c *Catalog) ListEngines(ctx context.Context, q collect.Query) (repr.List[r
 	return finishList(items, data.NextCursor, data.Total, q, missing), nil
 }
 
+func (c *Catalog) ListRoles(ctx context.Context, q collect.Query) (repr.List[repr.Role], error) {
+	if c == nil || c.Public == nil {
+		return repr.List[repr.Role]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")
+	}
+	ids, missing, err := c.batchEntityIDs(ctx, q, entityTypeNone)
+	if err != nil {
+		return repr.List[repr.Role]{}, err
+	}
+	if q.Batch && len(ids) == 0 {
+		return finishList([]repr.Role{}, nil, 0, q, missing), nil
+	}
+	f := catsvc.RolesListFilter{IDs: ids}
+	limit := q.Limit
+	if q.Batch {
+		limit = 100
+		q.Cursor = ""
+	}
+	data, lerr := c.Public.RolesList(ctx, f, q.Cursor, limit)
+	if lerr != nil {
+		return repr.List[repr.Role]{}, listCursorErr(lerr)
+	}
+	items := make([]repr.Role, 0, len(data.Items))
+	seen := map[int64]bool{}
+	for _, it := range data.Items {
+		items = append(items, roleFromListItem(it))
+		seen[it.ID] = true
+	}
+	missing = appendUnseen(missing, ids, seen)
+	return finishList(items, data.NextCursor, data.Total, q, missing), nil
+}
+
 func (c *Catalog) ListSeries(ctx context.Context, q collect.Query) (repr.List[repr.Series], error) {
 	if c == nil || c.Public == nil {
 		return repr.List[repr.Series]{}, problem.New(problem.CodeServiceUnavailable, "", "", "catalog read is not bound.")

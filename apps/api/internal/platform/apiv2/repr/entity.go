@@ -131,7 +131,7 @@ type Appearance struct {
 
 type NameCreditRole struct {
 	_             struct{} `json:"-" additionalProperties:"true"`
-	RoleKey       string   `json:"role_key" maxLength:"64" pattern:"^[a-z][a-z0-9_]*$" doc:"Credit role token."`
+	RoleKey       string   `json:"role_key" maxLength:"64" doc:"Registry token; joins /v2/catalog/roles. Not always ASCII. Must not be used as a discriminant."`
 	RoleName      string   `json:"role_name" maxLength:"512" doc:"Must not be used as a discriminant."`
 	CharacterID   *string  `json:"character_id" pattern:"^[0-9]+$" maxLength:"20" doc:"null if this credit is not a voice on a character."`
 	CharacterName *string  `json:"character_name" maxLength:"512" doc:"Display name of the voiced character. null unless this credit is a voice on a character. Must not be used as a discriminant."`
@@ -156,6 +156,17 @@ type Engine struct {
 	WorkCount   int      `json:"work_count" minimum:"0" doc:"Works visible under the same NSFW gate."`
 	Description string   `json:"description" maxLength:"8000" doc:"Free-text description. Empty if unrecorded. Must not be used as a discriminant."`
 	Aliases     []string `json:"aliases" doc:"Alternate spellings of the engine name. Empty array if none."`
+}
+
+type Role struct {
+	_           struct{}                 `json:"-" additionalProperties:"true"`
+	Object      string                   `json:"object" enum:"role" doc:"Type discriminant. Always role."`
+	ID          string                   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"Catalog role id."`
+	Key         string                   `json:"key" maxLength:"64" doc:"Registry token, unique per role; joins credit groups' role_key. Not always ASCII. Must not be used as a discriminant."`
+	Category    string                   `json:"category" maxLength:"64" doc:"Open grouping vocabulary. Empty if uncategorized. Must not be used as a discriminant."`
+	DisplayName string                   `json:"display_name" maxLength:"512" doc:"Must not be used as a discriminant."`
+	Localized   map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
+	Deprecated  bool                     `json:"deprecated" doc:"true when the registry has retired this role for new credits."`
 }
 
 type NewsSource struct {

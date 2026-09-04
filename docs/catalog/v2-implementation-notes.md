@@ -750,3 +750,28 @@ none of them sends one; the eighteen-token string in the forum is its
 `v2CatalogDetailInclude["works"]`, applied only to two-segment detail paths.
 
 **Zero migrations.**
+
+## Wave — the credit-role registry gets a face (2026-09-03)
+
+Credit groups publish `role_key` and nothing answered what a key was: the
+registry (`catalog_role`, ~231 live rows) had no route, so an editing client
+made users hand-type integer role ids. `GET /v2/catalog/roles` and
+`/v2/catalog/roles/{id}` mirror the engines lane — keyset cursor, `ids=` batch
+lane — with two deliberate absences: `refs=` is not resolved (role has no
+`catalog_external_ref` entity type; unknown refs land in `missing[]`, the
+series precedent) and there are no work counts (`catalog_credit.role_id` is
+unindexed and this face must not force an index for a picker).
+
+**The incident the wave surfaced:** `CreditGroup.RoleKey` and
+`NameCreditRole.RoleKey` declared pattern `^[a-z][a-z0-9_]*$` while 189 of the
+231 live registry keys violate it — 39 are CJK (原画 alone heads 11,937 live
+credit groups) and others start with a digit. Every real credit response was
+already contradicting the published spec; a client that validated against it
+would have rejected most of production. The pattern is removed and the docs on
+both fields now say the key is not always ASCII.
+
+**Spec is 2.5.0.** Additive: two new operations (90 → 92), one new `role`
+schema, zero request-schema changes, and the `RoleKey` pattern removal — a
+constraint loosening, not breaking.
+
+**Zero migrations.**
