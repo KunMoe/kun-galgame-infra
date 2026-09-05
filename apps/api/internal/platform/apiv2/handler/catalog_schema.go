@@ -44,6 +44,7 @@ func (c *Catalog) GetSchema(_ context.Context, object string) (repr.ObjectSchema
 		}
 		if v := f.Value; v != nil {
 			sf.Vocabulary = v.Vocabulary
+			sf.Base = v.Base
 			sf.Nullable = v.Nullable
 			if v.Element != nil {
 				el := repr.SchemaElement{
@@ -52,7 +53,8 @@ func (c *Catalog) GetSchema(_ context.Context, object string) (repr.ObjectSchema
 				}
 				for _, m := range v.Element.Members {
 					el.Members = append(el.Members, repr.SchemaElementMember{
-						Key: m.Key, Type: m.Type, Vocabulary: m.Vocabulary, Nullable: m.Nullable,
+						Key: m.Key, Type: m.Type, Vocabulary: m.Vocabulary,
+						Base: m.Base, Nullable: m.Nullable,
 					})
 				}
 				sf.Element = &el

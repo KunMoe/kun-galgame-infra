@@ -136,9 +136,13 @@ type FieldSpec struct {
 type ValueSpec struct {
 	// Vocabulary names a /v2/vocabularies vocabulary whose tokens the field
 	// accepts. For an integer-coded field or member the vocabulary's tokens
-	// are labels and the wire carries the token's 0-based index in the
+	// are labels and the wire carries Base plus the token's index in the
 	// vocabulary's published order.
 	Vocabulary string
+	// Base is the wire code of the vocabulary's first token. 0 for every
+	// 0-coded enum; 1 where the model reserves 0 for null (gender,
+	// blood_type).
+	Base int
 	// Nullable is true when the validator accepts null and null clears the
 	// stored value.
 	Nullable bool
@@ -159,6 +163,8 @@ type ElementMember struct {
 	// Type is text, int, enum, bool, ref or imagehash.
 	Type       string
 	Vocabulary string
+	// Base is the wire code of the vocabulary's first token, as on ValueSpec.
+	Base int
 	// Nullable is true when the member may be absent or empty in at least one
 	// valid element; the validator stays the authority on when.
 	Nullable bool

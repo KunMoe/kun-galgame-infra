@@ -21,7 +21,8 @@ func fullRegistry(t *testing.T) *editing.Registry {
 // A new enum field either names a vocabulary or earns a line here — the gate
 // fails on silence, never on judgment.
 var enumsWithoutVocabulary = map[string]string{
-	editspec.FieldReleaseHidden: "bool-as-enum: hidden/visible, no token set worth publishing",
+	editspec.FieldReleaseHidden:   "bool-as-enum: hidden/visible, no token set worth publishing",
+	editspec.FieldWorkDisplayNSFW: "bool-as-enum: forced-NSFW override flag, no token set worth publishing",
 }
 
 func TestSchemaValueSpecCompleteness(t *testing.T) {
@@ -140,19 +141,24 @@ func TestVocabularyTokensPassValidators(t *testing.T) {
 				}
 				continue
 			}
-			// Not string-coded, so the wire must carry the token's 0-based
+			// Not string-coded, so the wire must carry Base plus the token's
 			// index in the vocabulary's published order — the contract
-			// repr.SchemaField.Vocabulary documents. Every index in range
-			// passes, the first index out of range fails, or the declaration
-			// is lying about this vocabulary.
+			// repr.SchemaField.Vocabulary documents. Every code in range
+			// passes, the first code past either end fails, or the
+			// declaration is lying about this vocabulary.
+			base := f.Value.Base
 			for idx := range tokens {
-				if err := f.Validate(float64(idx)); err != nil {
-					t.Errorf("%s: index %d (%s) rejected: %v", f.Key, idx, tokens[idx], err)
+				if err := f.Validate(float64(base + idx)); err != nil {
+					t.Errorf("%s: code %d (%s) rejected: %v", f.Key, base+idx, tokens[idx], err)
 				}
 			}
-			if f.Validate(float64(len(tokens))) == nil {
-				t.Errorf("%s: accepts index %d beyond vocabulary %q",
-					f.Key, len(tokens), f.Value.Vocabulary)
+			if f.Validate(float64(base+len(tokens))) == nil {
+				t.Errorf("%s: accepts code %d beyond vocabulary %q",
+					f.Key, base+len(tokens), f.Value.Vocabulary)
+			}
+			if f.Validate(float64(base-1)) == nil {
+				t.Errorf("%s: accepts code %d below vocabulary %q",
+					f.Key, base-1, f.Value.Vocabulary)
 			}
 		}
 	}
