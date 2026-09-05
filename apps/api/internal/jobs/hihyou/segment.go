@@ -203,8 +203,24 @@ func Gate(seg Segmentation) []string {
 	// A heading whose block holds only an image is real upstream shape — it has
 	// no preview to publish, so it is dropped per item. More than a couple in one
 	// issue means the segmentation itself slipped.
+	//
+	// The trailing contentless run is exempt: 期256's closing credits span three
+	// bold lines (文案/文案审核 rosters), which quarantined a perfectly segmented
+	// issue — a contentless block at the very end cannot be a lost body, while a
+	// mid-issue empty still means exactly that. Trailing items that carry
+	// pictures still count: an image-only story is upstream shape, not a
+	// sign-off. Census 2026-09-05 over all 220 issues: the exemption flips only
+	// 期256; every other issue has a trailing run of zero.
+	items := seg.Items
+	for len(items) > 0 {
+		last := items[len(items)-1]
+		if len(last.Body) != 0 || len(last.Pictures) != 0 {
+			break
+		}
+		items = items[:len(items)-1]
+	}
 	empty := 0
-	for _, it := range seg.Items {
+	for _, it := range items {
 		if len(it.Body) == 0 {
 			empty++
 		}
