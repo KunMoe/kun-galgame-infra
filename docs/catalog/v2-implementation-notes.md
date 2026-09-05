@@ -775,3 +775,41 @@ schema, zero request-schema changes, and the `RoleKey` pattern removal — a
 constraint loosening, not breaking.
 
 **Zero migrations.**
+
+## Wave — the schema face declares value shapes (2026-09-04)
+
+`GET /v2/catalog/schemas/{object}` listed fields but said nothing about their
+values: an editing client saw `field_type: enum` with no token set, `list`
+with no element shape, and could not tell a nullable scalar from a required
+one. Every `editing.FieldSpec` now carries an optional `ValueSpec` — the
+declarative twin of its `Validate` closure — mirrored on the wire as
+`vocabulary` / `base` / `nullable` / `element{type, members[]}`. Metadata
+only: nothing reads it on the write path, so honesty rests entirely on the
+editspec gates (`TestSchemaValueSpecCompleteness` fails on an undeclared
+enum/list unless it sits on a named exclusion list with a reason;
+`TestVocabularyTokensPassValidators` pushes every declared vocabulary through
+the real validator, string tokens or integer codes with both out-of-range
+ends; `TestScalarNullabilityMatchesValidators` probes `Validate(nil)` on
+every scalar).
+
+**The incident the wave surfaced:** the first draft of the contract said
+"the wire carries the token's 0-based index in the vocabulary's published
+order" — and `gender` / `blood_type` are 1-based, because their models
+reserve 0 for null. A bare index contract would have made those two
+vocabularies undeclarable (or worse, declared and off by one). The contract
+is now `base + index` with `base` explicit on the wire, defaulting to 0.
+
+Four vocabularies joined the registry so declarations could name them:
+`olang` (49 language tags), `release_lang` (olang plus six release-only
+codes, derived from the same slice so the union rule has one copy per side —
+an internal editspec gate asserts the vocab and validator sets stay equal),
+`platform` (47), and `intro_lang` (the closed 4-set intro languages). Their
+values carry empty descriptions — a language name does not need prose — and
+the vocabularies-zh coverage gate now skips empty sources instead of
+demanding a translation of "".
+
+**Spec is 2.6.0.** Additive: no new operations (92), new always-present
+`vocabulary`/`base`/`nullable` properties and an optional `element` on the
+schema field, four new vocabularies.
+
+**Zero migrations.**

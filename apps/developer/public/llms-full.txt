@@ -1498,7 +1498,7 @@ const write = await fetch(url, {
 
 # Vocabularies
 
-## 词表（共 22 个）
+## 词表（共 26 个）
 
 封闭词表（`closed`）不加不减成员就是它的承诺——你的 `switch` 可以没有 `default`。开放词表相反：提前告诉你会有新值，客户端必须容忍没见过的取值。运行时以 `https://api.nextmoe.dev/v2/vocabularies` 为准，它比任何文档都新，且不需要凭据。
 
@@ -1746,6 +1746,189 @@ Open · 20 tokens
 | `derived` | Derived | First-party machine inference over catalog facts. |
 | `nextmoe` | NextMoe | First-party measurements aggregated from our users. |
 | `howlongtobeat` | HowLongToBeat | HowLongToBeat playtime and rating aggregates. |
+
+### `intro_lang`
+
+Closed · 4 tokens
+
+| value | display_name | description |
+| --- | --- | --- |
+| `en` | English |  |
+| `ja` | Japanese |  |
+| `zh-Hans` | Simplified Chinese |  |
+| `zh-Hant` | Traditional Chinese |  |
+
+### `olang`
+
+Open · 49 tokens
+
+| value | display_name | description |
+| --- | --- | --- |
+| `ar` | Arabic |  |
+| `be` | Belarusian |  |
+| `bg` | Bulgarian |  |
+| `ca` | Catalan |  |
+| `cs` | Czech |  |
+| `da` | Danish |  |
+| `de` | German |  |
+| `el` | Greek |  |
+| `en` | English |  |
+| `eo` | Esperanto |  |
+| `es` | Spanish |  |
+| `fi` | Finnish |  |
+| `fr` | French |  |
+| `ga` | Irish |  |
+| `gd` | Scottish Gaelic |  |
+| `he` | Hebrew |  |
+| `hi` | Hindi |  |
+| `hr` | Croatian |  |
+| `hu` | Hungarian |  |
+| `id` | Indonesian |  |
+| `it` | Italian |  |
+| `iu` | Inuktitut |  |
+| `ja` | Japanese |  |
+| `ko` | Korean |  |
+| `la` | Latin |  |
+| `lt` | Lithuanian |  |
+| `lv` | Latvian |  |
+| `mk` | Macedonian |  |
+| `ms` | Malay |  |
+| `nl` | Dutch |  |
+| `no` | Norwegian |  |
+| `pl` | Polish |  |
+| `pt-br` | Brazilian Portuguese |  |
+| `pt-pt` | European Portuguese |  |
+| `ro` | Romanian |  |
+| `ru` | Russian |  |
+| `sk` | Slovak |  |
+| `sl` | Slovenian |  |
+| `sr` | Serbian |  |
+| `sv` | Swedish |  |
+| `ta` | Tamil |  |
+| `th` | Thai |  |
+| `tr` | Turkish |  |
+| `uk` | Ukrainian |  |
+| `ur` | Urdu |  |
+| `vi` | Vietnamese |  |
+| `zh` | Chinese |  |
+| `zh-Hans` | Simplified Chinese |  |
+| `zh-Hant` | Traditional Chinese |  |
+
+### `release_lang`
+
+Open · 55 tokens
+
+| value | display_name | description |
+| --- | --- | --- |
+| `ar` | Arabic |  |
+| `be` | Belarusian |  |
+| `bg` | Bulgarian |  |
+| `ca` | Catalan |  |
+| `ck` | Cherokee |  |
+| `cs` | Czech |  |
+| `da` | Danish |  |
+| `de` | German |  |
+| `el` | Greek |  |
+| `en` | English |  |
+| `eo` | Esperanto |  |
+| `es` | Spanish |  |
+| `et` | Estonian |  |
+| `eu` | Basque |  |
+| `fa` | Persian |  |
+| `fi` | Finnish |  |
+| `fr` | French |  |
+| `ga` | Irish |  |
+| `gd` | Scottish Gaelic |  |
+| `gl` | Galician |  |
+| `he` | Hebrew |  |
+| `hi` | Hindi |  |
+| `hr` | Croatian |  |
+| `hu` | Hungarian |  |
+| `id` | Indonesian |  |
+| `it` | Italian |  |
+| `iu` | Inuktitut |  |
+| `ja` | Japanese |  |
+| `kk` | Kazakh |  |
+| `ko` | Korean |  |
+| `la` | Latin |  |
+| `lt` | Lithuanian |  |
+| `lv` | Latvian |  |
+| `mk` | Macedonian |  |
+| `ms` | Malay |  |
+| `nl` | Dutch |  |
+| `no` | Norwegian |  |
+| `pl` | Polish |  |
+| `pt-br` | Brazilian Portuguese |  |
+| `pt-pt` | European Portuguese |  |
+| `ro` | Romanian |  |
+| `ru` | Russian |  |
+| `sk` | Slovak |  |
+| `sl` | Slovenian |  |
+| `sr` | Serbian |  |
+| `sv` | Swedish |  |
+| `ta` | Tamil |  |
+| `th` | Thai |  |
+| `tr` | Turkish |  |
+| `uk` | Ukrainian |  |
+| `ur` | Urdu |  |
+| `vi` | Vietnamese |  |
+| `zh` | Chinese |  |
+| `zh-Hans` | Simplified Chinese |  |
+| `zh-Hant` | Traditional Chinese |  |
+
+### `platform`
+
+Open · 47 tokens
+
+| value | display_name | description |
+| --- | --- | --- |
+| `and` | Android |  |
+| `bdp` | Blu-ray Player |  |
+| `dos` | DOS |  |
+| `drc` | Dreamcast |  |
+| `dvd` | DVD Player |  |
+| `fm7` | FM-7 |  |
+| `fmt` | FM Towns |  |
+| `gba` | Game Boy Advance |  |
+| `gbc` | Game Boy Color |  |
+| `ios` | iOS |  |
+| `lin` | Linux |  |
+| `mac` | macOS |  |
+| `mob` | Other mobile |  |
+| `msx` | MSX |  |
+| `n3d` | Nintendo 3DS |  |
+| `nds` | Nintendo DS |  |
+| `nes` | Famicom / NES |  |
+| `oth` | Other |  |
+| `p88` | PC-88 |  |
+| `p98` | PC-98 |  |
+| `pce` | PC Engine |  |
+| `pcf` | PC-FX |  |
+| `ps1` | PlayStation |  |
+| `ps2` | PlayStation 2 |  |
+| `ps3` | PlayStation 3 |  |
+| `ps4` | PlayStation 4 |  |
+| `ps5` | PlayStation 5 |  |
+| `psp` | PlayStation Portable |  |
+| `psv` | PlayStation Vita |  |
+| `sat` | Sega Saturn |  |
+| `scd` | Sega CD |  |
+| `sfc` | Super Famicom / SNES |  |
+| `smd` | Mega Drive / Genesis |  |
+| `sw2` | Nintendo Switch 2 |  |
+| `swi` | Nintendo Switch |  |
+| `tdo` | 3DO |  |
+| `vnd` | VNDS |  |
+| `web` | Website |  |
+| `wii` | Wii |  |
+| `wiu` | Wii U |  |
+| `win` | Windows |  |
+| `x1s` | Sharp X1 |  |
+| `x68` | Sharp X68000 |  |
+| `xb1` | Xbox |  |
+| `xb3` | Xbox 360 |  |
+| `xbo` | Xbox One |  |
+| `xxs` | Xbox X/S |  |
 
 ### `relation_types`
 

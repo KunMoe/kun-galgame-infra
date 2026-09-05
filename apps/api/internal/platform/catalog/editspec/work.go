@@ -189,8 +189,17 @@ func workFieldSpecs() []editing.FieldSpec {
 		},
 		MaxSuppressed: maxCreditSuppress,
 		MaxElements:   maxCreditElements,
-		Validate:      validateCredits,
-		Apply:         applyCredits,
+		Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+			Type: "object",
+			Members: []editing.ElementMember{
+				{Key: "role_id", Type: "ref"},
+				{Key: "credit_name_id", Type: "ref"},
+				{Key: "character_id", Type: "ref", Nullable: true},
+				{Key: "note", Type: "text", Nullable: true},
+			},
+		}},
+		Validate: validateCredits,
+		Apply:    applyCredits,
 	}
 	// The roster is registered on catalog.work only, never on catalog.character.
 	// Both faces render the same physical row, but the two entity types can only
@@ -206,8 +215,16 @@ func workFieldSpecs() []editing.FieldSpec {
 		},
 		MaxSuppressed: maxRosterSuppress,
 		MaxElements:   maxRosterElements,
-		Validate:      validateRoster,
-		Apply:         applyRoster,
+		Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+			Type: "object",
+			Members: []editing.ElementMember{
+				{Key: "character_id", Type: "ref"},
+				{Key: "kind", Type: "int", Vocabulary: "roster_role"},
+				{Key: "spoiler", Type: "int", Vocabulary: "spoiler"},
+			},
+		}},
+		Validate: validateRoster,
+		Apply:    applyRoster,
 		Provenance: []editing.ProvenanceTarget{
 			{
 				Table: catmodel.CatalogWorkCharacter{}.TableName(), Column: "kind",
@@ -228,12 +245,14 @@ func workFieldSpecs() []editing.FieldSpec {
 		},
 		{
 			Key: FieldWorkOLang, Kind: editing.KindEnum, DiffHint: editing.DiffHintInline,
+			Value:      &editing.ValueSpec{Vocabulary: "olang"},
 			Validate:   validateOLang,
 			Apply:      applyWorkColumn("olang", asString),
 			Provenance: workProvenance("olang"),
 		},
 		{
 			Key: FieldWorkContentRating, Kind: editing.KindEnum, DiffHint: editing.DiffHintInline,
+			Value:      &editing.ValueSpec{Vocabulary: "content_rating"},
 			Validate:   validateContentRating,
 			Apply:      applyWorkColumn("content_rating", asContentRating),
 			Provenance: workProvenance("content_rating"),
@@ -242,6 +261,13 @@ func workFieldSpecs() []editing.FieldSpec {
 		editing.SuppressedFieldSpec(TypeWork, titles),
 		{
 			Key: FieldWorkIntros, Kind: editing.KindList, DiffHint: editing.DiffHintLines,
+			Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+				Type: "object",
+				Members: []editing.ElementMember{
+					{Key: "lang", Type: "enum", Vocabulary: "intro_lang"},
+					{Key: "intro", Type: "text"},
+				},
+			}},
 			Validate: validateIntros,
 			Apply:    applyIntros,
 		},
@@ -253,36 +279,66 @@ func workFieldSpecs() []editing.FieldSpec {
 		},
 		{
 			Key: FieldWorkTagIDs, Kind: editing.KindList, DiffHint: editing.DiffHintItems,
+			Value:    &editing.ValueSpec{Element: &editing.ElementSpec{Type: "ref"}},
 			Validate: validateTagIDs,
 			Apply:    applyTagIDs,
 		},
 		{
 			Key: FieldWorkLabels, Kind: editing.KindList, DiffHint: editing.DiffHintItems,
+			Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+				Type: "object",
+				Members: []editing.ElementMember{
+					{Key: "label_id", Type: "ref"},
+					{Key: "kind", Type: "int", Vocabulary: "attribution_role"},
+				},
+			}},
 			Validate: validateLabels,
 			Apply:    applyLabels,
 		},
 		{
 			Key: FieldWorkEngineIDs, Kind: editing.KindList, DiffHint: editing.DiffHintItems,
+			Value:    &editing.ValueSpec{Element: &editing.ElementSpec{Type: "ref"}},
 			Validate: validateEngineIDs,
 			Apply:    applyEngineIDs,
 		},
 		{
 			Key: FieldWorkSeriesIDs, Kind: editing.KindList, DiffHint: editing.DiffHintItems,
+			Value:    &editing.ValueSpec{Element: &editing.ElementSpec{Type: "ref"}},
 			Validate: validateSeriesIDs,
 			Apply:    applySeriesIDs,
 		},
 		{
 			Key: FieldWorkLinks, Kind: editing.KindList, DiffHint: editing.DiffHintItems,
+			Value:    &editing.ValueSpec{Element: &editing.ElementSpec{Type: "text"}},
 			Validate: validateLinks,
 			Apply:    applyLinks,
 		},
 		{
 			Key: FieldWorkCovers, Kind: editing.KindList, DiffHint: editing.DiffHintImage,
+			Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+				Type: "object",
+				Members: []editing.ElementMember{
+					{Key: "image_hash", Type: "imagehash"},
+					{Key: "kind", Type: "text", Nullable: true},
+					{Key: "portrait_pinned", Type: "bool", Nullable: true},
+					{Key: "sexual", Type: "int", Vocabulary: "sexual", Nullable: true},
+					{Key: "violence", Type: "int", Vocabulary: "violence", Nullable: true},
+				},
+			}},
 			Validate: validateCovers,
 			Apply:    applyCovers,
 		},
 		{
 			Key: FieldWorkScreenshots, Kind: editing.KindList, DiffHint: editing.DiffHintImage,
+			Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+				Type: "object",
+				Members: []editing.ElementMember{
+					{Key: "image_hash", Type: "imagehash"},
+					{Key: "caption", Type: "text", Nullable: true},
+					{Key: "sexual", Type: "int", Vocabulary: "sexual", Nullable: true},
+					{Key: "violence", Type: "int", Vocabulary: "violence", Nullable: true},
+				},
+			}},
 			Validate: validateScreenshots,
 			Apply:    applyScreenshots,
 		},

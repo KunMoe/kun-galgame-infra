@@ -21,7 +21,7 @@ type SchemaField struct {
 	Deprecated    bool           `json:"deprecated" doc:"true when writes of this key are rejected."`
 	MaxSuppressed int            `json:"max_suppressed" minimum:"0" doc:"Cap on this field's suppression set. 0 when the field has none."`
 	MaxElements   int            `json:"max_elements" minimum:"0" doc:"Cap on a list field's element count. 0 for scalar fields."`
-	Vocabulary    string         `json:"vocabulary" maxLength:"64" doc:"Names the /v2/vocabularies vocabulary whose tokens this field accepts. Empty when the field has none. On an integer-coded field the tokens are labels and the wire carries base plus the token's index in the vocabulary's published order."`
+	Vocabulary    string         `json:"vocabulary" maxLength:"64" pattern:"^[a-z_]*$" doc:"Names the /v2/vocabularies vocabulary whose tokens this field accepts. Empty when the field has none. On an integer-coded field the tokens are labels and the wire carries base plus the token's index in the vocabulary's published order."`
 	Base          int            `json:"base" minimum:"0" doc:"Wire code of the vocabulary's first token on an integer-coded field. 0 unless the model reserves 0 for null."`
 	Nullable      bool           `json:"nullable" doc:"true when null is accepted and clears the stored value."`
 	Element       *SchemaElement `json:"element,omitempty" doc:"Shape of one element of a list field. Absent on scalar fields and on list fields whose shape is not yet declared."`
@@ -37,7 +37,7 @@ type SchemaElementMember struct {
 	_          struct{} `json:"-" additionalProperties:"true"`
 	Key        string   `json:"key" maxLength:"64" doc:"Member key inside the element object. Must not be used as a discriminant."`
 	Type       string   `json:"type" enum:"text,int,enum,bool,ref,imagehash" doc:"Member value type. ref is the decimal id of another entity."`
-	Vocabulary string   `json:"vocabulary" maxLength:"64" doc:"Names the /v2/vocabularies vocabulary whose tokens this member accepts. Empty when the member has none. On an int member the tokens are labels and the wire carries base plus the token's index in the vocabulary's published order."`
+	Vocabulary string   `json:"vocabulary" maxLength:"64" pattern:"^[a-z_]*$" doc:"Names the /v2/vocabularies vocabulary whose tokens this member accepts. Empty when the member has none. On an int member the tokens are labels and the wire carries base plus the token's index in the vocabulary's published order."`
 	Base       int      `json:"base" minimum:"0" doc:"Wire code of the vocabulary's first token on an int member. 0 unless the model reserves 0 for null."`
 	Nullable   bool     `json:"nullable" doc:"true when the member may be absent or empty in at least one valid element; the field's validator decides when."`
 }

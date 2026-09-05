@@ -97,34 +97,58 @@ func characterFieldSpecs() []editing.FieldSpec {
 		Identity: &editing.IdentitySpec{
 			Segments: 4, TrailingText: true, KeyCheck: kindLangTextKeyCheck("alias"),
 		},
+		Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+			Type: "object",
+			Members: []editing.ElementMember{
+				{Key: "name", Type: "text"},
+				{Key: "lang", Type: "enum", Vocabulary: "olang"},
+				{Key: "kind", Type: "int", Vocabulary: "alias_kind"},
+				{Key: "latin", Type: "text", Nullable: true},
+				{Key: "primary", Type: "bool", Nullable: true},
+			},
+		}},
 		Validate: validateCharacterAliases,
 		Apply:    applyCharacterAliases,
 	}
 	return []editing.FieldSpec{
 		charText(FieldCharacterDisplayName, "display_name", maxNameRunes),
-		charLang(FieldCharacterLang, "lang"),
-		charNullableText(FieldCharacterLatin, "latin", maxNameRunes),
+		withValue(charLang(FieldCharacterLang, "lang"), &editing.ValueSpec{Vocabulary: "olang"}),
+		withValue(charNullableText(FieldCharacterLatin, "latin", maxNameRunes), &editing.ValueSpec{Nullable: true}),
 		charLongText(FieldCharacterDescription, "description"),
-		charEnum(FieldCharacterGender, "gender",
+		withValue(charEnum(FieldCharacterGender, "gender",
 			catmodel.GenderMale, catmodel.GenderFemale, catmodel.GenderOther),
-		charInt(FieldCharacterBirthdayMonth, "birthday_month", 1, 12),
-		charInt(FieldCharacterBirthdayDay, "birthday_day", 1, 31),
-		charEnum(FieldCharacterBloodType, "blood_type",
+			&editing.ValueSpec{Vocabulary: "gender", Base: 1, Nullable: true}),
+		withValue(charInt(FieldCharacterBirthdayMonth, "birthday_month", 1, 12), &editing.ValueSpec{Nullable: true}),
+		withValue(charInt(FieldCharacterBirthdayDay, "birthday_day", 1, 31), &editing.ValueSpec{Nullable: true}),
+		withValue(charEnum(FieldCharacterBloodType, "blood_type",
 			catmodel.BloodTypeA, catmodel.BloodTypeB, catmodel.BloodTypeAB, catmodel.BloodTypeO),
-		charInt(FieldCharacterHeightCm, "height_cm", 1, 1000),
-		charInt(FieldCharacterWeightKg, "weight_kg", 1, 1000),
-		charInt(FieldCharacterBustCm, "bust_cm", 1, 500),
-		charInt(FieldCharacterWaistCm, "waist_cm", 1, 500),
-		charInt(FieldCharacterHipCm, "hip_cm", 1, 500),
-		charNullableText(FieldCharacterCup, "cup", maxCupRunes),
+			&editing.ValueSpec{Vocabulary: "blood_type", Base: 1, Nullable: true}),
+		withValue(charInt(FieldCharacterHeightCm, "height_cm", 1, 1000), &editing.ValueSpec{Nullable: true}),
+		withValue(charInt(FieldCharacterWeightKg, "weight_kg", 1, 1000), &editing.ValueSpec{Nullable: true}),
+		withValue(charInt(FieldCharacterBustCm, "bust_cm", 1, 500), &editing.ValueSpec{Nullable: true}),
+		withValue(charInt(FieldCharacterWaistCm, "waist_cm", 1, 500), &editing.ValueSpec{Nullable: true}),
+		withValue(charInt(FieldCharacterHipCm, "hip_cm", 1, 500), &editing.ValueSpec{Nullable: true}),
+		withValue(charNullableText(FieldCharacterCup, "cup", maxCupRunes), &editing.ValueSpec{Nullable: true}),
 		aliases,
 		editing.SuppressedFieldSpec(TypeCharacter, aliases),
 		{
 			Key: FieldCharacterIntros, Kind: editing.KindList, DiffHint: editing.DiffHintLines,
+			Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+				Type: "object",
+				Members: []editing.ElementMember{
+					{Key: "lang", Type: "enum", Vocabulary: "intro_lang"},
+					{Key: "intro", Type: "text"},
+				},
+			}},
 			Validate: validateIntros,
 			Apply:    applyEntityIntros(introTableCharacter),
 		},
 	}
+}
+
+func withValue(f editing.FieldSpec, v *editing.ValueSpec) editing.FieldSpec {
+	f.Value = v
+	return f
 }
 
 func characterProvenance(column string) []editing.ProvenanceTarget {

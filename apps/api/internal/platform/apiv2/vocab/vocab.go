@@ -197,6 +197,12 @@ var registry = []Vocabulary{
 		v("nextmoe", "NextMoe", "First-party measurements aggregated from our users."),
 		v("howlongtobeat", "HowLongToBeat", "HowLongToBeat playtime and rating aggregates."),
 	}),
+	closed("intro_lang", []Value{
+		v("en", "English", ""),
+		v("ja", "Japanese", ""),
+		v("zh-Hans", "Simplified Chinese", ""),
+		v("zh-Hant", "Traditional Chinese", ""),
+	}),
 	open("olang", olangValues),
 	open("release_lang", releaseLangValues()),
 	open("platform", []Value{

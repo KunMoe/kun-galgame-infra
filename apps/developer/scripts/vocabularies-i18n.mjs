@@ -64,6 +64,7 @@ export const buildVocabulariesZh = (
   for (const vocab of vocabularies) {
     for (const value of vocab.values) {
       for (const source of [value.display_name, value.description]) {
+        if (!source) continue
         const qualified = `${vocab.name}/${source}`
         consumed.add(qualified)
         consumed.add(source)
