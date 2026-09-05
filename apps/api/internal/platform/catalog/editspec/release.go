@@ -102,7 +102,7 @@ func releaseFieldSpecs() []editing.FieldSpec {
 	return []editing.FieldSpec{
 		{
 			Key: FieldReleaseKind, Kind: editing.KindEnum, DiffHint: editing.DiffHintInline,
-			Value:      &editing.ValueSpec{Vocabulary: "release_kind"},
+			Value:      &editing.ValueSpec{Vocabulary: "release_kind", Coded: true},
 			Validate:   validateReleaseKind,
 			Apply:      applyReleaseColumn("kind", asReleaseKind),
 			Provenance: releaseProvenance("kind"),

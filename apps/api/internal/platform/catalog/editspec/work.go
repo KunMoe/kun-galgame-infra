@@ -252,7 +252,7 @@ func workFieldSpecs() []editing.FieldSpec {
 		},
 		{
 			Key: FieldWorkContentRating, Kind: editing.KindEnum, DiffHint: editing.DiffHintInline,
-			Value:      &editing.ValueSpec{Vocabulary: "content_rating"},
+			Value:      &editing.ValueSpec{Vocabulary: "content_rating", Coded: true},
 			Validate:   validateContentRating,
 			Apply:      applyWorkColumn("content_rating", asContentRating),
 			Provenance: workProvenance("content_rating"),

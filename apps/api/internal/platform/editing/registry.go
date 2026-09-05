@@ -139,6 +139,12 @@ type ValueSpec struct {
 	// are labels and the wire carries Base plus the token's index in the
 	// vocabulary's published order.
 	Vocabulary string
+	// Coded says how the wire carries the value: true means Base plus the
+	// token's index in the vocabulary's published order, false (the zero
+	// value) means the token string itself. Nothing else on the schema face
+	// separates the two, so leaving it unset on an integer-coded field
+	// publishes a token contract the validator rejects.
+	Coded bool
 	// Base is the wire code of the vocabulary's first token. 0 for every
 	// 0-coded enum; 1 where the model reserves 0 for null (gender,
 	// blood_type).

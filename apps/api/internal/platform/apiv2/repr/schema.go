@@ -22,6 +22,7 @@ type SchemaField struct {
 	MaxSuppressed int            `json:"max_suppressed" minimum:"0" doc:"Cap on this field's suppression set. 0 when the field has none."`
 	MaxElements   int            `json:"max_elements" minimum:"0" doc:"Cap on a list field's element count. 0 for scalar fields."`
 	Vocabulary    string         `json:"vocabulary" maxLength:"64" pattern:"^[a-z_]*$" doc:"Names the /v2/vocabularies vocabulary whose tokens this field accepts. Empty when the field has none. On an integer-coded field the tokens are labels and the wire carries base plus the token's index in the vocabulary's published order."`
+	Encoding      *string        `json:"encoding,omitempty" enum:"token,int" maxLength:"5" doc:"How a write of this field carries the vocabulary value. Present exactly when vocabulary is set, absent otherwise. int means the wire carries base plus the token's index in the vocabulary's published order; token means the wire carries the token string itself. A vocabulary's published order is contractual only where it is read as int — under token encoding the order is presentational."`
 	Base          int            `json:"base" minimum:"0" doc:"Wire code of the vocabulary's first token on an integer-coded field. 0 unless the model reserves 0 for null."`
 	Nullable      bool           `json:"nullable" doc:"true when null is accepted and clears the stored value."`
 	Element       *SchemaElement `json:"element,omitempty" doc:"Shape of one element of a list field. Absent on scalar fields and on list fields whose shape is not yet declared."`

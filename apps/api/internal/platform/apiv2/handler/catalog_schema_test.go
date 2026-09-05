@@ -156,6 +156,48 @@ func TestCatalogSchemaHTTP(t *testing.T) {
 	require.Equal(t, problem.CodeNotFound, p.Code)
 }
 
+func TestSchemaFieldEncoding(t *testing.T) {
+	c := &Catalog{EditTypes: testSchemaRegistry(t)}
+	s, err := c.GetSchema(t.Context(), "work")
+	require.NoError(t, err)
+	enc := map[string]*string{}
+	for _, f := range s.Fields {
+		enc[f.Key] = f.Encoding
+	}
+	require.Contains(t, enc, editspec.FieldWorkContentRating)
+	require.Contains(t, enc, editspec.FieldWorkOLang)
+	require.Contains(t, enc, editspec.FieldWorkDisplayNSFW)
+	require.Equal(t, "int", *enc[editspec.FieldWorkContentRating])
+	require.Equal(t, "token", *enc[editspec.FieldWorkOLang])
+	require.Nil(t, enc[editspec.FieldWorkDisplayNSFW])
+
+	rel, err := c.GetSchema(t.Context(), "release")
+	require.NoError(t, err)
+	relEnc := map[string]*string{}
+	for _, f := range rel.Fields {
+		relEnc[f.Key] = f.Encoding
+	}
+	require.Equal(t, "int", *relEnc[editspec.FieldReleaseKind])
+	require.Equal(t, "token", *relEnc[editspec.FieldReleasePlatform])
+
+	app := fiber.New(fiber.Config{ErrorHandler: problem.WriteFiberError})
+	SetupWith(app, Options{Catalog: c})
+	status, _, body := do(t, app, httpMethodGet, "/v2/catalog/schemas/work")
+	require.Equal(t, 200, status)
+	var raw map[string]any
+	require.NoError(t, json.Unmarshal(body, &raw))
+	for _, item := range raw["fields"].([]any) {
+		f := item.(map[string]any)
+		v, present := f["encoding"]
+		if f["vocabulary"] == "" {
+			require.False(t, present, "%v carries no vocabulary, so encoding must be absent", f["key"])
+			continue
+		}
+		require.True(t, present, "%v names a vocabulary but publishes no encoding", f["key"])
+		require.Contains(t, []any{"token", "int"}, v)
+	}
+}
+
 const httpMethodGet = "GET"
 
 func TestCatalogSchemaUnauthenticated(t *testing.T) {
