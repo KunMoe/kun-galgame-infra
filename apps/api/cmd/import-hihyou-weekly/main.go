@@ -1,5 +1,8 @@
 // import-hihyou-weekly segments the harvested Gal周报 corpus into individual
 // news items and, with --apply, writes them into kun_news as status=pending.
+// -publish-actor releases the source's pending rows at the end of the run,
+// per the 2026-09-05 standing adjudication (bilibili already moderates the
+// column); run it as the uid making that call.
 package main
 
 import (
@@ -27,6 +30,7 @@ func main() {
 	dsn := flag.String("dsn", "", "kun_news DSN override (default: KUN_NEWS_PG_*)")
 	imageBase := flag.String("image-base", "", "image_service base URL override (local dev)")
 	concurrency := flag.Int("concurrency", 8, "parallel picture fetch/upload (database writes stay serial)")
+	publishActor := flag.Int64("publish-actor", 0, "uid recorded on release decisions; publishes the source's pending rows after an -apply run (0 = leave pending)")
 	flag.Parse()
 
 	_ = godotenv.Load("apps/api/.env")
@@ -51,14 +55,15 @@ func main() {
 	}
 
 	sum, err := hihyou.Import(context.Background(), cfg, hihyou.Opts{
-		Dir:         *dir,
-		Apply:       *apply,
-		SegmentOnly: *segmentOnly,
-		NoImages:    *noImages,
-		Only:        issues,
-		DSN:         *dsn,
-		ImageBase:   *imageBase,
-		Concurrency: *concurrency,
+		Dir:          *dir,
+		Apply:        *apply,
+		SegmentOnly:  *segmentOnly,
+		NoImages:     *noImages,
+		Only:         issues,
+		DSN:          *dsn,
+		ImageBase:    *imageBase,
+		Concurrency:  *concurrency,
+		PublishActor: *publishActor,
 	})
 	if sum != nil {
 		b, _ := json.MarshalIndent(sum, "", "  ")

@@ -300,6 +300,30 @@ func (w *writer) upload(ctx context.Context, src string) (string, error) {
 	return res.Hash, nil
 }
 
+const releaseReason = "hihyou standing release: column already moderated by bilibili (user adjudication 2026-09-05)"
+
+// releasePending publishes every still-pending 批评 row and writes the audit
+// line from the rows the UPDATE actually moved — one decision per item, the
+// same shape the console's Decide writes. Source-scoped on purpose: ymgal rows
+// answer a different promise (苍麟's 广告哥 warning) and must never ride along.
+func (w *writer) releasePending(ctx context.Context) (int, error) {
+	const stmt = `
+		WITH moved AS (
+			UPDATE news_item SET status = ?, updated_at = now()
+			WHERE source_key = ? AND status = ?
+			RETURNING id
+		)
+		INSERT INTO news_moderation_decision (item_id, actor_uid, from_status, to_status, reason)
+		SELECT id, ?, ?, ?, ? FROM moved`
+	res := w.db.WithContext(ctx).Exec(stmt,
+		model.StatusPublished, model.SourceKeyHihyou, model.StatusPending,
+		w.opts.PublishActor, model.StatusPending, model.StatusPublished, releaseReason)
+	if res.Error != nil {
+		return 0, res.Error
+	}
+	return int(res.RowsAffected), nil
+}
+
 // seedSource writes 批评's news_source row. 01 波 deliberately left it out: the
 // column URL it must carry was not known until this backfill, and a placeholder
 // homepage_url would put a wrong link under the one condition she set.

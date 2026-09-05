@@ -150,6 +150,56 @@ func TestImportWritesPendingItemsAndIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestPublishActorReleasesPendingRowsAndSparesYmgal(t *testing.T) {
+	db, dsn := openTestDB(t)
+	// The ymgal source row is seeded by the migration and survives Truncate, so
+	// only the guard item is created here.
+	guard := model.NewsItem{SourceKey: model.SourceKeyYmgal, Lane: model.LaneNews,
+		ExternalID: "t1", Title: "t", Preview: "p", SourceURL: "https://www.ymgal.games/t1",
+		PublishedAt: time.Unix(1786257779, 0).UTC(), Status: model.StatusPending}
+	if err := db.Create(&guard).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	dir := t.TempDir()
+	writeCorpus(t, dir, healthy(1005))
+	sum, err := Import(context.Background(), &config.Config{},
+		Opts{Dir: dir, NoImages: true, Apply: true, DSN: dsn, PublishActor: 30})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sum.Created != 3 || sum.Released != 3 {
+		t.Fatalf("created=%d released=%d, want 3/3", sum.Created, sum.Released)
+	}
+
+	var n int64
+	db.Model(&model.NewsItem{}).
+		Where("source_key = ? AND status = ?", model.SourceKeyHihyou, model.StatusPublished).Count(&n)
+	if n != 3 {
+		t.Errorf("published hihyou rows = %d, want 3", n)
+	}
+	var decisions []model.NewsModerationDecision
+	if err := db.Find(&decisions).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(decisions) != 3 {
+		t.Fatalf("decision rows = %d, want one per released item", len(decisions))
+	}
+	for _, d := range decisions {
+		if d.ActorUID != 30 || d.FromStatus != model.StatusPending || d.ToStatus != model.StatusPublished || d.Reason == "" {
+			t.Errorf("decision = %+v", d)
+		}
+	}
+	// The release is scoped to this source: ymgal's queue answers a different
+	// promise and a wholesale sweep here would silently bypass it.
+	if err := db.Take(&guard, guard.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if guard.Status != model.StatusPending {
+		t.Errorf("ymgal row status = %d — the standing release swept another source", guard.Status)
+	}
+}
+
 // A row that already exists with the right text is the case 04c actually meets:
 // the whole 04b backfill ran with --no-images. If pictures only ever arrive on
 // create or on a text change, that run leaves 4,425 rows without a banner
