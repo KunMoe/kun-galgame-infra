@@ -12,7 +12,7 @@ type PriceQuote struct {
 	Object          string   `json:"object" enum:"price_quote" doc:"Type discriminant. Always price_quote."`
 	Source          string   `json:"source" maxLength:"64" doc:"Open vocabulary sources. Must not be used as a discriminant."`
 	ExternalID      string   `json:"external_id" maxLength:"256" doc:"Verbatim upstream id. Must not be used as a discriminant beyond exact match. It is an identity anchor at this entity's own granularity, not necessarily an addressable page: a credit-name vndb ref is a staff-alias id with no page of its own. Browseable URLs come from links."`
-	Region          string   `json:"region" pattern:"^[a-z]{2}$" maxLength:"2" doc:"ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite."`
+	Region          string   `json:"region" pattern:"^[a-z]{2}$" maxLength:"2" doc:"ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite and Getchu."`
 	QuoteState      string   `json:"quote_state" enum:"priced,pending,unavailable" doc:"priced has list and current; pending means a fetch is in flight; unavailable means the storefront has no price."`
 	URL             string   `json:"url" format:"uri" maxLength:"1024" doc:"Absolute URL."`
 	List            *Money   `json:"list" doc:"List price, tax-inclusive as the store shows it. null unless quote_state is priced."`

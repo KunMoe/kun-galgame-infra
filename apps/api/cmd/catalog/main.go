@@ -294,6 +294,7 @@ func setupPublicCatalog(
 	priceSvc := price.New(oauthDB, []price.Fetcher{
 		price.NewDLsite(keys.StorePriceDLsiteCurrencies.Get(), cfg.Store.PriceDLsiteBase, dlsiteProxy),
 		price.NewSteam(keys.StorePriceSteamRegions.Get(), ""),
+		price.NewGetchu(""),
 	}, price.Options{})
 	priceSvc.Start()
 

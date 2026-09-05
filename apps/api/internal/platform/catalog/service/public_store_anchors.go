@@ -39,7 +39,7 @@ func (s *PublicService) StoreAnchorsFor(ctx context.Context, workIDs []int64) (a
 		JOIN catalog_release rel ON rel.id = r.entity_id AND rel.deleted_at IS NULL
 		JOIN catalog_source src ON src.id = r.source_id
 		WHERE r.entity_type = ? AND r.link_kind = ? AND r.dead_at IS NULL
-			AND rel.work_id IN ? AND src.key IN ('dlsite','steam')
+			AND rel.work_id IN ? AND src.key IN ('dlsite','steam','getchu')
 		ORDER BY rel.work_id, src.key, r.external_id`,
 		model.EntityTypeRelease, model.LinkKindExact, ids,
 	).Scan(&rows).Error; err != nil {
