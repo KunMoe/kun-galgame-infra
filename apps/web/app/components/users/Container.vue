@@ -145,6 +145,22 @@ const handleDetail = (user: { uuid: string; name: string }) => {
   detailTarget.value = user
   detailOpen.value = true
 }
+
+const editOpen = ref(false)
+const editTarget = ref<{ uuid: string; name: string } | null>(null)
+const detailReloadKey = ref(0)
+
+const handleEdit = (user: { uuid: string; name: string }) => {
+  editTarget.value = user
+  editOpen.value = true
+}
+
+const onEditSuccess = () => {
+  refresh()
+  if (detailTarget.value?.uuid === editTarget.value?.uuid) {
+    detailReloadKey.value++
+  }
+}
 </script>
 
 <template>
@@ -189,6 +205,7 @@ const handleDetail = (user: { uuid: string; name: string }) => {
         @roles="handleRoles"
         @site-roles="handleSiteRoles"
         @detail="handleDetail"
+        @edit="handleEdit"
       />
 
       <div v-if="totalPages > 1" class="flex justify-center">
@@ -224,7 +241,17 @@ const handleDetail = (user: { uuid: string; name: string }) => {
       @success="refresh"
     />
 
-    <UsersDetailDrawer v-model:open="detailOpen" :user="detailTarget" />
+    <UsersDetailDrawer
+      v-model:open="detailOpen"
+      :user="detailTarget"
+      :reload-key="detailReloadKey"
+    />
+
+    <UsersEditModal
+      v-model:open="editOpen"
+      :user="editTarget"
+      @success="onEditSuccess"
+    />
 
     <KunModal v-model="banOpen" aria-label="封禁用户">
       <div class="space-y-4">

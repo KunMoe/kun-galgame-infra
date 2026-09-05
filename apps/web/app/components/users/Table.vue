@@ -13,6 +13,7 @@ const emit = defineEmits<{
   roles: [user: { uuid: string; name: string; roles: string[] }]
   siteRoles: [user: { uuid: string; name: string }]
   detail: [user: { uuid: string; name: string }]
+  edit: [user: { uuid: string; name: string }]
 }>()
 
 const cdnBase = useRuntimeConfig().public.imageCdnBase as string
@@ -121,6 +122,14 @@ const isAdmin = (user: User) => !!user.roles?.includes('admin')
                 >
                   <KunIcon name="lucide:eye" class="size-4" />
                   查看详情
+                </button>
+                <button
+                  v-if="!user.is_anonymized"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-sm text-default-500 hover:bg-default-100 hover:text-foreground"
+                  @click="emit('edit', { uuid: user.uuid, name: user.name })"
+                >
+                  <KunIcon name="lucide:user-pen" class="size-4" />
+                  编辑资料
                 </button>
                 <button
                   v-if="user.status === 0 && !user.is_anonymized && !isAdmin(user)"
