@@ -194,8 +194,12 @@ func TestGateQuarantinesRatherThanBestEfforts(t *testing.T) {
 	}{
 		{"too few items", Segmentation{Items: []Item{{Title: "a", Body: []string{"x"}}}}, "item count"},
 		{"orphan blowup", Segmentation{Items: threeItems(), Orphans: 10}, "orphan paragraphs"},
-		{"bodyless run", Segmentation{Items: append(threeItems(),
-			Item{Title: "d"}, Item{Title: "e"}, Item{Title: "f"})}, "items with no body"},
+		{"bodyless run mid-issue", Segmentation{Items: append([]Item{
+			{Title: "d"}, {Title: "e"}, {Title: "f"}}, threeItems()...)}, "items with no body"},
+		{"image-only trailing run", Segmentation{Items: append(threeItems(),
+			Item{Title: "d", Pictures: []string{"p"}},
+			Item{Title: "e", Pictures: []string{"p"}},
+			Item{Title: "f", Pictures: []string{"p"}})}, "items with no body"},
 		{"sign-off as title", Segmentation{Items: append(threeItems(),
 			Item{Title: strings.Repeat("长", 91), Body: []string{"x"}})}, "over-long titles"},
 	}
@@ -207,6 +211,13 @@ func TestGateQuarantinesRatherThanBestEfforts(t *testing.T) {
 	}
 	if fail := Gate(Segmentation{Items: threeItems()}); len(fail) != 0 {
 		t.Errorf("a healthy issue was rejected: %v", fail)
+	}
+	signoff := append(threeItems(),
+		Item{Title: "文案：Zinogre、剩斗士星星、kksk、"},
+		Item{Title: "Casillas、倉小唯、poi233、萧端凛、式轩"},
+		Item{Title: "文案审核：信光、远野、十二级重巡拿拿酱、尘归"})
+	if fail := Gate(Segmentation{Items: signoff}); len(fail) != 0 {
+		t.Errorf("期256-shaped trailing sign-off was rejected: %v", fail)
 	}
 }
 
