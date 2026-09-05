@@ -14,6 +14,19 @@ type Image struct {
 	Source    string   `json:"source" maxLength:"64" doc:"Open vocabulary sources. Must not be used as a discriminant."`
 }
 
+type CoverSlot struct {
+	_         struct{} `json:"-" additionalProperties:"true"`
+	URL       string   `json:"url" format:"uri" maxLength:"512" doc:"Absolute image URL. Never a bare hash."`
+	Hash      string   `json:"hash" minLength:"64" maxLength:"64" pattern:"^[0-9a-f]{64}$" doc:"Image-service content hash."`
+	Width     *int     `json:"width" minimum:"0" maximum:"65535" doc:"Pixel width. null if unknown."`
+	Height    *int     `json:"height" minimum:"0" maximum:"65535" doc:"Pixel height. null if unknown."`
+	Thumbhash *string  `json:"thumbhash" maxLength:"128" pattern:"^[A-Za-z0-9+/=_-]+$" doc:"Thumbhash. null if unknown."`
+	Sexual    *string  `json:"sexual" enum:"safe,suggestive,explicit" doc:"Sexual depiction. null means not assessed."`
+	Violence  *string  `json:"violence" enum:"tame,violent,brutal" doc:"Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null."`
+	Source    string   `json:"source" maxLength:"64" doc:"Open vocabulary sources. Must not be used as a discriminant."`
+	Origin    string   `json:"origin" enum:"cover,screenshot" doc:"Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover."`
+}
+
 type Cover struct {
 	_              struct{} `json:"-" additionalProperties:"true"`
 	ID             string   `json:"id" pattern:"^[0-9]+$" minLength:"1" maxLength:"20" doc:"catalog_work_cover row id, not the image hash."`

@@ -248,16 +248,19 @@ catalog 的 release 日期是**部分 ISO**:`YYYY` / `YYYY-MM` / `YYYY-MM-DD`,�
 - 该旗标同时出现在作品详情与列表 `include=intros` 的 `intros[]` 每个元素,以及 `characters/{id}` / `labels/{id}` / `names/{id}` / `tags/{id}` 的 `intros[]`,语义逐字一致——**wave 209 起五个 intro 面在 spec 层就是同一个 schema(`PublicIntro`)**,消费端写一个渲染器即可;tag 面的 `machine` 现阶段**恒 false**(`catalog_tag_intro` 无 provenance 列,写入方只有 curated 编辑面)。
 - **`names/{id}` 的双泳道特例**:该面的"某语言存在源文"判据跨**两条泳道**统一计算(人物级源文 + 名义级桥都算源文),故人物机翻只在两条道对该语言均无源文时才出现。
 
-**④ 两槽判据**(与三表同批落账;**wave 207 更正**:同一挑选器也产出详情面的 `cover_slots`,两面逐字同义——本节读作两面共同的判据)
+**④ 两槽判据**(与三表同批落账;**wave 207 更正**:同一挑选器也产出详情面的 `cover_slots`,两面逐字同义——本节读作两面共同的判据;**v3 波 2026-09-05 重写了择优与兜底**)
 
-`covers` / `cover_slots` 出 `{portrait, banner}`,每槽 `{url, width, height, thumbhash, sexual, violence, source}` 或 `null`。
+`covers` / `cover_slots` 出 `{portrait, banner}`,每槽 `{url, width, height, thumbhash, sexual, violence, source, origin}` 或 `null`。
 
-- **⚠️ 判据是 kind × 尺寸两道,不是只看尺寸(wave 207 更正)**:本节此前写作「朝向来自真实尺寸,不来自 `kind`」——那对 `portrait` 的兜底档成立,对 `banner` 不成立,并已实爆过一次(碟面被当成 hero 图铺上详情页顶)。`kind` 里的 `pkgback` / `pkgmed` / `pkgcontent` / `pkgside`(封底 / 碟面 / 内页 / 侧标)**一律不算封面画**,**任何尺寸都进不了 `banner` 槽**,也当不了 `portrait` 的优先档:**「不是竖版」不等于「够宽当 hero」**,一张够宽的内页跨页图同样不是 hero。
-- 尺寸那一道:竖版 = `height > width × 1.05`(沿用 `cmd/pin-portrait-covers` 的 U 轨切点);横版 = `width / height ≥ 4/3`,且 `width ≥ 800` 的那张**优先**(够宽才铺得开)。
-- `portrait` = `portrait_pinned` 行 → 否则首个**竖版封面画** → 否则首个竖版图(任意 kind)→ 否则该调用方可见的首图(按 `sort_order`, `image_hash` 序),**故有可见封面时恒非 null**。
-- `banner` = 首个**够宽的横版封面画** → 否则首个横版封面画;**无(含 image_service 查询未接线、尺寸未知时)即 `null`**,绝不猜。一张封面都不可见时**整块** `cover_slots` / `covers` 为 `null`。
+- **⚠️ 判据是 kind × 尺寸两道,不是只看尺寸(wave 207 更正)**:本节此前写作「朝向来自真实尺寸,不来自 `kind`」——那对 `portrait` 的兜底档成立,对 `banner` 不成立,并已实爆过一次(碟面被当成 hero 图铺上详情页顶)。**v3 起 `pkg` 全族(`pkgfront` / `pkgback` / `pkgmed` / `pkgcontent` / `pkgside`,即盒封正面 / 封底 / 碟面 / 内页 / 侧标)一律不算封面画**:任何尺寸、两个槽都进不去,连 `first` 兜底也不进,**`portrait_pinned` 同样不例外**——生产里约 258 个 pkg 钉是退役前的重钉阶梯留下的,读面直接中和,不等重钉跑完。列表面的单图 `cover` 跳过同一族。
+- 尺寸那一道:竖版 = `height > width × 1.05`(沿用 `cmd/pin-portrait-covers` 的 U 轨切点);横版 = `width / height ≥ 4/3`。两个朝向各有一条**宽度优先档**(是分档,不是门槛):竖版 `width ≥ 500`、横版 `width ≥ 800`(够宽才铺得开)。
+- **同档内取最清晰的一张**:面积 `width × height` 最大者胜,同面积按 `image_hash` 字典序取小。**排序不跨档、也不跨安全轮**:先用 display-safe 的图把各档填满,只有仍然空着的档才由 sexual 轮补,故一张小的安全图恒胜一张大的露骨图;分档先于面积,所以一张 500 宽的竖版胜过一张更多像素的窄条。
+- `portrait` = `portrait_pinned` 行(**v3 起限竖版或尺寸未知**:钉的写入路径没有形状门,生产里有 1920×1080 的宣传横幅被钉成卡面;量过且不是竖版的钉**不占这一槽**,但照常参与它形状合得上的其它档——一张被钉的横图仍是合格的 `banner`。尺寸未知的钉照旧生效,否则 image_service 还没量到的作品会整片空掉)→ 否则 `width ≥ 500` 竖版中最清晰者 → 否则任意宽度竖版中最清晰者 → 否则该调用方可见的首图(按 `sort_order`, `image_hash` 序)。**`portrait` 永不退到截图**:一张场景图不能替作品当门面。
+- `banner` = `width ≥ 800` 横版中最清晰者 → 否则任意横版中最清晰者 → **否则退到该作品的截图**(v3 加法):只收横版截图,同样分 display-safe / sexual 两轮,轮内按 `sexual` 升序(安全的先,哪怕更小)→ 够宽(`≥ 800`)的先 → 面积大的先 → `image_hash` 小的先。**仍无(含 image_service 查询未接线、尺寸未知时)即 `null`**,绝不猜。
+- **`origin` 指明该槽选自哪个池子**:`cover`(封面行)/ `screenshot`(截图兜底)。两槽恒带此键,`screenshot` 只可能出现在 `banner` 上。
+- **整块为 `null` 的条件是「没有可用封面**且**没有可用截图」**:一部只有 pkg 封面、但有一张横版截图的作品,仍出一个 `portrait` 为 `null`、`banner` 为截图的 `cover_slots`。
 - 只有一张可用封面时两槽可能指向同一图,这是预期。
-- `width` / `height` / `thumbhash` 来自 image_service 的按需批量查询,**未知即三键一并省略**(消费端退回骨架屏);详情面 `covers[]` **与 `screenshots[]`** 每行同样带这三个可选键(A2-1a 加法,A2-1b 补齐 screenshots——两个粒度共用**同一次**批量查询,详情面对 image_service 仍只发一趟)。
+- `width` / `height` / `thumbhash` 来自 image_service 的按需批量查询,**未知即三键一并省略**(消费端退回骨架屏);详情面 `covers[]` **与 `screenshots[]`** 每行同样带这三个可选键(A2-1a 加法,A2-1b 补齐 screenshots——两个粒度共用**同一次**批量查询,详情面对 image_service 仍只发一趟)。截图兜底只在 `banner` 落空时才额外取一趟截图行 + 一趟 meta,列表面整页合成一趟;全页都不需要兜底时零额外查询。
 - sfw 调用方在**两槽**都永不见 `sexual≠0` 的封面(与列表单图 `cover` 同一规则;`violence` 同样不入门槛)。
 
 **⑤ 实体图的 `*_meta`(加法)**

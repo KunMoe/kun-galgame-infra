@@ -501,6 +501,7 @@ type PublicCoverSlot struct {
 	Sexual    int16  `json:"sexual"`
 	Violence  int16  `json:"violence"`
 	Source    string `json:"source"`
+	Origin    string `json:"origin" enum:"cover,screenshot" doc:"Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover"`
 }
 
 type PublicWorkCoverSlots struct {

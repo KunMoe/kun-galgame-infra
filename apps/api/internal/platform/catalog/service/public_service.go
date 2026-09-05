@@ -283,7 +283,7 @@ func (s *PublicService) WorkDetail(ctx context.Context, id int64, inc PublicIncl
 		Updated:       w.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 	if err = s.attachWorkFacets(ctx, &rec, detail, nsfw,
-		effectiveDisplayNSFW(w.Site, w.ProductWorkID, limits[w.ID], w.ContentRating), spoilers); err != nil {
+		effectiveDisplayNSFW(w.Site, w.ProductWorkID, limits[w.ID], w.ContentRating), spoilers, sel); err != nil {
 		return dto.PublicCatalogWork{}, false, err
 	}
 	if sel.Wants("releases") {
@@ -396,7 +396,7 @@ func (s *PublicService) publicRelations(rels []WorkRelationRow, nsfw bool, limit
 	return out
 }
 
-func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCatalogWork, detail *WorkDetail, nsfw, displayNSFW bool, spoilers int16) error {
+func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCatalogWork, detail *WorkDetail, nsfw, displayNSFW bool, spoilers int16, sel PublicFields) error {
 	rec.Releases = s.publicWorkReleases(detail.Releases)
 	rec.Popularity = make([]dto.PublicPopularity, 0, len(detail.Popularity))
 	for _, p := range detail.Popularity {
@@ -429,6 +429,11 @@ func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCat
 	}
 	rec.Covers = covers
 	rec.CoverSlots = s.pickCoverSlots(detail.Covers, imgMeta, nsfw && displayNSFW)
+	if sel.Wants("cover_slots") && bannerMissing(rec.CoverSlots) {
+		if rec.CoverSlots, err = s.fillDetailBanner(ctx, rec.CoverSlots, detail, imgMeta, nsfw && displayNSFW, sel); err != nil {
+			return err
+		}
+	}
 	rec.Screenshots = s.publicScreenshots(detail.Screenshots, imgMeta)
 	rec.Characters = s.publicRoster(detail.Characters, imgMeta)
 	rec.Labels = publicWorkLabels(detail.Labels)
@@ -436,6 +441,21 @@ func (s *PublicService) attachWorkFacets(ctx context.Context, rec *dto.PublicCat
 		rec.Labels = []dto.PublicWorkLabel{}
 	}
 	return nil
+}
+
+func (s *PublicService) fillDetailBanner(
+	ctx context.Context, slots *dto.PublicWorkCoverSlots, detail *WorkDetail,
+	imgMeta map[string]ImageMeta, allowSexual bool, sel PublicFields,
+) (*dto.PublicWorkCoverSlots, error) {
+	if sel.Wants("screenshots") {
+		return s.fillBannerFromScreenshots(slots, detail.Screenshots, imgMeta, allowSexual), nil
+	}
+	byWork, err := s.read.loadWorkScreenshots(ctx, []claimSubject{{WorkID: detail.Work.ID}})
+	if err != nil {
+		return nil, err
+	}
+	shots := byWork[detail.Work.ID]
+	return s.fillBannerFromScreenshots(slots, shots, s.workMediaMetaFor(ctx, nil, shots), allowSexual), nil
 }
 
 func (s *PublicService) imageURL(hash string) string {

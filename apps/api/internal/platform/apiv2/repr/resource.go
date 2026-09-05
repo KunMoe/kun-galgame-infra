@@ -51,8 +51,8 @@ type Work struct {
 	ReleaseDate          *string                  `json:"release_date" format:"date" maxLength:"10" doc:"Calendar date. null when release_status is announced, cancelled, or unknown."`
 	ReleaseDatePrecision *string                  `json:"release_date_precision" enum:"day,month,year" doc:"null when release_date is null. month dates sit on the 1st; year dates sit on January 1."`
 	ReleaseStatus        string                   `json:"release_status" enum:"released,dated,announced,cancelled,unknown" doc:"World state of the release, distinct from our knowledge gap."`
-	Cover                *Image                   `json:"cover" doc:"Selected portrait image. null if none."`
-	Banner               *Image                   `json:"banner" doc:"Selected landscape image. null if none."`
+	Cover                *CoverSlot               `json:"cover" doc:"Selected portrait image. null if none."`
+	Banner               *CoverSlot               `json:"banner" doc:"Selected landscape image. null if none. origin=screenshot marks the fallback for a work with no landscape cover."`
 	Claim                *Claim                   `json:"claim" doc:"null if unclaimed. Never omitted on view=basic."`
 	CreatedAt            string                   `json:"created_at" format:"date-time" maxLength:"32" doc:"RFC 3339 UTC."`
 	UpdatedAt            string                   `json:"updated_at" format:"date-time" maxLength:"32" doc:"RFC 3339 UTC."`
@@ -85,7 +85,7 @@ type ViaCompany struct {
 	Localized   map[string]LocalizedText `json:"localized" doc:"BCP-47 keys. Empty object if none. Must not be used as a discriminant."`
 }
 
-func NewWork(id int64, medium, display, olang, rating, releaseStatus, created, updated string, latin *string, localized map[string]LocalizedText, releaseDate, releasePrecision *string, cover, banner *Image, claim *Claim) (Work, bool) {
+func NewWork(id int64, medium, display, olang, rating, releaseStatus, created, updated string, latin *string, localized map[string]LocalizedText, releaseDate, releasePrecision *string, cover, banner *CoverSlot, claim *Claim) (Work, bool) {
 	if _, ok := MediumFromKey(medium); !ok {
 		return Work{}, false
 	}

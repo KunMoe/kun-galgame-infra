@@ -416,6 +416,9 @@ func partialISOFromOrdinal(ord int64) string {
 func (s *PublicService) pickListCover(rows []WorkCoverRow, allowSexual bool) string {
 	var fallback string
 	for _, c := range rows {
+		if !isCoverArt(c.Kind) {
+			continue
+		}
 		if !allowSexual && c.Sexual >= model.SexualExplicit {
 			continue
 		}

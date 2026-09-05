@@ -1121,6 +1121,87 @@ components:
         - violence
         - source
       type: object
+    CoverSlot:
+      additionalProperties: true
+      properties:
+        hash:
+          description: Image-service content hash.
+          maxLength: 64
+          minLength: 64
+          pattern: ^[0-9a-f]{64}$
+          type: string
+        height:
+          description: Pixel height. null if unknown.
+          format: int64
+          maximum: 65535
+          minimum: 0
+          type:
+            - integer
+            - "null"
+        origin:
+          description: Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.
+          enum:
+            - cover
+            - screenshot
+          type: string
+          x-vocabulary-closed: true
+        sexual:
+          description: Sexual depiction. null means not assessed.
+          enum:
+            - safe
+            - suggestive
+            - explicit
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        source:
+          description: Open vocabulary sources. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+          x-vocabulary: sources
+          x-vocabulary-closed: false
+        thumbhash:
+          description: Thumbhash. null if unknown.
+          maxLength: 128
+          pattern: ^[A-Za-z0-9+/=_-]+$
+          type:
+            - string
+            - "null"
+        url:
+          description: Absolute image URL. Never a bare hash.
+          format: uri
+          maxLength: 512
+          type: string
+        violence:
+          description: Violent depiction. null means not assessed. Currently no catalog row has an assessment; the value is always null.
+          enum:
+            - tame
+            - violent
+            - brutal
+          type:
+            - string
+            - "null"
+          x-vocabulary-closed: true
+        width:
+          description: Pixel width. null if unknown.
+          format: int64
+          maximum: 65535
+          minimum: 0
+          type:
+            - integer
+            - "null"
+      required:
+        - url
+        - hash
+        - width
+        - height
+        - thumbhash
+        - sexual
+        - violence
+        - source
+        - origin
+      type: object
     CoverVote:
       additionalProperties: true
       properties:
@@ -6250,8 +6331,8 @@ components:
           readOnly: true
           type: string
         banner:
-          $ref: "#/components/schemas/Image"
-          description: Selected landscape image. null if none.
+          $ref: "#/components/schemas/CoverSlot"
+          description: Selected landscape image. null if none. origin=screenshot marks the fallback for a work with no landscape cover.
         characters:
           description: Present when include=characters. Empty array if none.
           items:
@@ -6274,7 +6355,7 @@ components:
           type: string
           x-vocabulary-closed: true
         cover:
-          $ref: "#/components/schemas/Image"
+          $ref: "#/components/schemas/CoverSlot"
           description: Selected portrait image. null if none.
         covers:
           description: Present when include=covers. Empty array if none.
@@ -6842,7 +6923,7 @@ components:
 info:
   description: "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no approval required. The shape evolves additively; a breaking change to this document fails CI."
   title: NextMoe Public API v2
-  version: 2.8.0
+  version: 2.9.0
   x-stability: stable
 openapi: 3.1.0
 paths:
