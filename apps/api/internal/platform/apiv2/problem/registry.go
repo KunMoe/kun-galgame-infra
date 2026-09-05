@@ -70,6 +70,7 @@ const (
 	CodeSiteNotBound                = "SITE_NOT_BOUND"
 	CodeReleaseCreationDisabled     = "RELEASE_CREATION_DISABLED"
 	CodeAlreadyExists               = "ALREADY_EXISTS"
+	CodeDuplicateSuspects           = "DUPLICATE_SUSPECTS"
 	CodeInvalidStateTransition      = "INVALID_STATE_TRANSITION"
 	CodeClaimNotOwned               = "CLAIM_NOT_OWNED"
 	CodePermissionRequired          = "PERMISSION_REQUIRED"
@@ -130,6 +131,7 @@ var Codes = []Def{
 	{CodeSiteNotBound, DomainMe, http.StatusForbidden, "Site not bound", "The client behind the token is not bound to a catalog site."},
 	{CodeReleaseCreationDisabled, DomainMe, http.StatusForbidden, "Release creation disabled", "The proposal tried to create a release. This is a product constraint, not a defect."},
 	{CodeAlreadyExists, DomainMe, http.StatusConflict, "Already exists", "The same subject already has a live record for this target."},
+	{CodeDuplicateSuspects, DomainMe, http.StatusConflict, "Duplicate suspects", "The mint's titles match live works of the same medium; suspects[] names them. Nothing was written. Re-send with confirm_duplicates=true to mint anyway — the pairs are still filed for reconciliation."},
 	{CodeInvalidStateTransition, DomainMe, http.StatusConflict, "Invalid state transition", "The current state does not allow this transition. detail names the current state and the legal targets."},
 	{CodeClaimNotOwned, DomainMe, http.StatusForbidden, "Claim not owned", "The claim has an owner and it is another user. Only the owner may publish, submit, or withdraw it; an unowned claim is adopted by its first claimant."},
 	{CodePermissionRequired, DomainModeration, http.StatusForbidden, "Permission required", "The token lacks the permission this decision needs."},

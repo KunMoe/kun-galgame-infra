@@ -18,9 +18,12 @@ func TestSubmitWorkFilesSpacingDupeCandidate(t *testing.T) {
 		WorkID: existing.ID, Lang: "ja", Title: "重複検出タイトル", Kind: model.WorkTitleKindOfficial,
 	}).Error)
 
+	// The receipt lane only runs on a mint that got past the pre-mint gate, and
+	// this collision is exactly what that gate refuses — so the receipt is now
+	// only observable through the confirm door.
 	res, err := s.SubmitWork(t.Context(), SubmitWorkParams{
 		Site: submitSite, ProductWorkID: 90501, ActorUID: 7,
-		Fields: submitFields("重複 検出 タイトル"),
+		Fields: submitFields("重複 検出 タイトル"), ConfirmDuplicates: true,
 	})
 	require.NoError(t, err)
 
@@ -93,7 +96,7 @@ func TestSubmitWorkFilesHanThreeRuneDupeCandidate(t *testing.T) {
 
 	res, err := s.SubmitWork(t.Context(), SubmitWorkParams{
 		Site: submitSite, ProductWorkID: 90503, ActorUID: 7,
-		Fields: submitFields("红楼梦"),
+		Fields: submitFields("红楼梦"), ConfirmDuplicates: true,
 	})
 	require.NoError(t, err)
 

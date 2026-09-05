@@ -1040,7 +1040,7 @@ export const searchIndex: SearchEntry[] = [
     "t": "提交认领",
     "s": "端点 · 我的",
     "d": "POST /v2/me/claims",
-    "b": "createMyClaim /v2/me/claims post Submit a claim Mint or claim a work. work_id claims an existing catalog work. refs= claims the work they resolve to, or mints one from display_name when none match. site_work_id with display_name and neither work_id nor refs mints a work anchored to the site's own id. field_values carries an editing-engine work field map onto any mint lane and may be sent alone, without work_id, refs or site_work_id; it is refused with work_id, and refs that already resolve to a work answer 409 instead of dropping it. A caller holding catalog.edit.trusted mints straight to live rather than pending. Requires a user access token bound to a catalog site. 铸造或认领一部作品。work_id 认领已有作品。refs= 认领它们解析到的作品；无一匹配时按 display_name 铸造一部。site_work_id 配 display_name、且既无 work_id 也无 refs 时，铸造一部锚定到站点自身 id 的作品。field_values 把编辑引擎的作品字段映射带到任意铸造车道，也可单独发送、不带 work_id、refs 或 site_work_id；与 work_id 同发会被拒绝；refs 已解析到作品时返回 409 而非丢弃它。持有 catalog.edit.trusted 的调用方直接铸造为 live 而非 pending。需要绑定到 catalog 站点的用户访问令牌。"
+    "b": "createMyClaim /v2/me/claims post Submit a claim Mint or claim a work. work_id claims an existing catalog work. refs= claims the work they resolve to, or mints one from display_name when none match. site_work_id with display_name and neither work_id nor refs mints a work anchored to the site's own id. field_values carries an editing-engine work field map onto any mint lane and may be sent alone, without work_id, refs or site_work_id; it is refused with work_id, and refs that already resolve to a work answer 409 instead of dropping it. A caller holding catalog.edit.trusted mints straight to live rather than pending. A mint whose display_name or catalog.work.titles match live works of the same medium is refused with 409 DUPLICATE_SUSPECTS naming them in suspects[] and nothing is written; re-send with confirm_duplicates=true to mint anyway. The claiming lanes — work_id, and refs that resolve — never hit this gate. Requires a user access token bound to a catalog site. 铸造或认领一部作品。work_id 认领已有作品。refs= 认领它们解析到的作品；无一匹配时按 display_name 铸造一部。site_work_id 配 display_name、且既无 work_id 也无 refs 时，铸造一部锚定到站点自身 id 的作品。field_values 把编辑引擎的作品字段映射带到任意铸造车道，也可单独发送、不带 work_id、refs 或 site_work_id；与 work_id 同发会被拒绝；refs 已解析到作品时返回 409 而非丢弃它。持有 catalog.edit.trusted 的调用方直接铸造为 live 而非 pending。若铸造的 display_name 或 catalog.work.titles 与同一 medium 的在用作品同名，则返回 409 DUPLICATE_SUSPECTS，在 suspects[] 中列出它们，且一行不写；带 confirm_duplicates=true 重发即照旧铸造。认领车道——work_id、以及能解析的 refs——永不走这道闸。需要绑定到 catalog 站点的用户访问令牌。"
   },
   {
     "r": "/docs/v2/getMyClaim",
@@ -1496,6 +1496,13 @@ export const searchIndex: SearchEntry[] = [
     "s": "错误码 · 用户面",
     "d": "ALREADY_EXISTS · HTTP 409",
     "b": "ALREADY_EXISTS Already exists The same subject already has a live record for this target. 同一主体对这个目标已经有一条在用的记录。 me"
+  },
+  {
+    "r": "/problems/me/duplicate-suspects",
+    "t": "疑似重复",
+    "s": "错误码 · 用户面",
+    "d": "DUPLICATE_SUSPECTS · HTTP 409",
+    "b": "DUPLICATE_SUSPECTS Duplicate suspects The mint's titles match live works of the same medium; suspects[] names them. Nothing was written. Re-send with confirm_duplicates=true to mint anyway — the pairs are still filed for reconciliation. 铸造的标题与同一 medium 的在用作品同名，suspects[] 列出了它们。一行未写。带 confirm_duplicates=true 重发即照旧铸造——这些对子仍会记入对账队列。 me"
   },
   {
     "r": "/problems/me/invalid-state-transition",

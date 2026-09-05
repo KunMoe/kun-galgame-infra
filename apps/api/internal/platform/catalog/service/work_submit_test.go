@@ -298,19 +298,27 @@ func TestSubmitWorkIssuedIdempotency(t *testing.T) {
 		t.Fatalf("second submitter: %v", err)
 	}
 
+	// The three lanes below re-send a title the first mint already owns, which
+	// the duplicate gate refuses on its own. They are anchor assertions, so they
+	// go through the confirm door rather than around the gate.
 	foreign := anchored
 	foreign.Site = "moyu"
+	foreign.ConfirmDuplicates = true
 	if _, err := s.SubmitWork(ctx, foreign); err != nil {
 		t.Fatalf("another tenant must still be able to submit: %v", err)
 	}
 
 	supplied := anchored
 	supplied.ProductWorkID = 90777
+	supplied.ConfirmDuplicates = true
 	if _, err := s.SubmitWork(ctx, supplied); err != nil {
 		t.Fatalf("a supplied id must not be diverted by the anchor: %v", err)
 	}
 
-	bare := SubmitWorkParams{Site: submitSite, ActorUID: 7, Fields: submitFieldsNoAnchor("锚なし")}
+	bare := SubmitWorkParams{
+		Site: submitSite, ActorUID: 7, Fields: submitFieldsNoAnchor("锚なし"),
+		ConfirmDuplicates: true,
+	}
 	a, err := s.SubmitWork(ctx, bare)
 	if err != nil {
 		t.Fatal(err)
@@ -439,5 +447,128 @@ func TestSubmitWorkFeedsTheReviewQueue(t *testing.T) {
 	if approved.From == nil || *approved.From != model.ClaimStateKeyPending ||
 		approved.To != model.ClaimStateKeyLive {
 		t.Fatalf("approve: %+v", approved)
+	}
+}
+
+func countAll(t *testing.T, query string, args ...any) int64 {
+	t.Helper()
+	var n int64
+	if err := testDB.Raw(query, args...).Scan(&n).Error; err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func TestSubmitWorkGateRefusesSpacingVariantOfLiveTitle(t *testing.T) {
+	s := newLifecycle(t)
+	existing := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "門番検証タイトル")
+
+	_, err := s.SubmitWork(t.Context(), SubmitWorkParams{
+		Site: submitSite, ProductWorkID: 90601, ActorUID: 7,
+		Fields: submitFieldsNoAnchor("門番　検証 タイトル"),
+	})
+	var dupes *WorkDupeSuspectsError
+	if !errors.As(err, &dupes) {
+		t.Fatalf("a whitespace variant of a live title must be refused, got %v", err)
+	}
+	if len(dupes.Suspects) != 1 || dupes.Suspects[0].WorkID != existing.ID ||
+		dupes.Suspects[0].DisplayName != "門番検証タイトル" {
+		t.Fatalf("suspects: %+v", dupes.Suspects)
+	}
+	if n := countAll(t, `SELECT count(*) FROM catalog_work`); n != 1 {
+		t.Fatalf("the refusal must roll the whole mint back, got %d works", n)
+	}
+	if n := countAll(t, `SELECT count(*) FROM catalog_match_candidate`); n != 0 {
+		t.Fatalf("a refused mint files no receipt, got %d", n)
+	}
+}
+
+func TestSubmitWorkGateFiresOnSubmittedTitlesField(t *testing.T) {
+	s := newLifecycle(t)
+	existing := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "別名一致検証作品")
+
+	fields := submitFieldsNoAnchor("重ならない表示名")
+	fields[editspec.FieldWorkTitles] = []any{
+		map[string]any{"lang": "ja", "title": "別名 一致 検証 作品", "kind": float64(0)},
+	}
+	_, err := s.SubmitWork(t.Context(), SubmitWorkParams{
+		Site: submitSite, ProductWorkID: 90602, ActorUID: 7, Fields: fields,
+	})
+	var dupes *WorkDupeSuspectsError
+	if !errors.As(err, &dupes) {
+		t.Fatalf("a titles-only collision must be refused, got %v", err)
+	}
+	if len(dupes.Suspects) != 1 || dupes.Suspects[0].WorkID != existing.ID {
+		t.Fatalf("suspects: %+v", dupes.Suspects)
+	}
+}
+
+func TestSubmitWorkConfirmDuplicatesMintsAndFilesCandidate(t *testing.T) {
+	s := newLifecycle(t)
+	existing := createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "確認後鋳造検証作品")
+
+	params := SubmitWorkParams{
+		Site: submitSite, ProductWorkID: 90603, ActorUID: 7,
+		Fields: submitFieldsNoAnchor("確認後　鋳造 検証 作品"),
+	}
+	var dupes *WorkDupeSuspectsError
+	if _, err := s.SubmitWork(t.Context(), params); !errors.As(err, &dupes) {
+		t.Fatalf("unconfirmed: %v", err)
+	}
+
+	params.ConfirmDuplicates = true
+	res, err := s.SubmitWork(t.Context(), params)
+	if err != nil {
+		t.Fatalf("confirmed submit: %v", err)
+	}
+	if res.WorkID == 0 || res.ClaimState != model.ClaimStateKeyPending {
+		t.Fatalf("result: %+v", res)
+	}
+
+	var cands []model.CatalogMatchCandidate
+	if err := testDB.Order("a_id, b_id").Find(&cands).Error; err != nil {
+		t.Fatal(err)
+	}
+	if len(cands) != 1 {
+		t.Fatalf("a confirmed mint still files the pair for reconciliation, got %+v", cands)
+	}
+	if cands[0].AID != min(existing.ID, res.WorkID) || cands[0].BID != max(existing.ID, res.WorkID) ||
+		cands[0].Status != model.CandidateStatusPending {
+		t.Fatalf("candidate: %+v", cands[0])
+	}
+}
+
+func TestSubmitWorkGateIgnoresOtherMedia(t *testing.T) {
+	s := newLifecycle(t)
+	createWorkX(t, animeMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "他媒体同名検証作品")
+
+	res, err := s.SubmitWork(t.Context(), SubmitWorkParams{
+		Site: submitSite, ProductWorkID: 90605, ActorUID: 7,
+		Fields: submitFieldsNoAnchor("他媒体 同名 検証 作品"),
+	})
+	if err != nil {
+		t.Fatalf("a same-title anime is a deliberate cross-media adaptation, not a duplicate: %v", err)
+	}
+	if res.WorkID == 0 {
+		t.Fatalf("result: %+v", res)
+	}
+}
+
+func TestSubmitWorkGateIgnoresIneligibleShortTitle(t *testing.T) {
+	s := newLifecycle(t)
+	createWorkX(t, galgameMediumID, model.ContentRatingAllAges, model.WorkStatusLive, "abc")
+
+	fields := submitFieldsNoAnchor("abc")
+	fields[editspec.FieldWorkTitles] = []any{
+		map[string]any{"lang": "ja", "title": "abc", "kind": float64(0)},
+	}
+	res, err := s.SubmitWork(t.Context(), SubmitWorkParams{
+		Site: submitSite, ProductWorkID: 90604, ActorUID: 7, Fields: fields,
+	})
+	if err != nil {
+		t.Fatalf("a 3-rune ASCII name is below the eligibility floor and must mint: %v", err)
+	}
+	if res.WorkID == 0 {
+		t.Fatalf("result: %+v", res)
 	}
 }

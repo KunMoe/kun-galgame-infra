@@ -277,7 +277,7 @@ func (c *Catalog) GetMyClaim(ctx context.Context, workID int64) (repr.ClaimRecor
 	return claimRecordFrom(rows[0]), nil
 }
 
-func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayName string, refs []repr.Ref, fields map[string]any) (repr.ClaimRecord, error) {
+func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayName string, refs []repr.Ref, fields map[string]any, confirmDuplicates bool) (repr.ClaimRecord, error) {
 	if c == nil || c.Claims == nil {
 		return repr.ClaimRecord{}, problem.New(problem.CodeServiceUnavailable, "", "", "claims are not bound.")
 	}
@@ -356,7 +356,7 @@ func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayNa
 				product = n
 			}
 		}
-		return c.mintClaim(ctx, site, uid, product, crefs, mint)
+		return c.mintClaim(ctx, site, uid, product, crefs, mint, confirmDuplicates)
 	}
 	if siteWorkID != "" || len(fields) > 0 {
 		detail := "display_name is required to mint a work from field_values alone."
@@ -375,7 +375,7 @@ func (c *Catalog) CreateClaim(ctx context.Context, workID, siteWorkID, displayNa
 		if perr != nil {
 			return repr.ClaimRecord{}, perr
 		}
-		return c.mintClaim(ctx, site, uid, product, nil, mint)
+		return c.mintClaim(ctx, site, uid, product, nil, mint, confirmDuplicates)
 	}
 	p := problem.New(problem.CodeValidationFailed, "", "", "work_id, refs, site_work_id, or field_values is required.")
 	p.Errors = []problem.FieldError{{Pointer: "/work_id", Reason: problem.ReasonRequired, Detail: "provide work_id, refs, site_work_id, or field_values"}}
@@ -617,6 +617,14 @@ func claimWriteErr(err error) error {
 	var exists *catsvc.ClaimExistsError
 	if errors.As(err, &exists) {
 		return problem.New(problem.CodeAlreadyExists, "", "", exists.Error())
+	}
+	var dupes *catsvc.WorkDupeSuspectsError
+	if errors.As(err, &dupes) {
+		p := problem.New(problem.CodeDuplicateSuspects, "", "", dupes.Error())
+		for _, s := range dupes.Suspects {
+			p.Suspects = append(p.Suspects, problem.Suspect{ID: repr.ID(s.WorkID), DisplayName: s.DisplayName})
+		}
+		return p
 	}
 	var trans *catsvc.ClaimTransitionError
 	if errors.As(err, &trans) {

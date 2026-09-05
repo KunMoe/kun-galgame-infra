@@ -25,7 +25,7 @@ func registerMeWrite(api huma.API, cat *Catalog) {
 	huma.Register(api, huma.Operation{
 		OperationID: "createMyClaim", Method: http.MethodPost, Path: "/v2/me/claims",
 		Summary:     "Submit a claim",
-		Description: "Mint or claim a work. work_id claims an existing catalog work. refs= claims the work they resolve to, or mints one from display_name when none match. site_work_id with display_name and neither work_id nor refs mints a work anchored to the site's own id. field_values carries an editing-engine work field map onto any mint lane and may be sent alone, without work_id, refs or site_work_id; it is refused with work_id, and refs that already resolve to a work answer 409 instead of dropping it. A caller holding catalog.edit.trusted mints straight to live rather than pending. Requires a user access token bound to a catalog site.",
+		Description: "Mint or claim a work. work_id claims an existing catalog work. refs= claims the work they resolve to, or mints one from display_name when none match. site_work_id with display_name and neither work_id nor refs mints a work anchored to the site's own id. field_values carries an editing-engine work field map onto any mint lane and may be sent alone, without work_id, refs or site_work_id; it is refused with work_id, and refs that already resolve to a work answer 409 instead of dropping it. A caller holding catalog.edit.trusted mints straight to live rather than pending. A mint whose display_name or catalog.work.titles match live works of the same medium is refused with 409 DUPLICATE_SUSPECTS naming them in suspects[] and nothing is written; re-send with confirm_duplicates=true to mint anyway. The claiming lanes — work_id, and refs that resolve — never hit this gate. Requires a user access token bound to a catalog site.",
 		Tags:        me, Errors: writeErrs, DefaultStatus: http.StatusCreated, SkipValidateParams: true,
 	}, createMyClaim(cat))
 	huma.Register(api, huma.Operation{
@@ -136,11 +136,12 @@ type claimRefBody struct {
 
 type createClaimInput struct {
 	Body struct {
-		SiteWorkID  string         `json:"site_work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"The site's own work id. Sent alone with display_name — no work_id, no refs — it mints a work anchored to that id."`
-		WorkID      string         `json:"work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"Existing catalog work id to claim."`
-		DisplayName string         `json:"display_name,omitempty" maxLength:"512" doc:"Required to mint when refs do not match. Must not be used as a discriminant."`
-		Refs        []claimRefBody `json:"refs,omitempty" maxItems:"100" doc:"source:external_id anchors, at most 100. Used when work_id is absent."`
-		FieldValues map[string]any `json:"field_values,omitempty" doc:"Editing-engine field key to value for the minted work, e.g. catalog.work.titles — the same shape GET /v2/moderation/snapshots/{object}/{id} answers. Sent alone it mints from the map; sent with work_id it is 422. Top-level display_name wins over catalog.work.display_name."`
+		SiteWorkID        string         `json:"site_work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"The site's own work id. Sent alone with display_name — no work_id, no refs — it mints a work anchored to that id."`
+		WorkID            string         `json:"work_id,omitempty" pattern:"^[0-9]+$" maxLength:"20" doc:"Existing catalog work id to claim."`
+		DisplayName       string         `json:"display_name,omitempty" maxLength:"512" doc:"Required to mint when refs do not match. Must not be used as a discriminant."`
+		Refs              []claimRefBody `json:"refs,omitempty" maxItems:"100" doc:"source:external_id anchors, at most 100. Used when work_id is absent."`
+		FieldValues       map[string]any `json:"field_values,omitempty" doc:"Editing-engine field key to value for the minted work, e.g. catalog.work.titles — the same shape GET /v2/moderation/snapshots/{object}/{id} answers. Sent alone it mints from the map; sent with work_id it is 422. Top-level display_name wins over catalog.work.display_name."`
+		ConfirmDuplicates bool           `json:"confirm_duplicates,omitempty" doc:"Mint even when live works of the same medium share a submitted title. Without it such a mint is refused with 409 DUPLICATE_SUSPECTS and the works in suspects[]; nothing is written. Confirming still files the pairs for reconciliation. Only mint lanes read this."`
 	}
 }
 type getClaimInput struct {
@@ -269,7 +270,7 @@ func createMyClaim(cat *Catalog) func(context.Context, *createClaimInput) (*getC
 		for _, r := range in.Body.Refs {
 			refs = append(refs, repr.Ref{Source: r.Source, ExternalID: r.ExternalID})
 		}
-		rec, err := cat.CreateClaim(ctx, in.Body.WorkID, in.Body.SiteWorkID, in.Body.DisplayName, refs, in.Body.FieldValues)
+		rec, err := cat.CreateClaim(ctx, in.Body.WorkID, in.Body.SiteWorkID, in.Body.DisplayName, refs, in.Body.FieldValues, in.Body.ConfirmDuplicates)
 		if err != nil {
 			return nil, catalogErr(ctx, err)
 		}

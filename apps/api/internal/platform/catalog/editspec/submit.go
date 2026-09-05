@@ -55,6 +55,28 @@ type SubmissionAnchor struct {
 	ExternalID string
 }
 
+// SubmissionTitleStrings extracts the title strings from a submitted
+// catalog.work.titles value without validating it — the mint's duplicate gate
+// wants every name the caller asserted, and a shape error is still caught by
+// parseTitles when the fields are applied.
+func SubmissionTitleStrings(value any) []string {
+	arr, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(arr))
+	for _, el := range arr {
+		obj, ok := el.(map[string]any)
+		if !ok {
+			continue
+		}
+		if title, ok := obj["title"].(string); ok && strings.TrimSpace(title) != "" {
+			out = append(out, title)
+		}
+	}
+	return out
+}
+
 func SubmissionAnchorsOf(value any) []SubmissionAnchor {
 	urls, err := parseLinks(value)
 	if err != nil {

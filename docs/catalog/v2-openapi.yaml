@@ -1171,6 +1171,9 @@ components:
           format: uri
           readOnly: true
           type: string
+        confirm_duplicates:
+          description: Mint even when live works of the same medium share a submitted title. Without it such a mint is refused with 409 DUPLICATE_SUSPECTS and the works in suspects[]; nothing is written. Confirming still files the pairs for reconciliation. Only mint lanes read this.
+          type: boolean
         display_name:
           description: Required to mint when refs do not match. Must not be used as a discriminant.
           maxLength: 512
@@ -4612,6 +4615,11 @@ components:
           maximum: 599
           minimum: 400
           type: integer
+        suspects:
+          description: Live works sharing a submitted title when code is DUPLICATE_SUSPECTS.
+          items:
+            $ref: "#/components/schemas/Suspect"
+          type: array
         title:
           description: Stable English phrase for this type. Does not vary per request.
           maxLength: 128
@@ -5982,6 +5990,22 @@ components:
         - totals
         - by_kind
       type: object
+    Suspect:
+      additionalProperties: true
+      properties:
+        display_name:
+          description: The live work's display name. Must not be used as a discriminant.
+          maxLength: 512
+          type: string
+        id:
+          description: Catalog work id.
+          maxLength: 20
+          pattern: ^[0-9]+$
+          type: string
+      required:
+        - id
+        - display_name
+      type: object
     Tag:
       additionalProperties: true
       properties:
@@ -6810,7 +6834,7 @@ components:
 info:
   description: "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no approval required. The shape evolves additively; a breaking change to this document fails CI."
   title: NextMoe Public API v2
-  version: 2.6.0
+  version: 2.7.0
   x-stability: stable
 openapi: 3.1.0
 paths:
@@ -13108,7 +13132,7 @@ paths:
       tags:
         - me
     post:
-      description: Mint or claim a work. work_id claims an existing catalog work. refs= claims the work they resolve to, or mints one from display_name when none match. site_work_id with display_name and neither work_id nor refs mints a work anchored to the site's own id. field_values carries an editing-engine work field map onto any mint lane and may be sent alone, without work_id, refs or site_work_id; it is refused with work_id, and refs that already resolve to a work answer 409 instead of dropping it. A caller holding catalog.edit.trusted mints straight to live rather than pending. Requires a user access token bound to a catalog site.
+      description: Mint or claim a work. work_id claims an existing catalog work. refs= claims the work they resolve to, or mints one from display_name when none match. site_work_id with display_name and neither work_id nor refs mints a work anchored to the site's own id. field_values carries an editing-engine work field map onto any mint lane and may be sent alone, without work_id, refs or site_work_id; it is refused with work_id, and refs that already resolve to a work answer 409 instead of dropping it. A caller holding catalog.edit.trusted mints straight to live rather than pending. A mint whose display_name or catalog.work.titles match live works of the same medium is refused with 409 DUPLICATE_SUSPECTS naming them in suspects[] and nothing is written; re-send with confirm_duplicates=true to mint anyway. The claiming lanes — work_id, and refs that resolve — never hit this gate. Requires a user access token bound to a catalog site.
       operationId: createMyClaim
       requestBody:
         content:

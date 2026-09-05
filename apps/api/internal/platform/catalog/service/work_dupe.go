@@ -1,6 +1,9 @@
 package service
 
 import (
+	"strconv"
+	"strings"
+
 	"api/internal/platform/catalog/editspec"
 	"api/internal/platform/catalog/model"
 
@@ -61,6 +64,46 @@ func WorkDupeCorpusSQL() string {
 		SELECT w.id, ` + foldDisplay + `, true AS official
 		FROM catalog_work w
 		WHERE w.deleted_at IS NULL AND ` + WorkDupeNormEligibleSQL(foldDisplay)
+}
+
+type WorkDupeSuspect struct {
+	WorkID      int64  `gorm:"column:work_id"`
+	DisplayName string `gorm:"column:display_name"`
+}
+
+// maxWorkDupeSuspects caps the pre-mint suspect list; the answer is a confirm
+// prompt for a human, not a census.
+const maxWorkDupeSuspects = 8
+
+func findWorkDupeSuspectsByNames(tx *gorm.DB, mediumID int16, names []string) ([]WorkDupeSuspect, error) {
+	vals := make([]string, 0, len(names))
+	args := make([]any, 0, len(names)+2)
+	for _, n := range names {
+		if strings.TrimSpace(n) == "" {
+			continue
+		}
+		vals = append(vals, "(CAST(? AS text))")
+		args = append(args, n)
+	}
+	if len(vals) == 0 {
+		return nil, nil
+	}
+	fold := WorkTitleFoldSQL("lower(normalize(i.raw, NFKC))")
+	args = append(args, mediumID)
+	var out []WorkDupeSuspect
+	err := tx.Raw(`
+		WITH input(raw) AS (VALUES `+strings.Join(vals, ", ")+`),
+		folded AS (SELECT DISTINCT `+fold+` AS n FROM input i),
+		corpus AS (`+WorkDupeCorpusSQL()+`)
+		SELECT c.work_id, w.display_name
+		FROM folded f
+		JOIN corpus c ON c.n = f.n
+		JOIN catalog_work w ON w.id = c.work_id AND w.deleted_at IS NULL AND w.medium_id = ?
+		WHERE `+WorkDupeNormEligibleSQL("f.n")+`
+		GROUP BY c.work_id, w.display_name
+		ORDER BY c.work_id
+		LIMIT `+strconv.Itoa(maxWorkDupeSuspects), args...).Scan(&out).Error
+	return out, err
 }
 
 // recordWorkDupeSuspects files a pending match candidate for every live work
