@@ -56,6 +56,11 @@ func TestSchemaValueSpecCompleteness(t *testing.T) {
 				if _, ok := vocab.Lookup(f.Value.Vocabulary); !ok {
 					t.Errorf("%s: vocabulary %q is not published", f.Key, f.Value.Vocabulary)
 				}
+			} else if f.Value.Coded {
+				t.Errorf("%s: declares int encoding with no vocabulary to index", f.Key)
+			}
+			if f.Value.Base != 0 && !f.Value.Coded {
+				t.Errorf("%s: carries base %d but is not int-encoded", f.Key, f.Value.Base)
 			}
 			el := f.Value.Element
 			if el == nil {
@@ -128,25 +133,29 @@ func TestVocabularyTokensPassValidators(t *testing.T) {
 				t.Errorf("%s: vocabulary %q publishes no tokens", f.Key, f.Value.Vocabulary)
 				continue
 			}
-			stringCoded := true
-			for _, tok := range tokens {
-				if f.Validate(tok) != nil {
-					stringCoded = false
-					break
+			base := f.Value.Base
+			if !f.Value.Coded {
+				for _, tok := range tokens {
+					if err := f.Validate(tok); err != nil {
+						t.Errorf("%s: token %q rejected by a token-encoded field: %v", f.Key, tok, err)
+					}
 				}
-			}
-			if stringCoded {
 				if f.Validate("zz-no-such-token") == nil {
 					t.Errorf("%s: accepts a string outside vocabulary %q", f.Key, f.Value.Vocabulary)
 				}
+				if f.Validate(float64(base)) == nil {
+					t.Errorf("%s: declares token encoding but accepts the integer %d", f.Key, base)
+				}
 				continue
 			}
-			// Not string-coded, so the wire must carry Base plus the token's
-			// index in the vocabulary's published order — the contract
-			// repr.SchemaField.Vocabulary documents. Every code in range
-			// passes, the first code past either end fails, or the
-			// declaration is lying about this vocabulary.
-			base := f.Value.Base
+			// Coded, so the wire must carry Base plus the token's index in the
+			// vocabulary's published order — the contract
+			// repr.SchemaField.Encoding publishes. Every code in range passes,
+			// the first code past either end fails, and a token string is
+			// refused, or the declaration is lying about this vocabulary.
+			if f.Validate(tokens[0]) == nil {
+				t.Errorf("%s: declares int encoding but accepts the token %q", f.Key, tokens[0])
+			}
 			for idx := range tokens {
 				if err := f.Validate(float64(base + idx)); err != nil {
 					t.Errorf("%s: code %d (%s) rejected: %v", f.Key, base+idx, tokens[idx], err)

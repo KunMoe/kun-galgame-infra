@@ -44,6 +44,13 @@ func (c *Catalog) GetSchema(_ context.Context, object string) (repr.ObjectSchema
 		}
 		if v := f.Value; v != nil {
 			sf.Vocabulary = v.Vocabulary
+			if v.Vocabulary != "" {
+				encoding := "token"
+				if v.Coded {
+					encoding = "int"
+				}
+				sf.Encoding = &encoding
+			}
 			sf.Base = v.Base
 			sf.Nullable = v.Nullable
 			if v.Element != nil {

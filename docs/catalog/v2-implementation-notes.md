@@ -863,3 +863,49 @@ it to keep a fixture green.
 carries on `Problem`.
 
 **Zero migrations.**
+
+## Wave — the schema face says how an enum is carried (2026-09-05)
+
+The previous wave published `vocabulary` and `base` on every field of
+`GET /v2/catalog/schemas/{object}` and still left the wire encoding of a
+scalar enum undiscoverable. `catalog.work.content_rating` and
+`catalog.release.kind` take an **integer** (`base` plus the token's index in
+the vocabulary's published order); `catalog.work.olang`,
+`catalog.character.lang`, `catalog.release.lang` and
+`catalog.release.platform` take the **token string** itself. Both looked
+identical on the face — `field_type: enum`, a vocabulary, `base: 0` — so an
+editing client had to guess, or probe the write face and read the 422. List
+element members never had the problem: member `type` is `int` for the coded
+ones and `enum` for the token ones.
+
+`editing.ValueSpec` gains `Coded bool`, and the face publishes it as
+`encoding: "int" | "token"`, present exactly when `vocabulary` is set. Four
+FieldSpecs declare `Coded: true` — `content_rating`, `release.kind`, and
+`character.gender` / `character.blood_type` (the two 1-based ones). No mirror
+field on `ElementMember`: `type` already discriminates there, and a second
+declaration of the same fact is a second thing to keep in step.
+
+**The inference became an assertion.** `TestVocabularyTokensPassValidators`
+used to *infer* string-coding by trying every token against the validator and
+watching what stuck; it now reads the declaration and checks both directions,
+so a lying `Coded` fails. A token field must accept every token, reject an
+unknown token, and reject `Validate(float64(base))`; an int field must accept
+every code in range, reject the first code past either end, and reject
+`Validate(tokens[0])`. `TestSchemaValueSpecCompleteness` adds the two
+coherence rules: `Coded` needs a vocabulary to index, and a nonzero `Base` is
+meaningless without `Coded`.
+
+**Vocabulary order, stated out loud.** A vocabulary's published order is
+contractual **only** where it is read as `int` — there the wire value *is*
+`base + index`. Under `token` encoding the order is presentational and may be
+sorted for display. This came up on `platform`, which publishes `wiu` before
+`win` (label-sorted) while the validator's accept set lists `win` before `wiu`
+(a map literal, which has no order at all). Nothing contractual disagrees —
+`platform` is token-encoded — but until now no document said so, and a client
+reading the two orders side by side had no way to know which one it was
+allowed to depend on.
+
+**Spec is 2.8.0.** Additive: no new operations (92), one optional `encoding`
+property on the schema field.
+
+**Zero migrations.**

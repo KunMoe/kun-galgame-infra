@@ -40561,6 +40561,15 @@ export const docsModel: DocsModel = {
                               ]
                             },
                             {
+                              "name": "encoding",
+                              "doc": "How a write of this field carries the vocabulary value. Present exactly when vocabulary is set, absent otherwise. int means the wire carries base plus the token's index in the vocabulary's published order; token means the wire carries the token string itself. A vocabulary's published order is contractual only where it is read as int — under token encoding the order is presentational.",
+                              "enum": [
+                                "token",
+                                "int"
+                              ],
+                              "type": "string"
+                            },
+                            {
                               "name": "field_type",
                               "required": true,
                               "doc": "Control type. Not a domain vocabulary.",

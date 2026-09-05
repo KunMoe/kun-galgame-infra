@@ -270,6 +270,7 @@
   "Highest vote cast. null if this source publishes none.": "已投出的最高分。该源不下发时为 null。",
   "Hits in this bucket after the same filters as items.": "应用与 items 相同的过滤器后，本桶中的命中数。",
   "How a diff of this field should be rendered.": "该字段的 diff 应如何渲染。",
+  "How a write of this field carries the vocabulary value. Present exactly when vocabulary is set, absent otherwise. int means the wire carries base plus the token's index in the vocabulary's published order; token means the wire carries the token string itself. A vocabulary's published order is contractual only where it is read as int — under token encoding the order is presentational.": "写入该字段时线上如何携带词表取值。当且仅当 vocabulary 非空时出现，否则缺席。int 表示线上值为 base 加 token 在词表发布顺序中的下标；token 表示线上值就是 token 字符串本身。词表的发布顺序只在按 int 读取处构成契约——token 编码下该顺序只是展示顺序。",
   "How many times the bearer acted on this work, within the site= scope when given. Present on the me faces.": "持令牌者对本作品的操作次数；给出 site= 时限定在该范围内。出现在 me 面上。",
   "How this revision came about.": "本修订如何产生。",
   "HTTP status for this item.": "本条目的 HTTP 状态。",

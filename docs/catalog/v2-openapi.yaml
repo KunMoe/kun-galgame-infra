@@ -5488,6 +5488,14 @@ components:
         element:
           $ref: "#/components/schemas/SchemaElement"
           description: Shape of one element of a list field. Absent on scalar fields and on list fields whose shape is not yet declared.
+        encoding:
+          description: How a write of this field carries the vocabulary value. Present exactly when vocabulary is set, absent otherwise. int means the wire carries base plus the token's index in the vocabulary's published order; token means the wire carries the token string itself. A vocabulary's published order is contractual only where it is read as int — under token encoding the order is presentational.
+          enum:
+            - token
+            - int
+          maxLength: 5
+          type: string
+          x-vocabulary-closed: true
         field_type:
           description: Control type. Not a domain vocabulary.
           enum:
@@ -6834,7 +6842,7 @@ components:
 info:
   description: "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no approval required. The shape evolves additively; a breaking change to this document fails CI."
   title: NextMoe Public API v2
-  version: 2.7.0
+  version: 2.8.0
   x-stability: stable
 openapi: 3.1.0
 paths:
