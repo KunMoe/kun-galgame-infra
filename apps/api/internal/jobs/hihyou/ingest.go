@@ -14,14 +14,15 @@ import (
 )
 
 type Opts struct {
-	Dir         string
-	Apply       bool
-	NoImages    bool
-	SegmentOnly bool // report the segmentation without touching the database
-	Only        []int
-	DSN         string
-	ImageBase   string
-	Concurrency int // parallel picture fetch/upload; the database writes stay serial
+	Dir          string
+	Apply        bool
+	NoImages     bool
+	SegmentOnly  bool // report the segmentation without touching the database
+	Only         []int
+	DSN          string
+	ImageBase    string
+	Concurrency  int   // parallel picture fetch/upload; the database writes stay serial
+	PublishActor int64 // uid on the release decisions; 0 leaves rows pending
 }
 
 type stats struct {
@@ -70,13 +71,16 @@ type Summary struct {
 	DroppedNoBody int            `json:"dropped_no_body,omitempty"`
 	ImagesUp      int            `json:"images_uploaded,omitempty"`
 	ImagesFailed  int            `json:"images_failed,omitempty"`
+	Released      int            `json:"released,omitempty"`
 	Apply         bool           `json:"apply"`
 }
 
 // Import segments the corpus and, with Apply, writes the items into kun_news as
-// status=pending. The backfill does not bypass the moderation gate: the risk on
-// this partner's content is not upstream spam but OUR extraction errors, which
-// is the case a human most needs to see.
+// status=pending. With PublishActor set, the run ends by releasing every
+// pending row of this source: on 2026-09-05 the user ruled the column is
+// wholesale-released because bilibili already moderates it, accepting the
+// remaining risk (our own extraction errors) on the 08-12 precedent. Without
+// the actor, rows wait for the console as before.
 func Import(ctx context.Context, cfg *config.Config, opts Opts) (*Summary, error) {
 	if opts.Dir == "" {
 		return nil, fmt.Errorf("import: --dir is required")
@@ -153,6 +157,14 @@ func Import(ctx context.Context, cfg *config.Config, opts Opts) (*Summary, error
 				return nil, fmt.Errorf("issue %d item %d: %w", seg.IssueNo, it.Ordinal, err)
 			}
 		}
+	}
+
+	if w != nil && opts.Apply && opts.PublishActor != 0 {
+		n, err := w.releasePending(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("standing release: %w", err)
+		}
+		sum.Released = n
 	}
 
 	sum.Items, sum.Pictures = st.items, st.pictures
