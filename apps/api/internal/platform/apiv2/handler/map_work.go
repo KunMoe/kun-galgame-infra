@@ -10,13 +10,13 @@ import (
 )
 
 func workFromListItem(it dto.PublicWorkListItem, include []string, logoURL func(string) string) repr.Work {
-	var cover, banner *repr.Image
+	var cover, banner *repr.CoverSlot
 	if it.Covers != nil {
 		cover = imageFromSlot(it.Covers.Portrait)
 		banner = imageFromSlot(it.Covers.Banner)
 	}
 	if cover == nil {
-		cover = imageFromURL(it.Cover, "")
+		cover = slotFromImage(imageFromURL(it.Cover, ""), "cover")
 	}
 	created := it.Created
 	if created == "" {
@@ -59,7 +59,7 @@ func workFromListItem(it dto.PublicWorkListItem, include []string, logoURL func(
 }
 
 func workFromDetail(rec dto.PublicCatalogWork, include []string, logoURL func(string) string) repr.Work {
-	var cover, banner *repr.Image
+	var cover, banner *repr.CoverSlot
 	if rec.CoverSlots != nil {
 		cover = imageFromSlot(rec.CoverSlots.Portrait)
 		banner = imageFromSlot(rec.CoverSlots.Banner)
@@ -228,11 +228,25 @@ func partialDateLen(date *string) int {
 	return 0
 }
 
-func imageFromSlot(slot *dto.PublicCoverSlot) *repr.Image {
+func imageFromSlot(slot *dto.PublicCoverSlot) *repr.CoverSlot {
 	if slot == nil {
 		return nil
 	}
-	return imageFromURLMeta(slot.URL, slot.Source, slot.Width, slot.Height, slot.Thumbhash, slot.Sexual)
+	return slotFromImage(
+		imageFromURLMeta(slot.URL, slot.Source, slot.Width, slot.Height, slot.Thumbhash, slot.Sexual),
+		slot.Origin,
+	)
+}
+
+func slotFromImage(img *repr.Image, origin string) *repr.CoverSlot {
+	if img == nil {
+		return nil
+	}
+	return &repr.CoverSlot{
+		URL: img.URL, Hash: img.Hash, Width: img.Width, Height: img.Height,
+		Thumbhash: img.Thumbhash, Sexual: img.Sexual, Violence: img.Violence,
+		Source: img.Source, Origin: origin,
+	}
 }
 
 func imageFromURL(url, source string) *repr.Image {

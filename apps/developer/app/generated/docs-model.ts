@@ -3177,6 +3177,16 @@ export const docsModel: DocsModel = {
                                   "type": "integer"
                                 },
                                 {
+                                  "name": "origin",
+                                  "required": true,
+                                  "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                                  "enum": [
+                                    "cover",
+                                    "screenshot"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
                                   "name": "sexual",
                                   "required": true,
                                   "nullable": true,
@@ -3999,6 +4009,16 @@ export const docsModel: DocsModel = {
                                   "doc": "Pixel height. null if unknown.",
                                   "format": "int64",
                                   "type": "integer"
+                                },
+                                {
+                                  "name": "origin",
+                                  "required": true,
+                                  "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                                  "enum": [
+                                    "cover",
+                                    "screenshot"
+                                  ],
+                                  "type": "string"
                                 },
                                 {
                                   "name": "sexual",
@@ -10637,6 +10657,16 @@ export const docsModel: DocsModel = {
                                       "type": "integer"
                                     },
                                     {
+                                      "name": "origin",
+                                      "required": true,
+                                      "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                                      "enum": [
+                                        "cover",
+                                        "screenshot"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    {
                                       "name": "sexual",
                                       "required": true,
                                       "nullable": true,
@@ -11459,6 +11489,16 @@ export const docsModel: DocsModel = {
                                       "doc": "Pixel height. null if unknown.",
                                       "format": "int64",
                                       "type": "integer"
+                                    },
+                                    {
+                                      "name": "origin",
+                                      "required": true,
+                                      "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                                      "enum": [
+                                        "cover",
+                                        "screenshot"
+                                      ],
+                                      "type": "string"
                                     },
                                     {
                                       "name": "sexual",
@@ -21347,6 +21387,16 @@ export const docsModel: DocsModel = {
                                       "type": "integer"
                                     },
                                     {
+                                      "name": "origin",
+                                      "required": true,
+                                      "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                                      "enum": [
+                                        "cover",
+                                        "screenshot"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    {
                                       "name": "sexual",
                                       "required": true,
                                       "nullable": true,
@@ -22169,6 +22219,16 @@ export const docsModel: DocsModel = {
                                       "doc": "Pixel height. null if unknown.",
                                       "format": "int64",
                                       "type": "integer"
+                                    },
+                                    {
+                                      "name": "origin",
+                                      "required": true,
+                                      "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                                      "enum": [
+                                        "cover",
+                                        "screenshot"
+                                      ],
+                                      "type": "string"
                                     },
                                     {
                                       "name": "sexual",
@@ -50126,6 +50186,16 @@ export const docsModel: DocsModel = {
                                   "type": "integer"
                                 },
                                 {
+                                  "name": "origin",
+                                  "required": true,
+                                  "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                                  "enum": [
+                                    "cover",
+                                    "screenshot"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
                                   "name": "sexual",
                                   "required": true,
                                   "nullable": true,
@@ -50948,6 +51018,16 @@ export const docsModel: DocsModel = {
                                   "doc": "Pixel height. null if unknown.",
                                   "format": "int64",
                                   "type": "integer"
+                                },
+                                {
+                                  "name": "origin",
+                                  "required": true,
+                                  "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                                  "enum": [
+                                    "cover",
+                                    "screenshot"
+                                  ],
+                                  "type": "string"
                                 },
                                 {
                                   "name": "sexual",
@@ -53032,6 +53112,16 @@ export const docsModel: DocsModel = {
                             "type": "integer"
                           },
                           {
+                            "name": "origin",
+                            "required": true,
+                            "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                            "enum": [
+                              "cover",
+                              "screenshot"
+                            ],
+                            "type": "string"
+                          },
+                          {
                             "name": "sexual",
                             "required": true,
                             "nullable": true,
@@ -53854,6 +53944,16 @@ export const docsModel: DocsModel = {
                             "doc": "Pixel height. null if unknown.",
                             "format": "int64",
                             "type": "integer"
+                          },
+                          {
+                            "name": "origin",
+                            "required": true,
+                            "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                            "enum": [
+                              "cover",
+                              "screenshot"
+                            ],
+                            "type": "string"
                           },
                           {
                             "name": "sexual",
@@ -64707,6 +64807,16 @@ export const docsModel: DocsModel = {
                                       "type": "integer"
                                     },
                                     {
+                                      "name": "origin",
+                                      "required": true,
+                                      "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                                      "enum": [
+                                        "cover",
+                                        "screenshot"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    {
                                       "name": "sexual",
                                       "required": true,
                                       "nullable": true,
@@ -65529,6 +65639,16 @@ export const docsModel: DocsModel = {
                                       "doc": "Pixel height. null if unknown.",
                                       "format": "int64",
                                       "type": "integer"
+                                    },
+                                    {
+                                      "name": "origin",
+                                      "required": true,
+                                      "doc": "Which pool the image was elected from. screenshot only ever appears on banner, as the fallback for a work with no landscape cover.",
+                                      "enum": [
+                                        "cover",
+                                        "screenshot"
+                                      ],
+                                      "type": "string"
                                     },
                                     {
                                       "name": "sexual",

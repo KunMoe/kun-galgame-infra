@@ -16,10 +16,8 @@ func tier(kind string) int {
 	switch kind {
 	case "dig", "main":
 		return 0
-	case "pkgfront":
-		return 1
 	case "":
-		return 2
+		return 1
 	default:
 		return tierIneligible
 	}

@@ -126,14 +126,8 @@ func (s *PublicService) attachWorkListBlocks(
 		}
 	}
 	if inc.Covers {
-		all := make([]WorkCoverRow, 0, len(rows))
-		for _, r := range rows {
-			all = append(all, covers[r.ID]...)
-		}
-		meta := s.coverMetaFor(ctx, all)
-		for i, r := range rows {
-			items[i].Covers = s.pickCoverSlots(covers[r.ID], meta,
-				nsfw && effectiveDisplayNSFW(r.Site, r.ProductWorkID, displayNSFW[r.ID], r.ContentRating))
+		if err := s.attachWorkListCoverSlots(ctx, items, rows, nsfw, covers, displayNSFW); err != nil {
+			return err
 		}
 	}
 	if inc.Refs {
@@ -160,6 +154,44 @@ func (s *PublicService) attachWorkListBlocks(
 	if inc.Credits {
 		if err := s.attachWorkListCredits(ctx, items, rows, ids); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (s *PublicService) attachWorkListCoverSlots(
+	ctx context.Context, items []dto.PublicWorkListItem, rows []workListSourceRow, nsfw bool,
+	covers map[int64][]WorkCoverRow, displayNSFW map[int64]bool,
+) error {
+	all := make([]WorkCoverRow, 0, len(rows))
+	for _, r := range rows {
+		all = append(all, covers[r.ID]...)
+	}
+	meta := s.coverMetaFor(ctx, all)
+	allow := make([]bool, len(rows))
+	var needShots []claimSubject
+	for i, r := range rows {
+		allow[i] = nsfw && effectiveDisplayNSFW(r.Site, r.ProductWorkID, displayNSFW[r.ID], r.ContentRating)
+		items[i].Covers = s.pickCoverSlots(covers[r.ID], meta, allow[i])
+		if bannerMissing(items[i].Covers) {
+			needShots = append(needShots, claimSubject{WorkID: r.ID})
+		}
+	}
+	if len(needShots) == 0 {
+		return nil
+	}
+	shots, err := s.read.loadWorkScreenshots(ctx, needShots)
+	if err != nil {
+		return err
+	}
+	flat := make([]WorkScreenshotRow, 0, len(needShots))
+	for _, sub := range needShots {
+		flat = append(flat, shots[sub.WorkID]...)
+	}
+	shotMeta := s.workMediaMetaFor(ctx, nil, flat)
+	for i, r := range rows {
+		if bannerMissing(items[i].Covers) {
+			items[i].Covers = s.fillBannerFromScreenshots(items[i].Covers, shots[r.ID], shotMeta, allow[i])
 		}
 	}
 	return nil
@@ -305,130 +337,4 @@ func (s *PublicService) publicRatings(rows []WorkRatingRow) []dto.PublicRating {
 		})
 	}
 	return out
-}
-
-func isPortraitDims(w, h int) bool { return int64(h)*20 > int64(w)*21 }
-
-func isBannerDims(w, h int) bool { return int64(w)*3 >= int64(h)*4 }
-
-const bannerMinWidth = 800
-
-func isCoverArt(kind string) bool {
-	switch kind {
-	case "pkgback", "pkgmed", "pkgcontent", "pkgside":
-		return false
-	default:
-		return true
-	}
-}
-
-func (s *PublicService) pickCoverSlots(rows []WorkCoverRow, meta map[string]ImageMeta, allowSexual bool) *dto.PublicWorkCoverSlots {
-	cand := s.scanCovers(rows, meta, false)
-	if allowSexual && !cand.complete() {
-		cand.fillFrom(s.scanCovers(rows, meta, true))
-	}
-	if cand.first == nil {
-		return nil
-	}
-	return &dto.PublicWorkCoverSlots{
-		Portrait: s.coverSlot(cand.portrait(), meta),
-		Banner:   s.coverSlot(cand.banner(), meta),
-	}
-}
-
-type coverCandidates struct {
-	pinned, portraitArt, portraitAny *WorkCoverRow
-	bannerWide, bannerAny            *WorkCoverRow
-	first                            *WorkCoverRow
-}
-
-func (c coverCandidates) portrait() *WorkCoverRow {
-	switch {
-	case c.pinned != nil:
-		return c.pinned
-	case c.portraitArt != nil:
-		return c.portraitArt
-	case c.portraitAny != nil:
-		return c.portraitAny
-	default:
-		return c.first
-	}
-}
-
-func (c coverCandidates) banner() *WorkCoverRow {
-	if c.bannerWide != nil {
-		return c.bannerWide
-	}
-	return c.bannerAny
-}
-
-func (c coverCandidates) complete() bool {
-	return c.pinned != nil && c.portraitArt != nil && c.portraitAny != nil &&
-		c.bannerWide != nil && c.bannerAny != nil && c.first != nil
-}
-
-func (c *coverCandidates) fillFrom(other coverCandidates) {
-	for _, pair := range []struct{ dst, src **WorkCoverRow }{
-		{&c.pinned, &other.pinned}, {&c.portraitArt, &other.portraitArt},
-		{&c.portraitAny, &other.portraitAny}, {&c.bannerWide, &other.bannerWide},
-		{&c.bannerAny, &other.bannerAny}, {&c.first, &other.first},
-	} {
-		if *pair.dst == nil {
-			*pair.dst = *pair.src
-		}
-	}
-}
-
-func (s *PublicService) scanCovers(rows []WorkCoverRow, meta map[string]ImageMeta, allowSexual bool) coverCandidates {
-	var out coverCandidates
-	for i := range rows {
-		c := &rows[i]
-		if !allowSexual && c.Sexual >= model.SexualExplicit {
-			continue
-		}
-		if s.imageURL(c.ImageHash) == "" {
-			continue
-		}
-		if out.first == nil {
-			out.first = c
-		}
-		if c.PortraitPinned && out.pinned == nil {
-			out.pinned = c
-		}
-		m, ok := meta[c.ImageHash]
-		if !ok || m.Width <= 0 || m.Height <= 0 {
-			continue
-		}
-		switch {
-		case isPortraitDims(m.Width, m.Height):
-			if out.portraitAny == nil {
-				out.portraitAny = c
-			}
-			if isCoverArt(c.Kind) && out.portraitArt == nil {
-				out.portraitArt = c
-			}
-		case isBannerDims(m.Width, m.Height) && isCoverArt(c.Kind):
-			if out.bannerAny == nil {
-				out.bannerAny = c
-			}
-			if m.Width >= bannerMinWidth && out.bannerWide == nil {
-				out.bannerWide = c
-			}
-		}
-	}
-	return out
-}
-
-func (s *PublicService) coverSlot(c *WorkCoverRow, meta map[string]ImageMeta) *dto.PublicCoverSlot {
-	if c == nil {
-		return nil
-	}
-	slot := &dto.PublicCoverSlot{
-		URL: s.imageURL(c.ImageHash), Sexual: c.Sexual, Violence: c.Violence,
-		Source: s.sourceKey(c.SourceID),
-	}
-	if m, ok := meta[c.ImageHash]; ok {
-		slot.Width, slot.Height, slot.Thumbhash = m.Width, m.Height, m.Thumbhash
-	}
-	return slot
 }

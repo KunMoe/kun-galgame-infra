@@ -13,9 +13,8 @@ func cover(id int64, kind string, w, h int) Cover {
 
 func TestTierOrder(t *testing.T) {
 	assert.Equal(t, tier("dig"), tier("main"), "dig and main share one tier - the ruling of 2026-08-08 compares them on resolution, not on which word they use")
-	assert.Less(t, tier("dig"), tier("pkgfront"), "clean art beats a scan of a physical case")
-	assert.Less(t, tier("pkgfront"), tier(""), "a named front beats an unlabelled upload")
-	for _, k := range []string{"pkgback", "pkgmed", "pkgcontent", "pkgside"} {
+	assert.Less(t, tier("dig"), tier(""), "clean art beats an unlabelled upload")
+	for _, k := range []string{"pkgfront", "pkgback", "pkgmed", "pkgcontent", "pkgside"} {
 		assert.Equal(t, tierIneligible, tier(k), "%s is never a cover", k)
 	}
 }
@@ -42,10 +41,16 @@ func TestLargestWinsWithinTier(t *testing.T) {
 func TestLandscapeIsNeverEligible(t *testing.T) {
 	best := selectWinner([]Cover{
 		cover(1, "dig", 1600, 900),
-		cover(2, "pkgfront", 800, 1200),
+		cover(2, "", 800, 1200),
 	})
 	require.NotNil(t, best)
-	assert.Equal(t, "pkgfront", best.Kind)
+	assert.Equal(t, "", best.Kind)
+}
+
+func TestPackageArtIsNeverPinned(t *testing.T) {
+	assert.Nil(t, selectWinner([]Cover{cover(1, "pkgfront", 2000, 3000)}),
+		"the whole pkg family left the ladder: the read face vetoes it, so pinning one "+
+			"only writes a pin nothing can elect")
 }
 
 func TestUnknownDimsAreNeverEligible(t *testing.T) {
