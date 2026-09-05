@@ -166,8 +166,17 @@ func workFieldSpecs() []editing.FieldSpec {
 			Segments: 4, TrailingText: true, KeyCheck: kindLangTextKeyCheck("title"),
 		},
 		MaxElements: maxTitleElements,
-		Validate:    validateTitles,
-		Apply:       applyTitles,
+		Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+			Type: "object",
+			Members: []editing.ElementMember{
+				{Key: "lang", Type: "enum", Vocabulary: "olang", Nullable: true},
+				{Key: "title", Type: "text"},
+				{Key: "kind", Type: "int", Vocabulary: "title_kind"},
+				{Key: "latin", Type: "text", Nullable: true},
+			},
+		}},
+		Validate: validateTitles,
+		Apply:    applyTitles,
 	}
 	credits := editing.FieldSpec{
 		Key: FieldWorkCredits, Kind: editing.KindList, DiffHint: editing.DiffHintItems,

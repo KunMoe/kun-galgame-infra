@@ -34,14 +34,31 @@ func (c *Catalog) GetSchema(_ context.Context, object string) (repr.ObjectSchema
 				maxEl = editing.DefaultMaxElements
 			}
 		}
-		fields = append(fields, repr.SchemaField{
+		sf := repr.SchemaField{
 			Key:           f.Key,
 			FieldType:     string(f.Kind),
 			DiffHint:      f.DiffHint,
 			Deprecated:    f.Deprecated,
 			MaxSuppressed: f.MaxSuppressed,
 			MaxElements:   maxEl,
-		})
+		}
+		if v := f.Value; v != nil {
+			sf.Vocabulary = v.Vocabulary
+			sf.Nullable = v.Nullable
+			if v.Element != nil {
+				el := repr.SchemaElement{
+					Type:    v.Element.Type,
+					Members: make([]repr.SchemaElementMember, 0, len(v.Element.Members)),
+				}
+				for _, m := range v.Element.Members {
+					el.Members = append(el.Members, repr.SchemaElementMember{
+						Key: m.Key, Type: m.Type, Vocabulary: m.Vocabulary, Nullable: m.Nullable,
+					})
+				}
+				sf.Element = &el
+			}
+		}
+		fields = append(fields, sf)
 	}
 	return repr.ObjectSchema{
 		Object:           "object_schema",

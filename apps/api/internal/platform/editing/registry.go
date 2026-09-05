@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"gorm.io/gorm"
@@ -120,8 +121,47 @@ type FieldSpec struct {
 	Identity      *IdentitySpec
 	MaxSuppressed int
 	MaxElements   int
+	Value         *ValueSpec
 	Validate      func(value any) error
 	Apply         ApplyFunc
+}
+
+// ValueSpec is the declarative twin of Validate: it states, for the schema
+// face, what the closure enforces. It is metadata only — nothing reads it on
+// the write path, so a declaration that drifts from the closure is a silent
+// lie to every editing client. TestSchemaValueSpecCompleteness and
+// TestVocabularyTokensPassValidators (editspec package) are the gates that
+// keep the two in step; a field must not gain a Vocabulary or Element that
+// those tests cannot see.
+type ValueSpec struct {
+	// Vocabulary names a /v2/vocabularies vocabulary whose tokens the field
+	// accepts. For an integer-coded field or member the vocabulary's tokens
+	// are labels and the wire carries the token's 0-based index in the
+	// vocabulary's published order.
+	Vocabulary string
+	// Nullable is true when the validator accepts null and null clears the
+	// stored value.
+	Nullable bool
+	// Element describes one element of a KindList field.
+	Element *ElementSpec
+}
+
+type ElementSpec struct {
+	// Type is object, text or ref.
+	Type string
+	// Members lists an object element's keys, in the order the validator
+	// checks them. Empty for scalar elements.
+	Members []ElementMember
+}
+
+type ElementMember struct {
+	Key string
+	// Type is text, int, enum, bool, ref or imagehash.
+	Type       string
+	Vocabulary string
+	// Nullable is true when the member may be absent or empty in at least one
+	// valid element; the validator stays the authority on when.
+	Nullable bool
 }
 
 type MergeEvent struct {
@@ -306,6 +346,15 @@ func (r *Registry) Register(spec EntityTypeSpec) error {
 func (r *Registry) Type(entityType string) (*EntityTypeSpec, bool) {
 	s, ok := r.types[entityType]
 	return s, ok
+}
+
+func (r *Registry) Types() []string {
+	out := make([]string, 0, len(r.types))
+	for name := range r.types {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func validatePolicy(p Policy) error {
