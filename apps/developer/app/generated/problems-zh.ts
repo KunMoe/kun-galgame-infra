@@ -143,6 +143,10 @@ export const problemsZh: Record<string, { title: string; description: string }> 
     "title": "已存在",
     "description": "同一主体对这个目标已经有一条在用的记录。"
   },
+  "DUPLICATE_SUSPECTS": {
+    "title": "疑似重复",
+    "description": "铸造的标题与同一 medium 的在用作品同名，suspects[] 列出了它们。一行未写。带 confirm_duplicates=true 重发即照旧铸造——这些对子仍会记入对账队列。"
+  },
   "INVALID_STATE_TRANSITION": {
     "title": "非法的状态流转",
     "description": "当前状态不允许这样流转。detail 会给出当前状态和合法的目标状态。"

@@ -24,19 +24,20 @@ const waveTagW1 = "rule:work-dedup w1"
 const exitNewPairs = 3
 
 func main() {
-	mode := flag.String("mode", "census", "census | seed | propose | execute | watch | crossmedium")
-	actor := flag.Int64("actor", 0, "operator user id recorded on candidates/proposals (required for seed/propose/execute/crossmedium)")
+	mode := flag.String("mode", "census", "census | seed | propose | execute | watch | crossmedium | nightly (seed+propose+execute over one census)")
+	actor := flag.Int64("actor", 0, "operator user id recorded on candidates/proposals (required for seed/propose/execute/crossmedium/nightly)")
 	run := flag.Bool("run", false, "write (default: dry-run preview)")
 	limit := flag.Int("limit", 0, "propose: max merge groups this run; execute: max proposals this run (0 = all)")
 	note := flag.String("note", waveTagW1, "wave note tag stamped on proposals and matched by -mode execute")
 	csvPath := flag.String("csv", "", "census: also export the full pair dossier to this CSV path")
 	dsn := flag.String("dsn", "", "catalog DSN override (default: KUN_CATALOG_PG_* env)")
-	failOnNew := flag.Bool("fail-on-new", false, fmt.Sprintf("watch: exit %d when undecided new pairs exist", exitNewPairs))
+	failOnNew := flag.Bool("fail-on-new", false, fmt.Sprintf("watch: exit %d when undecided new pairs exist; nightly: exit %d when the seed filed new needs_manual pairs", exitNewPairs, exitNewPairs))
 	flag.Parse()
 
-	writes := *mode == "seed" || *mode == "propose" || *mode == "execute" || *mode == "crossmedium"
+	writes := *mode == "seed" || *mode == "propose" || *mode == "execute" ||
+		*mode == "crossmedium" || *mode == "nightly"
 	if writes && *actor <= 0 {
-		fmt.Fprintln(os.Stderr, "-actor <user-id> is required for seed/propose/execute/crossmedium")
+		fmt.Fprintln(os.Stderr, "-actor <user-id> is required for seed/propose/execute/crossmedium/nightly")
 		os.Exit(2)
 	}
 
@@ -63,6 +64,12 @@ func main() {
 		var fresh int
 		fresh, err = runWatch(ctx, db, os.Stdout)
 		if err == nil && *failOnNew && fresh > 0 {
+			os.Exit(exitNewPairs)
+		}
+	case "nightly":
+		var needsManualNew int
+		needsManualNew, err = runNightly(ctx, db, os.Stdout, merge, resolve, *actor, *note, *limit, *run)
+		if err == nil && *failOnNew && needsManualNew > 0 {
 			os.Exit(exitNewPairs)
 		}
 	case "crossmedium":

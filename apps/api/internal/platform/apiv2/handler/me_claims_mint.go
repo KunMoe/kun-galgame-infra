@@ -55,7 +55,7 @@ func unionWorkLinks(fields map[string]any, refLinks []any) {
 	fields[editspec.FieldWorkLinks] = out
 }
 
-func (c *Catalog) mintClaim(ctx context.Context, site string, uid, product int64, refs []catsvc.ClaimRef, fields map[string]any) (repr.ClaimRecord, error) {
+func (c *Catalog) mintClaim(ctx context.Context, site string, uid, product int64, refs []catsvc.ClaimRef, fields map[string]any, confirmDuplicates bool) (repr.ClaimRecord, error) {
 	rating := int16(0)
 	if _, given := fields[editspec.FieldWorkContentRating]; !given {
 		rating = c.Claims.DeriveContentRating(ctx, refs)
@@ -63,7 +63,8 @@ func (c *Catalog) mintClaim(ctx context.Context, site string, uid, product int64
 	res, err := c.Claims.SubmitWork(ctx, catsvc.SubmitWorkParams{
 		Site: site, ProductWorkID: product, ActorUID: uid,
 		ContentRating: rating, Fields: fields,
-		Trusted: catalogPerm.Resolver.Can(rolesFrom(ctx), catalogPerm.EditTrusted),
+		Trusted:           catalogPerm.Resolver.Can(rolesFrom(ctx), catalogPerm.EditTrusted),
+		ConfirmDuplicates: confirmDuplicates,
 	})
 	if err != nil {
 		return repr.ClaimRecord{}, claimWriteErr(err)

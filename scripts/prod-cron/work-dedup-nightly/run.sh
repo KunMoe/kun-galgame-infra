@@ -1,30 +1,29 @@
 #!/bin/sh
-# Weekly duplicate-work watch. Re-runs the standing detector over the live
-# catalog and alerts when it finds a pair that nobody — machine or human — has
-# decided yet. READ-ONLY: `work-dedup -mode watch` writes nothing.
-#
-# Since the nightly lane (/root/work-dedup-nightly, `-mode nightly`) files and
-# decides every pair each night, this watch is no longer the lane's only pass —
-# it is the independent check that the lane is doing its job. After a healthy
-# nightly there is nothing left undecided, so a [DUP] from here means the
-# nightly lane is broken, not that a duplicate slipped in.
+# Nightly duplicate-work lane. `work-dedup -mode nightly` builds the census ONCE
+# and chains seed -> propose -> execute over it; running the three modes back to
+# back would build that ~1h ACCESS SHARE self-join three times a night.
 #
 # Exit-code contract of the tool, which this wrapper depends on:
-#   0  detector ran, no undecided new pairs
-#   3  detector ran, new pairs found  -> [DUP] alert, and STILL a success stamp:
-#      the run was healthy and the finding is the alert. Suppressing the stamp
-#      would make the deadman report a working job as dead every week.
-#   *  the detector broke            -> [FAIL] alert, no stamp
+#   0  the lane ran, nothing new landed in needs_manual
+#   3  the lane ran, the seed filed new needs_manual pairs -> [DUP] alert, and
+#      STILL a success stamp: the run was healthy and the finding is the alert.
+#      Suppressing the stamp would make the deadman report a working job as dead.
+#   *  the lane broke  -> [FAIL] alert, no stamp
 #
-# crontab (root): 20 4 * * 1 /root/work-dedup-watch/run.sh
+# crontab (root): 30 18 * * * /root/work-dedup-nightly/run.sh
+# 18:30 UTC = 02:30 CST, the audience's quietest window, and clear of the Monday
+# 04:20 UTC weekly watch so the two never hold a census at the same time.
+#
+# The weekly watch is now the independent check on THIS job: after a healthy
+# nightly, watch should find fresh=0.
 #
 # Runs from the infra-tools image resolved below; nothing is staged on this
-# host. Canonical copy: scripts/prod-cron/work-dedup-watch/run.sh in
+# host. Canonical copy: scripts/prod-cron/work-dedup-nightly/run.sh in
 # nextmoe-infra — installing or updating it on the box is a manual scp over
-# /root/work-dedup-watch/run.sh, so edit here first and copy it out (two chains
-# once sat on a stale hand-edited copy for a whole cycle).
+# /root/work-dedup-nightly/run.sh, so edit here first and copy it out (two
+# chains once sat on a stale hand-edited copy for a whole cycle).
 set -eu
-BASE=/root/work-dedup-watch
+BASE=/root/work-dedup-nightly
 cd "$BASE"
 mkdir -p logs state
 LOG="logs/run-$(date -u +%F).log"
@@ -45,11 +44,11 @@ on_exit() {
     date -u '+%F %T' > "$BASE/state/last-success"
   else
     echo "=== FAILED (exit $rc) - sending alert ==="
-    /root/lib/alert.sh "[FAIL] work-dedup weekly watch (exit $rc)" "$BASE/$LOG" || echo "alert delivery failed"
+    /root/lib/alert.sh "[FAIL] work-dedup nightly (exit $rc)" "$BASE/$LOG" || echo "alert delivery failed"
   fi
 }
 trap on_exit EXIT
-echo "=== work-dedup watch start $(date -u '+%F %T')Z ==="
+echo "=== work-dedup nightly start $(date -u '+%F %T')Z ==="
 
 PG=kun-visual-novel-infra-vqvqbc-postgres-1
 CATC=kun-visual-novel-infra-vqvqbc-catalog-1
@@ -75,7 +74,7 @@ chmod 600 env.tmp
 # it and postgres went through crash recovery (a ~1.3s full-platform DB
 # outage). Dev never showed this because its work_mem=4MB made the identical
 # query spill ~5GB to temp files instead. These GUCs pin the disk-spill plan;
-# do not remove them to make the watch faster.
+# do not remove them to make the run faster.
 DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$KUN_PG_PASSWORD}"; CAT="host=127.0.0.1 port=5432 user=$U password=$P dbname=${KUN_CATALOG_PG_DATABASE:-kun_catalog} sslmode=disable options='"'"'-c max_parallel_workers_per_gather=0 -c work_mem=8MB -c hash_mem_multiplier=1 -c jit=off'"'"'"'
 
 # Yield guard, from the 2026-08-29 lock convoy (same day as the OOM above):
@@ -86,8 +85,11 @@ DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$
 # ACCESS EXCLUSIVE, so any backend queued behind the census IS a migration:
 # cancel our own query and retry once after the migration clears. The RSS cap
 # backstops the OOM in case an image or planner drift ever un-pins the
-# disk-spill plan on an unattended Monday run (no retry there — it would just
-# blow up again).
+# disk-spill plan on an unattended night (no retry there — it would just blow
+# up again).
+#
+# 'WITH lw AS' is the first line of pairQuerySQL in cmd/work-dedup/census.go.
+# The guard can only see the census while that prefix holds.
 (
   set +eu
   while :; do
@@ -110,12 +112,17 @@ DSNSH='U="${KUN_CATALOG_PG_USER:-$KUN_PG_USER}"; P="${KUN_CATALOG_PG_PASSWORD:-$
 ) &
 GUARD_PID=$!
 
+# The log is per-day and appended to, so a second run on the same day would
+# otherwise see the FIRST run's [execute] line. Everything past this offset is
+# this run's own output.
+MARK=$(wc -c < "$LOG")
+
 attempt=1
 while :; do
   rm -f state/yielded
   rc=0
   docker run --rm --network "container:$PG" --env-file "$BASE/env.tmp" "$IMG" \
-    sh -c "$DSNSH"'; work-dedup -mode watch -fail-on-new -dsn "$CAT"' || rc=$?
+    sh -c "$DSNSH"'; work-dedup -mode nightly -fail-on-new -actor 1 -note '"'"'rule:work-dedup nightly'"'"' -limit 200 -run -dsn "$CAT"' || rc=$?
   if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ] && [ -f state/yielded ] && [ "$attempt" -eq 1 ]; then
     echo "census yielded to a migration; retrying once"
     attempt=2
@@ -127,12 +134,20 @@ done
 kill "$GUARD_PID" 2>/dev/null || true
 GUARD_PID=
 case "$rc" in
-  0) echo "no new undecided duplicate pairs" ;;
-  3) echo "=== new undecided duplicate pairs - sending alert ==="
-     /root/lib/alert.sh "[DUP] new duplicate work pairs" "$BASE/$LOG" || echo "alert delivery failed" ;;
-  *) echo "FATAL: work-dedup watch exited $rc"; exit "$rc" ;;
+  0) echo "no new needs-manual duplicate pairs" ;;
+  3) echo "=== new needs-manual duplicate pairs - sending alert ==="
+     /root/lib/alert.sh "[DUP] new needs-manual duplicate pairs" "$BASE/$LOG" || echo "alert delivery failed" ;;
+  *) echo "FATAL: work-dedup nightly exited $rc"; exit "$rc" ;;
 esac
+
+# A merge that executed tonight left the search indexes pointing at a
+# soft-deleted work, so hand the reindex its trigger. It owns its own flock,
+# alerting and success stamp, so a failure here is logged and not re-alerted.
+if tail -c "+$((MARK + 1))" "$LOG" | grep -q '\[execute\].*executed=[1-9]'; then
+  echo "=== merges executed - triggering catalog reindex ==="
+  /root/reindex-catalog/run.sh || echo "reindex-catalog exited $? (its own alerting covers this)"
+fi
 
 find logs -name 'run-*.log' ! -name "run-$(date -u +%F).log" -exec gzip -qf {} \;
 find logs -name 'run-*.log.gz' -mtime +90 -delete
-echo "=== work-dedup watch done $(date -u '+%F %T')Z ==="
+echo "=== work-dedup nightly done $(date -u '+%F %T')Z ==="

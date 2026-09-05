@@ -321,7 +321,7 @@ The first two are the same defect shape in a different env var. They are deliber
 | Route | Bind |
 |---|---|
 | `POST /v2/me/playtimes` | 207 list of playtime-or-problem items |
-| `POST /v2/me/claims` | `work_id` → `Act(claim)`; else `refs` → `LookupEntityID` then claim or mint; else `site_work_id` and/or `field_values` → mint. Every mint is one `SubmitWork` call, `Trusted` from `catalog.edit.trusted` (wave R4) |
+| `POST /v2/me/claims` | `work_id` → `Act(claim)`; else `refs` → `LookupEntityID` then claim or mint; else `site_work_id` and/or `field_values` → mint. Every mint is one `SubmitWork` call, `Trusted` from `catalog.edit.trusted` (wave R4). A mint whose titles collide with live same-medium works is refused 409 `DUPLICATE_SUSPECTS` unless `confirm_duplicates` is set; the claiming lanes never reach that gate |
 | `GET/PATCH /v2/me/claims/{id}` | `{id}` is catalog work id. PATCH `{state: live\|pending\|withdrawn}` + If-Match, one `Act` call each (publish / submit / withdraw) |
 | `POST /v2/me/edit-images` | multipart `preset` + `file`; `cover`/`screenshot` map to the image service's `catalog_cover`/`catalog_screenshot` |
 | `GET/POST /v2/me/proposals` | `editing.Engine` |
@@ -811,5 +811,55 @@ demanding a translation of "".
 **Spec is 2.6.0.** Additive: no new operations (92), new always-present
 `vocabulary`/`base`/`nullable` properties and an optional `element` on the
 schema field, four new vocabularies.
+
+**Zero migrations.**
+
+## Wave — the mint asks before it makes a duplicate (2026-09-05)
+
+`POST /v2/me/claims` hard-blocked a mint on two collisions — the
+`(site, product_work_id)` claim key and an exact source anchor — and let a
+title collision through, filing it as a match candidate *after* the row
+existed. That is the right answer for the machine reconciliation lane, which
+judges with dates, refs and labels the submitter never sends, and the wrong
+answer for a person who is about to create the second copy of a work that is
+already there: nobody told them, and the receipt they never see is worked by
+somebody else weeks later.
+
+`SubmitWork` now runs a pre-mint gate inside the same transaction, after the
+claim/anchor checks and before the insert. It folds the submission's
+`display_name` and every `catalog.work.titles` string and matches them against
+live works of the same medium; any hit aborts the transaction with 409
+`DUPLICATE_SUSPECTS`, naming the works in `suspects[]` (`id` + `display_name`,
+at most 8 — the answer is a confirm prompt, not a census). Nothing is written.
+Re-sending the same body with `confirm_duplicates: true` mints exactly as
+before, and the post-mint receipt still files the pairs as pending candidates:
+confirming is the submitter saying "these are different works", not a verdict
+that ends the reconciliation.
+
+The folding and the eligibility floor are the detector's own SQL —
+`WorkTitleFoldSQL` (NFKC lower, every whitespace rune including U+3000
+removed) and `WorkDupeNormEligibleSQL` (≥4 runes, or exactly 3 CJK-unified
+runes, so `PC版` and `abc` never gate anything). Sharing the expressions
+rather than restating them is the point: a gate that refuses a mint the
+detector would not have flagged, or lets through one it would, is worse than
+no gate. The medium filter comes from the same lane — the cross-media import
+deliberately mints an adaptation under the same title, and those are never
+duplicates of each other.
+
+Only the mint lanes reach the gate. `work_id`, and `refs` that resolve to an
+existing work, are claims: there is no new row to be a duplicate of.
+
+**The trap the wave surfaced:** the service suite's shared `submitFields`
+fixture gives every submission the same zh-Hans alias title, so once the gate
+existed, every fixture in the file was a duplicate of every other. The three
+lanes in `TestSubmitWorkIssuedIdempotency` that deliberately re-send one title
+through another door now go through `ConfirmDuplicates` — they are anchor
+assertions, and routing them around the gate instead would have meant weakening
+it to keep a fixture green.
+
+**Spec is 2.7.0.** Additive: no new operations (92), one optional
+`confirm_duplicates` request property on `createMyClaim`, one new problem code
+`DUPLICATE_SUSPECTS` (409, domain `me`) and the optional `suspects[]` it
+carries on `Problem`.
 
 **Zero migrations.**

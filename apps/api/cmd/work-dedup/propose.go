@@ -28,6 +28,11 @@ func runPropose(ctx context.Context, db *gorm.DB, w io.Writer, merge *service.Me
 	if err != nil {
 		return err
 	}
+	return proposeFromCensus(ctx, db, w, c, merge, actor, note, limit, run)
+}
+
+func proposeFromCensus(ctx context.Context, db *gorm.DB, w io.Writer, c *census,
+	merge *service.MergeService, actor int64, note string, limit int, run bool) error {
 	verdicts := c.verdictByPair()
 	rows := c.rowByPair()
 	groups := map[int64]*mergeGroup{}

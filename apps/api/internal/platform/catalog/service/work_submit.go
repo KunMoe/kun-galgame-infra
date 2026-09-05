@@ -27,6 +27,10 @@ type SubmitWorkParams struct {
 	Fields        map[string]any
 	Released      ReleaseDate
 	Trusted       bool
+	// ConfirmDuplicates mints past the soft duplicate gate: without it a
+	// submission whose folded titles match live same-medium works is refused
+	// with the suspects, nothing written.
+	ConfirmDuplicates bool
 }
 
 type ReleaseDate struct {
@@ -84,6 +88,18 @@ const (
 	ClaimMatchClaim  = "claim"
 	ClaimMatchAnchor = "anchor"
 )
+
+// WorkDupeSuspectsError refuses a mint whose submitted titles collide with
+// live works. Same-name distinct works are real, so this is a confirm prompt,
+// not a verdict: resubmitting with ConfirmDuplicates mints and still files the
+// pairs for reconciliation.
+type WorkDupeSuspectsError struct {
+	Suspects []WorkDupeSuspect
+}
+
+func (e *WorkDupeSuspectsError) Error() string {
+	return fmt.Sprintf("%d live work(s) share a title with this submission; re-send with confirm_duplicates=true to mint anyway", len(e.Suspects))
+}
 
 var ErrSubmitTargetRequired = errors.New("site is required to submit")
 
@@ -176,6 +192,18 @@ func (s *ClaimLifecycleService) SubmitWork(ctx context.Context, p SubmitWorkPara
 					CurrentState: model.ClaimStateKey(existing.Site, existing.ProductWorkID, existing.ClaimState),
 					MatchedBy:    ClaimMatchAnchor, Anchor: anchor,
 				}
+			}
+		}
+
+		if !p.ConfirmDuplicates {
+			names := []string{p.Fields[editspec.FieldWorkDisplayName].(string)}
+			names = append(names, editspec.SubmissionTitleStrings(p.Fields[editspec.FieldWorkTitles])...)
+			suspects, err := findWorkDupeSuspectsByNames(tx, galgameMediumID, names)
+			if err != nil {
+				return err
+			}
+			if len(suspects) > 0 {
+				return &WorkDupeSuspectsError{Suspects: suspects}
 			}
 		}
 

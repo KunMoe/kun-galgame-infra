@@ -256,6 +256,62 @@ func TestWorkDedupPipeline(t *testing.T) {
 	assert.Equal(t, int64(1), countRows(t, `SELECT count(*) FROM catalog_merge_proposal`))
 }
 
+func TestNightlyChainsSeedProposeExecute(t *testing.T) {
+	requireDB(t)
+	cleanPipeline(t)
+	ctx := context.Background()
+	medium := galgameMedium(t)
+	kungal := "kungal"
+	const actor = int64(4242)
+
+	k1 := mkWork(t, medium, "夜間クレーム作品テスト", &kungal)
+	mkTitle(t, k1, "夜間重複タイトル検証")
+	mkRelease(t, k1, 2015, 8, 10)
+	m1 := mkWork(t, medium, "夜間 重複 タイトル 検証", nil)
+	mkAnchor(t, m1, 3, "778")
+	mkRelease(t, m1, 2015, 9, 9)
+
+	k2 := mkWork(t, medium, "夜間衝突元作品テスト", nil)
+	mkTitle(t, k2, "夜間衝突アンカー検証")
+	mkAnchor(t, k2, 3, "112")
+	m2 := mkWork(t, medium, "夜間衝突先作品テスト", nil)
+	mkTitle(t, m2, "夜間衝突アンカー検証")
+	mkAnchor(t, m2, 3, "223")
+
+	merge := newMerge(t)
+	resolve := service.NewResolveService(repository.NewRedirectRepository(testDB))
+	var out bytes.Buffer
+
+	fresh, err := runNightly(ctx, testDB, &out, merge, resolve, actor, waveTagW1, 0, false)
+	require.NoError(t, err)
+	assert.Zero(t, fresh, "a dry nightly inserts nothing, so it has nothing new to report")
+	assert.Zero(t, countRows(t, `SELECT count(*) FROM catalog_match_candidate`), "dry nightly writes nothing")
+	assert.Zero(t, countRows(t, `SELECT count(*) FROM catalog_merge_proposal`))
+
+	out.Reset()
+	fresh, err = runNightly(ctx, testDB, &out, merge, resolve, actor, waveTagW1, 0, true)
+	require.NoError(t, err)
+	assert.Equal(t, 1, fresh, "only the anchor-conflict pair lands in needs_manual")
+	assert.Contains(t, out.String(), "needs_manual_new=1")
+	assert.Contains(t, out.String(), "cooled=0",
+		"a proposal approved in this same run must still wait out its cooling window")
+	assert.Equal(t, model.CandidateStatusAccepted, candidateStatus(t, k1, m1))
+	assert.Equal(t, model.CandidateStatusNeedsManual, candidateStatus(t, k2, m2))
+	assert.Equal(t, int64(1), countRows(t, `SELECT count(*) FROM catalog_merge_proposal`))
+
+	require.NoError(t, testDB.Exec(`UPDATE catalog_merge_proposal SET execute_after = now() - interval '1 hour'`).Error)
+	out.Reset()
+	fresh, err = runNightly(ctx, testDB, &out, merge, resolve, actor, waveTagW1, 0, true)
+	require.NoError(t, err)
+	assert.Zero(t, fresh, "the second night re-files nothing, so the cron stays quiet")
+	assert.Contains(t, out.String(), "executed=1")
+	assert.Equal(t, int64(1), countRows(t,
+		`SELECT count(*) FROM catalog_redirect WHERE entity_type = ? AND old_id = ? AND current_id = ?`,
+		model.EntityTypeWork, m1, k1))
+	assert.Equal(t, int64(1), countRows(t,
+		`SELECT count(*) FROM catalog_work WHERE id = ? AND deleted_at IS NOT NULL`, m1))
+}
+
 func TestWatchReportsUndecidedPairs(t *testing.T) {
 	requireDB(t)
 	cleanPipeline(t)
