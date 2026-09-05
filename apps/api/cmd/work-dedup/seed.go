@@ -26,6 +26,14 @@ func runSeed(ctx context.Context, db *gorm.DB, w io.Writer, actor int64, run boo
 	if err != nil {
 		return err
 	}
+	_, err = seedFromCensus(ctx, db, w, c, actor, run)
+	return err
+}
+
+// seedFromCensus returns how many of the rows it actually inserted landed in
+// needs_manual — the queue nobody is watching unless something says so. A
+// dry run inserts nothing and therefore reports zero, not the planned count.
+func seedFromCensus(ctx context.Context, db *gorm.DB, w io.Writer, c *census, actor int64, run bool) (int, error) {
 	planned := map[bucket][]model.CatalogMatchCandidate{}
 	for i, r := range c.rows {
 		b := c.verdicts[i]
@@ -48,7 +56,7 @@ func runSeed(ctx context.Context, db *gorm.DB, w io.Writer, actor int64, run boo
 	}
 	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 
-	total, inserted := 0, 0
+	total, inserted, needsManual := 0, 0, 0
 	for _, b := range keys {
 		rows := planned[b]
 		total += len(rows)
@@ -58,9 +66,12 @@ func runSeed(ctx context.Context, db *gorm.DB, w io.Writer, actor int64, run boo
 		}
 		got, err := insertCandidates(ctx, db, rows)
 		if err != nil {
-			return err
+			return needsManual, err
 		}
 		inserted += got
+		if seedStatusFor(b) == model.CandidateStatusNeedsManual {
+			needsManual += got
+		}
 		fmt.Fprintf(w, "  %-16s %6d -> %-12s inserted=%d already_present=%d\n",
 			b, len(rows), statusName(seedStatusFor(b)), got, len(rows)-got)
 	}
@@ -71,7 +82,7 @@ func runSeed(ctx context.Context, db *gorm.DB, w io.Writer, actor int64, run boo
 	}
 	fmt.Fprintf(w, "%s [seed] actor=%d in_scope=%d inserted=%d already_present=%d\n",
 		mode, actor, total, inserted, total-inserted)
-	return nil
+	return needsManual, nil
 }
 
 // insertCandidates never overwrites an existing row: a candidate an operator

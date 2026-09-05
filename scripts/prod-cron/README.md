@@ -34,6 +34,7 @@ the image is the fix, not a preference.
 | playtime-aggregate | daily 05:20 | 48h |
 | refresh-tag-counts | hourly :40 | 6h |
 | tag-vocab-backlog | 1st 12:30 | 768h |
+| work-dedup-nightly | daily 18:30 | 48h |
 | work-dedup-watch | Mon 04:20 | 192h |
 
 `metrics-sampler/` is the one non-job entry: a host-level resource sampler
