@@ -88,11 +88,19 @@ func registerLabel(reg *editing.Registry, db *gorm.DB) error {
 		},
 		{
 			Key: FieldLabelIntros, Kind: editing.KindList, DiffHint: editing.DiffHintLines,
+			Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+				Type: "object",
+				Members: []editing.ElementMember{
+					{Key: "lang", Type: "enum", Vocabulary: "intro_lang"},
+					{Key: "intro", Type: "text"},
+				},
+			}},
 			Validate: validateIntros,
 			Apply:    applyEntityIntros(introTableLabel),
 		},
 		{
 			Key: FieldLabelLinks, Kind: editing.KindList, DiffHint: editing.DiffHintItems,
+			Value:    &editing.ValueSpec{Element: &editing.ElementSpec{Type: "text"}},
 			Validate: validateLinks,
 			Apply: func(ctx context.Context, tx *gorm.DB, entityID int64, value any) error {
 				if err := firstEntity(ctx, tx, &catmodel.CatalogLabel{}, entityID, "id"); err != nil {
@@ -134,6 +142,13 @@ func registerTag(reg *editing.Registry, db *gorm.DB) error {
 	fields := []editing.FieldSpec{
 		{
 			Key: FieldTagIntros, Kind: editing.KindList, DiffHint: editing.DiffHintLines,
+			Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+				Type: "object",
+				Members: []editing.ElementMember{
+					{Key: "lang", Type: "enum", Vocabulary: "intro_lang"},
+					{Key: "intro", Type: "text"},
+				},
+			}},
 			Validate: validateIntros,
 			Apply:    applyEntityIntros(introTableTag),
 		},
@@ -172,6 +187,7 @@ func registerEngine(reg *editing.Registry, db *gorm.DB) error {
 		},
 		{
 			Key: FieldEngineAliases, Kind: editing.KindList, DiffHint: editing.DiffHintItems,
+			Value:    &editing.ValueSpec{Element: &editing.ElementSpec{Type: "text"}},
 			Validate: validateAliases,
 			Apply:    applyEngineAliases,
 		},
@@ -209,6 +225,13 @@ func registerSeries(reg *editing.Registry, db *gorm.DB) error {
 		},
 		{
 			Key: FieldSeriesIntros, Kind: editing.KindList, DiffHint: editing.DiffHintLines,
+			Value: &editing.ValueSpec{Element: &editing.ElementSpec{
+				Type: "object",
+				Members: []editing.ElementMember{
+					{Key: "lang", Type: "enum", Vocabulary: "intro_lang"},
+					{Key: "intro", Type: "text"},
+				},
+			}},
 			Validate: validateIntros,
 			Apply:    applyEntityIntros(introTableSeries),
 		},

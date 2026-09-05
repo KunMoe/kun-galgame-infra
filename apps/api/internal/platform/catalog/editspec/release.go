@@ -102,12 +102,14 @@ func releaseFieldSpecs() []editing.FieldSpec {
 	return []editing.FieldSpec{
 		{
 			Key: FieldReleaseKind, Kind: editing.KindEnum, DiffHint: editing.DiffHintInline,
+			Value:      &editing.ValueSpec{Vocabulary: "release_kind"},
 			Validate:   validateReleaseKind,
 			Apply:      applyReleaseColumn("kind", asReleaseKind),
 			Provenance: releaseProvenance("kind"),
 		},
 		{
 			Key: FieldReleaseTitle, Kind: editing.KindText, DiffHint: editing.DiffHintInline,
+			Value:    &editing.ValueSpec{Nullable: true},
 			Validate: validateReleaseTitle,
 			Apply: applyReleaseColumn("title", func(v any) (any, error) {
 				if v == nil {
@@ -119,6 +121,7 @@ func releaseFieldSpecs() []editing.FieldSpec {
 		},
 		{
 			Key: FieldReleaseLang, Kind: editing.KindEnum, DiffHint: editing.DiffHintInline,
+			Value:    &editing.ValueSpec{Vocabulary: "release_lang", Nullable: true},
 			Validate: validateReleaseLang,
 			Apply: applyReleaseColumn("lang", func(v any) (any, error) {
 				if v == nil {
@@ -130,6 +133,7 @@ func releaseFieldSpecs() []editing.FieldSpec {
 		},
 		{
 			Key: FieldReleasePlatform, Kind: editing.KindEnum, DiffHint: editing.DiffHintInline,
+			Value:    &editing.ValueSpec{Vocabulary: "platform", Nullable: true},
 			Validate: validateReleasePlatform,
 			Apply: applyReleaseColumn("platform", func(v any) (any, error) {
 				if v == nil {
@@ -141,6 +145,7 @@ func releaseFieldSpecs() []editing.FieldSpec {
 		},
 		{
 			Key: FieldReleaseReleased, Kind: editing.KindDate, DiffHint: editing.DiffHintInline,
+			Value:    &editing.ValueSpec{Nullable: true},
 			Validate: validateReleased,
 			Apply:    applyReleased,
 			Provenance: []editing.ProvenanceTarget{

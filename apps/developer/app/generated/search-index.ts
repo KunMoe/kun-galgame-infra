@@ -1708,6 +1708,34 @@ export const searchIndex: SearchEntry[] = [
     "b": "sources 一条事实或一个外部 id 取自哪里。开放词表：我们会继续接新的源。 user User Manual curation, not an import source. 用户 人工整理，不是一个导入源。 vndb VNDB The VNDB catalog. VNDB VNDB 数据库。 bangumi Bangumi The Bangumi catalog. Bangumi Bangumi 番组计划。 dlsite DLsite DLsite storefront identities. DLsite DLsite 商店页身份。 erogamescape ErogameScape ErogameScape. ErogameScape ErogameScape（エロゲー批評空間）。 anilist AniList AniList. AniList AniList。 mal MyAnimeList MyAnimeList. MyAnimeList MyAnimeList。 steam Steam Steam storefront. Steam Steam 商店。 official_site Official site A publisher or brand official site. 官网 发行方或厂牌的官方网站。 twitter Twitter / X A Twitter / X identity. Twitter / X Twitter / X 账号。 pixiv Pixiv Pixiv. Pixiv Pixiv。 curated Curated First-party curated / human lane. 人工整理 一方人工整理的车道。 upscale Upscale First-party AI-upscaled cover derivation. 超分 一方 AI 超分得到的封面派生图。 cien Ci-en Ci-en creator-support platform. Ci-en Ci-en 创作者支持平台。 dmm DMM DMM storefront. DMM DMM 商店。 web Web A generic web page. external_id is the full URL. 网页 泛指的网页。external_id 就是完整 URL。 getchu Getchu Getchu.com retailer pages. Getchu Getchu.com 的商品页。 derived Derived First-party machine inference over catalog facts. 推导 一方在目录事实之上做机器推导得到的。 nextmoe NextMoe First-party measurements aggregated from our users. NextMoe 一方从自己用户那里聚合出来的测量值。 howlongtobeat HowLongToBeat HowLongToBeat playtime and rating aggregates. HowLongToBeat HowLongToBeat 的时长与评分聚合。"
   },
   {
+    "r": "/docs/vocabularies/intro_lang",
+    "t": "简介语言",
+    "s": "词表 · 封闭",
+    "d": "intro_lang · 4 个成员",
+    "b": "intro_lang 一条简介所用的语言。闭合词表：仅英、日、简中、繁中。 en English 英语 ja Japanese 日语 zh-Hans Simplified Chinese 简体中文 zh-Hant Traditional Chinese 繁体中文"
+  },
+  {
+    "r": "/docs/vocabularies/olang",
+    "t": "原作语言",
+    "s": "词表 · 开放",
+    "d": "olang · 49 个成员",
+    "b": "olang 作品原作语言，以及标题、别名、角色名等记录所用的语言标签。开放词表。 ar Arabic 阿拉伯语 be Belarusian 白俄罗斯语 bg Bulgarian 保加利亚语 ca Catalan 加泰罗尼亚语 cs Czech 捷克语 da Danish 丹麦语 de German 德语 el Greek 希腊语 en English 英语 eo Esperanto 世界语 es Spanish 西班牙语 fi Finnish 芬兰语 fr French 法语 ga Irish 爱尔兰语 gd Scottish Gaelic 苏格兰盖尔语 he Hebrew 希伯来语 hi Hindi 印地语 hr Croatian 克罗地亚语 hu Hungarian 匈牙利语 id Indonesian 印尼语 it Italian 意大利语 iu Inuktitut 因纽特语 ja Japanese 日语 ko Korean 韩语 la Latin 拉丁语 lt Lithuanian 立陶宛语 lv Latvian 拉脱维亚语 mk Macedonian 马其顿语 ms Malay 马来语 nl Dutch 荷兰语 no Norwegian 挪威语 pl Polish 波兰语 pt-br Brazilian Portuguese 巴西葡萄牙语 pt-pt European Portuguese 欧洲葡萄牙语 ro Romanian 罗马尼亚语 ru Russian 俄语 sk Slovak 斯洛伐克语 sl Slovenian 斯洛文尼亚语 sr Serbian 塞尔维亚语 sv Swedish 瑞典语 ta Tamil 泰米尔语 th Thai 泰语 tr Turkish 土耳其语 uk Ukrainian 乌克兰语 ur Urdu 乌尔都语 vi Vietnamese 越南语 zh Chinese 中文 zh-Hans Simplified Chinese 简体中文 zh-Hant Traditional Chinese 繁体中文"
+  },
+  {
+    "r": "/docs/vocabularies/release_lang",
+    "t": "版本语言",
+    "s": "词表 · 开放",
+    "d": "release_lang · 55 个成员",
+    "b": "release_lang 一个 release 所使用的语言。在原作语言词表之上多了六个仅 release 携带的语言。开放词表。 ar Arabic 阿拉伯语 be Belarusian 白俄罗斯语 bg Bulgarian 保加利亚语 ca Catalan 加泰罗尼亚语 ck Cherokee 切罗基语 cs Czech 捷克语 da Danish 丹麦语 de German 德语 el Greek 希腊语 en English 英语 eo Esperanto 世界语 es Spanish 西班牙语 et Estonian 爱沙尼亚语 eu Basque 巴斯克语 fa Persian 波斯语 fi Finnish 芬兰语 fr French 法语 ga Irish 爱尔兰语 gd Scottish Gaelic 苏格兰盖尔语 gl Galician 加利西亚语 he Hebrew 希伯来语 hi Hindi 印地语 hr Croatian 克罗地亚语 hu Hungarian 匈牙利语 id Indonesian 印尼语 it Italian 意大利语 iu Inuktitut 因纽特语 ja Japanese 日语 kk Kazakh 哈萨克语 ko Korean 韩语 la Latin 拉丁语 lt Lithuanian 立陶宛语 lv Latvian 拉脱维亚语 mk Macedonian 马其顿语 ms Malay 马来语 nl Dutch 荷兰语 no Norwegian 挪威语 pl Polish 波兰语 pt-br Brazilian Portuguese 巴西葡萄牙语 pt-pt European Portuguese 欧洲葡萄牙语 ro Romanian 罗马尼亚语 ru Russian 俄语 sk Slovak 斯洛伐克语 sl Slovenian 斯洛文尼亚语 sr Serbian 塞尔维亚语 sv Swedish 瑞典语 ta Tamil 泰米尔语 th Thai 泰语 tr Turkish 土耳其语 uk Ukrainian 乌克兰语 ur Urdu 乌尔都语 vi Vietnamese 越南语 zh Chinese 中文 zh-Hans Simplified Chinese 简体中文 zh-Hant Traditional Chinese 繁体中文"
+  },
+  {
+    "r": "/docs/vocabularies/platform",
+    "t": "运行平台",
+    "s": "词表 · 开放",
+    "d": "platform · 47 个成员",
+    "b": "platform 一个 release 运行或发售的平台。开放词表。 and Android Android bdp Blu-ray Player Blu-ray 播放器 dos DOS DOS drc Dreamcast Dreamcast dvd DVD Player DVD 播放器 fm7 FM-7 FM-7 fmt FM Towns FM Towns gba Game Boy Advance Game Boy Advance gbc Game Boy Color Game Boy Color ios iOS iOS lin Linux Linux mac macOS macOS mob Other mobile 其他移动设备 msx MSX MSX n3d Nintendo 3DS Nintendo 3DS nds Nintendo DS Nintendo DS nes Famicom / NES Famicom / NES oth Other 其他 p88 PC-88 PC-88 p98 PC-98 PC-98 pce PC Engine PC Engine pcf PC-FX PC-FX ps1 PlayStation PlayStation ps2 PlayStation 2 PlayStation 2 ps3 PlayStation 3 PlayStation 3 ps4 PlayStation 4 PlayStation 4 ps5 PlayStation 5 PlayStation 5 psp PlayStation Portable PlayStation Portable psv PlayStation Vita PlayStation Vita sat Sega Saturn Sega Saturn scd Sega CD Sega CD sfc Super Famicom / SNES Super Famicom / SNES smd Mega Drive / Genesis Mega Drive / Genesis sw2 Nintendo Switch 2 Nintendo Switch 2 swi Nintendo Switch Nintendo Switch tdo 3DO 3DO vnd VNDS VNDS web Website 网页 wii Wii Wii wiu Wii U Wii U win Windows Windows x1s Sharp X1 Sharp X1 x68 Sharp X68000 Sharp X68000 xb1 Xbox Xbox xb3 Xbox 360 Xbox 360 xbo Xbox One Xbox One xxs Xbox X/S Xbox X/S"
+  },
+  {
     "r": "/docs/vocabularies/relation_types",
     "t": "关联类型",
     "s": "词表 · 开放",

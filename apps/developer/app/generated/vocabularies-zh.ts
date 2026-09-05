@@ -101,6 +101,22 @@ export const vocabularyMetaZh: Record<string, VocabularyZhMeta> = {
     "label": "数据源",
     "summary": "一条事实或一个外部 id 取自哪里。开放词表：我们会继续接新的源。"
   },
+  "intro_lang": {
+    "label": "简介语言",
+    "summary": "一条简介所用的语言。闭合词表：仅英、日、简中、繁中。"
+  },
+  "olang": {
+    "label": "原作语言",
+    "summary": "作品原作语言，以及标题、别名、角色名等记录所用的语言标签。开放词表。"
+  },
+  "release_lang": {
+    "label": "版本语言",
+    "summary": "一个 release 所使用的语言。在原作语言词表之上多了六个仅 release 携带的语言。开放词表。"
+  },
+  "platform": {
+    "label": "运行平台",
+    "summary": "一个 release 运行或发售的平台。开放词表。"
+  },
   "relation_types": {
     "label": "关联类型",
     "summary": "两个实体之间的关系。标了「对称关系」的，反向也成立。开放词表。"
@@ -543,6 +559,479 @@ export const vocabularyValuesZh: Record<
     "howlongtobeat": {
       "displayName": "HowLongToBeat",
       "description": "HowLongToBeat 的时长与评分聚合。"
+    }
+  },
+  "intro_lang": {
+    "en": {
+      "displayName": "英语"
+    },
+    "ja": {
+      "displayName": "日语"
+    },
+    "zh-Hans": {
+      "displayName": "简体中文"
+    },
+    "zh-Hant": {
+      "displayName": "繁体中文"
+    }
+  },
+  "olang": {
+    "ar": {
+      "displayName": "阿拉伯语"
+    },
+    "be": {
+      "displayName": "白俄罗斯语"
+    },
+    "bg": {
+      "displayName": "保加利亚语"
+    },
+    "ca": {
+      "displayName": "加泰罗尼亚语"
+    },
+    "cs": {
+      "displayName": "捷克语"
+    },
+    "da": {
+      "displayName": "丹麦语"
+    },
+    "de": {
+      "displayName": "德语"
+    },
+    "el": {
+      "displayName": "希腊语"
+    },
+    "en": {
+      "displayName": "英语"
+    },
+    "eo": {
+      "displayName": "世界语"
+    },
+    "es": {
+      "displayName": "西班牙语"
+    },
+    "fi": {
+      "displayName": "芬兰语"
+    },
+    "fr": {
+      "displayName": "法语"
+    },
+    "ga": {
+      "displayName": "爱尔兰语"
+    },
+    "gd": {
+      "displayName": "苏格兰盖尔语"
+    },
+    "he": {
+      "displayName": "希伯来语"
+    },
+    "hi": {
+      "displayName": "印地语"
+    },
+    "hr": {
+      "displayName": "克罗地亚语"
+    },
+    "hu": {
+      "displayName": "匈牙利语"
+    },
+    "id": {
+      "displayName": "印尼语"
+    },
+    "it": {
+      "displayName": "意大利语"
+    },
+    "iu": {
+      "displayName": "因纽特语"
+    },
+    "ja": {
+      "displayName": "日语"
+    },
+    "ko": {
+      "displayName": "韩语"
+    },
+    "la": {
+      "displayName": "拉丁语"
+    },
+    "lt": {
+      "displayName": "立陶宛语"
+    },
+    "lv": {
+      "displayName": "拉脱维亚语"
+    },
+    "mk": {
+      "displayName": "马其顿语"
+    },
+    "ms": {
+      "displayName": "马来语"
+    },
+    "nl": {
+      "displayName": "荷兰语"
+    },
+    "no": {
+      "displayName": "挪威语"
+    },
+    "pl": {
+      "displayName": "波兰语"
+    },
+    "pt-br": {
+      "displayName": "巴西葡萄牙语"
+    },
+    "pt-pt": {
+      "displayName": "欧洲葡萄牙语"
+    },
+    "ro": {
+      "displayName": "罗马尼亚语"
+    },
+    "ru": {
+      "displayName": "俄语"
+    },
+    "sk": {
+      "displayName": "斯洛伐克语"
+    },
+    "sl": {
+      "displayName": "斯洛文尼亚语"
+    },
+    "sr": {
+      "displayName": "塞尔维亚语"
+    },
+    "sv": {
+      "displayName": "瑞典语"
+    },
+    "ta": {
+      "displayName": "泰米尔语"
+    },
+    "th": {
+      "displayName": "泰语"
+    },
+    "tr": {
+      "displayName": "土耳其语"
+    },
+    "uk": {
+      "displayName": "乌克兰语"
+    },
+    "ur": {
+      "displayName": "乌尔都语"
+    },
+    "vi": {
+      "displayName": "越南语"
+    },
+    "zh": {
+      "displayName": "中文"
+    },
+    "zh-Hans": {
+      "displayName": "简体中文"
+    },
+    "zh-Hant": {
+      "displayName": "繁体中文"
+    }
+  },
+  "release_lang": {
+    "ar": {
+      "displayName": "阿拉伯语"
+    },
+    "be": {
+      "displayName": "白俄罗斯语"
+    },
+    "bg": {
+      "displayName": "保加利亚语"
+    },
+    "ca": {
+      "displayName": "加泰罗尼亚语"
+    },
+    "ck": {
+      "displayName": "切罗基语"
+    },
+    "cs": {
+      "displayName": "捷克语"
+    },
+    "da": {
+      "displayName": "丹麦语"
+    },
+    "de": {
+      "displayName": "德语"
+    },
+    "el": {
+      "displayName": "希腊语"
+    },
+    "en": {
+      "displayName": "英语"
+    },
+    "eo": {
+      "displayName": "世界语"
+    },
+    "es": {
+      "displayName": "西班牙语"
+    },
+    "et": {
+      "displayName": "爱沙尼亚语"
+    },
+    "eu": {
+      "displayName": "巴斯克语"
+    },
+    "fa": {
+      "displayName": "波斯语"
+    },
+    "fi": {
+      "displayName": "芬兰语"
+    },
+    "fr": {
+      "displayName": "法语"
+    },
+    "ga": {
+      "displayName": "爱尔兰语"
+    },
+    "gd": {
+      "displayName": "苏格兰盖尔语"
+    },
+    "gl": {
+      "displayName": "加利西亚语"
+    },
+    "he": {
+      "displayName": "希伯来语"
+    },
+    "hi": {
+      "displayName": "印地语"
+    },
+    "hr": {
+      "displayName": "克罗地亚语"
+    },
+    "hu": {
+      "displayName": "匈牙利语"
+    },
+    "id": {
+      "displayName": "印尼语"
+    },
+    "it": {
+      "displayName": "意大利语"
+    },
+    "iu": {
+      "displayName": "因纽特语"
+    },
+    "ja": {
+      "displayName": "日语"
+    },
+    "kk": {
+      "displayName": "哈萨克语"
+    },
+    "ko": {
+      "displayName": "韩语"
+    },
+    "la": {
+      "displayName": "拉丁语"
+    },
+    "lt": {
+      "displayName": "立陶宛语"
+    },
+    "lv": {
+      "displayName": "拉脱维亚语"
+    },
+    "mk": {
+      "displayName": "马其顿语"
+    },
+    "ms": {
+      "displayName": "马来语"
+    },
+    "nl": {
+      "displayName": "荷兰语"
+    },
+    "no": {
+      "displayName": "挪威语"
+    },
+    "pl": {
+      "displayName": "波兰语"
+    },
+    "pt-br": {
+      "displayName": "巴西葡萄牙语"
+    },
+    "pt-pt": {
+      "displayName": "欧洲葡萄牙语"
+    },
+    "ro": {
+      "displayName": "罗马尼亚语"
+    },
+    "ru": {
+      "displayName": "俄语"
+    },
+    "sk": {
+      "displayName": "斯洛伐克语"
+    },
+    "sl": {
+      "displayName": "斯洛文尼亚语"
+    },
+    "sr": {
+      "displayName": "塞尔维亚语"
+    },
+    "sv": {
+      "displayName": "瑞典语"
+    },
+    "ta": {
+      "displayName": "泰米尔语"
+    },
+    "th": {
+      "displayName": "泰语"
+    },
+    "tr": {
+      "displayName": "土耳其语"
+    },
+    "uk": {
+      "displayName": "乌克兰语"
+    },
+    "ur": {
+      "displayName": "乌尔都语"
+    },
+    "vi": {
+      "displayName": "越南语"
+    },
+    "zh": {
+      "displayName": "中文"
+    },
+    "zh-Hans": {
+      "displayName": "简体中文"
+    },
+    "zh-Hant": {
+      "displayName": "繁体中文"
+    }
+  },
+  "platform": {
+    "and": {
+      "displayName": "Android"
+    },
+    "bdp": {
+      "displayName": "Blu-ray 播放器"
+    },
+    "dos": {
+      "displayName": "DOS"
+    },
+    "drc": {
+      "displayName": "Dreamcast"
+    },
+    "dvd": {
+      "displayName": "DVD 播放器"
+    },
+    "fm7": {
+      "displayName": "FM-7"
+    },
+    "fmt": {
+      "displayName": "FM Towns"
+    },
+    "gba": {
+      "displayName": "Game Boy Advance"
+    },
+    "gbc": {
+      "displayName": "Game Boy Color"
+    },
+    "ios": {
+      "displayName": "iOS"
+    },
+    "lin": {
+      "displayName": "Linux"
+    },
+    "mac": {
+      "displayName": "macOS"
+    },
+    "mob": {
+      "displayName": "其他移动设备"
+    },
+    "msx": {
+      "displayName": "MSX"
+    },
+    "n3d": {
+      "displayName": "Nintendo 3DS"
+    },
+    "nds": {
+      "displayName": "Nintendo DS"
+    },
+    "nes": {
+      "displayName": "Famicom / NES"
+    },
+    "oth": {
+      "displayName": "其他"
+    },
+    "p88": {
+      "displayName": "PC-88"
+    },
+    "p98": {
+      "displayName": "PC-98"
+    },
+    "pce": {
+      "displayName": "PC Engine"
+    },
+    "pcf": {
+      "displayName": "PC-FX"
+    },
+    "ps1": {
+      "displayName": "PlayStation"
+    },
+    "ps2": {
+      "displayName": "PlayStation 2"
+    },
+    "ps3": {
+      "displayName": "PlayStation 3"
+    },
+    "ps4": {
+      "displayName": "PlayStation 4"
+    },
+    "ps5": {
+      "displayName": "PlayStation 5"
+    },
+    "psp": {
+      "displayName": "PlayStation Portable"
+    },
+    "psv": {
+      "displayName": "PlayStation Vita"
+    },
+    "sat": {
+      "displayName": "Sega Saturn"
+    },
+    "scd": {
+      "displayName": "Sega CD"
+    },
+    "sfc": {
+      "displayName": "Super Famicom / SNES"
+    },
+    "smd": {
+      "displayName": "Mega Drive / Genesis"
+    },
+    "sw2": {
+      "displayName": "Nintendo Switch 2"
+    },
+    "swi": {
+      "displayName": "Nintendo Switch"
+    },
+    "tdo": {
+      "displayName": "3DO"
+    },
+    "vnd": {
+      "displayName": "VNDS"
+    },
+    "web": {
+      "displayName": "网页"
+    },
+    "wii": {
+      "displayName": "Wii"
+    },
+    "wiu": {
+      "displayName": "Wii U"
+    },
+    "win": {
+      "displayName": "Windows"
+    },
+    "x1s": {
+      "displayName": "Sharp X1"
+    },
+    "x68": {
+      "displayName": "Sharp X68000"
+    },
+    "xb1": {
+      "displayName": "Xbox"
+    },
+    "xb3": {
+      "displayName": "Xbox 360"
+    },
+    "xbo": {
+      "displayName": "Xbox One"
+    },
+    "xxs": {
+      "displayName": "Xbox X/S"
     }
   },
   "relation_types": {

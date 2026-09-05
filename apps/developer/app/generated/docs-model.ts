@@ -35783,6 +35783,13 @@ export const docsModel: DocsModel = {
                           "type": "object",
                           "children": [
                             {
+                              "name": "base",
+                              "required": true,
+                              "doc": "Wire code of the vocabulary's first token on an integer-coded field. 0 unless the model reserves 0 for null.",
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            {
                               "name": "deprecated",
                               "required": true,
                               "doc": "true when writes of this key are rejected.",
@@ -35799,6 +35806,73 @@ export const docsModel: DocsModel = {
                                 "image"
                               ],
                               "type": "string"
+                            },
+                            {
+                              "name": "element",
+                              "type": "object",
+                              "children": [
+                                {
+                                  "name": "members",
+                                  "required": true,
+                                  "doc": "Member fields of an object element, in validation order. Empty array for scalar elements, never null.",
+                                  "type": "array",
+                                  "itemsOf": {
+                                    "type": "object",
+                                    "children": [
+                                      {
+                                        "name": "base",
+                                        "required": true,
+                                        "doc": "Wire code of the vocabulary's first token on an int member. 0 unless the model reserves 0 for null.",
+                                        "format": "int64",
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "name": "key",
+                                        "required": true,
+                                        "doc": "Member key inside the element object. Must not be used as a discriminant.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "nullable",
+                                        "required": true,
+                                        "doc": "true when the member may be absent or empty in at least one valid element; the field's validator decides when.",
+                                        "type": "boolean"
+                                      },
+                                      {
+                                        "name": "type",
+                                        "required": true,
+                                        "doc": "Member value type. ref is the decimal id of another entity.",
+                                        "enum": [
+                                          "text",
+                                          "int",
+                                          "enum",
+                                          "bool",
+                                          "ref",
+                                          "imagehash"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      {
+                                        "name": "vocabulary",
+                                        "required": true,
+                                        "doc": "Names the /v2/vocabularies vocabulary whose tokens this member accepts. Empty when the member has none. On an int member the tokens are labels and the wire carries base plus the token's index in the vocabulary's published order.",
+                                        "type": "string"
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "type",
+                                  "required": true,
+                                  "doc": "Element type. text elements are strings, ref elements are decimal ids of another entity.",
+                                  "enum": [
+                                    "object",
+                                    "text",
+                                    "ref"
+                                  ],
+                                  "type": "string"
+                                }
+                              ]
                             },
                             {
                               "name": "field_type",
@@ -35835,6 +35909,18 @@ export const docsModel: DocsModel = {
                               "doc": "Cap on this field's suppression set. 0 when the field has none.",
                               "format": "int64",
                               "type": "integer"
+                            },
+                            {
+                              "name": "nullable",
+                              "required": true,
+                              "doc": "true when null is accepted and clears the stored value.",
+                              "type": "boolean"
+                            },
+                            {
+                              "name": "vocabulary",
+                              "required": true,
+                              "doc": "Names the /v2/vocabularies vocabulary whose tokens this field accepts. Empty when the field has none. On an integer-coded field the tokens are labels and the wire carries base plus the token's index in the vocabulary's published order.",
+                              "type": "string"
                             }
                           ]
                         }

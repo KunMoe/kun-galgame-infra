@@ -124,7 +124,6 @@ func TestCatalogSchemaHTTP(t *testing.T) {
 	require.NotContains(t, s.FullSet, "characters")
 	require.False(t, s.CreationDisabled)
 	require.NotEmpty(t, s.Fields)
-	require.NotContains(t, string(body), `"kind"`)
 
 	var raw map[string]any
 	require.NoError(t, json.Unmarshal(body, &raw))

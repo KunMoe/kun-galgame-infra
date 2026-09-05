@@ -5399,9 +5399,72 @@ components:
         - localized
         - deprecated
       type: object
+    SchemaElement:
+      additionalProperties: true
+      properties:
+        members:
+          description: Member fields of an object element, in validation order. Empty array for scalar elements, never null.
+          items:
+            $ref: "#/components/schemas/SchemaElementMember"
+          type: array
+        type:
+          description: Element type. text elements are strings, ref elements are decimal ids of another entity.
+          enum:
+            - object
+            - text
+            - ref
+          type: string
+          x-vocabulary-closed: true
+      required:
+        - type
+        - members
+      type: object
+    SchemaElementMember:
+      additionalProperties: true
+      properties:
+        base:
+          description: Wire code of the vocabulary's first token on an int member. 0 unless the model reserves 0 for null.
+          format: int64
+          minimum: 0
+          type: integer
+        key:
+          description: Member key inside the element object. Must not be used as a discriminant.
+          maxLength: 64
+          type: string
+        nullable:
+          description: true when the member may be absent or empty in at least one valid element; the field's validator decides when.
+          type: boolean
+        type:
+          description: Member value type. ref is the decimal id of another entity.
+          enum:
+            - text
+            - int
+            - enum
+            - bool
+            - ref
+            - imagehash
+          type: string
+          x-vocabulary-closed: true
+        vocabulary:
+          description: Names the /v2/vocabularies vocabulary whose tokens this member accepts. Empty when the member has none. On an int member the tokens are labels and the wire carries base plus the token's index in the vocabulary's published order.
+          maxLength: 64
+          pattern: ^[a-z_]*$
+          type: string
+      required:
+        - key
+        - type
+        - vocabulary
+        - base
+        - nullable
+      type: object
     SchemaField:
       additionalProperties: true
       properties:
+        base:
+          description: Wire code of the vocabulary's first token on an integer-coded field. 0 unless the model reserves 0 for null.
+          format: int64
+          minimum: 0
+          type: integer
         deprecated:
           description: true when writes of this key are rejected.
           type: boolean
@@ -5414,6 +5477,9 @@ components:
             - image
           type: string
           x-vocabulary-closed: true
+        element:
+          $ref: "#/components/schemas/SchemaElement"
+          description: Shape of one element of a list field. Absent on scalar fields and on list fields whose shape is not yet declared.
         field_type:
           description: Control type. Not a domain vocabulary.
           enum:
@@ -5442,6 +5508,14 @@ components:
           format: int64
           minimum: 0
           type: integer
+        nullable:
+          description: true when null is accepted and clears the stored value.
+          type: boolean
+        vocabulary:
+          description: Names the /v2/vocabularies vocabulary whose tokens this field accepts. Empty when the field has none. On an integer-coded field the tokens are labels and the wire carries base plus the token's index in the vocabulary's published order.
+          maxLength: 64
+          pattern: ^[a-z_]*$
+          type: string
       required:
         - key
         - field_type
@@ -5449,6 +5523,9 @@ components:
         - deprecated
         - max_suppressed
         - max_elements
+        - vocabulary
+        - base
+        - nullable
       type: object
     Screenshot:
       additionalProperties: true
@@ -6733,7 +6810,7 @@ components:
 info:
   description: "NextMoe public API v2. Public since 2026-08-25: any application mints its own nmk_ key in the developer portal, no approval required. The shape evolves additively; a breaking change to this document fails CI."
   title: NextMoe Public API v2
-  version: 2.5.0
+  version: 2.6.0
   x-stability: stable
 openapi: 3.1.0
 paths:

@@ -618,6 +618,805 @@ export const vocabularies = [
     ]
   },
   {
+    "name": "intro_lang",
+    "closed": true,
+    "values": [
+      {
+        "value": "en",
+        "display_name": "English",
+        "description": ""
+      },
+      {
+        "value": "ja",
+        "display_name": "Japanese",
+        "description": ""
+      },
+      {
+        "value": "zh-Hans",
+        "display_name": "Simplified Chinese",
+        "description": ""
+      },
+      {
+        "value": "zh-Hant",
+        "display_name": "Traditional Chinese",
+        "description": ""
+      }
+    ]
+  },
+  {
+    "name": "olang",
+    "closed": false,
+    "values": [
+      {
+        "value": "ar",
+        "display_name": "Arabic",
+        "description": ""
+      },
+      {
+        "value": "be",
+        "display_name": "Belarusian",
+        "description": ""
+      },
+      {
+        "value": "bg",
+        "display_name": "Bulgarian",
+        "description": ""
+      },
+      {
+        "value": "ca",
+        "display_name": "Catalan",
+        "description": ""
+      },
+      {
+        "value": "cs",
+        "display_name": "Czech",
+        "description": ""
+      },
+      {
+        "value": "da",
+        "display_name": "Danish",
+        "description": ""
+      },
+      {
+        "value": "de",
+        "display_name": "German",
+        "description": ""
+      },
+      {
+        "value": "el",
+        "display_name": "Greek",
+        "description": ""
+      },
+      {
+        "value": "en",
+        "display_name": "English",
+        "description": ""
+      },
+      {
+        "value": "eo",
+        "display_name": "Esperanto",
+        "description": ""
+      },
+      {
+        "value": "es",
+        "display_name": "Spanish",
+        "description": ""
+      },
+      {
+        "value": "fi",
+        "display_name": "Finnish",
+        "description": ""
+      },
+      {
+        "value": "fr",
+        "display_name": "French",
+        "description": ""
+      },
+      {
+        "value": "ga",
+        "display_name": "Irish",
+        "description": ""
+      },
+      {
+        "value": "gd",
+        "display_name": "Scottish Gaelic",
+        "description": ""
+      },
+      {
+        "value": "he",
+        "display_name": "Hebrew",
+        "description": ""
+      },
+      {
+        "value": "hi",
+        "display_name": "Hindi",
+        "description": ""
+      },
+      {
+        "value": "hr",
+        "display_name": "Croatian",
+        "description": ""
+      },
+      {
+        "value": "hu",
+        "display_name": "Hungarian",
+        "description": ""
+      },
+      {
+        "value": "id",
+        "display_name": "Indonesian",
+        "description": ""
+      },
+      {
+        "value": "it",
+        "display_name": "Italian",
+        "description": ""
+      },
+      {
+        "value": "iu",
+        "display_name": "Inuktitut",
+        "description": ""
+      },
+      {
+        "value": "ja",
+        "display_name": "Japanese",
+        "description": ""
+      },
+      {
+        "value": "ko",
+        "display_name": "Korean",
+        "description": ""
+      },
+      {
+        "value": "la",
+        "display_name": "Latin",
+        "description": ""
+      },
+      {
+        "value": "lt",
+        "display_name": "Lithuanian",
+        "description": ""
+      },
+      {
+        "value": "lv",
+        "display_name": "Latvian",
+        "description": ""
+      },
+      {
+        "value": "mk",
+        "display_name": "Macedonian",
+        "description": ""
+      },
+      {
+        "value": "ms",
+        "display_name": "Malay",
+        "description": ""
+      },
+      {
+        "value": "nl",
+        "display_name": "Dutch",
+        "description": ""
+      },
+      {
+        "value": "no",
+        "display_name": "Norwegian",
+        "description": ""
+      },
+      {
+        "value": "pl",
+        "display_name": "Polish",
+        "description": ""
+      },
+      {
+        "value": "pt-br",
+        "display_name": "Brazilian Portuguese",
+        "description": ""
+      },
+      {
+        "value": "pt-pt",
+        "display_name": "European Portuguese",
+        "description": ""
+      },
+      {
+        "value": "ro",
+        "display_name": "Romanian",
+        "description": ""
+      },
+      {
+        "value": "ru",
+        "display_name": "Russian",
+        "description": ""
+      },
+      {
+        "value": "sk",
+        "display_name": "Slovak",
+        "description": ""
+      },
+      {
+        "value": "sl",
+        "display_name": "Slovenian",
+        "description": ""
+      },
+      {
+        "value": "sr",
+        "display_name": "Serbian",
+        "description": ""
+      },
+      {
+        "value": "sv",
+        "display_name": "Swedish",
+        "description": ""
+      },
+      {
+        "value": "ta",
+        "display_name": "Tamil",
+        "description": ""
+      },
+      {
+        "value": "th",
+        "display_name": "Thai",
+        "description": ""
+      },
+      {
+        "value": "tr",
+        "display_name": "Turkish",
+        "description": ""
+      },
+      {
+        "value": "uk",
+        "display_name": "Ukrainian",
+        "description": ""
+      },
+      {
+        "value": "ur",
+        "display_name": "Urdu",
+        "description": ""
+      },
+      {
+        "value": "vi",
+        "display_name": "Vietnamese",
+        "description": ""
+      },
+      {
+        "value": "zh",
+        "display_name": "Chinese",
+        "description": ""
+      },
+      {
+        "value": "zh-Hans",
+        "display_name": "Simplified Chinese",
+        "description": ""
+      },
+      {
+        "value": "zh-Hant",
+        "display_name": "Traditional Chinese",
+        "description": ""
+      }
+    ]
+  },
+  {
+    "name": "release_lang",
+    "closed": false,
+    "values": [
+      {
+        "value": "ar",
+        "display_name": "Arabic",
+        "description": ""
+      },
+      {
+        "value": "be",
+        "display_name": "Belarusian",
+        "description": ""
+      },
+      {
+        "value": "bg",
+        "display_name": "Bulgarian",
+        "description": ""
+      },
+      {
+        "value": "ca",
+        "display_name": "Catalan",
+        "description": ""
+      },
+      {
+        "value": "ck",
+        "display_name": "Cherokee",
+        "description": ""
+      },
+      {
+        "value": "cs",
+        "display_name": "Czech",
+        "description": ""
+      },
+      {
+        "value": "da",
+        "display_name": "Danish",
+        "description": ""
+      },
+      {
+        "value": "de",
+        "display_name": "German",
+        "description": ""
+      },
+      {
+        "value": "el",
+        "display_name": "Greek",
+        "description": ""
+      },
+      {
+        "value": "en",
+        "display_name": "English",
+        "description": ""
+      },
+      {
+        "value": "eo",
+        "display_name": "Esperanto",
+        "description": ""
+      },
+      {
+        "value": "es",
+        "display_name": "Spanish",
+        "description": ""
+      },
+      {
+        "value": "et",
+        "display_name": "Estonian",
+        "description": ""
+      },
+      {
+        "value": "eu",
+        "display_name": "Basque",
+        "description": ""
+      },
+      {
+        "value": "fa",
+        "display_name": "Persian",
+        "description": ""
+      },
+      {
+        "value": "fi",
+        "display_name": "Finnish",
+        "description": ""
+      },
+      {
+        "value": "fr",
+        "display_name": "French",
+        "description": ""
+      },
+      {
+        "value": "ga",
+        "display_name": "Irish",
+        "description": ""
+      },
+      {
+        "value": "gd",
+        "display_name": "Scottish Gaelic",
+        "description": ""
+      },
+      {
+        "value": "gl",
+        "display_name": "Galician",
+        "description": ""
+      },
+      {
+        "value": "he",
+        "display_name": "Hebrew",
+        "description": ""
+      },
+      {
+        "value": "hi",
+        "display_name": "Hindi",
+        "description": ""
+      },
+      {
+        "value": "hr",
+        "display_name": "Croatian",
+        "description": ""
+      },
+      {
+        "value": "hu",
+        "display_name": "Hungarian",
+        "description": ""
+      },
+      {
+        "value": "id",
+        "display_name": "Indonesian",
+        "description": ""
+      },
+      {
+        "value": "it",
+        "display_name": "Italian",
+        "description": ""
+      },
+      {
+        "value": "iu",
+        "display_name": "Inuktitut",
+        "description": ""
+      },
+      {
+        "value": "ja",
+        "display_name": "Japanese",
+        "description": ""
+      },
+      {
+        "value": "kk",
+        "display_name": "Kazakh",
+        "description": ""
+      },
+      {
+        "value": "ko",
+        "display_name": "Korean",
+        "description": ""
+      },
+      {
+        "value": "la",
+        "display_name": "Latin",
+        "description": ""
+      },
+      {
+        "value": "lt",
+        "display_name": "Lithuanian",
+        "description": ""
+      },
+      {
+        "value": "lv",
+        "display_name": "Latvian",
+        "description": ""
+      },
+      {
+        "value": "mk",
+        "display_name": "Macedonian",
+        "description": ""
+      },
+      {
+        "value": "ms",
+        "display_name": "Malay",
+        "description": ""
+      },
+      {
+        "value": "nl",
+        "display_name": "Dutch",
+        "description": ""
+      },
+      {
+        "value": "no",
+        "display_name": "Norwegian",
+        "description": ""
+      },
+      {
+        "value": "pl",
+        "display_name": "Polish",
+        "description": ""
+      },
+      {
+        "value": "pt-br",
+        "display_name": "Brazilian Portuguese",
+        "description": ""
+      },
+      {
+        "value": "pt-pt",
+        "display_name": "European Portuguese",
+        "description": ""
+      },
+      {
+        "value": "ro",
+        "display_name": "Romanian",
+        "description": ""
+      },
+      {
+        "value": "ru",
+        "display_name": "Russian",
+        "description": ""
+      },
+      {
+        "value": "sk",
+        "display_name": "Slovak",
+        "description": ""
+      },
+      {
+        "value": "sl",
+        "display_name": "Slovenian",
+        "description": ""
+      },
+      {
+        "value": "sr",
+        "display_name": "Serbian",
+        "description": ""
+      },
+      {
+        "value": "sv",
+        "display_name": "Swedish",
+        "description": ""
+      },
+      {
+        "value": "ta",
+        "display_name": "Tamil",
+        "description": ""
+      },
+      {
+        "value": "th",
+        "display_name": "Thai",
+        "description": ""
+      },
+      {
+        "value": "tr",
+        "display_name": "Turkish",
+        "description": ""
+      },
+      {
+        "value": "uk",
+        "display_name": "Ukrainian",
+        "description": ""
+      },
+      {
+        "value": "ur",
+        "display_name": "Urdu",
+        "description": ""
+      },
+      {
+        "value": "vi",
+        "display_name": "Vietnamese",
+        "description": ""
+      },
+      {
+        "value": "zh",
+        "display_name": "Chinese",
+        "description": ""
+      },
+      {
+        "value": "zh-Hans",
+        "display_name": "Simplified Chinese",
+        "description": ""
+      },
+      {
+        "value": "zh-Hant",
+        "display_name": "Traditional Chinese",
+        "description": ""
+      }
+    ]
+  },
+  {
+    "name": "platform",
+    "closed": false,
+    "values": [
+      {
+        "value": "and",
+        "display_name": "Android",
+        "description": ""
+      },
+      {
+        "value": "bdp",
+        "display_name": "Blu-ray Player",
+        "description": ""
+      },
+      {
+        "value": "dos",
+        "display_name": "DOS",
+        "description": ""
+      },
+      {
+        "value": "drc",
+        "display_name": "Dreamcast",
+        "description": ""
+      },
+      {
+        "value": "dvd",
+        "display_name": "DVD Player",
+        "description": ""
+      },
+      {
+        "value": "fm7",
+        "display_name": "FM-7",
+        "description": ""
+      },
+      {
+        "value": "fmt",
+        "display_name": "FM Towns",
+        "description": ""
+      },
+      {
+        "value": "gba",
+        "display_name": "Game Boy Advance",
+        "description": ""
+      },
+      {
+        "value": "gbc",
+        "display_name": "Game Boy Color",
+        "description": ""
+      },
+      {
+        "value": "ios",
+        "display_name": "iOS",
+        "description": ""
+      },
+      {
+        "value": "lin",
+        "display_name": "Linux",
+        "description": ""
+      },
+      {
+        "value": "mac",
+        "display_name": "macOS",
+        "description": ""
+      },
+      {
+        "value": "mob",
+        "display_name": "Other mobile",
+        "description": ""
+      },
+      {
+        "value": "msx",
+        "display_name": "MSX",
+        "description": ""
+      },
+      {
+        "value": "n3d",
+        "display_name": "Nintendo 3DS",
+        "description": ""
+      },
+      {
+        "value": "nds",
+        "display_name": "Nintendo DS",
+        "description": ""
+      },
+      {
+        "value": "nes",
+        "display_name": "Famicom / NES",
+        "description": ""
+      },
+      {
+        "value": "oth",
+        "display_name": "Other",
+        "description": ""
+      },
+      {
+        "value": "p88",
+        "display_name": "PC-88",
+        "description": ""
+      },
+      {
+        "value": "p98",
+        "display_name": "PC-98",
+        "description": ""
+      },
+      {
+        "value": "pce",
+        "display_name": "PC Engine",
+        "description": ""
+      },
+      {
+        "value": "pcf",
+        "display_name": "PC-FX",
+        "description": ""
+      },
+      {
+        "value": "ps1",
+        "display_name": "PlayStation",
+        "description": ""
+      },
+      {
+        "value": "ps2",
+        "display_name": "PlayStation 2",
+        "description": ""
+      },
+      {
+        "value": "ps3",
+        "display_name": "PlayStation 3",
+        "description": ""
+      },
+      {
+        "value": "ps4",
+        "display_name": "PlayStation 4",
+        "description": ""
+      },
+      {
+        "value": "ps5",
+        "display_name": "PlayStation 5",
+        "description": ""
+      },
+      {
+        "value": "psp",
+        "display_name": "PlayStation Portable",
+        "description": ""
+      },
+      {
+        "value": "psv",
+        "display_name": "PlayStation Vita",
+        "description": ""
+      },
+      {
+        "value": "sat",
+        "display_name": "Sega Saturn",
+        "description": ""
+      },
+      {
+        "value": "scd",
+        "display_name": "Sega CD",
+        "description": ""
+      },
+      {
+        "value": "sfc",
+        "display_name": "Super Famicom / SNES",
+        "description": ""
+      },
+      {
+        "value": "smd",
+        "display_name": "Mega Drive / Genesis",
+        "description": ""
+      },
+      {
+        "value": "sw2",
+        "display_name": "Nintendo Switch 2",
+        "description": ""
+      },
+      {
+        "value": "swi",
+        "display_name": "Nintendo Switch",
+        "description": ""
+      },
+      {
+        "value": "tdo",
+        "display_name": "3DO",
+        "description": ""
+      },
+      {
+        "value": "vnd",
+        "display_name": "VNDS",
+        "description": ""
+      },
+      {
+        "value": "web",
+        "display_name": "Website",
+        "description": ""
+      },
+      {
+        "value": "wii",
+        "display_name": "Wii",
+        "description": ""
+      },
+      {
+        "value": "wiu",
+        "display_name": "Wii U",
+        "description": ""
+      },
+      {
+        "value": "win",
+        "display_name": "Windows",
+        "description": ""
+      },
+      {
+        "value": "x1s",
+        "display_name": "Sharp X1",
+        "description": ""
+      },
+      {
+        "value": "x68",
+        "display_name": "Sharp X68000",
+        "description": ""
+      },
+      {
+        "value": "xb1",
+        "display_name": "Xbox",
+        "description": ""
+      },
+      {
+        "value": "xb3",
+        "display_name": "Xbox 360",
+        "description": ""
+      },
+      {
+        "value": "xbo",
+        "display_name": "Xbox One",
+        "description": ""
+      },
+      {
+        "value": "xxs",
+        "display_name": "Xbox X/S",
+        "description": ""
+      }
+    ]
+  },
+  {
     "name": "relation_types",
     "closed": false,
     "values": [

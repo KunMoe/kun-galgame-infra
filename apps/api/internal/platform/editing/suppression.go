@@ -70,6 +70,7 @@ func SuppressedFieldSpec(entityType string, parent FieldSpec) FieldSpec {
 		Policy:        parent.Policy,
 		MaxSuppressed: limit,
 		MaxElements:   limit,
+		Value:         &ValueSpec{Element: &ElementSpec{Type: "text"}},
 		Validate: func(v any) error {
 			_, err := parse(v)
 			return err
