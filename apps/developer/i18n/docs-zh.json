@@ -704,7 +704,7 @@
   "Type discriminant. Always work_prices.": "类型判别字段。恒为 work_prices。",
   "Type discriminant. Always price_quote.": "类型判别字段。恒为 price_quote。",
   "One quote per storefront anchor and region. Empty array, never null.": "每个商店锚点与区域一条报价。空数组，永不为 null。",
-  "ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite.": "ISO 3166-1 alpha-2 商店区域，小写。DLsite 固定为 jp。",
+  "ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite and Getchu.": "ISO 3166-1 alpha-2 商店区域，小写。DLsite 与 Getchu 固定为 jp。",
   "priced has list and current; pending means a fetch is in flight; unavailable means the storefront has no price.": "priced 表示有 list 与 current；pending 表示正在抓取；unavailable 表示商店没有价格。",
   "Percent off list. Zero when not on sale or not priced.": "相对定价的折扣百分比。未打折或无价格时为 0。",
   "RFC 3339 UTC instant the published sale ends. null when the store publishes no end.": "RFC 3339 UTC 时刻，商店公布的促销截止时间。商店未公布截止时为 null。",

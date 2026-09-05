@@ -115813,7 +115813,7 @@ export const docsModel: DocsModel = {
                                   {
                                     "name": "region",
                                     "required": true,
-                                    "doc": "ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite.",
+                                    "doc": "ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite and Getchu.",
                                     "type": "string"
                                   },
                                   {
@@ -116661,7 +116661,7 @@ export const docsModel: DocsModel = {
                             {
                               "name": "region",
                               "required": true,
-                              "doc": "ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite.",
+                              "doc": "ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite and Getchu.",
                               "type": "string"
                             },
                             {

@@ -4523,7 +4523,7 @@ components:
           type: string
           x-vocabulary-closed: true
         region:
-          description: ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite.
+          description: ISO 3166-1 alpha-2 storefront region, lowercase. jp for DLsite and Getchu.
           maxLength: 2
           pattern: ^[a-z]{2}$
           type: string
